@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package legal.catalog.v1;
+
+service LegalCatalogService {
+  rpc GetCatalog (GetCatalogRequest) returns (GetCatalogResponse);
+  rpc GetDocument (GetDocumentRequest) returns (GetDocumentResponse);
+  rpc GetPricing (GetPricingRequest) returns (GetPricingResponse);
+}
+
+message GetCatalogRequest {}
+
+message GetCatalogResponse {
+  repeated CatalogCategory categories = 1;
+}
+
+message CatalogCategory {
+  string category = 1;
+  repeated CatalogDocument documents = 2;
+}
+
+message CatalogDocument {
+  string document_type = 1;
+  string category = 2;
+  double price = 3;
+  bool requires_court_stamp = 4;
+  string description = 5;
+}
+
+message GetDocumentRequest {
+  string document_type = 1;
+}
+
+message GetDocumentResponse {
+  CatalogDocument document = 1;
+}
+
+message GetPricingRequest {
+  string document_type = 1;
+}
+
+message GetPricingResponse {
+  string document_type = 1;
+  double price = 2;
+}
+

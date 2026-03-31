@@ -1,0 +1,45 @@
+<?php
+
+return [
+    'welcome' => [
+        'subject' => 'Welcome to :app',
+        'title' => 'Welcome',
+        'preheader' => 'Your :app account is ready.',
+        'heading' => 'Welcome, :name',
+        'body' => 'Thanks for creating your :app account. You can fund your wallet and start using services immediately.',
+        'quick_start' => 'Quick start',
+        'step_fund' => 'Fund your wallet to unlock services.',
+        'step_verify' => 'Run your first verification or purchase VTU.',
+        'step_history' => 'Track everything in your transaction history.',
+        'cta' => 'Go to dashboard',
+    ],
+    'login' => [
+        'subject' => ':app login alert',
+        'title' => 'Login alert',
+        'preheader' => 'A new sign-in was detected.',
+        'heading' => ':app login notification',
+        'body' => 'Hi :name, we noticed a login to your account.',
+        'details' => 'Login details',
+        'time' => 'Time',
+        'ip' => 'IP address',
+        'device' => 'Device',
+        'security_tip' => 'If this wasn\'t you, please reset your password immediately and contact support.',
+    ],
+    'password_reset' => [
+        'subject' => 'Reset your :app password',
+        'title' => 'Reset password',
+        'preheader' => 'Reset your :app password securely.',
+        'heading' => 'Reset your password',
+        'body' => 'Hi :name, we received a request to reset your :app password.',
+        'cta' => 'Reset password',
+        'expire' => 'This link expires in :minutes minutes.',
+        'ignore' => 'If you did not request a password reset, you can safely ignore this email.',
+    ],
+    'footer' => [
+        'reason' => 'You are receiving this email because it relates to your account activity.',
+        'support' => 'Support',
+        'privacy' => 'Privacy',
+        'unsubscribe' => 'Unsubscribe',
+        'ref' => 'Reference: :id',
+    ],
+];

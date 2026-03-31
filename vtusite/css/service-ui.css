@@ -1,0 +1,88 @@
+
+/* Service Page UI - Fuwa..NG */
+
+:root {
+    --primary: #6366f1;
+    --glass-bg: rgba(255, 255, 255, 0.03);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --surface-dark: #0f172a;
+}
+
+.service-container {
+    max-width: 800px;
+    margin: 40px auto;
+    padding: 0 20px;
+}
+
+.service-card-premium {
+    background: var(--surface-dark);
+    border: 1px solid var(--glass-border);
+    border-radius: 24px;
+    padding: 40px;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+}
+
+.service-icon-large {
+    width: 80px;
+    height: 80px;
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--primary);
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    margin: 0 auto 24px;
+}
+
+.form-premium .form-label {
+    color: var(--text-secondary);
+    font-weight: 600;
+    margin-bottom: 10px;
+    display: block;
+}
+
+.form-premium .form-control {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 14px 20px;
+    color: #fff;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.form-premium .form-control:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+    outline: none;
+}
+
+.result-premium {
+    margin-top: 40px;
+    padding: 30px;
+    background: rgba(255,255,255,0.02);
+    border-radius: 20px;
+    border: 1px solid var(--glass-border);
+    display: none;
+}
+
+.result-premium img {
+    width: 120px;
+    height: 120px;
+    border-radius: 15px;
+    object-fit: cover;
+    margin-bottom: 20px;
+    border: 2px solid var(--primary);
+}
+
+.data-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.data-label { color: var(--text-secondary); font-size: 0.9rem; }
+.data-value { color: #fff; font-weight: 600; }

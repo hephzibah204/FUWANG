@@ -1,0 +1,259 @@
+openapi: 3.0.3
+info:
+  title: Developer API Infrastructure
+  description: >
+    Comprehensive RESTful API for integration with our platform services.
+    Includes wallet-based authentication, rate limiting, and standard HTTP status codes.
+  version: 1.0.0
+servers:
+  - url: https://api.fuwa.ng/api/v1
+    description: Production Server
+  - url: http://localhost:8000/api/v1
+    description: Local Development Server
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: API Token
+  responses:
+    InsufficientFunds:
+      description: Wallet balance is below the required minimum.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: fund not sufficient
+              error:
+                type: string
+                example: fund not sufficient
+    RateLimitExceeded:
+      description: API rate limit exceeded.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: Too Many Requests
+security:
+  - bearerAuth: []
+paths:
+  /auth/token:
+    post:
+      summary: Create an API Token
+      description: Exchanges credentials for a bearer API token.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+                - device_name
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+                device_name:
+                  type: string
+      responses:
+        '200':
+          description: Successful authentication
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: boolean
+                    example: true
+                  token:
+                    type: string
+  /me:
+    get:
+      summary: Get current authenticated user details
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: boolean
+                  user:
+                    type: object
+        '401':
+          description: Unauthorized
+        '402':
+          $ref: '#/components/responses/InsufficientFunds'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+  /verifications/nin:
+    post:
+      summary: Verify National Identity Number (NIN)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - nin
+              properties:
+                nin:
+                  type: string
+      responses:
+        '200':
+          description: NIN Details
+        '402':
+          $ref: '#/components/responses/InsufficientFunds'
+        '429':
+          $ref: '#/components/responses/RateLimitExceeded'
+  /verifications/bvn:
+    post:
+      summary: Verify Bank Verification Number (BVN)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - bvn
+              properties:
+                bvn:
+                  type: string
+      responses:
+        '200':
+          description: BVN Details
+        '402':
+          $ref: '#/components/responses/InsufficientFunds'
+  /vtu/airtime:
+    post:
+      summary: Top up airtime
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - network
+                - amount
+                - phone
+              properties:
+                network:
+                  type: string
+                  enum: [MTN, GLO, AIRTEL, 9MOBILE]
+                amount:
+                  type: number
+                  minimum: 50
+                phone:
+                  type: string
+                  pattern: '^\d{11}$'
+      responses:
+        '200':
+          description: Top-up successful
+        '400':
+          description: Bad request
+        '402':
+          $ref: '#/components/responses/InsufficientFunds'
+  /vtu/data:
+    post:
+      summary: Purchase data bundle
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - network
+                - plan_id
+                - amount
+                - phone
+              properties:
+                network:
+                  type: string
+                plan_id:
+                  type: string
+                amount:
+                  type: number
+                phone:
+                  type: string
+      responses:
+        '200':
+          description: Data purchase successful
+        '402':
+          $ref: '#/components/responses/InsufficientFunds'
+  /vtu/cable:
+    post:
+      summary: Subscribe to Cable TV
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - provider
+                - smartcard_number
+                - plan_id
+                - amount
+              properties:
+                provider:
+                  type: string
+                smartcard_number:
+                  type: string
+                plan_id:
+                  type: string
+                amount:
+                  type: number
+      responses:
+        '200':
+          description: Subscription successful
+        '402':
+          $ref: '#/components/responses/InsufficientFunds'
+  /vtu/electricity:
+    post:
+      summary: Pay Electricity Bill
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - provider
+                - meter_number
+                - meter_type
+                - amount
+              properties:
+                provider:
+                  type: string
+                meter_number:
+                  type: string
+                meter_type:
+                  type: string
+                  enum: [prepaid, postpaid]
+                amount:
+                  type: number
+      responses:
+        '200':
+          description: Payment successful
+        '402':
+          $ref: '#/components/responses/InsufficientFunds'

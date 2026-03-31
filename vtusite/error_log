@@ -1,0 +1,36 @@
+[05-May-2024 21:24:25 UTC] PHP Warning:  include_once(db_conn.php): Failed to open stream: No such file or directory in /home/wcbyvxvo/public_html/vtusite/index.php on line 4
+[05-May-2024 21:24:25 UTC] PHP Warning:  include_once(): Failed opening 'db_conn.php' for inclusion (include_path='.:/opt/cpanel/ea-php81/root/usr/share/pear') in /home/wcbyvxvo/public_html/vtusite/index.php on line 4
+[05-May-2024 21:24:25 UTC] PHP Warning:  session_start(): Session cannot be started after headers have already been sent in /home/wcbyvxvo/public_html/vtusite/index.php on line 6
+[05-May-2024 21:24:25 UTC] PHP Warning:  Cannot modify header information - headers already sent by (output started at /home/wcbyvxvo/public_html/vtusite/index.php:4) in /home/wcbyvxvo/public_html/vtusite/index.php on line 38
+[05-May-2024 21:24:25 UTC] PHP Warning:  Cannot modify header information - headers already sent by (output started at /home/wcbyvxvo/public_html/vtusite/index.php:4) in /home/wcbyvxvo/public_html/vtusite/index.php on line 39
+[05-May-2024 21:32:01 UTC] PHP Fatal error:  Uncaught mysqli_sql_exception: Access denied for user 'root'@'localhost' (using password: YES) in /home/wcbyvxvo/public_html/vtusite/db_conn.php:4
+Stack trace:
+#0 /home/wcbyvxvo/public_html/vtusite/db_conn.php(4): mysqli_connect('localhost', 'root', 'Abu10451974??', 'wcbyvxvo_Datasm...')
+#1 /home/wcbyvxvo/public_html/vtusite/index.php(4): include_once('/home/wcbyvxvo/...')
+#2 {main}
+  thrown in /home/wcbyvxvo/public_html/vtusite/db_conn.php on line 4
+[05-May-2024 21:39:05 UTC] PHP Warning:  Undefined variable $row_reseller in /home/wcbyvxvo/public_html/vtusite/index.php on line 432
+[05-May-2024 21:39:05 UTC] PHP Warning:  Trying to access array offset on value of type null in /home/wcbyvxvo/public_html/vtusite/index.php on line 432
+[05-May-2024 21:39:05 UTC] PHP Warning:  Undefined array key "about_us" in /home/wcbyvxvo/public_html/vtusite/index.php on line 1141
+[05-May-2024 21:39:05 UTC] PHP Warning:  Undefined array key "country" in /home/wcbyvxvo/public_html/vtusite/index.php on line 1196
+[05-May-2024 21:39:05 UTC] PHP Warning:  Undefined array key "footer" in /home/wcbyvxvo/public_html/vtusite/index.php on line 1220
+[05-May-2024 21:39:38 UTC] PHP Warning:  Undefined variable $row_reseller in /home/wcbyvxvo/public_html/vtusite/index.php on line 432
+[05-May-2024 21:39:38 UTC] PHP Warning:  Trying to access array offset on value of type null in /home/wcbyvxvo/public_html/vtusite/index.php on line 432
+[05-May-2024 21:39:38 UTC] PHP Warning:  Undefined array key "about_us" in /home/wcbyvxvo/public_html/vtusite/index.php on line 1141
+[05-May-2024 21:39:38 UTC] PHP Warning:  Undefined array key "country" in /home/wcbyvxvo/public_html/vtusite/index.php on line 1196
+[05-May-2024 21:39:38 UTC] PHP Warning:  Undefined array key "footer" in /home/wcbyvxvo/public_html/vtusite/index.php on line 1220
+[05-May-2024 21:40:26 UTC] PHP Warning:  Undefined variable $row_reseller in /home/wcbyvxvo/public_html/vtusite/index.php on line 432
+[05-May-2024 21:40:26 UTC] PHP Warning:  Trying to access array offset on value of type null in /home/wcbyvxvo/public_html/vtusite/index.php on line 432
+[05-May-2024 21:40:26 UTC] PHP Warning:  Undefined array key "about_us" in /home/wcbyvxvo/public_html/vtusite/index.php on line 1141
+[05-May-2024 21:40:26 UTC] PHP Warning:  Undefined array key "country" in /home/wcbyvxvo/public_html/vtusite/index.php on line 1196
+[05-May-2024 21:40:26 UTC] PHP Warning:  Undefined array key "footer" in /home/wcbyvxvo/public_html/vtusite/index.php on line 1220
+[05-May-2024 21:40:43 UTC] PHP Warning:  Undefined variable $row_reseller in /home/wcbyvxvo/public_html/vtusite/index.php on line 432
+[05-May-2024 21:40:43 UTC] PHP Warning:  Trying to access array offset on value of type null in /home/wcbyvxvo/public_html/vtusite/index.php on line 432
+[05-May-2024 21:40:43 UTC] PHP Warning:  Undefined array key "about_us" in /home/wcbyvxvo/public_html/vtusite/index.php on line 1141
+[05-May-2024 21:40:43 UTC] PHP Warning:  Undefined array key "country" in /home/wcbyvxvo/public_html/vtusite/index.php on line 1196
+[05-May-2024 21:40:43 UTC] PHP Warning:  Undefined array key "footer" in /home/wcbyvxvo/public_html/vtusite/index.php on line 1220
+[05-May-2024 21:40:47 UTC] PHP Warning:  Undefined variable $row_reseller in /home/wcbyvxvo/public_html/vtusite/index.php on line 432
+[05-May-2024 21:40:47 UTC] PHP Warning:  Trying to access array offset on value of type null in /home/wcbyvxvo/public_html/vtusite/index.php on line 432
+[05-May-2024 21:40:47 UTC] PHP Warning:  Undefined array key "about_us" in /home/wcbyvxvo/public_html/vtusite/index.php on line 1141
+[05-May-2024 21:40:47 UTC] PHP Warning:  Undefined array key "country" in /home/wcbyvxvo/public_html/vtusite/index.php on line 1196
+[05-May-2024 21:40:47 UTC] PHP Warning:  Undefined array key "footer" in /home/wcbyvxvo/public_html/vtusite/index.php on line 1220

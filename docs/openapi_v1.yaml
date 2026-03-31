@@ -1,0 +1,205 @@
+openapi: 3.0.3
+info:
+  title: Fuwa.NG Public API
+  version: "1.0.0"
+  description: Public API for external integrations.
+servers:
+  - url: /api/v1
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: nx_token
+  schemas:
+    ApiError:
+      type: object
+      properties:
+        status: { type: boolean, example: false }
+        message: { type: string, example: "Unauthorized" }
+    TokenResponse:
+      type: object
+      properties:
+        status: { type: boolean, example: true }
+        token: { type: string, example: "nx_..." }
+        token_type: { type: string, example: "Bearer" }
+    MeResponse:
+      type: object
+      properties:
+        status: { type: boolean, example: true }
+        data:
+          type: object
+          properties:
+            id: { type: integer, example: 1 }
+            email: { type: string, example: "user@example.com" }
+            fullname: { type: string, nullable: true }
+            username: { type: string, nullable: true }
+    VerificationResponse:
+      type: object
+      properties:
+        status: { type: boolean, example: true }
+        message: { type: string, example: "Verified" }
+        result_id: { type: integer, example: 10 }
+        reference_id: { type: string, example: "NIN_VERIFICATION-AB12CD34" }
+        data: { type: object }
+paths:
+  /auth/token:
+    post:
+      summary: Create API token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+                name: { type: string }
+      responses:
+        "200":
+          description: Token created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TokenResponse" }
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+    delete:
+      summary: Revoke current token
+      responses:
+        "200":
+          description: Token revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: boolean, example: true }
+                  message: { type: string, example: "Token revoked." }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /me:
+    get:
+      summary: Get current user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MeResponse" }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /verifications/nin:
+    post:
+      summary: Verify NIN
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [number, firstname, lastname, dob, mode]
+              properties:
+                number: { type: string }
+                firstname: { type: string }
+                lastname: { type: string }
+                dob: { type: string }
+                mode: { type: string, enum: [nin, phone] }
+                api_provider_id: { type: integer, nullable: true }
+      responses:
+        "200":
+          description: Verified
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VerificationResponse" }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "402":
+          description: Insufficient balance
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "422":
+          description: Validation error
+        "502":
+          description: Upstream failure
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /verifications/bvn:
+    post:
+      summary: Verify BVN
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [number, firstname, lastname, dob, type]
+              properties:
+                number: { type: string }
+                firstname: { type: string }
+                lastname: { type: string }
+                dob: { type: string }
+                type: { type: string, enum: [basic, premium] }
+                api_provider_id: { type: integer, nullable: true }
+      responses:
+        "200":
+          description: Verified
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VerificationResponse" }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "402":
+          description: Insufficient balance
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "422":
+          description: Validation error
+        "502":
+          description: Upstream failure
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+  /verifications/{id}:
+    get:
+      summary: Get verification result
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Result record
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }

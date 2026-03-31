@@ -1,0 +1,13 @@
+{
+    "preset": "laravel",
+    "exclude": [
+        "clients",
+        "gsoft_laravel",
+        "PHPMailer",
+        "vtusite",
+        "Database",
+        "pdf",
+        "*.php"
+    ]
+}
+
