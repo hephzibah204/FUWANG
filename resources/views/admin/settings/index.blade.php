@@ -52,7 +52,7 @@
                 <div class="col-md-6 mb-4">
                     <label class="text-white-50 small mb-2">Low Balance Threshold (₦)</label>
                     <input type="number" step="0.01" name="low_balance_threshold" class="form-control text-white rounded-3" value="{{ \App\Models\SystemSetting::get('low_balance_threshold', 500) }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
-                    <small class="text-info mt-2 d-block">Users will receive an email when their balance drops below this amount. Throttled to once every 24 hours.</small>
+                    <small class="text-info mt-2 d-block">Users will receive an email when their balance drops below this amount. Throttled to once per week.</small>
                 </div>
             </div>
 

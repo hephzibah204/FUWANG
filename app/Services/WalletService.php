@@ -255,10 +255,10 @@ class WalletService
             if ($newBalance < $threshold) {
                 $cacheKey = "low_balance_notif_{$user->id}";
                 
-                // Throttle: Send notification at most once every 24 hours
+                // Throttle: Send notification at most once per week
                 if (!Cache::has($cacheKey)) {
                     Mail::to($user->email)->queue(new LowBalanceMail($user, $newBalance, $threshold));
-                    Cache::put($cacheKey, true, now()->addHours(24));
+                    Cache::put($cacheKey, true, now()->addDays(7));
                 }
             }
         } catch (\Throwable $e) {
