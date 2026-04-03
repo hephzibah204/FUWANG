@@ -254,11 +254,6 @@
     @endphp
 
     @if($isAuthed)
-    <!-- Mobile Toggle -->
-    <button class="mobile-toggle d-block d-lg-none" id="sidebarToggle" aria-label="Toggle Navigation Sidebar" aria-expanded="false" aria-controls="sidebar">
-        <i class="fa-solid fa-bars" aria-hidden="true"></i>
-    </button>
-
     <!-- Top Horizontal Navigation -->
     <aside class="sidebar" id="sidebar" aria-label="Main Navigation" role="navigation">
         <div class="sidebar-header">
@@ -471,6 +466,12 @@
             @if(($webUser?->role ?? null) === 'admin' || $adminUser)
             <div class="nav-section">Admin Management</div>
             
+            @if(Auth::guard('admin')->user()?->is_super_admin)
+            <div class="nav-item {{ Request::routeIs('admin.self_funding.*') ? 'active' : '' }}">
+                <a href="{{ route('admin.self_funding.index') }}"><i class="fa-solid fa-vault text-primary"></i> <span class="nav-text">Self-Funding</span></a>
+            </div>
+            @endif
+
             @if(Auth::guard('admin')->user()?->hasPermission('manage_admins'))
             <div class="nav-item {{ Request::routeIs('admin.admins.*') ? 'active' : '' }}">
                 <a href="{{ route('admin.admins.index') }}"><i class="fa-solid fa-users-gear text-danger"></i> <span class="nav-text">System Admins</span></a>
@@ -583,8 +584,13 @@
 
     <!-- Main Content Area -->
     <main class="{{ $isAuthed ? 'main-content' : 'main m-0' }}">
-        @if($webUser)
+        @if($isAuthed)
         <header class="top-header">
+            <!-- Mobile Toggle -->
+            <button class="mobile-toggle d-lg-none mr-3" id="sidebarToggle" type="button" aria-label="Toggle Navigation Sidebar" aria-expanded="false" aria-controls="sidebar">
+                <i class="fa-solid fa-bars" aria-hidden="true"></i>
+            </button>
+
             <div class="topbar-search d-none d-lg-block flex-grow-1 mx-4">
                 <div class="search-hub-wrapper">
                     <i class="fa-solid fa-magnifying-glass"></i>
@@ -592,26 +598,30 @@
                     <div id="searchHubResults" class="search-results-dropdown" style="display: none;"></div>
                 </div>
             </div>
-            <div class="topbar-greeting">
-                Welcome back, <span>{{ explode(' ', $webUser->fullname)[0] ?? $webUser->username }}</span>
+            <div class="topbar-greeting d-none d-sm-block">
+                Welcome back, <span>{{ explode(' ', $authUser->fullname ?? $authUser->username ?? 'Admin')[0] }}</span>
             </div>
             <div class="header-actions">
                 <button class="action-btn text-decoration-none" id="highContrastToggle" title="Toggle High Contrast Mode" aria-label="High Contrast">
                     <i class="fa-solid fa-circle-half-stroke"></i>
                 </button>
+                @if($webUser)
                 <div class="wallet-balance d-none d-md-block">
                     <span class="text-muted small">Balance:</span>
                     <h5 class="m-0">₦{{ number_format($webUser->balance?->user_balance ?? 0, 2) }}</h5>
                 </div>
+                @endif
+                @if($webUser)
                 <a class="action-btn text-decoration-none" href="{{ route('notifications.index') }}" aria-label="Notifications">
                     <i class="fa-regular fa-bell"></i>
                     @php 
-                        $unreadCount = Auth::user()->unreadNotifications->count(); 
+                        $unreadCount = $webUser->unreadNotifications->count(); 
                     @endphp
                     @if($unreadCount > 0)
                         <span class="notification-dot"></span>
                     @endif
                 </a>
+                @endif
             </div>
         </header>
         @endif

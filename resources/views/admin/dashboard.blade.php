@@ -18,6 +18,9 @@
             </button>
             <div class="dropdown-menu dropdown-menu-right border-0 shadow-lg p-2" style="background: rgba(25, 30, 45, 0.95); backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.1) !important; border-radius: 15px;">
                 <a class="dropdown-item text-white rounded py-2 d-flex align-items-center" href="{{ route('admin.services.index') }}" style="transition: 0.2s;"><i class="fa fa-layer-group text-info mr-3"></i> Services</a>
+                @if(Auth::guard('admin')->user()?->is_super_admin)
+                <a class="dropdown-item text-white rounded py-2 d-flex align-items-center" href="{{ route('admin.self_funding.index') }}" style="transition: 0.2s;"><i class="fa fa-vault text-primary mr-3"></i> Self-Funding</a>
+                @endif
                 <a class="dropdown-item text-white rounded py-2 d-flex align-items-center" href="{{ route('admin.sandbox.index') }}" style="transition: 0.2s;"><i class="fa fa-flask text-success mr-3"></i> Sandbox</a>
                 <a class="dropdown-item text-white rounded py-2 d-flex align-items-center" href="{{ route('admin.settings.index', ['tab' => 'tab-features']) }}" style="transition: 0.2s;"><i class="fa fa-toggle-on text-warning mr-3"></i> Service Toggles</a>
                 <a class="dropdown-item text-white rounded py-2 d-flex align-items-center" href="{{ route('admin.settings.index') }}" style="transition: 0.2s;"><i class="fa fa-gear text-primary mr-3"></i> Settings</a>

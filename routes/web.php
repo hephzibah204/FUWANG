@@ -145,7 +145,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/payment/intents/{reference}', [App\Http\Controllers\PaymentIntentController::class, 'show'])->name('payment.intents.show');
     Route::post('/payment/palmpay/reserve', [App\Http\Controllers\FundingController::class, 'reservePalmpay'])->name('payment.palmpay.reserve');
     Route::post('/payment/auto-funding/ensure', [App\Http\Controllers\FundingController::class, 'ensureAutoFundingAccounts'])->name('payment.auto_funding.ensure');
-    // NOTE (C-4): regenerate moved to admin panel — route /payment/auto-funding/regenerate removed (was guarded only by fragile role string check)
+    Route::post('/payment/auto-funding/regenerate', [App\Http\Controllers\FundingController::class, 'regenerateAutoFundingAccounts'])->name('payment.auto_funding.regenerate');
     Route::get('/payment/virtual-accounts', [App\Http\Controllers\FundingController::class, 'listVirtualAccounts'])->name('payment.virtual_accounts.list');
     Route::match(['GET', 'POST'], '/palmpay.php', [App\Http\Controllers\FundingController::class, 'reservePalmpay'])->name('legacy.palmpay.reserve');
 
@@ -408,12 +408,15 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
             // User Management
             Route::get('/users',                       [App\Http\Controllers\Admin\AdminController::class, 'users'])->name('users.index');
             Route::get('/users/{id}',                  [App\Http\Controllers\Admin\AdminController::class, 'showUser'])->whereNumber('id')->name('users.show');
-            Route::post('/users/fund',                 [App\Http\Controllers\Admin\AdminController::class, 'fundUser'])->name('users.fund');
-            Route::post('/users/deduct',               [App\Http\Controllers\Admin\AdminController::class, 'deductUser'])->name('users.deduct');
-            Route::post('/users/refund',               [App\Http\Controllers\Admin\AdminController::class, 'refundUser'])->name('users.refund');
             Route::post('/users/{id}/status',          [App\Http\Controllers\Admin\AdminController::class, 'updateUserStatus'])->whereNumber('id')->name('users.status');
             Route::post('/users/{id}/reset-password',  [App\Http\Controllers\Admin\AdminController::class, 'resetUserPassword'])->whereNumber('id')->name('users.reset_password');
             Route::get('/users/history/{email}',       [App\Http\Controllers\Admin\AdminController::class, 'userHistory'])->name('users.history');
+
+            Route::middleware('super_admin')->group(function () {
+                Route::post('/users/fund',                 [App\Http\Controllers\Admin\AdminController::class, 'fundUser'])->name('users.fund');
+                Route::post('/users/deduct',               [App\Http\Controllers\Admin\AdminController::class, 'deductUser'])->name('users.deduct');
+                Route::post('/users/refund',               [App\Http\Controllers\Admin\AdminController::class, 'refundUser'])->name('users.refund');
+            });
 
             // Support Tickets
             Route::get('/tickets',                     [App\Http\Controllers\Admin\AdminTicketController::class, 'index'])->name('tickets');
@@ -481,6 +484,12 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
             Route::get('/audit-logs',                  [App\Http\Controllers\Admin\AdminAuditLogController::class, 'index'])->name('audit_logs.index');
             Route::get('/queue',                       [App\Http\Controllers\Admin\QueueMonitorController::class, 'index'])->name('queue.index');
 
+            // Self-Funding (Super Admin Only)
+            Route::middleware('super_admin')->group(function () {
+                Route::get('/self-funding', [App\Http\Controllers\Admin\SelfFundingController::class, 'index'])->name('self_funding.index');
+                Route::post('/self-funding', [App\Http\Controllers\Admin\SelfFundingController::class, 'fund'])->name('self_funding.fund');
+            });
+
             // Auctions
             Route::get('/auctions', [App\Http\Controllers\Admin\AuctionController::class, 'index'])->name('auctions.index');
             Route::get('/auctions/create', [App\Http\Controllers\Admin\AuctionController::class, 'create'])->name('auctions.create');
@@ -522,6 +531,9 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
             Route::post('/settings/branding',          [App\Http\Controllers\Admin\SettingsController::class, 'updateBranding'])->name('settings.branding');
             Route::post('/settings/system-pricing',    [App\Http\Controllers\Admin\SettingsController::class, 'updateSystemPricing'])->name('settings.system_pricing');
             Route::post('/settings/theme',             [App\Http\Controllers\Admin\SettingsController::class, 'updateTheme'])->name('settings.theme');
+            Route::post('/settings/admin-security',    [App\Http\Controllers\Admin\SettingsController::class, 'updateAdminSecurity'])
+                ->middleware('super_admin')
+                ->name('settings.admin_security');
             Route::post('/settings/features',          [App\Http\Controllers\Admin\SettingsController::class, 'updateFeatureToggles'])->name('settings.features');
             Route::post('/settings/gateways/toggle',   [App\Http\Controllers\Admin\SettingsController::class, 'toggleGateway'])
                 ->middleware('super_admin')

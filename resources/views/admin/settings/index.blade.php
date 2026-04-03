@@ -32,7 +32,6 @@
     <button class="s-tab" onclick="window.location.href='{{ route('admin.settings.whatsapp_widget') }}'"><i class="fa-brands fa-whatsapp mr-2 text-success"></i>WhatsApp Widget</button>
 </div>
 
-{{-- ── 1. Notification Tab ────────────────────────────── --}}
 <div class="s-panel active" id="tab-notification">
     <div class="card border-0 rounded-4 p-4" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.07) !important;">
         <h5 class="text-white mb-1 fw-bold">System Notification</h5>
@@ -41,9 +40,23 @@
             @csrf
             <div class="form-group mb-4">
                 <label class="text-white-50 small mb-2">Notification Message</label>
-                <textarea id="notifText" class="form-control text-white rounded-3" rows="4" maxlength="500" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); resize: vertical;">{{ $notification->notification ?? '' }}</textarea>
+                <textarea name="notification" id="notifText" class="form-control text-white rounded-3" rows="4" maxlength="500" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); resize: vertical;">{{ $notification->notification ?? '' }}</textarea>
             </div>
-            <button type="submit" class="btn btn-primary rounded-pill px-4"><i class="fa fa-floppy-disk mr-2"></i>Save Notification</button>
+            
+            <hr style="border-color: rgba(255,255,255,0.07);" class="my-4">
+            
+            <h5 class="text-white mb-1 fw-bold">Balance Alerts</h5>
+            <p class="text-white-50 small mb-4">Configure automated email alerts for low wallet balances.</p>
+            
+            <div class="row">
+                <div class="col-md-6 mb-4">
+                    <label class="text-white-50 small mb-2">Low Balance Threshold (₦)</label>
+                    <input type="number" step="0.01" name="low_balance_threshold" class="form-control text-white rounded-3" value="{{ \App\Models\SystemSetting::get('low_balance_threshold', 500) }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                    <small class="text-info mt-2 d-block">Users will receive an email when their balance drops below this amount. Throttled to once every 24 hours.</small>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary rounded-pill px-4"><i class="fa fa-floppy-disk mr-2"></i>Save Notification Settings</button>
         </form>
     </div>
 </div>
@@ -682,6 +695,28 @@
                 </form>
             </div>
         </div>
+
+        @if($canManageSecurity)
+        <div class="col-12 mt-4">
+            <div class="card border-0 rounded-4 p-4" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.07) !important;">
+                <h6 class="text-white font-weight-bold mb-3"><i class="fa fa-vault text-primary mr-2"></i> Admin Self-Funding Limit</h6>
+                <p class="text-white-50 small mb-4">Configure the maximum amount allowed per internal self-funding transaction for Super Admins.</p>
+                
+                <form id="adminSelfFundingLimitForm">
+                    @csrf
+                    <div class="row align-items-end">
+                        <div class="col-md-6 form-group mb-0">
+                            <label class="text-white-50 small mb-2">Max Limit per Transaction (₦)</label>
+                            <input type="number" step="0.01" name="self_funding_limit" class="form-control text-white rounded-3" value="{{ \App\Models\SystemSetting::get('self_funding_limit', 10000000) }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                        </div>
+                        <div class="col-md-6">
+                            <button type="submit" class="btn btn-primary rounded-pill px-4"><i class="fa fa-floppy-disk mr-2"></i>Update Limit</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        @endif
     </div>
 </div>
 
@@ -1114,6 +1149,7 @@ handleSettingsForm('apiKeysForm',    '{{ route("admin.settings.api_keys") }}');
 handleSettingsForm('brandingForm',   '{{ route("admin.settings.branding") }}');
 handleSettingsForm('systemPricingForm', '{{ route("admin.settings.system_pricing") }}');
 handleSettingsForm('themeForm',      '{{ route("admin.settings.theme") }}');
+handleSettingsForm('adminSelfFundingLimitForm', '{{ route("admin.settings.admin_security") }}');
 handleSettingsForm('verifymeIpsForm','{{ route("admin.settings.security.verifyme_ips") }}');
 handleSettingsForm('featureTogglesForm', '{{ route("admin.settings.features") }}');
 handleSettingsForm('referralSettingsForm', '{{ route("admin.settings.referrals") }}');

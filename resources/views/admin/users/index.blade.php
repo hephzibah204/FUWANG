@@ -68,17 +68,17 @@
                         </div>
                     </td>
                     <td class="py-3 px-4 align-middle text-right">
-                        <h6 class="mb-0 font-weight-bold" style="color: #6ee7b7;">₦{{ number_format($user->balance->user_balance ?? 0, 2) }}</h6>
+                        <h6 class="mb-0 font-weight-bold" style="color: #6ee7b7;">₦{{ number_format(optional($user->balance)->user_balance ?? 0, 2) }}</h6>
                     </td>
                     <td class="py-3 px-4 align-middle text-center">
                         <div class="d-flex justify-content-center gap-2" style="gap: 8px;">
-                            <button type="button" class="btn btn-sm rounded-pill px-3 fund-btn" data-email="{{ $user->email }}" data-name="{{ $user->fullname }}" data-balance="{{ $user->balance->user_balance ?? 0 }}" style="background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid rgba(34,197,94,0.3); font-size: 0.72rem; font-weight: 600;">
+                            <button type="button" class="btn btn-sm rounded-pill px-3 fund-btn" data-email="{{ $user->email }}" data-name="{{ $user->fullname }}" data-balance="{{ optional($user->balance)->user_balance ?? 0 }}" style="background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid rgba(34,197,94,0.3); font-size: 0.72rem; font-weight: 600;">
                                 <i class="fa fa-plus mr-1"></i>Fund
                             </button>
-                            <button type="button" class="btn btn-sm rounded-pill px-3 refund-btn" data-email="{{ $user->email }}" data-name="{{ $user->fullname }}" data-balance="{{ $user->balance->user_balance ?? 0 }}" @if(empty($user->has_transactions)) disabled @endif style="background: rgba(245,158,11,0.15); color: #f59e0b; border: 1px solid rgba(245,158,11,0.3); font-size: 0.72rem; font-weight: 600; @if(empty($user->has_transactions)) opacity: 0.45; cursor: not-allowed; @endif">
+                            <button type="button" class="btn btn-sm rounded-pill px-3 refund-btn" data-email="{{ $user->email }}" data-name="{{ $user->fullname }}" data-balance="{{ optional($user->balance)->user_balance ?? 0 }}" @if(empty($user->has_transactions)) disabled @endif style="background: rgba(245,158,11,0.15); color: #f59e0b; border: 1px solid rgba(245,158,11,0.3); font-size: 0.72rem; font-weight: 600; @if(empty($user->has_transactions)) opacity: 0.45; cursor: not-allowed; @endif">
                                 <i class="fa fa-rotate-left mr-1"></i>Refund
                             </button>
-                            <button type="button" class="btn btn-sm rounded-pill px-3 deduct-btn" data-email="{{ $user->email }}" data-name="{{ $user->fullname }}" data-balance="{{ $user->balance->user_balance ?? 0 }}" style="background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); font-size: 0.72rem; font-weight: 600;">
+                            <button type="button" class="btn btn-sm rounded-pill px-3 deduct-btn" data-email="{{ $user->email }}" data-name="{{ $user->fullname }}" data-balance="{{ optional($user->balance)->user_balance ?? 0 }}" style="background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); font-size: 0.72rem; font-weight: 600;">
                                 <i class="fa fa-minus mr-1"></i>Deduct
                             </button>
                             <a href="{{ route('admin.users.show', $user->id) }}" class="btn btn-sm rounded-pill px-3" style="background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.85); border: 1px solid rgba(255,255,255,0.12); font-size: 0.72rem; font-weight: 600;">

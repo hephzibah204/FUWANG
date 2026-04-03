@@ -2168,14 +2168,15 @@ a.btn.btn-outline:hover {
         position: fixed;
         top: 14px;
         left: 14px;
-        z-index: 200;
-        width: 38px;
-        height: 38px;
-        border-radius: 10px;
+        z-index: 2000;
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
         background: var(--clr-primary, #3b82f6);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
         border: none;
         color: #fff;
-        font-size: 1rem;
+        font-size: 1.25rem;
         cursor: pointer;
     }
 }

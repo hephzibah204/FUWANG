@@ -23,13 +23,13 @@
             }
         @endphp
         <div class="d-flex gap-2" style="gap: 10px;">
-            <button type="button" class="btn btn-sm rounded-pill px-4 fund-btn" data-id="{{ $user->id }}" data-email="{{ $user->email }}" data-name="{{ $user->fullname }}" data-balance="{{ $user->balance->user_balance ?? 0 }}" style="background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid rgba(34,197,94,0.3); font-weight: 600;">
+            <button type="button" class="btn btn-sm rounded-pill px-4 fund-btn" data-id="{{ $user->id }}" data-email="{{ $user->email }}" data-name="{{ $user->fullname }}" data-balance="{{ optional($user->balance)->user_balance ?? 0 }}" style="background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid rgba(34,197,94,0.3); font-weight: 600;">
                 <i class="fa fa-plus mr-1"></i>Fund
             </button>
-            <button type="button" class="btn btn-sm rounded-pill px-4 refund-btn" data-id="{{ $user->id }}" data-email="{{ $user->email }}" data-name="{{ $user->fullname }}" data-balance="{{ $user->balance->user_balance ?? 0 }}" @disabled(!$hasRecentTransactions) style="{{ $refundButtonStyle }}">
+            <button type="button" class="btn btn-sm rounded-pill px-4 refund-btn" data-id="{{ $user->id }}" data-email="{{ $user->email }}" data-name="{{ $user->fullname }}" data-balance="{{ optional($user->balance)->user_balance ?? 0 }}" @disabled(!$hasRecentTransactions) style="{{ $refundButtonStyle }}">
                 <i class="fa fa-rotate-left mr-1"></i>Refund
             </button>
-            <button type="button" class="btn btn-sm rounded-pill px-4 deduct-btn" data-id="{{ $user->id }}" data-email="{{ $user->email }}" data-name="{{ $user->fullname }}" data-balance="{{ $user->balance->user_balance ?? 0 }}" style="background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); font-weight: 600;">
+            <button type="button" class="btn btn-sm rounded-pill px-4 deduct-btn" data-id="{{ $user->id }}" data-email="{{ $user->email }}" data-name="{{ $user->fullname }}" data-balance="{{ optional($user->balance)->user_balance ?? 0 }}" style="background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); font-weight: 600;">
                 <i class="fa fa-minus mr-1"></i>Deduct
             </button>
         </div>
@@ -60,7 +60,7 @@
 
                 <div class="p-3 rounded-3 mb-4" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05);">
                     <small class="text-white-50 text-uppercase d-block mb-1">Available Balance</small>
-                    <h3 class="mb-0 font-weight-bold" style="color: #6ee7b7;">₦{{ number_format($user->balance->user_balance ?? 0, 2) }}</h3>
+                    <h3 class="mb-0 font-weight-bold" style="color: #6ee7b7;">₦{{ number_format(optional($user->balance)->user_balance ?? 0, 2) }}</h3>
                 </div>
 
                 <div class="d-grid gap-2" style="display: grid; gap: 8px;">
@@ -165,7 +165,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse(($transactions ?? []) as $tx)
+                            @forelse($transactions as $tx)
                                     @php
                                         $delta = (float) $tx->balance_before - (float) $tx->balance_after;
                                         $isDebit = $delta > 0;
@@ -181,7 +181,12 @@
                                             <code class="text-white-50">{{ $tx->transaction_id }}</code>
                                         </td>
                                         <td class="py-3 px-4 align-middle">
-                                            <span class="text-white">{{ \Illuminate\Support\Str::limit($tx->order_type ?? 'Payment', 30) }}</span>
+                                            <div class="d-flex flex-column">
+                                                <span class="text-white">{{ \Illuminate\Support\Str::limit($tx->order_type ?? 'Payment', 30) }}</span>
+                                                @if($tx->funding_note)
+                                                    <small class="text-white-50 mt-1"><i class="fa fa-info-circle mr-1"></i>{{ $tx->funding_note }}</small>
+                                                @endif
+                                            </div>
                                         </td>
                                         <td class="py-3 px-4 align-middle">
                                             <span class="font-weight-bold {{ $isDebit ? 'text-danger' : 'text-success' }}">
@@ -189,7 +194,7 @@
                                             </span>
                                         </td>
                                         <td class="py-3 px-4 align-middle">
-                                            <small class="text-white-50">{{ $tx->created_at->format('d M, H:i') }}</small>
+                                            <small class="text-white-50">{{ $tx->created_at?->format('d M, H:i') }}</small>
                                         </td>
                                         <td class="py-3 px-4 align-middle text-center">
                                             <span class="badge rounded-pill px-2 py-1" style="background: {{ $statusColor['bg'] }}; color: {{ $statusColor['fg'] }};">

@@ -9,6 +9,10 @@ use App\Models\User;
 use App\Support\DbTable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Cache;
+use App\Mail\LowBalanceMail;
+use App\Models\SystemSetting;
 
 class WalletService
 {
@@ -95,6 +99,9 @@ class WalletService
                 'transaction_id' => $txId,
                 'status' => 'pending',
             ]);
+
+            // Low Balance Notification
+            $this->checkLowBalance($user, $newBalance);
 
             return [
                 'ok' => true,
@@ -235,5 +242,30 @@ class WalletService
 
             Transaction::where('transaction_id', $transactionId)->update(['status' => 'failed']);
         });
+    }
+
+    /**
+     * Check if user balance is low and notify if necessary.
+     */
+    protected function checkLowBalance(User $user, float $newBalance): void
+    {
+        try {
+            $threshold = (float) SystemSetting::get('low_balance_threshold', 500);
+            
+            if ($newBalance < $threshold) {
+                $cacheKey = "low_balance_notif_{$user->id}";
+                
+                // Throttle: Send notification at most once every 24 hours
+                if (!Cache::has($cacheKey)) {
+                    Mail::to($user->email)->queue(new LowBalanceMail($user, $newBalance, $threshold));
+                    Cache::put($cacheKey, true, now()->addHours(24));
+                }
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to process low balance notification', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 }

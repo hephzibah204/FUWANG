@@ -29,27 +29,33 @@
             </thead>
             <tbody>
                 @forelse($history as $i => $record)
+                @php
+                    $delta = (float) $record->balance_after - (float) $record->balance_before;
+                    $isCredit = $delta > 0;
+                @endphp
                 <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
                     <td class="py-3 px-4 align-middle text-white-50 small">{{ $history->firstItem() + $i }}</td>
                     <td class="py-3 px-4 align-middle">
-                        @if(str_contains($record->funding_type, 'Deduction'))
-                            <span class="badge rounded-pill px-3 py-1" style="background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3);">
-                                <i class="fa fa-arrow-down mr-1"></i>{{ $record->funding_type }}
-                            </span>
-                        @else
-                            <span class="badge rounded-pill px-3 py-1" style="background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid rgba(34,197,94,0.3);">
-                                <i class="fa fa-arrow-up mr-1"></i>{{ $record->funding_type }}
-                            </span>
-                        @endif
+                        <div class="d-flex flex-column">
+                            <span class="text-white">{{ $record->order_type }}</span>
+                            @if($record->funding_note)
+                                <small class="text-white-50 mt-1"><i class="fa fa-info-circle mr-1"></i>{{ $record->funding_note }}</small>
+                            @endif
+                        </div>
                     </td>
                     <td class="py-3 px-4 align-middle text-right font-weight-bold">
-                        @if($record->amount < 0)
-                            <span style="color: #ef4444;">-₦{{ number_format(abs($record->amount), 2) }}</span>
+                        @if(!$isCredit)
+                            <span style="color: #ef4444;">-₦{{ number_format(abs($delta), 2) }}</span>
                         @else
-                            <span style="color: #22c55e;">+₦{{ number_format($record->amount, 2) }}</span>
+                            <span style="color: #22c55e;">+₦{{ number_format($delta, 2) }}</span>
                         @endif
+                        <div class="small text-white-50 font-weight-normal mt-1">Bal: ₦{{ number_format($record->balance_after, 2) }}</div>
                     </td>
-                    <td class="py-3 px-4 align-middle text-white-50 small">{{ $record->fullname }}</td>
+                    <td class="py-3 px-4 align-middle text-white-50 small">
+                        {{ $record->admin_name ?? 'System' }}
+                        <br>
+                        <code>{{ $record->transaction_id }}</code>
+                    </td>
                     <td class="py-3 px-4 align-middle text-white-50 small">{{ $record->created_at?->format('d M Y, h:i A') }}</td>
                 </tr>
                 @empty

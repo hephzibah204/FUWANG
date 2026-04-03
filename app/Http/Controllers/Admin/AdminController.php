@@ -98,184 +98,67 @@ class AdminController extends Controller
             $disabledFeatureList = FeatureToggle::query()
                 ->select(['id', 'feature_name', 'offline_message'])
                 ->where('is_active', false)
-                ->orderBy('feature_name')
-                ->take(6)
                 ->get();
 
-            // Fallbacks if scheduled task hasn't run yet
             return [
-                'totalUsers' => $aggregates['totalUsers'] ?? User::count(),
-                'onlineUsers' => $aggregates['onlineUsers'] ?? User::where('online_status', 'online')->count(),
+                'totalUsers' => $aggregates['total_users'] ?? User::count(),
+                'totalVerifications' => $aggregates['total_verifications'] ?? VerificationResult::count(),
+                'totalRevenue' => $aggregates['total_revenue'] ?? Transaction::where('status', 'success')->where('balance_before', '>', 'balance_after')->sum(DB::raw('balance_before - balance_after')),
+                'pendingTickets' => Ticket::where('status', 'open')->count(),
                 'recentUsers' => $recentUsers,
-                'newUsersToday' => $aggregates['newUsersToday'] ?? User::where('created_at', '>=', now()->startOfDay())->count(),
-                
-                'totalRevenue' => $aggregates['totalRevenue'] ?? 0,
-                'revenueToday' => $aggregates['revenueToday'] ?? 0,
-                
-                'tx24h' => $aggregates['tx24h'] ?? Transaction::where('created_at', '>=', now()->subDay())->count(),
-                'failedTx24h' => $aggregates['failedTx24h'] ?? Transaction::where('created_at', '>=', now()->subDay())->where('status', 'failed')->count(),
-                
-                'verificationsTotal' => $aggregates['verificationsTotal'] ?? VerificationResult::count(),
-                'verifications24h' => $aggregates['verifications24h'] ?? VerificationResult::where('created_at', '>=', now()->subDay())->count(),
-                'pendingVerifications' => $aggregates['pendingVerifications'] ?? VerificationResult::where('status', 'pending')->count(),
-                
                 'topServices' => $topServices,
-                'startDate' => $startDate,
-                'dailyVerificationsRaw' => $dailyVerificationsRaw,
-                'dailySignupsRaw' => $dailySignupsRaw,
-                'dailyRevenueRaw' => $dailyRevenueRaw,
-                
-                'openTickets' => $aggregates['openTickets'] ?? Ticket::where('status', 'open')->count(),
-                'answeredTickets' => $aggregates['answeredTickets'] ?? Ticket::where('status', 'answered')->count(),
-                
-                'providersTotal' => $aggregates['providersTotal'] ?? CustomApi::count(),
-                'providersDown' => $aggregates['providersDown'] ?? CustomApi::where('status', false)->count(),
-                
-                'disabledFeatures' => $aggregates['disabledFeatures'] ?? FeatureToggle::where('is_active', false)->count(),
-                
-                'pendingNotary' => $aggregates['pendingNotary'] ?? NotaryRequest::whereNotIn('status', ['completed'])->count(),
-                'pendingShipments' => $aggregates['pendingShipments'] ?? LogisticsRequest::whereNotIn('status', ['delivered', 'completed'])->count(),
-                'openInvoices' => $aggregates['openInvoices'] ?? ServiceInvoice::whereIn('status', ['sent', 'overdue'])->count(),
-                
+                'dailyVerifications' => $dailyVerificationsRaw,
+                'dailySignups' => $dailySignupsRaw,
+                'dailyRevenue' => $dailyRevenueRaw,
                 'recentTransactions' => $recentTransactions,
                 'recentVerifications' => $recentVerifications,
                 'recentTickets' => $recentTickets,
-                'disabledFeatureList' => $disabledFeatureList
+                'disabledFeatures' => $disabledFeatureList,
             ];
         });
 
-        $totalUsers = $metrics['totalUsers'];
-        $onlineUsers = $metrics['onlineUsers'];
-        $recentUsers = $metrics['recentUsers'];
-        $newUsersToday = $metrics['newUsersToday'];
-        $totalRevenue = $metrics['totalRevenue'];
-        $revenueToday = $metrics['revenueToday'];
-        $tx24h = $metrics['tx24h'];
-        $failedTx24h = $metrics['failedTx24h'];
-        $verificationsTotal = $metrics['verificationsTotal'];
-        $verifications24h = $metrics['verifications24h'];
-        $pendingVerifications = $metrics['pendingVerifications'];
-        $topServices = $metrics['topServices'];
-
-        $startDate = $metrics['startDate'];
-        $dailyVerificationsRaw = $metrics['dailyVerificationsRaw'];
-        $dailySignupsRaw = $metrics['dailySignupsRaw'];
-        $dailyRevenueRaw = $metrics['dailyRevenueRaw'];
-
-        $dailyVerifications = collect();
-        for ($i = 0; $i < 7; $i++) {
-            $day = $startDate->copy()->addDays($i)->toDateString();
-            $total = (int) ($dailyVerificationsRaw->firstWhere('day', $day)->total ?? 0);
-            $dailyVerifications->push(['day' => $day, 'total' => $total]);
-        }
-
-        $dailySignups = collect();
-        for ($i = 0; $i < 7; $i++) {
-            $day = $startDate->copy()->addDays($i)->toDateString();
-            $total = (int) ($dailySignupsRaw->firstWhere('day', $day)->total ?? 0);
-            $dailySignups->push(['day' => $day, 'total' => $total]);
-        }
-
-        $dailyRevenue = collect();
-        for ($i = 0; $i < 7; $i++) {
-            $day = $startDate->copy()->addDays($i)->toDateString();
-            $total = (float) ($dailyRevenueRaw->firstWhere('day', $day)->total ?? 0);
-            $dailyRevenue->push(['day' => $day, 'total' => $total]);
-        }
-
-        $openTickets = $metrics['openTickets'];
-        $answeredTickets = $metrics['answeredTickets'];
-        $providersTotal = $metrics['providersTotal'];
-        $providersDown = $metrics['providersDown'];
-        $disabledFeatures = $metrics['disabledFeatures'];
-        $pendingNotary = $metrics['pendingNotary'];
-        $pendingShipments = $metrics['pendingShipments'];
-        $openInvoices = $metrics['openInvoices'];
-
-        $recentTransactions = $metrics['recentTransactions'];
-        $recentVerifications = $metrics['recentVerifications'];
-        $recentTickets = $metrics['recentTickets'];
-        $disabledFeatureList = $metrics['disabledFeatureList'];
-
-        $recentAdminAuditLogs = AdminAuditLog::query()
-            ->with(['admin:id,username,email'])
-            ->latest()
-            ->take(10)
-            ->get();
-
-        $apiCenter = ApiCenter::first();
-        $systemHealthItems = [
-            [
-                'label' => 'DataVerify API key',
-                'ok' => (bool) ($apiCenter?->dataverify_api_key),
-                'hint' => 'Configure API keys in Settings → API Keys.',
-            ],
-            [
-                'label' => 'DataVerify NIN endpoint',
-                'ok' => (bool) ($apiCenter?->dataverify_endpoint_nin),
-                'hint' => 'Configure NIN endpoints in Settings → API Keys.',
-            ],
-            [
-                'label' => 'Paystack secret key',
-                'ok' => (bool) ($apiCenter?->paystack_secret_key),
-                'hint' => 'Configure Paystack keys in Settings → API Keys.',
-            ],
-            [
-                'label' => 'Flutterwave secret key',
-                'ok' => (bool) ($apiCenter?->flutterwave_secret_key),
-                'hint' => 'Configure Flutterwave keys in Settings → API Keys.',
-            ],
-            [
-                'label' => 'VerifyMe webhook secret',
-                'ok' => (bool) SystemSetting::get('verifyme_webhook_secret', ''),
-                'hint' => 'Rotate webhook secrets in Settings → Security.',
-            ],
-        ];
-
-        return view('admin.dashboard', compact(
-            'totalUsers', 'onlineUsers', 'recentUsers',
-            'newUsersToday',
-            'totalRevenue', 'revenueToday',
-            'tx24h', 'failedTx24h',
-            'verificationsTotal', 'verifications24h', 'pendingVerifications',
-            'topServices', 'dailyVerifications', 'dailySignups', 'dailyRevenue',
-            'openTickets', 'answeredTickets',
-            'providersTotal', 'providersDown',
-            'disabledFeatures',
-            'pendingNotary', 'pendingShipments', 'openInvoices',
-            'recentTransactions', 'recentVerifications', 'recentTickets',
-            'disabledFeatureList',
-            'recentAdminAuditLogs',
-            'systemHealthItems'
-        ));
+        return view('admin.dashboard', $metrics);
     }
 
     public function users(Request $request)
     {
-        $query = User::with('balance');
-        if ($search = $request->get('search')) {
-            $query->where('fullname', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+        $query = User::query()->with('balance');
+
+        if ($request->has('search')) {
+            $search = $request->get('search');
+            $query->where(function($q) use ($search) {
+                $q->where('fullname', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('phone', 'like', "%{$search}%")
+                  ->orWhere('username', 'like', "%{$search}%");
+            });
         }
-        $users = $query->latest()->paginate(20)->withQueryString();
 
-        $emails = $users->getCollection()->pluck('email')->filter()->values();
-        $emailsWithTx = [];
-        if ($emails->isNotEmpty()) {
-            $emailsWithTx = Transaction::query()
-                ->whereIn('user_email', $emails)
-                ->distinct()
-                ->pluck('user_email')
-                ->all();
+        if ($request->has('role')) {
+            $query->where('role', $request->get('role'));
         }
-        $emailTxLookup = array_fill_keys($emailsWithTx, true);
 
-        $users->getCollection()->transform(function ($user) use ($emailTxLookup) {
-            $user->has_transactions = isset($emailTxLookup[$user->email]);
-            return $user;
-        });
-
+        $users = $query->latest()->paginate(20);
         return view('admin.users.index', compact('users'));
+    }
+
+    public function showUser($id)
+    {
+        $user = User::with(['balance', 'transactions' => function($q) {
+            $q->latest()->take(10);
+        }])->findOrFail($id);
+
+        $kycService = app(\App\Services\KycService::class);
+        $kycData = [
+            'limits' => $kycService->getTierLimits((int)$user->kyc_tier),
+            'daily_spent' => $kycService->getDailySpent($user),
+            'monthly_spent' => $kycService->getMonthlySpent($user),
+        ];
+        
+        $transactions = $user->transactions;
+        $hasTransactions = $transactions->isNotEmpty();
+
+        return view('admin.users.show', compact('user', 'kycData', 'transactions', 'hasTransactions'));
     }
 
     public function fundUser(Request $request)
@@ -313,6 +196,19 @@ class AdminController extends Controller
             ]);
 
             // Audit
+            AdminAuditLog::create([
+                'admin_id' => $admin?->id,
+                'action' => 'admin.user.fund',
+                'meta' => [
+                    'target_user' => $user->email,
+                    'amount' => $amount,
+                    'reference' => $reference,
+                    'note' => $note,
+                ],
+                'ip' => $request->ip(),
+                'user_agent' => substr((string) $request->userAgent(), 0, 1000),
+            ]);
+
             Log::info('Admin wallet credit performed', [
                 'target_user' => $user->email,
                 'amount' => $amount,
@@ -377,6 +273,7 @@ class AdminController extends Controller
                 ], 422);
             }
 
+            $reference = (string) ($debit['txId'] ?? Str::uuid());
             $admin = Auth::guard('admin')->user();
             Funding::create([
                 'funding_type' => 'Admin Deduction',
@@ -384,14 +281,35 @@ class AdminController extends Controller
                 'email' => $user->email,
                 'fullname' => $admin?->email ?? $admin?->username ?? 'admin',
                 'description' => $note ?: 'Wallet Deduction (Admin Override)',
-                'reference' => (string) ($debit['txId'] ?? Str::uuid()),
+                'reference' => $reference,
+            ]);
+
+            // Audit
+            AdminAuditLog::create([
+                'admin_id' => $admin?->id,
+                'action' => 'admin.user.deduct',
+                'meta' => [
+                    'target_user' => $user->email,
+                    'amount' => $amount,
+                    'reference' => $reference,
+                    'note' => $note,
+                ],
+                'ip' => $request->ip(),
+                'user_agent' => substr((string) $request->userAgent(), 0, 1000),
+            ]);
+
+            Log::info('Admin wallet deduction performed', [
+                'target_user' => $user->email,
+                'amount' => $amount,
+                'admin_id' => $admin?->id,
+                'reference' => $reference
             ]);
 
             DB::commit();
 
             return response()->json([
                 'status'  => true,
-                'message' => "✅ Successfully deducted ₦" . number_format($amount, 2),
+                'message' => "✅ Successfully deducted ₦" . number_format($amount, 2) . ". Reference: " . $reference,
             ]);
 
         } catch (\Throwable $e) {
@@ -409,106 +327,62 @@ class AdminController extends Controller
         }
     }
 
-    public function userHistory(Request $request, $email)
-    {
-        $history = Funding::query()
-            ->where('email', $email)
-            ->latest('id')
-            ->paginate(20);
-
-        $user = User::where('email', $email)->firstOrFail();
-
-        return view('admin.users.history', compact('history', 'user'));
-    }
-
-    public function showUser(Request $request, int $id)
-    {
-        $user = User::with('balance')->findOrFail($id);
-
-        $transactions = Transaction::query()
-            ->where('user_email', $user->email)
-            ->latest('id')
-            ->limit(50)
-            ->get();
-
-        $fundings = Funding::query()
-            ->where('email', $user->email)
-            ->latest('id')
-            ->limit(50)
-            ->get();
-
-        $activities = AbEvent::query()
-            ->where('user_id', $user->id)
-            ->latest('id')
-            ->limit(50)
-            ->get();
-
-        $hasTransactions = Transaction::query()->where('user_email', $user->email)->exists();
-
-        $kycService = app(\App\Services\KycService::class);
-        $kycData = [
-            'tier' => (int) $user->kyc_tier,
-            'limits' => $kycService->getTierLimits($user->kyc_tier),
-            'daily_spent' => $kycService->getDailySpent($user),
-            'monthly_spent' => $kycService->getMonthlySpent($user),
-        ];
-
-        return view('admin.users.show', compact('user', 'transactions', 'fundings', 'activities', 'hasTransactions', 'kycData'));
-    }
-
     public function refundUser(Request $request)
     {
         $request->validate([
-            'email'  => 'required|email|exists:users,email',
-            'amount' => 'required|numeric|min:0.01',
-            'note'   => 'nullable|string|max:255',
+            'transaction_id' => 'required|string|exists:transactions,transaction_id',
+            'note'           => 'nullable|string|max:255',
         ]);
 
         try {
             DB::beginTransaction();
 
-            $user = User::where('email', $request->email)->firstOrFail();
-            $amount = (float) $request->amount;
+            $transaction = Transaction::where('transaction_id', $request->transaction_id)->firstOrFail();
             
-            if (!Transaction::query()->where('user_email', $user->email)->exists()) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Refund is only allowed after the user has at least one activity sequence.',
-                ], 422);
+            if ($transaction->status === 'refunded') {
+                return response()->json(['status' => false, 'message' => 'Transaction already refunded.'], 422);
             }
 
-            $reference = (string) Str::uuid();
+            $user = User::where('email', $transaction->user_email)->firstOrFail();
+            $amount = abs($transaction->balance_before - $transaction->balance_after);
             $note = trim((string) ($request->note ?? ''));
 
-            $result = app(WalletService::class)->credit($user, $amount, 'Admin Refund' . ($note !== '' ? (': ' . $note) : ''), $reference);
-            
-            if (!($result['ok'] ?? false)) {
-                throw new \Exception($result['message'] ?? 'Failed to credit refund.');
-            }
+            app(WalletService::class)->credit(
+                $user, 
+                $amount, 
+                'Admin Refund: ' . $transaction->transaction_id . ($note !== '' ? (' - ' . $note) : ''),
+                'REF-' . $transaction->transaction_id
+            );
 
+            $transaction->status = 'refunded';
+            $transaction->save();
+
+            // Audit
             $admin = Auth::guard('admin')->user();
-            Funding::create([
-                'funding_type' => 'Admin Refund',
-                'amount' => $amount,
-                'email' => $user->email,
-                'fullname' => $admin?->email ?? $admin?->username ?? 'admin',
-                'description' => $note ?: 'Wallet Refund (Admin Resolution)',
-                'reference' => $reference,
+            AdminAuditLog::create([
+                'admin_id' => $admin?->id,
+                'action' => 'admin.user.refund',
+                'meta' => [
+                    'transaction_id' => $transaction->transaction_id,
+                    'amount' => $amount,
+                    'user' => $user->email,
+                ],
+                'ip' => $request->ip(),
+                'user_agent' => substr((string) $request->userAgent(), 0, 1000),
             ]);
 
             DB::commit();
 
             return response()->json([
                 'status'  => true,
-                'message' => '✅ Successfully refunded ₦' . number_format($amount, 2) . '. Reference: ' . $reference,
+                'message' => "✅ Successfully refunded ₦" . number_format($amount, 2) . " for TX: " . $transaction->transaction_id,
             ]);
 
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Admin wallet refund failed', [
                 'error' => $e->getMessage(),
-                'email' => $request->email,
-                'amount' => $request->amount
+                'tx_id' => $request->transaction_id
             ]);
 
             return response()->json([
@@ -518,44 +392,68 @@ class AdminController extends Controller
         }
     }
 
-    public function updateUserStatus(Request $request, int $id)
+    public function updateUserStatus($id, Request $request)
     {
         $request->validate([
-            'user_status' => 'required|string|in:active,suspended,deleted',
+            'status' => 'required|string|in:active,suspended,pending',
         ]);
 
         $user = User::findOrFail($id);
-        $user->user_status = $request->user_status;
-        if ($request->user_status !== 'active') {
-            $user->online_status = 'offline';
-        }
+        $user->user_status = $request->status;
         $user->save();
+
+        // Audit
+        $admin = Auth::guard('admin')->user();
+        AdminAuditLog::create([
+            'admin_id' => $admin?->id,
+            'action' => 'admin.user.status_update',
+            'meta' => [
+                'user_id' => $id,
+                'new_status' => $request->status,
+            ],
+            'ip' => $request->ip(),
+            'user_agent' => substr((string) $request->userAgent(), 0, 1000),
+        ]);
 
         return response()->json([
             'status' => true,
-            'message' => 'User status updated to ' . $user->user_status . '.',
+            'message' => "User status updated to " . ucfirst($request->status),
         ]);
     }
 
-    public function resetUserPassword(Request $request, int $id)
+    public function resetUserPassword($id, Request $request)
     {
         $request->validate([
-            'password' => 'nullable|string|min:8|max:128',
+            'password' => 'required|string|min:8|confirmed',
         ]);
 
         $user = User::findOrFail($id);
-        $password = $request->input('password');
-        if (!$password) {
-            $password = Str::password(12);
-        }
-
-        $user->password = Hash::make($password);
+        $user->password = Hash::make($request->password);
         $user->save();
+
+        // Audit
+        $admin = Auth::guard('admin')->user();
+        AdminAuditLog::create([
+            'admin_id' => $admin?->id,
+            'action' => 'admin.user.password_reset',
+            'meta' => ['user_id' => $id],
+            'ip' => $request->ip(),
+            'user_agent' => substr((string) $request->userAgent(), 0, 1000),
+        ]);
 
         return response()->json([
             'status' => true,
-            'message' => 'Password reset successfully.',
-            'temporary_password' => $password,
+            'message' => "User password has been reset successfully.",
         ]);
+    }
+
+    public function userHistory($email)
+    {
+        $transactions = Transaction::where('user_email', $email)->latest()->paginate(15);
+        $verifications = VerificationResult::whereHas('user', function($q) use ($email) {
+            $q->where('email', $email);
+        })->latest()->paginate(15);
+
+        return view('admin.users.history', compact('transactions', 'verifications', 'email'));
     }
 }

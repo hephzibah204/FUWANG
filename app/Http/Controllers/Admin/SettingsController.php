@@ -63,12 +63,21 @@ class SettingsController extends Controller
 
     public function updateNotification(Request $request)
     {
-        $request->validate(['notification' => 'required|string|max:500']);
+        $request->validate([
+            'notification' => 'required|string|max:500',
+            'low_balance_threshold' => 'nullable|numeric|min:0',
+        ]);
+
         DB::table('notifying_centers')->updateOrInsert(
             ['id' => DB::table('notifying_centers')->min('id') ?? 1],
             ['notification' => $request->notification]
         );
-        return response()->json(['status' => true, 'message' => 'Notification updated successfully.']);
+
+        if ($request->has('low_balance_threshold')) {
+            SystemSetting::set('low_balance_threshold', $request->low_balance_threshold, 'notifications');
+        }
+
+        return response()->json(['status' => true, 'message' => 'Notification settings updated successfully.']);
     }
 
     public function updatePricing(Request $request)
@@ -382,6 +391,28 @@ class SettingsController extends Controller
         }
 
         return response()->json(['status' => true, 'message' => 'Theme updated successfully.']);
+    }
+
+    public function updateAdminSecurity(Request $request)
+    {
+        $request->validate([
+            'self_funding_limit' => 'required|numeric|min:0',
+        ]);
+
+        SystemSetting::set('self_funding_limit', $request->self_funding_limit, 'security');
+
+        $admin = Auth::guard('admin')->user();
+        AdminAuditLog::create([
+            'admin_id' => $admin?->id,
+            'action' => 'security.admin.funding_limit.updated',
+            'meta' => [
+                'new_limit' => $request->self_funding_limit,
+            ],
+            'ip' => $request->ip(),
+            'user_agent' => substr((string) $request->userAgent(), 0, 1000),
+        ]);
+
+        return response()->json(['status' => true, 'message' => 'Admin security settings updated successfully.']);
     }
 
     public function updateVerifymeWebhookIps(Request $request)
