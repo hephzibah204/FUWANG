@@ -6,6 +6,7 @@ use App\Models\SystemSetting;
 use App\Models\Transaction;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class KycService
 {
@@ -93,8 +94,7 @@ class KycService
             ->whereIn('status', ['success', 'pending'])
             ->whereIn('order_type', $this->getDebitTypes())
             ->whereDate('created_at', Carbon::today())
-            ->get()
-            ->sum(fn($tx) => abs((float)$tx->amount));
+            ->sum(DB::raw('ABS(balance_after - balance_before)'));
     }
 
     /**
@@ -107,8 +107,7 @@ class KycService
             ->whereIn('order_type', $this->getDebitTypes())
             ->whereMonth('created_at', Carbon::now()->month)
             ->whereYear('created_at', Carbon::now()->year)
-            ->get()
-            ->sum(fn($tx) => abs((float)$tx->amount));
+            ->sum(DB::raw('ABS(balance_after - balance_before)'));
     }
 
     /**

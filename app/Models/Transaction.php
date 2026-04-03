@@ -30,4 +30,12 @@ class Transaction extends Model
     {
         return (float) ($this->balance_after - $this->balance_before);
     }
+
+    /**
+     * Get the user that owns the transaction.
+     */
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_email', 'email');
+    }
 }

@@ -408,11 +408,11 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
             // User Management
             Route::get('/users',                       [App\Http\Controllers\Admin\AdminController::class, 'users'])->name('users.index');
             Route::get('/users/{id}',                  [App\Http\Controllers\Admin\AdminController::class, 'showUser'])->whereNumber('id')->name('users.show');
-            Route::post('/users/{id}/status',          [App\Http\Controllers\Admin\AdminController::class, 'updateUserStatus'])->whereNumber('id')->name('users.status');
-            Route::post('/users/{id}/reset-password',  [App\Http\Controllers\Admin\AdminController::class, 'resetUserPassword'])->whereNumber('id')->name('users.reset_password');
             Route::get('/users/history/{email}',       [App\Http\Controllers\Admin\AdminController::class, 'userHistory'])->name('users.history');
 
             Route::middleware('super_admin')->group(function () {
+                Route::post('/users/{id}/status',          [App\Http\Controllers\Admin\AdminController::class, 'updateUserStatus'])->whereNumber('id')->name('users.status');
+                Route::post('/users/{id}/reset-password',  [App\Http\Controllers\Admin\AdminController::class, 'resetUserPassword'])->whereNumber('id')->name('users.reset_password');
                 Route::post('/users/fund',                 [App\Http\Controllers\Admin\AdminController::class, 'fundUser'])->name('users.fund');
                 Route::post('/users/deduct',               [App\Http\Controllers\Admin\AdminController::class, 'deductUser'])->name('users.deduct');
                 Route::post('/users/refund',               [App\Http\Controllers\Admin\AdminController::class, 'refundUser'])->name('users.refund');

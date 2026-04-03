@@ -115,4 +115,20 @@ class User extends Authenticatable implements CanResetPasswordContract
     {
         return $this->hasOne(Referral::class, 'referred_user_id', 'id');
     }
+
+    /**
+     * Get the transactions for this user.
+     */
+    public function transactions()
+    {
+        return $this->hasMany(Transaction::class, 'user_email', 'email');
+    }
+
+    /**
+     * Get the verification results for this user.
+     */
+    public function verificationResults()
+    {
+        return $this->hasMany(VerificationResult::class);
+    }
 }

@@ -44,10 +44,19 @@ class WalletService
             }
 
             if (!$balance) {
+                // Check legacy table if new table is empty
+                $legacyBalance = 0.00;
+                if (Schema::hasTable('account_balance') && DbTable::isBaseTable('account_balance')) {
+                    $legacy = DB::table('account_balance')->where('email', $user->email)->lockForUpdate()->first();
+                    if ($legacy) {
+                        $legacyBalance = (float) $legacy->user_balance;
+                    }
+                }
+
                 $balance = AccountBalance::create([
                     'user_id' => $user->id,
                     'email' => $user->email,
-                    'user_balance' => 0.00,
+                    'user_balance' => $legacyBalance,
                     'api_key' => 'user',
                 ]);
                 $balance = AccountBalance::query()->where('id', $balance->id)->lockForUpdate()->first();
@@ -129,10 +138,19 @@ class WalletService
             }
 
             if (!$balance) {
+                // Check legacy table if new table is empty
+                $legacyBalance = 0.00;
+                if (Schema::hasTable('account_balance') && DbTable::isBaseTable('account_balance')) {
+                    $legacy = DB::table('account_balance')->where('email', $user->email)->lockForUpdate()->first();
+                    if ($legacy) {
+                        $legacyBalance = (float) $legacy->user_balance;
+                    }
+                }
+
                 $balance = AccountBalance::create([
                     'user_id' => $user->id,
                     'email' => $user->email,
-                    'user_balance' => 0.00,
+                    'user_balance' => $legacyBalance,
                     'api_key' => 'user',
                 ]);
                 $balance = AccountBalance::query()->where('id', $balance->id)->lockForUpdate()->first();
@@ -202,10 +220,22 @@ class WalletService
                 ->first();
 
             if (!$balance) {
-                $balance = AccountBalance::query()
-                    ->where('email', $user->email)
-                    ->lockForUpdate()
-                    ->first();
+                // Check legacy table if new table is empty
+                $legacyBalance = 0.00;
+                if (Schema::hasTable('account_balance') && DbTable::isBaseTable('account_balance')) {
+                    $legacy = DB::table('account_balance')->where('email', $user->email)->lockForUpdate()->first();
+                    if ($legacy) {
+                        $legacyBalance = (float) $legacy->user_balance;
+                    }
+                }
+
+                $balance = AccountBalance::create([
+                    'user_id' => $user->id,
+                    'email' => $user->email,
+                    'user_balance' => $legacyBalance,
+                    'api_key' => 'user',
+                ]);
+                $balance = AccountBalance::query()->where('id', $balance->id)->lockForUpdate()->first();
             }
 
             if ($balance) {

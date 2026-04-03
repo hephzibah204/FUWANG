@@ -56,4 +56,12 @@ class Admin extends Authenticatable
             return false;
         }
     }
+
+    /**
+     * Get the audit logs for this admin.
+     */
+    public function auditLogs()
+    {
+        return $this->hasMany(AdminAuditLog::class);
+    }
 }
