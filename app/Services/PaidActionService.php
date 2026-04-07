@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\User;
+use App\Services\Referrals\ReferralService;
 
 class PaidActionService
 {
@@ -20,6 +21,14 @@ class PaidActionService
         try {
             $result = $action($debit['txId']);
             $wallet->markTransactionSuccess($debit['txId']);
+            
+            // Process matrix commission if the action was successful
+            try {
+                app(ReferralService::class)->processTransaction($user, $amount);
+            } catch (\Throwable $re) {
+                \Illuminate\Support\Facades\Log::warning('Matrix commission non-fatal failure', ['error' => $re->getMessage()]);
+            }
+
             return [
                 'ok' => true,
                 'txId' => $debit['txId'],
@@ -35,4 +44,3 @@ class PaidActionService
         }
     }
 }
-

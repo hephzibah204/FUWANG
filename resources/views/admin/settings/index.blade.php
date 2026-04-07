@@ -28,7 +28,7 @@
     <button class="s-tab" onclick="switchTab('tab-security', this)"><i class="fa fa-shield-halved mr-2"></i>Security</button>
     <button class="s-tab" onclick="switchTab('tab-gateways', this)"><i class="fa fa-credit-card mr-2"></i>Payment Gateways</button>
     <button class="s-tab" onclick="switchTab('tab-features', this)"><i class="fa fa-toggle-on mr-2"></i>Service Toggles</button>
-    <button class="s-tab" onclick="switchTab('tab-referrals', this)"><i class="fa fa-users mr-2"></i>Referral Rewards</button>
+    <button class="s-tab" onclick="switchTab('tab-referrals', this)"><i class="fa fa-users mr-2"></i>Referrals & MLM</button>
     <button class="s-tab" onclick="window.location.href='{{ route('admin.settings.whatsapp_widget') }}'"><i class="fa-brands fa-whatsapp mr-2 text-success"></i>WhatsApp Widget</button>
 </div>
 
@@ -745,7 +745,8 @@
                         ->map(fn ($v) => trim((string)$v))
                         ->filter()
                         ->unique()
-                        ->values();
+                        ->values()
+                        ->all();
                 @endphp
 
                 <form id="verifymeIpsForm">
@@ -775,7 +776,7 @@
                         </div>
                     </div>
 
-                    <textarea id="verifymeIpsField" name="verifyme_webhook_ips" class="d-none">{{ $ipsList->implode("\n") }}</textarea>
+                    <textarea id="verifymeIpsField" name="verifyme_webhook_ips" class="d-none">{{ implode("\n", $ipsList) }}</textarea>
 
                     <button type="submit" class="btn btn-primary rounded-pill px-4" {{ $canManageSecurity ? '' : 'disabled' }}>
                         <i class="fa fa-floppy-disk mr-2"></i>Save Allowlist
@@ -1013,12 +1014,12 @@
 
 {{-- ── 9. Referral Rewards Tab ──────────────────────── --}}
 <div class="s-panel" id="tab-referrals">
-    <div class="card border-0 rounded-4 p-4" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.07) !important;">
-        <h5 class="text-white mb-1 fw-bold">Referral Program Settings</h5>
-        <p class="text-white-50 small mb-4">Configure rewards issued to referrers when their referrals fund their wallets.</p>
-        
-        <form id="referralSettingsForm">
-            @csrf
+    <form id="referralSettingsForm">
+        @csrf
+        <div class="card border-0 rounded-4 p-4 mb-4" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.07) !important;">
+            <h5 class="text-white mb-1 fw-bold">Basic Referral Program</h5>
+            <p class="text-white-50 small mb-4">Flat reward issued to referrers when their referrals fund their wallets for the first time.</p>
+            
             <div class="row">
                 <div class="col-md-6 mb-4">
                     <div class="d-flex align-items-center justify-content-between p-3 rounded-3" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);">
@@ -1045,13 +1046,53 @@
                     </div>
                 </div>
             </div>
-            <div class="mt-4">
+        </div>
+
+        <div class="card border-0 rounded-4 p-4" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.07) !important;">
+            <div class="d-flex align-items-center justify-content-between mb-4">
+                <div>
+                    <h5 class="text-white mb-1 fw-bold">Matrix Compensation Plan (MLM)</h5>
+                    <p class="text-white-50 small mb-0">Multi-level commission system based on transaction percentages.</p>
+                </div>
+                <div class="custom-control custom-switch">
+                    <input type="checkbox" name="matrix_enabled" class="custom-control-input" id="toggle_matrix_enabled" {{ \App\Models\SystemSetting::get('matrix_enabled', 'false') === 'true' ? 'checked' : '' }}>
+                    <label class="custom-control-label" for="toggle_matrix_enabled"></label>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-4">
+                    <label class="text-white small mb-2 font-weight-bold">Matrix Depth (Levels)</label>
+                    <select name="matrix_depth" class="form-control text-white rounded-3" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                        @for($i = 0; $i <= 10; $i++)
+                            <option value="{{ $i }}" {{ \App\Models\SystemSetting::get('matrix_depth', 0) == $i ? 'selected' : '' }}>{{ $i }} Level{{ $i != 1 ? 's' : '' }}</option>
+                        @endfor
+                    </select>
+                    <small class="text-white-50 d-block mt-2">Number of upline levels to pay commission to.</small>
+                </div>
+            </div>
+
+            <div class="row">
+                @for($i = 1; $i <= 10; $i++)
+                <div class="col-md-3 mb-4 matrix-level-input" data-level="{{ $i }}" style="{{ \App\Models\SystemSetting::get('matrix_depth', 0) < $i ? 'display:none;' : '' }}">
+                    <label class="text-white-50 small mb-2">Level {{ $i }} (%)</label>
+                    <div class="input-group">
+                        <input type="number" step="0.01" name="matrix_level_{{ $i }}_percentage" class="form-control text-white rounded-left-3" value="{{ \App\Models\SystemSetting::get('matrix_level_' . $i . '_percentage', 0) }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                        <div class="input-group-append">
+                            <span class="input-group-text bg-dark border-0 text-white">%</span>
+                        </div>
+                    </div>
+                </div>
+                @endfor
+            </div>
+            
+            <div class="mt-2">
                 <button type="submit" class="btn btn-primary rounded-pill px-5 py-2 fw-bold">
-                    <i class="fa fa-floppy-disk mr-2"></i>Save Referral Settings
+                    <i class="fa fa-floppy-disk mr-2"></i>Save Referral & Matrix Settings
                 </button>
             </div>
-        </form>
-    </div>
+        </div>
+    </form>
 </div>
 
 @endsection
@@ -1100,6 +1141,22 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     });
+
+    // Matrix Depth dynamic fields
+    const depthSelect = document.querySelector('select[name="matrix_depth"]');
+    if (depthSelect) {
+        depthSelect.addEventListener('change', function() {
+            const depth = parseInt(this.value);
+            document.querySelectorAll('.matrix-level-input').forEach(div => {
+                const level = parseInt(div.dataset.level);
+                if (level <= depth) {
+                    div.style.display = 'block';
+                } else {
+                    div.style.display = 'none';
+                }
+            });
+        });
+    }
 });
 
 function switchTab(id, btn) {

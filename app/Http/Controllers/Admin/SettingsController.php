@@ -554,6 +554,19 @@ class SettingsController extends Controller
             $request->referral_reward_amount,
             'referrals'
         );
+        
+        if ($request->has('matrix_enabled')) {
+            SystemSetting::set('matrix_enabled', $request->has('matrix_enabled') ? 'true' : 'false', 'referrals');
+            SystemSetting::set('matrix_depth', $request->input('matrix_depth', 0), 'referrals');
+            
+            $depth = (int)$request->input('matrix_depth', 0);
+            for ($i = 1; $i <= $depth; $i++) {
+                $key = 'matrix_level_' . $i . '_percentage';
+                if ($request->has($key)) {
+                    SystemSetting::set($key, $request->input($key), 'referrals');
+                }
+            }
+        }
 
         return response()->json(['status' => true, 'message' => 'Referral settings updated successfully.']);
     }
