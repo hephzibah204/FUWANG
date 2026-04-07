@@ -15,20 +15,19 @@ class VuvaaClient
 
     private readonly array $cfg;
     private readonly VuvaaCrypto $crypto;
+    private readonly string $endpoint;
 
     public function __construct(private readonly CustomApi $provider)
     {
         $this->cfg = is_array($provider->config) ? $provider->config : [];
 
-        $key = trim((string) ($this->cfg['encryption_key'] ?? ''));
-        if ($key === '') {
-            $key = trim((string) (SystemSetting::get('vuvaa_encryption_key') ?? ''));
+        $this->endpoint = $provider->endpoint ?? env('VUVAA_LIVE_URL');
+        if (!$this->endpoint) {
+            throw new \RuntimeException('VUVAA endpoint not configured.');
         }
 
-        $iv = trim((string) ($this->cfg['encryption_iv'] ?? ''));
-        if ($iv === '') {
-            $iv = trim((string) (SystemSetting::get('vuvaa_encryption_iv') ?? ''));
-        }
+        $key = trim((string) ($this->cfg['encryption_key'] ?? env('VUVAA_ENCRYPTION_KEY') ?? ''));
+        $iv = trim((string) ($this->cfg['encryption_iv'] ?? env('VUVAA_ENCRYPTION_IV') ?? ''));
 
         if ($key === '' || $iv === '') {
             throw new \RuntimeException('VUVAA encryption key/IV not configured.');
@@ -161,7 +160,7 @@ class VuvaaClient
             return null;
         }
 
-        Cache::put($this->tokenCacheKey(), $token, self::TOKEN_TTL_SECONDS - 300); // 5 min buffer
+        Cache::put($this->tokenCacheKey(), $token, now()->addSeconds(self::TOKEN_TTL_SECONDS - 300));
 
         return $token;
     }
@@ -217,7 +216,7 @@ class VuvaaClient
 
     private function url(string $path): string
     {
-        return rtrim((string) $this->provider->endpoint, '/') . '/' . ltrim($path, '/');
+        return rtrim($this->endpoint, '/') . '/' . ltrim($path, '/');
     }
 
     private function headers(): array
@@ -232,12 +231,12 @@ class VuvaaClient
 
     private function username(): string
     {
-        return trim((string) ($this->cfg['username'] ?? $this->provider->api_key ?? SystemSetting::get('vuvaa_username') ?? ''));
+        return trim((string) ($this->cfg['username'] ?? $this->provider->api_key ?? env('VUVAA_USERNAME') ?? ''));
     }
 
     private function password(): string
     {
-        return trim((string) ($this->cfg['password'] ?? $this->provider->secret_key ?? SystemSetting::get('vuvaa_password') ?? ''));
+        return trim((string) ($this->cfg['password'] ?? $this->provider->secret_key ?? env('VUVAA_PASSWORD') ?? ''));
     }
 
     private function normalizeBase64(string $value): string
