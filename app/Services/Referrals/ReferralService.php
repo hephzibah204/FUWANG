@@ -4,6 +4,7 @@ namespace App\Services\Referrals;
 
 use App\Models\Referral;
 use App\Models\ReferralAuditLog;
+use App\Models\ReferralTier;
 use App\Models\SystemSetting;
 use App\Models\User;
 use App\Services\WalletService;
@@ -97,7 +98,7 @@ class ReferralService
 
             if ($referrer = $referral->referrer) {
                 $this->notifyReferrerFunded($referrer, $referral);
-                $this->rewardReferrer($referrer, $referral);
+                $this->rewardReferrer($referrer, $referral, $amount);
             }
         });
     }
@@ -112,12 +113,15 @@ class ReferralService
         $rewarded = (clone $base)->where('status', 'rewarded')->count();
         $earnings = (float) (clone $base)->where('reward_status', 'paid')->sum('reward_amount');
 
+        $tier = ReferralTier::where('minimum_referrals', '<', $funded)->orderBy('minimum_referrals', 'desc')->first();
+
         return [
             'total' => $total,
             'registered' => $registered,
             'funded' => $funded,
             'rewarded' => $rewarded,
             'earnings' => round($earnings, 2),
+            'tier' => $tier->name ?? 'Bronze',
         ];
     }
 
@@ -235,28 +239,40 @@ class ReferralService
         }
     }
 
-    private function rewardReferrer(User $referrer, Referral $referral): void
+    private function rewardReferrer(User $referrer, Referral $referral, float $fundedAmount): void
     {
         $rewardEnabled = (string) SystemSetting::get('referral_reward_enabled', 'false') === 'true';
-        $rewardAmount = (float) SystemSetting::get('referral_reward_amount', 0);
 
-        if (!$rewardEnabled || $rewardAmount <= 0) {
+        if (!$rewardEnabled) {
+            return;
+        }
+
+        $referralCount = Referral::query()->where('referrer_user_id', $referrer->id)->whereIn('status', ['funded', 'rewarded'])->count();
+        $tier = ReferralTier::where('minimum_referrals', '<', $referralCount)->orderBy('minimum_referrals', 'desc')->first();
+
+        if (!$tier) {
+            return;
+        }
+
+        $commission = ($fundedAmount * $tier->commission_rate) / 100;
+
+        if ($commission <= 0) {
             return;
         }
 
         $rewardTx = 'REF-' . $referral->id . '-' . strtoupper(bin2hex(random_bytes(3)));
-        $credit = app(WalletService::class)->credit($referrer, (float) $rewardAmount, 'Referral Reward', $rewardTx);
+        $credit = app(WalletService::class)->credit($referrer, (float) $commission, 'Referral Reward', $rewardTx);
 
         if ($credit['ok'] ?? false) {
             $referral->update([
                 'status' => 'rewarded',
-                'reward_amount' => round($rewardAmount, 2),
+                'reward_amount' => round($commission, 2),
                 'reward_status' => 'paid',
                 'reward_transaction_id' => $rewardTx,
             ]);
 
             $this->audit($referral, null, $referral->referrer_user_id, $referral->referred_user_id, 'referral_reward_paid', 'succeeded', null, [
-                'amount' => round($rewardAmount, 2),
+                'amount' => round($commission, 2),
                 'tx' => $rewardTx,
             ]);
 

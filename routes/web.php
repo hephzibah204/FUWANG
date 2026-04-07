@@ -7,6 +7,7 @@ use App\Http\Controllers\BlogController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\FeedController;
 use App\Http\Controllers\Admin\AdminManagementController;
+use App\Http\Controllers\ReferralController;
 
 $installerEnabled = filter_var(env('INSTALLER_ENABLED', false), FILTER_VALIDATE_BOOL) && app()->environment(['local', 'testing']);
 if ($installerEnabled) {
@@ -87,6 +88,9 @@ Route::middleware(['auth'])->group(function () {
 
     // Dashboard
     Route::get('/dashboard', [App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
+
+    // Referrals
+    Route::get('/referrals', [ReferralController::class, 'index'])->name('referrals.index');
 
     // Notifications
     Route::get('/notifications', [App\Http\Controllers\NotificationController::class, 'index'])->name('notifications.index');
@@ -565,5 +569,3 @@ Route::post('/webhooks/paystack',  [App\Http\Controllers\WebhookController::clas
 Route::post('/webhooks/flutterwave',  [App\Http\Controllers\WebhookController::class, 'handleFlutterwave']);
 Route::post('/payvessel_webhook.php', [App\Http\Controllers\WebhookController::class, 'handlePayvessel']);
 Route::post('/palmpay_webhook.php',   [App\Http\Controllers\WebhookController::class, 'handlePalmpay']);
-
-
