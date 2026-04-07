@@ -20,9 +20,9 @@ class VuvaaCrypto
         $cipherText = openssl_encrypt(
             $json,
             'AES-256-CBC',
-            $this->normalizedKey(),
+            $this->key,
             OPENSSL_RAW_DATA,
-            $this->normalizedIv(),
+            $this->iv
         );
 
         if ($cipherText === false) {
@@ -42,45 +42,20 @@ class VuvaaCrypto
         $plain = openssl_decrypt(
             $cipherText,
             'AES-256-CBC',
-            $this->normalizedKey(),
+            $this->key,
             OPENSSL_RAW_DATA,
-            $this->normalizedIv(),
+            $this->iv
         );
 
         if ($plain === false) {
             throw new \RuntimeException('Failed to decrypt payload.');
         }
 
-        $data = json_decode($plain, true);
+        $data = json_decode(trim($plain), true);
         if (!is_array($data)) {
             throw new \RuntimeException('Decrypted payload is not valid JSON.');
         }
 
         return $data;
     }
-
-    private function normalizedKey(): string
-    {
-        $key = $this->key;
-        if (strlen($key) === 32) {
-            return $key;
-        }
-
-        return hash('sha256', $key, true);
-    }
-
-    private function normalizedIv(): string
-    {
-        $iv = $this->iv;
-        if (strlen($iv) === 16) {
-            return $iv;
-        }
-
-        if (strlen($iv) > 16) {
-            return substr($iv, 0, 16);
-        }
-
-        return str_pad($iv, 16, "\0");
-    }
 }
-

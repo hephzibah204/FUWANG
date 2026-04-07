@@ -11,8 +11,6 @@ use Illuminate\Support\Facades\Http;
 
 class VuvaaClient
 {
-    private const DEFAULT_DEMO_KEY = 'FD!-F=15B46BAD21';
-    private const DEFAULT_DEMO_IV = '0123456789012345';
     private const TOKEN_TTL_SECONDS = 10800;
 
     private readonly array $cfg;
@@ -24,13 +22,18 @@ class VuvaaClient
 
         $key = trim((string) ($this->cfg['encryption_key'] ?? ''));
         if ($key === '') {
-            $key = (string) (SystemSetting::get('vuvaa_encryption_key') ?? self::DEFAULT_DEMO_KEY);
+            $key = trim((string) (SystemSetting::get('vuvaa_encryption_key') ?? ''));
         }
 
         $iv = trim((string) ($this->cfg['encryption_iv'] ?? ''));
         if ($iv === '') {
-            $iv = (string) (SystemSetting::get('vuvaa_encryption_iv') ?? self::DEFAULT_DEMO_IV);
+            $iv = trim((string) (SystemSetting::get('vuvaa_encryption_iv') ?? ''));
         }
+
+        if ($key === '' || $iv === '') {
+            throw new \RuntimeException('VUVAA encryption key/IV not configured.');
+        }
+
         $this->crypto = new VuvaaCrypto($key, $iv);
     }
 
@@ -44,211 +47,130 @@ class VuvaaClient
             'reference_id' => $referenceId,
         ];
 
-        $result = $this->postEncrypted('/verify_nin', $data, true);
-        if (!$result['ok']) {
-            return $result;
-        }
-
-        $payload = $result['data'];
-        $code = (string) ($payload['code'] ?? $payload['status_code'] ?? $payload['statusCode'] ?? '');
-        $ok = $code === '' ? $this->looksSuccessful($payload) : $code === '00';
-
-        return [
-            'ok' => $ok,
-            'data' => $payload,
-            'message' => $ok ? 'Successful' : (string) ($payload['message'] ?? $payload['detail'] ?? 'Verification failed.'),
-        ];
+        return $this->postEncrypted('/verify_nin', $data, true);
     }
 
-    public function verifyInPerson(string $nin, string $selfieBase64, ?string $referenceId = null, ?string $pathOverride = null): array
+    public function verifyInPerson(string $nin, string $selfieBase64, ?string $referenceId = null): array
     {
         $referenceId = $referenceId ?: $this->generateReferenceId();
         $selfieBase64 = $this->normalizeBase64($selfieBase64);
 
-        $path = $pathOverride ?: (string) ($this->cfg['in_person_path'] ?? 'in_person_verification');
-        $path = '/' . ltrim($path, '/');
-
         $data = [
             'username' => $this->username(),
             'nin' => $nin,
-            $this->selfieField() => $selfieBase64,
+            'selfie' => $selfieBase64,
             'reference_id' => $referenceId,
         ];
 
-        $result = $this->postEncrypted($path, $data, true);
-        if (!$result['ok']) {
-            return $result;
-        }
-
-        $payload = $result['data'];
-        $code = (string) ($payload['code'] ?? $payload['status_code'] ?? $payload['statusCode'] ?? '');
-        $ok = $code === '' ? $this->looksSuccessful($payload) : $code === '00';
-
-        return [
-            'ok' => $ok,
-            'data' => $payload,
-            'message' => $ok ? 'Successful' : (string) ($payload['message'] ?? $payload['detail'] ?? 'Verification failed.'),
-        ];
+        return $this->postEncrypted('/in_person_verification', $data, true);
     }
 
-    public function verifyShareCode(string $shareCode, ?string $referenceId = null, ?string $pathOverride = null): array
+    public function verifyShareCode(string $shareCode, ?string $referenceId = null): array
     {
         $referenceId = $referenceId ?: $this->generateReferenceId();
 
-        $path = $pathOverride ?: (string) ($this->cfg['share_code_path'] ?? 'share_code');
-        $path = '/' . ltrim($path, '/');
-
-        $codeField = $this->shareCodeField();
-
         $data = [
             'username' => $this->username(),
-            $codeField => $shareCode,
+            'share_code' => $shareCode,
             'reference_id' => $referenceId,
         ];
 
-        $result = $this->postEncrypted($path, $data, true);
-        if (!$result['ok']) {
-            return $result;
-        }
-
-        $payload = $result['data'];
-        $code = (string) ($payload['code'] ?? $payload['status_code'] ?? $payload['statusCode'] ?? '');
-        $ok = $code === '' ? $this->looksSuccessful($payload) : $code === '00';
-
-        return [
-            'ok' => $ok,
-            'data' => $payload,
-            'message' => $ok ? 'Successful' : (string) ($payload['message'] ?? $payload['detail'] ?? 'Verification failed.'),
-        ];
+        return $this->postEncrypted('/share_code', $data, true);
     }
 
-    public function requery(string $referenceId, ?string $pathOverride = null): array
+    public function requery(string $referenceId): array
     {
-        $path = $pathOverride ?: (string) ($this->cfg['requery_path'] ?? 'requery');
-        $path = '/' . ltrim($path, '/');
-
         $data = [
             'username' => $this->username(),
             'reference_id' => $referenceId,
         ];
 
-        $result = $this->postEncrypted($path, $data, true);
-        if (!$result['ok']) {
-            return $result;
-        }
-
-        $payload = $result['data'];
-        $code = (string) ($payload['code'] ?? $payload['status_code'] ?? $payload['statusCode'] ?? '');
-        $ok = $code === '' ? $this->looksSuccessful($payload) : $code === '00';
-
-        return [
-            'ok' => $ok,
-            'data' => $payload,
-            'message' => $ok ? 'Successful' : (string) ($payload['message'] ?? $payload['detail'] ?? 'Requery failed.'),
-        ];
+        return $this->postEncrypted('/requery', $data, true);
     }
 
-    public function getWalletDetails(array $payload = [], ?string $pathOverride = null): array
+    public function getWalletDetails(): array
     {
-        $path = $pathOverride ?: (string) ($this->cfg['wallet_path'] ?? 'wallet_details');
-        $path = '/' . ltrim($path, '/');
-
-        $data = array_merge(['username' => $this->username()], $payload);
-
-        return $this->postEncrypted($path, $data, true);
+        return $this->postEncrypted('/get_wallet_details', ['username' => $this->username()], true);
     }
 
-    public function transactionHistory(array $payload = [], ?string $pathOverride = null): array
+    public function transactionHistory(array $filters = []): array
     {
-        $path = $pathOverride ?: (string) ($this->cfg['transaction_history_path'] ?? 'transaction_history');
-        $path = '/' . ltrim($path, '/');
-
-        $data = array_merge(['username' => $this->username()], $payload);
-
-        return $this->postEncrypted($path, $data, true);
+        $data = array_merge(['username' => $this->username()], $filters);
+        return $this->postEncrypted('/transaction_history', $data, true);
     }
 
-    public function createUser(array $payload, ?string $pathOverride = null): array
+    public function createUser(array $payload): array
     {
-        $path = $pathOverride ?: (string) ($this->cfg['create_user_path'] ?? 'create_user');
-        $path = '/' . ltrim($path, '/');
-
-        return $this->postEncrypted($path, $payload, false);
+        return $this->postEncrypted('/create_user', $payload, false);
     }
 
-    public function getNimcReasons(array $payload = [], ?string $pathOverride = null): array
+    public function getReasons(): array
     {
-        $path = $pathOverride ?: (string) ($this->cfg['reasons_path'] ?? 'nimc_reasons');
-        $path = '/' . ltrim($path, '/');
-
-        $data = array_merge(['username' => $this->username()], $payload);
-
-        return $this->postEncrypted($path, $data, true);
+        return $this->postEncrypted('/getReasons', ['username' => $this->username()], true);
     }
 
-    public function postEncrypted(string $path, array $data, bool $authenticated): array
+    private function postEncrypted(string $path, array $data, bool $authenticated): array
     {
         $url = $this->url($path);
         $headers = $this->headers();
 
         if ($authenticated) {
-            $headers['Authorization'] = 'Bearer ' . $this->getAccessToken();
+            $token = $this->getAccessToken();
+            if ($token === null) {
+                return ['ok' => false, 'message' => 'Authentication failed.', 'data' => []];
+            }
+            $headers['Authorization'] = 'Bearer ' . $token;
         }
 
-        $response = $this->http($headers)->post($url, [
-            'payload' => $this->crypto->encryptToBase64($data),
-        ]);
+        $payload = ['payload' => $this->crypto->encryptToBase64($data)];
+
+        $response = $this->http($headers)->post($url, $payload);
 
         if ($authenticated && $response->status() === 401) {
             $this->forgetToken();
-            $headers['Authorization'] = 'Bearer ' . $this->getAccessToken();
-            $response = $this->http($headers)->post($url, [
-                'payload' => $this->crypto->encryptToBase64($data),
-            ]);
+            $token = $this->getAccessToken();
+            if ($token === null) {
+                return ['ok' => false, 'message' => 'Re-authentication failed.', 'data' => []];
+            }
+            $headers['Authorization'] = 'Bearer ' . $token;
+            $response = $this->http($headers)->post($url, $payload);
         }
 
         return $this->decodeResponse($response);
     }
 
-    public function login(): string
+    public function login(): ?string
     {
-        $url = $this->url('/login');
-        $headers = $this->headers();
-
         $loginPayload = [
             'username' => $this->username(),
             'password' => $this->password(),
         ];
 
-        $response = $this->http($headers)->post($url, [
+        $response = $this->http($this->headers())->post($this->url('/login'), [
             'payload' => $this->crypto->encryptToBase64($loginPayload),
         ]);
 
         $decoded = $this->decodeResponse($response);
         if (!$decoded['ok']) {
-            throw new \RuntimeException((string) ($decoded['message'] ?? 'Login failed.'));
+            // Consider logging the failure reason
+            return null;
         }
 
-        $data = $decoded['data'];
-        $token = $this->extractToken($data);
-        if ($token === null || $token === '') {
-            throw new \RuntimeException('Login response did not include an access token.');
+        $token = Arr::get($decoded, 'data.data.access_token') ?? Arr::get($decoded, 'data.access_token');
+        if (!is_string($token) || $token === '') {
+            return null;
         }
 
-        $ttl = (int) ($this->cfg['token_ttl_seconds'] ?? self::TOKEN_TTL_SECONDS);
-        $buffer = (int) ($this->cfg['token_ttl_buffer_seconds'] ?? 300);
-        $ttl = max(60, $ttl - max(0, $buffer));
-
-        Cache::put($this->tokenCacheKey(), $token, $ttl);
+        Cache::put($this->tokenCacheKey(), $token, self::TOKEN_TTL_SECONDS - 300); // 5 min buffer
 
         return $token;
     }
 
-    public function getAccessToken(): string
+    public function getAccessToken(): ?string
     {
-        $existing = Cache::get($this->tokenCacheKey());
-        if (is_string($existing) && $existing !== '') {
-            return $existing;
+        $token = Cache::get($this->tokenCacheKey());
+        if (is_string($token) && $token !== '') {
+            return $token;
         }
         return $this->login();
     }
@@ -258,96 +180,39 @@ class VuvaaClient
         Cache::forget($this->tokenCacheKey());
     }
 
-    public static function isVuvaaProvider(CustomApi $provider): bool
-    {
-        $pid = strtolower((string) ($provider->provider_identifier ?? ''));
-        if ($pid !== '' && str_contains($pid, 'vuvaa')) {
-            return true;
-        }
-        $endpoint = strtolower((string) ($provider->endpoint ?? ''));
-        return $endpoint !== '' && str_contains($endpoint, 'vuvaa.com');
-    }
-
     private function decodeResponse(Response $response): array
     {
+        $status = $response->status();
+        $body = $response->body();
+
         if (!$response->successful()) {
-            return [
-                'ok' => false,
-                'message' => $response->json('message') ?? $response->json('detail') ?? ('HTTP ' . $response->status()),
-                'status' => $response->status(),
-                'data' => $response->json() ?: $response->body(),
-            ];
+            $message = 'HTTP Error ' . $status;
+            $data = $response->json();
+            if (is_array($data) && (isset($data['message']) || isset($data['detail']))) {
+                $message = $data['message'] ?? $data['detail'];
+            }
+            return ['ok' => false, 'message' => $message, 'data' => $data ?: $body, 'status' => $status];
         }
 
-        $payload = $response->json('payload');
-        if (!is_string($payload) || $payload === '') {
-            $json = $response->json();
-            if (is_array($json)) {
-                return [
-                    'ok' => $this->looksSuccessful($json),
-                    'data' => $json,
-                    'message' => (string) ($json['message'] ?? 'OK'),
-                ];
-            }
-
-            return [
-                'ok' => false,
-                'message' => 'Missing encrypted payload in response.',
-                'data' => $response->body(),
-            ];
+        $json = $response->json();
+        if (!is_array($json) || !isset($json['payload'])) {
+            return ['ok' => false, 'message' => 'Invalid response format: missing payload.', 'data' => $json ?: $body];
         }
 
         try {
-            $data = $this->crypto->decryptBase64ToArray($payload);
+            $decrypted = $this->crypto->decryptBase64ToArray($json['payload']);
         } catch (\Throwable $e) {
-            return [
-                'ok' => false,
-                'message' => 'Failed to decrypt provider response.',
-                'data' => ['error' => $e->getMessage()],
-            ];
+            return ['ok' => false, 'message' => 'Decryption failed: ' . $e->getMessage(), 'data' => []];
         }
+
+        $statusCode = (string) ($decrypted['statusCode'] ?? $decrypted['status_code'] ?? '');
+        $ok = $statusCode === '00';
 
         return [
-            'ok' => $this->looksSuccessful($data),
-            'data' => $data,
-            'message' => (string) ($data['message'] ?? 'OK'),
+            'ok' => $ok,
+            'message' => $decrypted['message'] ?? ($ok ? 'Success' : 'Failed'),
+            'data' => $decrypted,
         ];
-    }
-
-    private function looksSuccessful(array $data): bool
-    {
-        $code = (string) ($data['code'] ?? $data['status_code'] ?? $data['statusCode'] ?? '');
-        if ($code !== '') {
-            return $code === '00';
-        }
-
-        $status = $data['status'] ?? null;
-        if ($status === true || $status === 'success') {
-            return true;
-        }
-
-        return (bool) Arr::get($data, 'data.status', false);
-    }
-
-    private function extractToken(array $data): ?string
-    {
-        $candidates = [
-            'accessToken',
-            'access_token',
-            'token',
-            'data.accessToken',
-            'data.access_token',
-            'data.token',
-        ];
-
-        foreach ($candidates as $path) {
-            $v = Arr::get($data, $path);
-            if (is_string($v) && $v !== '') {
-                return $v;
-            }
-        }
-
-        return null;
     }
 
     private function url(string $path): string
@@ -357,91 +222,39 @@ class VuvaaClient
 
     private function headers(): array
     {
-        $headers = is_array($this->provider->headers) ? $this->provider->headers : [];
-        if (!isset($headers['Content-Type']) && !isset($headers['content-type'])) {
-            $headers['Content-Type'] = 'application/json';
-        }
-        return $headers;
+        return array_merge($this->provider->headers ?? [], ['Content-Type' => 'application/json']);
     }
 
     private function http(array $headers)
     {
-        $timeout = (int) ($this->provider->timeout_seconds ?? 60);
-        $http = Http::timeout($timeout);
-        if (!empty($headers)) {
-            $http = $http->withHeaders($headers);
-        }
-        return $http;
+        return Http::timeout((int) ($this->provider->timeout_seconds ?? 60))->withHeaders($headers);
     }
 
     private function username(): string
     {
-        $username = trim((string) ($this->cfg['username'] ?? ''));
-        if ($username === '') {
-            $username = trim((string) ($this->provider->api_key ?? ''));
-        }
-        if ($username === '') {
-            $username = trim((string) (SystemSetting::get('vuvaa_username') ?? ''));
-        }
-        if ($username === '') {
-            throw new \RuntimeException('VUVAA username not configured.');
-        }
-        return $username;
+        return trim((string) ($this->cfg['username'] ?? $this->provider->api_key ?? SystemSetting::get('vuvaa_username') ?? ''));
     }
 
     private function password(): string
     {
-        $password = trim((string) ($this->cfg['password'] ?? ''));
-        if ($password === '') {
-            $password = trim((string) ($this->provider->secret_key ?? ''));
-        }
-        if ($password === '') {
-            $password = trim((string) (SystemSetting::get('vuvaa_password') ?? ''));
-        }
-        if ($password === '') {
-            throw new \RuntimeException('VUVAA password not configured.');
-        }
-        return $password;
-    }
-
-    private function selfieField(): string
-    {
-        $field = (string) ($this->cfg['selfie_field'] ?? $this->cfg['image_field'] ?? 'image');
-        $field = trim($field);
-        return $field !== '' ? $field : 'image';
-    }
-
-    private function shareCodeField(): string
-    {
-        $field = (string) ($this->cfg['share_code_field'] ?? 'share_code');
-        $field = trim($field);
-        return $field !== '' ? $field : 'share_code';
+        return trim((string) ($this->cfg['password'] ?? $this->provider->secret_key ?? SystemSetting::get('vuvaa_password') ?? ''));
     }
 
     private function normalizeBase64(string $value): string
     {
-        $value = trim($value);
-        if ($value === '') {
-            return '';
+        if (str_contains($value, ',')) {
+            return last(explode(',', $value));
         }
-
-        $comma = strpos($value, ',');
-        if (str_starts_with($value, 'data:') && $comma !== false) {
-            return substr($value, $comma + 1);
-        }
-
         return $value;
     }
 
     private function tokenCacheKey(): string
     {
-        return 'vuvaa.token.' . (string) ($this->provider->id ?: md5((string) $this->provider->endpoint));
+        return 'vuvaa.token.' . md5($this->username());
     }
 
     private function generateReferenceId(): string
     {
-        $prefix = (string) ($this->cfg['reference_prefix'] ?? 'REF');
-        $rand = strtoupper(bin2hex(random_bytes(4)));
-        return $prefix . date('YmdHis') . $rand;
+        return ($this->cfg['reference_prefix'] ?? 'REF') . date('YmdHis') . strtoupper(bin2hex(random_bytes(4)));
     }
 }
