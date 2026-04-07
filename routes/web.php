@@ -7,6 +7,7 @@ use App\Http\Controllers\BlogController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\FeedController;
 use App\Http\Controllers\Admin\AdminManagementController;
+use App\Http\Controllers\ReferralController;
 
 $installerEnabled = filter_var(env('INSTALLER_ENABLED', false), FILTER_VALIDATE_BOOL) && app()->environment(['local', 'testing']);
 if ($installerEnabled) {
@@ -89,7 +90,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
 
     // Referrals
-    Route::get('/referrals', [App\Http\Controllers\ReferralController::class, 'index'])->name('referrals.index');
+    Route::get('/referrals', [ReferralController::class, 'index'])->name('referrals.index');
 
     // Notifications
     Route::get('/notifications', [App\Http\Controllers\NotificationController::class, 'index'])->name('notifications.index');
@@ -487,7 +488,7 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
             // Self-Funding (Super Admin Only)
             Route::middleware('super_admin')->group(function () {
                 Route::get('/self-funding', [App\Http\Controllers\Admin\SelfFundingController::class, 'index'])->name('self_funding.index');
-                Route::post('/self-funding', [App\Http\Controllers\Admin\SelfFundingController::class, 'fund'])->name('self_funding.fund');
+                Route.post('/self-funding', [App\Http\Controllers\Admin\SelfFundingController::class, 'fund'])->name('self_funding.fund');
             });
 
             // Auctions

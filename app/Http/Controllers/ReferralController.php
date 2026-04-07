@@ -8,17 +8,22 @@ use Illuminate\Support\Facades\Auth;
 
 class ReferralController extends Controller
 {
-    public function __construct(protected ReferralService $referralService)
+    protected $referralService;
+
+    public function __construct(ReferralService $referralService)
     {
+        $this->referralService = $referralService;
     }
 
     public function index()
     {
         $user = Auth::user();
-        $stats = $this->referralService->statsForUser($user);
-        $recent = $this->referralService->recentForUser($user);
-        $link = $this->referralService->referralLink($user);
+        $this->referralService->ensureUserReferralCode($user);
 
-        return view('referrals.index', compact('stats', 'recent', 'link'));
+        $stats = $this->referralService->statsForUser($user);
+        $recentReferrals = $this->referralService->recentForUser($user);
+        $referralLink = $this->referralService->referralLink($user);
+
+        return view('referrals.index', compact('stats', 'recentReferrals', 'referralLink'));
     }
 }

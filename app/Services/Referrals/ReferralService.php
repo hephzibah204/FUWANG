@@ -18,28 +18,18 @@ class ReferralService
         $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
         for ($i = 0; $i < 20; $i++) {
-            $raw = random_bytes(6);
-            $enc = strtoupper(rtrim(strtr(base64_encode($raw), '+/', 'AZ'), '='));
-            $enc = preg_replace('/[^A-Z0-9]/', '', $enc) ?: '';
-
             $code = '';
-            for ($j = 0; $j < strlen($enc) && strlen($code) < 8; $j++) {
-                $ch = $enc[$j];
-                if (str_contains($alphabet, $ch)) {
-                    $code .= $ch;
-                }
-            }
-            while (strlen($code) < 8) {
+            for ($j = 0; $j < 8; $j++) {
                 $code .= $alphabet[random_int(0, strlen($alphabet) - 1)];
             }
 
-            $exists = User::query()->where('referral_id', $code)->exists();
-            if (!$exists) {
+            if (!User::query()->where('referral_id', $code)->exists()) {
                 return $code;
             }
         }
 
-        return Str::upper(Str::random(8));
+        // Fallback to a longer, more random string if a unique 8-character code can't be found in 20 attempts
+        return Str::upper(Str::random(12));
     }
 
     public function normalizeCode(?string $code): ?string
@@ -59,7 +49,7 @@ class ReferralService
         return User::query()->where('referral_id', $code)->first();
     }
 
-    public function recordRegistration(User $referrer, User $referred, string $code, ?array $context = null): Referral
+    public function recordRegistration(User $referrer, User $referred, string $code, ?array $context = null): void
     {
         $referral = Referral::create([
             'referrer_user_id' => $referrer->id,
@@ -76,75 +66,39 @@ class ReferralService
             'referred_email_hash' => hash('sha256', strtolower((string) $referred->email)),
         ]);
 
-        return $referral;
+        $this->notifyReferrerRegistered($referrer, $referral);
     }
 
     public function handleFunding(User $fundedUser, float $amount, string $transactionId, string $orderType): void
     {
-        if (!str_starts_with($orderType, 'Wallet Funding')) {
+        if (!Str::startsWith($orderType, 'Wallet Funding')) {
             return;
         }
 
         $referral = Referral::query()
             ->where('referred_user_id', $fundedUser->id)
-            ->lockForUpdate()
+            ->where('status', 'registered')
             ->first();
 
-        if (!$referral || in_array($referral->status, ['funded', 'rewarded'], true)) {
+        if (!$referral) {
             return;
         }
 
-        DB::transaction(function () use ($referral, $fundedUser, $amount, $transactionId) {
-            $ref = Referral::query()->where('id', $referral->id)->lockForUpdate()->first();
-            if (!$ref || in_array($ref->status, ['funded', 'rewarded'], true)) {
-                return;
-            }
+        DB::transaction(function () use ($referral, $amount, $transactionId) {
+            $referral->update([
+                'status' => 'funded',
+                'first_funded_at' => now(),
+            ]);
 
-            $ref->status = 'funded';
-            $ref->first_funded_at = now();
-            $ref->save();
-
-            $this->audit($ref, null, $ref->referrer_user_id, $ref->referred_user_id, 'referral_funded', 'succeeded', null, [
+            $this->audit($referral, null, $referral->referrer_user_id, $referral->referred_user_id, 'referral_funded', 'succeeded', null, [
                 'amount' => round($amount, 2),
                 'tx' => $transactionId,
             ]);
 
-            $referrer = User::query()->find($ref->referrer_user_id);
-            if ($referrer) {
-                $this->notifyReferrerFunded($referrer, $ref);
+            if ($referrer = $referral->referrer) {
+                $this->notifyReferrerFunded($referrer, $referral);
+                $this->rewardReferrer($referrer, $referral);
             }
-
-            $rewardEnabled = (string) SystemSetting::get('referral_reward_enabled', 'false') === 'true';
-            $rewardAmount = (float) SystemSetting::get('referral_reward_amount', 0);
-            if (!$rewardEnabled || $rewardAmount <= 0) {
-                return;
-            }
-
-            if (!$referrer) {
-                return;
-            }
-
-            $rewardTx = 'REF-' . $ref->id . '-' . strtoupper(bin2hex(random_bytes(3)));
-            $credit = app(WalletService::class)->credit($referrer, (float) $rewardAmount, 'Referral Reward', $rewardTx);
-            if (!($credit['ok'] ?? false)) {
-                $ref->reward_status = 'failed';
-                $ref->save();
-                $this->audit($ref, null, $ref->referrer_user_id, $ref->referred_user_id, 'referral_reward_failed', 'failed', 'Reward credit failed');
-                return;
-            }
-
-            $ref->status = 'rewarded';
-            $ref->reward_amount = round($rewardAmount, 2);
-            $ref->reward_status = 'paid';
-            $ref->reward_transaction_id = $rewardTx;
-            $ref->save();
-
-            $this->audit($ref, null, $ref->referrer_user_id, $ref->referred_user_id, 'referral_reward_paid', 'succeeded', null, [
-                'amount' => round($rewardAmount, 2),
-                'tx' => $rewardTx,
-            ]);
-
-            $this->notifyReferrerRewarded($referrer, $ref);
         });
     }
 
@@ -195,25 +149,27 @@ class ReferralService
     {
         $upline = [];
         $currentUser = $user;
+
         for ($i = 1; $i <= $maxLevel; $i++) {
-            $referral = Referral::query()->where('referred_user_id', $currentUser->id)->first();
-            if (!$referral) {
+            $referral = Referral::query()
+                ->where('referred_user_id', $currentUser->id)
+                ->with('referrer') // Eager load the referrer
+                ->first();
+
+            if (!$referral || !$referral->referrer) {
                 break;
             }
-            $referrer = User::query()->find($referral->referrer_user_id);
-            if (!$referrer) {
-                break;
-            }
-            $upline[$i] = $referrer;
-            $currentUser = $referrer;
+
+            $upline[$i] = $referral->referrer;
+            $currentUser = $referral->referrer;
         }
+
         return $upline;
     }
 
     public function processTransaction(User $user, float $amount): void
     {
-        $matrixEnabled = (string) SystemSetting::get('matrix_enabled', 'false') === 'true';
-        if (!$matrixEnabled) {
+        if ((string) SystemSetting::get('matrix_enabled', 'false') !== 'true') {
             return;
         }
 
@@ -225,25 +181,7 @@ class ReferralService
         $upline = $this->getUpline($user, $maxLevel);
 
         foreach ($upline as $level => $referrer) {
-            $commissionRate = (float) SystemSetting::get('matrix_level_' . $level . '_percentage', 0);
-            if ($commissionRate <= 0) {
-                continue;
-            }
-
-            $commission = ($amount * $commissionRate) / 100;
-            if ($commission <= 0) {
-                continue;
-            }
-
-            $txId = 'COMM-' . $level . '-' . strtoupper(bin2hex(random_bytes(4)));
-            app(WalletService::class)->credit($referrer, $commission, 'Matrix Commission (Level ' . $level . ')', $txId);
-
-            $this->audit(null, null, $referrer->id, $user->id, 'matrix_commission_paid', 'succeeded', null, [
-                'level' => $level,
-                'amount' => round($commission, 2),
-                'tx' => $txId,
-                'original_tx_amount' => $amount,
-            ]);
+            $this->payoutCommission($user, $referrer, $level, $amount);
         }
     }
 
@@ -295,5 +233,60 @@ class ReferralService
         } catch (\Throwable $e) {
             Log::warning('Referral reward notification failed', ['error' => $e->getMessage()]);
         }
+    }
+
+    private function rewardReferrer(User $referrer, Referral $referral): void
+    {
+        $rewardEnabled = (string) SystemSetting::get('referral_reward_enabled', 'false') === 'true';
+        $rewardAmount = (float) SystemSetting::get('referral_reward_amount', 0);
+
+        if (!$rewardEnabled || $rewardAmount <= 0) {
+            return;
+        }
+
+        $rewardTx = 'REF-' . $referral->id . '-' . strtoupper(bin2hex(random_bytes(3)));
+        $credit = app(WalletService::class)->credit($referrer, (float) $rewardAmount, 'Referral Reward', $rewardTx);
+
+        if ($credit['ok'] ?? false) {
+            $referral->update([
+                'status' => 'rewarded',
+                'reward_amount' => round($rewardAmount, 2),
+                'reward_status' => 'paid',
+                'reward_transaction_id' => $rewardTx,
+            ]);
+
+            $this->audit($referral, null, $referral->referrer_user_id, $referral->referred_user_id, 'referral_reward_paid', 'succeeded', null, [
+                'amount' => round($rewardAmount, 2),
+                'tx' => $rewardTx,
+            ]);
+
+            $this->notifyReferrerRewarded($referrer, $referral);
+        } else {
+            $referral->update(['reward_status' => 'failed']);
+            $this->audit($referral, null, $referral->referrer_user_id, $referral->referred_user_id, 'referral_reward_failed', 'failed', 'Reward credit failed');
+        }
+    }
+
+    private function payoutCommission(User $originalUser, User $referrer, int $level, float $originalAmount): void
+    {
+        $commissionRate = (float) SystemSetting::get('matrix_level_' . $level . '_percentage', 0);
+        if ($commissionRate <= 0) {
+            return;
+        }
+
+        $commission = ($originalAmount * $commissionRate) / 100;
+        if ($commission <= 0) {
+            return;
+        }
+
+        $txId = 'COMM-' . $level . '-' . strtoupper(bin2hex(random_bytes(4)));
+        app(WalletService::class)->credit($referrer, $commission, 'Matrix Commission (Level ' . $level . ')', $txId);
+
+        $this->audit(null, null, $referrer->id, $originalUser->id, 'matrix_commission_paid', 'succeeded', null, [
+            'level' => $level,
+            'amount' => round($commission, 2),
+            'tx' => $txId,
+            'original_tx_amount' => $originalAmount,
+        ]);
     }
 }
