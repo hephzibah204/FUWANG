@@ -190,6 +190,63 @@ class ReferralService
         $user->referral_id = $this->generateReferralCode();
         $user->save();
     }
+    
+    public function getUpline(User $user, int $maxLevel): array
+    {
+        $upline = [];
+        $currentUser = $user;
+        for ($i = 1; $i <= $maxLevel; $i++) {
+            $referral = Referral::query()->where('referred_user_id', $currentUser->id)->first();
+            if (!$referral) {
+                break;
+            }
+            $referrer = User::query()->find($referral->referrer_user_id);
+            if (!$referrer) {
+                break;
+            }
+            $upline[$i] = $referrer;
+            $currentUser = $referrer;
+        }
+        return $upline;
+    }
+
+    public function processTransaction(User $user, float $amount): void
+    {
+        $matrixEnabled = (string) SystemSetting::get('matrix_enabled', 'false') === 'true';
+        if (!$matrixEnabled) {
+            return;
+        }
+
+        $maxLevel = (int) SystemSetting::get('matrix_depth', 0);
+        if ($maxLevel <= 0) {
+            return;
+        }
+
+        $upline = $this->getUpline($user, $maxLevel);
+
+        foreach ($upline as $level => $referrer) {
+            $commissionRate = (float) SystemSetting::get('matrix_level_' . $level . '_percentage', 0);
+            if ($commissionRate <= 0) {
+                continue;
+            }
+
+            $commission = ($amount * $commissionRate) / 100;
+            if ($commission <= 0) {
+                continue;
+            }
+
+            $txId = 'COMM-' . $level . '-' . strtoupper(bin2hex(random_bytes(4)));
+            app(WalletService::class)->credit($referrer, $commission, 'Matrix Commission (Level ' . $level . ')', $txId);
+
+            $this->audit(null, null, $referrer->id, $user->id, 'matrix_commission_paid', 'succeeded', null, [
+                'level' => $level,
+                'amount' => round($commission, 2),
+                'tx' => $txId,
+                'original_tx_amount' => $amount,
+            ]);
+        }
+    }
+
 
     private function audit(?Referral $referral, ?int $actorUserId, int $referrerUserId, ?int $referredUserId, string $action, string $status, ?string $message = null, ?array $context = null): void
     {
@@ -240,4 +297,3 @@ class ReferralService
         }
     }
 }
-

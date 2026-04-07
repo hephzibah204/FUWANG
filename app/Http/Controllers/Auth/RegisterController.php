@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use App\Services\Referrals\ReferralService;
 
 class RegisterController extends Controller
 {
@@ -26,15 +27,24 @@ class RegisterController extends Controller
             'transaction_pin' => ['required', 'string', 'min:4', 'max:4'],
         ]);
 
+        $referralService = app(ReferralService::class);
+        $referralCode = $referralService->normalizeCode($request->input('referral_code'));
+        $referrer = $referralCode ? $referralService->findReferrerByCode($referralCode) : null;
+
         $user = User::create([
             'fullname' => $request->fullname,
             'username' => $request->username,
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'transaction_pin' => $request->transaction_pin,
-            'referral_id' => Str::random(8),
+            'referral_id' => $referralService->generateReferralCode(),
             'reseller_id' => $request->reseller_id ?? 'default',
         ]);
+
+        if ($referrer && $referralCode) {
+            $referralService->recordRegistration($referrer, $user, $referralCode);
+            $referralService->notifyReferrerRegistered($referrer, $user->referral()->first());
+        }
 
         Auth::login($user);
 
