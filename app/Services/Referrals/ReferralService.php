@@ -113,7 +113,7 @@ class ReferralService
         $rewarded = (clone $base)->where('status', 'rewarded')->count();
         $earnings = (float) (clone $base)->where('reward_status', 'paid')->sum('reward_amount');
 
-        $tier = ReferralTier::where('minimum_referrals', '<', $funded)->orderBy('minimum_referrals', 'desc')->first();
+        $tier = ReferralTier::where('minimum_referrals', '<=', $funded)->orderBy('minimum_referrals', 'desc')->first();
 
         return [
             'total' => $total,
