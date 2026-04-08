@@ -7,6 +7,7 @@ use App\Http\Controllers\BlogController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\FeedController;
 use App\Http\Controllers\Admin\AdminManagementController;
+use App\Http\Controllers\Admin\DeliveryAgentController;
 use App\Http\Controllers\ReferralController;
 
 $installerEnabled = filter_var(env('INSTALLER_ENABLED', false), FILTER_VALIDATE_BOOL) && app()->environment(['local', 'testing']);
@@ -393,6 +394,9 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
             Route::middleware('permission:manage_pages')->group(function () {
                 Route::resource('pages', \App\Http\Controllers\Admin\PageController::class)->except(['show']);
             });
+
+            // Delivery Agent Management
+            Route::resource('delivery-agents', DeliveryAgentController::class)->only(['index', 'update']);
 
             Route::get('/services',                    [App\Http\Controllers\Admin\ServiceManagementController::class, 'index'])->name('services.index');
             Route::post('/services/toggles/{feature}', [App\Http\Controllers\Admin\ServiceManagementController::class, 'setToggle'])->name('services.toggles.set');

@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
@@ -335,6 +336,7 @@
                     <a href="{{ route('admin.operations.invoices') }}" class="{{ Request::routeIs('admin.operations.invoices') ? 'active' : '' }}">Invoices</a>
                     <a href="{{ route('admin.operations.logistics') }}" class="{{ Request::routeIs('admin.operations.logistics') ? 'active' : '' }}">Logistics</a>
                     <a href="{{ route('admin.operations.notary') }}" class="{{ Request::routeIs('admin.operations.notary') ? 'active' : '' }}">Notary</a>
+                    <a href="{{ route('admin.shipping-providers.index') }}" class="{{ Request::routeIs('admin.shipping-providers.*') ? 'active' : '' }}">Shipping</a>
                 </div>
             </div>
 

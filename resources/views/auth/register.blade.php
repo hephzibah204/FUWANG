@@ -67,6 +67,32 @@
                     </div>
                 </div>
 
+                <div class="form-group">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="apply_as_agent" id="apply_as_agent">
+                        <label class="form-check-label" for="apply_as_agent">
+                            Apply as Delivery Agent
+                        </label>
+                    </div>
+                </div>
+
+                <div id="agent-fields" style="display: none;">
+                    <div class="form-group">
+                        <label for="state">State</label>
+                        <div class="input-wrap">
+                            <i class="fa-solid fa-map-marker-alt"></i>
+                            <input type="text" id="state" name="state" placeholder="e.g. Lagos">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="city">City</label>
+                        <div class="input-wrap">
+                            <i class="fa-solid fa-city"></i>
+                            <input type="text" id="city" name="city" placeholder="e.g. Ikeja">
+                        </div>
+                    </div>
+                </div>
+
                 <input type="hidden" name="reseller_id" value="default">
 
                 <button type="submit" class="btn btn-primary btn-full" id="register-btn">
@@ -83,6 +109,18 @@
 @push('scripts')
 <script>
     $(document).ready(function() {
+        $('#apply_as_agent').change(function() {
+            if(this.checked) {
+                $('#agent-fields').slideDown();
+                $('#state').prop('required', true);
+                $('#city').prop('required', true);
+            } else {
+                $('#agent-fields').slideUp();
+                $('#state').prop('required', false);
+                $('#city').prop('required', false);
+            }
+        });
+
         function normalizeRedirect(raw) {
             if (typeof raw !== 'string') {
                 return null;
@@ -190,5 +228,6 @@
     .auth-switch { text-align: center; margin-top: 25px; font-size: 0.95rem; color: var(--clr-text-muted); }
     .auth-switch a { color: var(--clr-primary); font-weight: 600; transition: color 0.3s ease; }
     .auth-switch a:hover { color: var(--clr-primary-hover); text-decoration: underline; }
+    .form-check { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; }
 </style>
 @endpush

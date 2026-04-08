@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\DeliveryAgent;
 use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
@@ -25,6 +26,9 @@ class RegisterController extends Controller
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
             'password' => ['required', 'string', 'min:8'],
             'transaction_pin' => ['required', 'string', 'min:4', 'max:4'],
+            'apply_as_agent' => ['sometimes', 'boolean'],
+            'state' => ['required_if:apply_as_agent,1', 'string', 'max:255'],
+            'city' => ['required_if:apply_as_agent,1', 'string', 'max:255'],
         ]);
 
         $referralService = app(ReferralService::class);
@@ -40,6 +44,15 @@ class RegisterController extends Controller
             'referral_id' => $referralService->generateReferralCode(),
             'reseller_id' => $request->reseller_id ?? 'default',
         ]);
+
+        if ($request->boolean('apply_as_agent')) {
+            DeliveryAgent::create([
+                'user_id' => $user->id,
+                'state' => $request->state,
+                'city' => $request->city,
+                'approval_status' => 'pending',
+            ]);
+        }
 
         if ($referrer && $referralCode) {
             $referralService->recordRegistration($referrer, $user, $referralCode);
