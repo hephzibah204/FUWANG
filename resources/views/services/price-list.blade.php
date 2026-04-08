@@ -1,6 +1,9 @@
 @extends('layouts.nexus')
 
-@section('title', 'Service Price List | ' . config('app.name'))
+@section('title', 'Service Price List | Fuwa.NG - Transparent & Competitive Pricing')
+@section('meta_description', 'View the complete price list for all Fuwa.NG services, including NIN verification, BVN validation, VTU, and more. Transparent, pay-as-you-go pricing for your business.')
+@section('meta_keywords', 'Fuwa.NG pricing, NIN verification price, BVN validation price, VTU prices Nigeria, identity verification costs')
+@section('canonical', route('services.price-list'))
 
 @section('content')
 <div class="dashboard-wrapper fade-in">
@@ -151,3 +154,90 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    "name": "Fuwa.NG Service Price List",
+    "description": "Transparent, pay-as-you-go pricing for all Fuwa.NG services.",
+    "numberOfItems": {{ $customPrices->flatten()->count() + ($legacyPrices ? 2 : 0) }},
+    "itemListElement": [
+        @php $counter = 0; @endphp
+        @foreach($categories as $categoryName => $types)
+            @foreach($types as $type)
+                @if($customPrices->has($type))
+                    @foreach($customPrices[$type] as $provider)
+                        @php
+                            $providerTypes = $provider->verificationTypes ?? collect();
+                        @endphp
+                        @if($providerTypes->count() > 0)
+                            @foreach($providerTypes as $t)
+                                @if($counter > 0),@endif
+                                {
+                                    "@type": "Product",
+                                    "name": "{{ $serviceNames[$type] ?? strtoupper(str_replace('_', ' ', $type)) }} - {{ $t->label }}",
+                                    "description": "{{ $serviceNames[$type] ?? strtoupper(str_replace('_', ' ', $type)) }} by {{ $provider->name }} ({{ $t->label }})",
+                                    "brand": {
+                                        "@type": "Brand",
+                                        "name": "{{ $provider->name }}"
+                                    },
+                                    "offers": {
+                                        "@type": "Offer",
+                                        "price": "{{ number_format((float) $t->price, 2, '.', '') }}",
+                                        "priceCurrency": "NGN"
+                                    }
+                                }
+                                @php $counter++; @endphp
+                            @endforeach
+                        @else
+                            @if($counter > 0),@endif
+                            {
+                                "@type": "Product",
+                                "name": "{{ $serviceNames[$type] ?? strtoupper(str_replace('_', ' ', $type)) }}",
+                                "description": "{{ $serviceNames[$type] ?? strtoupper(str_replace('_', ' ', $type)) }} by {{ $provider->name }}",
+                                "brand": {
+                                    "@type": "Brand",
+                                    "name": "{{ $provider->name }}"
+                                },
+                                "offers": {
+                                    "@type": "Offer",
+                                    "price": "{{ number_format((float) $provider->price, 2, '.', '') }}",
+                                    "priceCurrency": "NGN"
+                                }
+                            }
+                            @php $counter++; @endphp
+                        @endif
+                    @endforeach
+                @endif
+            @endforeach
+        @if((!$customPrices->has('nin') && isset($legacyPrices->nin_by_nin_price)))
+        @if($counter > 0),@endif
+        {
+            "@type": "Product",
+            "name": "NIN Verification (Legacy)",
+            "offers": {
+                "@type": "Offer",
+                "price": "{{ number_format($legacyPrices->nin_by_nin_price, 2, '.', '') }}",
+                "priceCurrency": "NGN"
+            }
+        }
+        @php $counter++; @endphp
+        @endif
+        @if((!$customPrices->has('bvn') && isset($legacyPrices->bvn_by_bvn)))
+        @if($counter > 0),@endif
+        {
+            "@type": "Product",
+            "name": "BVN Verification (Legacy)",
+            "offers": {
+                "@type": "Offer",
+                "price": "{{ number_format($legacyPrices->bvn_by_bvn, 2, '.', '') }}",
+                "priceCurrency": "NGN"
+            }
+        }
+        @endif
+    ]
+}
+</script>
+@endpush

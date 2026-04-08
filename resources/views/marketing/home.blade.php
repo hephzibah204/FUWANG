@@ -1,6 +1,15 @@
 @extends('layouts.nexus')
 
-@section('title', 'KYC & Identity Verification for Nigeria — NIN, BVN, VTU | Fuwa.NG')
+@section('title', 'Instant KYC & All-In-One Business Tools for Nigeria | Fuwa.NG')
+@section('meta_description', 'Onboard users seamlessly with Nigeria's most reliable NIN and BVN verification. Grow your business with integrated VTU, logistics, auctions, and notary services. Get started for free.')
+@section('meta_keywords', 'NIN verification Nigeria, BVN validation, KYC Nigeria, identity verification API, VTU services, logistics platform Nigeria, online auctions Nigeria, notary services Nigeria')
+@section('canonical', route('home'))
+
+@section('og_title', 'Fuwa.NG: Instant KYC & All-In-One Business Tools for Nigeria')
+@section('og_description', 'Onboard users with reliable NIN/BVN checks. Expand with VTU, logistics, auctions, and legal services on a single platform. Built for growth in Nigeria.')
+@section('og_image', url('/images/og/home.jpg'))
+@section('og_type', 'website')
+
 @section('public_wrapper_class', 'none')
 
 @section('content')
@@ -230,4 +239,42 @@
 
 @push('scripts')
 <script src="{{ $assetPrefix . '/assets/nexus/js/home-sales.js' }}" defer></script>
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "name": "Instant KYC & All-In-One Business Tools for Nigeria | Fuwa.NG",
+    "description": "Onboard users seamlessly with Nigeria's most reliable NIN and BVN verification. Grow your business with integrated VTU, logistics, auctions, and notary services. Get started for free.",
+    "url": "{{ route('home') }}",
+    "mainEntity": {
+        "@type": "FAQPage",
+        "mainEntity": [
+            {
+                "@type": "Question",
+                "name": "What is Fuwa.NG?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Fuwa.NG is a comprehensive platform providing Nigerian businesses with tools for growth. We offer instant KYC (NIN & BVN) for customer onboarding, alongside VTU services for airtime/data sales, logistics and shipment tracking, online auctions, and digital notary services."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "How does NIN and BVN verification work?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Our system connects to official databases to instantly verify customer identities using their National Identification Number (NIN) or Bank Verification Number (BVN). This reduces fraud, ensures compliance, and speeds up your onboarding process. You can verify users through our dashboard or integrate our API into your own application."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Is there a cost to get started?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "No, you can create a Fuwa.NG account for free. We operate on a pay-as-you-go model, so you only pay for the verification checks you perform or the services you use. There are no monthly subscription fees for a standard account."
+                }
+            }
+        ]
+    }
+}
+</script>
 @endpush

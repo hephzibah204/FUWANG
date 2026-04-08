@@ -297,6 +297,7 @@
                     @if(Auth::guard('admin')->user()?->hasPermission('manage_roles'))
                     <a href="{{ route('admin.roles.index') }}" class="{{ Request::routeIs('admin.roles.*') ? 'active' : '' }}">Roles & Permissions</a>
                     @endif
+                    <a href="{{ route('admin.delivery-agents.index') }}" class="{{ Request::routeIs('admin.delivery-agents.*') ? 'active' : '' }}">Delivery Agents</a>
                 </div>
             </div>
 

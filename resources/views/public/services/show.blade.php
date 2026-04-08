@@ -1,6 +1,13 @@
 @extends('layouts.nexus')
 
-@section('title', ($service['title'] ?? 'Service') . ' | ' . config('app.name'))
+@section('title', ($service['title'] ?? 'Service') . ' | ' . ($service['tagline'] ?? config('app.name')))
+@section('meta_description', $service['summary'] ?? 'Explore services offered by ' . config('app.name'))
+@section('meta_keywords', implode(', ', [$service['title'], $service['category'], 'Nigeria', 'Fuwa.NG']))
+@section('canonical', route('explore.service', ['slug' => $slug]))
+
+@section('og_title', $service['title'] ?? 'Service')
+@section('og_description', $service['summary'] ?? 'Explore services offered by ' . config('app.name'))
+@section('og_image', url('/images/og/service-' . ($slug ?? 'default') . '.jpg'))
 
 @section('content')
 @php
@@ -368,7 +375,7 @@ SVG;
 
     @if(!empty($steps))
         <div class="mb-4">
-            <div class="p-4 p-lg-5 rounded-lg" style="border: 1px solid rgba(255,255,255,0.10); background: rgba(255,255,255,0.03);">
+            <div class.blade.php"p-4 p-lg-5 rounded-lg" style="border: 1px solid rgba(255,255,255,0.10); background: rgba(255,255,255,0.03);">
                 <div class="row align-items-center">
                     <div class="col-lg-5 mb-4 mb-lg-0">
                         <h2 class="h5 text-white font-weight-bold mb-2">How it works</h2>
@@ -427,6 +434,44 @@ SVG;
 @endsection
 
 @push('scripts')
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "Service",
+    "serviceType": "{{ $service['category'] ?? 'General' }}",
+    "provider": {
+        "@type": "Organization",
+        "name": "{{ config('app.name') }}"
+    },
+    "areaServed": {
+        "@type": "Country",
+        "name": "Nigeria"
+    },
+    "name": "{{ $service['title'] ?? 'Service' }}",
+    "description": "{{ $service['summary'] ?? '' }}",
+    @if(!empty($faq))
+    "mainEntity": {
+        "@type": "FAQPage",
+        "mainEntity": [
+            @foreach($faq as $f)
+            {
+                "@type": "Question",
+                "name": "{{ $f['q'] ?? '' }}",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "{{ $f['a'] ?? '' }}"
+                }
+            }{{ !$loop->last ? ',' : '' }}
+            @endforeach
+        ]
+    },
+    @endif
+    "potentialAction": {
+        "@type": "ViewAction",
+        "target": "{{ route('explore.service', ['slug' => $slug]) }}"
+    }
+}
+</script>
 <script>
 (() => {
   const url = @json(route('ab.event'));

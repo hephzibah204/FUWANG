@@ -1,6 +1,13 @@
-@extends('layouts.app')
+@extends('layouts.nexus')
 
-@section('title', 'Blog')
+@section('title', 'Fuwa.NG Blog | Insights on Identity Verification, Business Growth & Tech in Nigeria')
+@section('meta_description', 'Explore the Fuwa.NG blog for the latest news, updates, and expert guides on identity verification (NIN, BVN), business growth strategies, and technology trends in Nigeria.')
+@section('meta_keywords', 'Fuwa.NG blog, Nigeria business insights, KYC trends, identity verification updates, tech in Nigeria, fintech Nigeria')
+@section('canonical', route('blog.index'))
+
+@section('og_title', 'Fuwa.NG Blog | Insights on Identity Verification, Business Growth & Tech in Nigeria')
+@section('og_description', 'Explore the Fuwa.NG blog for expert guides on identity verification (NIN, BVN), business growth strategies, and technology trends in Nigeria.')
+@section('og_type', 'blog')
 
 @section('content')
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -50,3 +57,40 @@
     {{ $posts->links() }}
 </div>
 @endsection
+
+@push('scripts')
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Blog",
+  "name": "Fuwa.NG Blog",
+  "url": "{{ route('blog.index') }}",
+  "description": "The latest news, updates, and expert guides on identity verification (NIN, BVN), business growth strategies, and technology trends in Nigeria.",
+  "blogPost": [
+    @foreach($posts as $post)
+    {
+      "@type": "BlogPosting",
+      "mainEntityOfPage": "{{ route('blog.show', $post->slug) }}",
+      "headline": "{{ $post->title }}",
+      "description": "{{ $post->excerpt ?: \Illuminate\Support\Str::limit(strip_tags($post->content), 155) }}",
+      "image": "{{ $post->featured_image ? url($post->featured_image) : \App\Models\SystemSetting::get('seo_default_image_url') }}",
+      "author": {
+        "@type": "Organization",
+        "name": "Fuwa.NG"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "Fuwa.NG",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "{{ \App\Models\SystemSetting::get('site_logo_url') }}"
+        }
+      },
+      "datePublished": "{{ optional($post->created_at)->toIso8601String() }}",
+      "dateModified": "{{ optional($post->updated_at)->toIso8601String() }}"
+    }{{ !$loop->last ? ',' : '' }}
+    @endforeach
+  ]
+}
+</script>
+@endpush
