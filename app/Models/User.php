@@ -61,6 +61,7 @@ class User extends Authenticatable implements CanResetPasswordContract
         'user_status',
         'kyc_tier',
         'kyc_rejection_reason',
+        'completed_tours',
         // google2fa_secret intentionally excluded from mass assignment — set only via ProfileController::enable2fa
     ];
 
@@ -85,6 +86,7 @@ class User extends Authenticatable implements CanResetPasswordContract
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'completed_tours' => 'array',
         ];
     }
 
@@ -130,5 +132,10 @@ class User extends Authenticatable implements CanResetPasswordContract
     public function verificationResults()
     {
         return $this->hasMany(VerificationResult::class);
+    }
+    
+    public function hasCompletedTour($tour)
+    {
+        return in_array($tour, $this->completed_tours ?? []);
     }
 }

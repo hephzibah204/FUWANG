@@ -60,6 +60,7 @@
     </script>
     
     @vite(['resources/js/vendor.js', 'resources/js/layout.js'])
+    <link rel="stylesheet" href="https://unpkg.com/intro.js/minified/introjs.min.css">
     
     <style>
         :root {
@@ -252,6 +253,7 @@
     <script src="{{ asset('assets/nexus/js/csrf-fetch.js') }}"></script>
     <script src="{{ asset('assets/nexus/js/nexus.js') }}"></script>
     <script src="{{ asset('assets/nexus/js/payment-modal.js') }}"></script>
+    <script src="https://unpkg.com/intro.js/minified/intro.min.js"></script>
     @stack('scripts')
 </body>
 </html>

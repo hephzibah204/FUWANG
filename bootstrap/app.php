@@ -54,8 +54,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin.audit' => \App\Http\Middleware\AdminAuditMiddleware::class,
             'api.token' => \App\Http\Middleware\ApiTokenAuth::class,
             'api.ratelimit' => \App\Http\Middleware\ApiRateLimit::class,
+            'service.ratelimit' => \App\Http\Middleware\ServiceApiRateLimit::class,
+            'kyc.enforce' => \App\Http\Middleware\EnforceKycTierLimits::class,
             'ab' => \App\Http\Middleware\AssignAbVariants::class,
             'track.view' => \App\Http\Middleware\LogPageView::class,
+            'onboarding' => \App\Http\Middleware\OnboardingMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

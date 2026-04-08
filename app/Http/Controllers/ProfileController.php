@@ -11,24 +11,15 @@ class ProfileController extends Controller
 {
     public function index()
     {
-        $user = Auth::user();
-        $google2fa_url = null;
-        $secret = null;
-
-        if (!$user->google2fa_secret) {
-            $google2fa = app('pragmarx.google2fa');
-            $secret = $google2fa->generateSecretKey();
-            $google2fa_url = $google2fa->getQRCodeUrl(
-                config('app.name'),
-                $user->email,
-                $secret
-            );
-        }
-
         return view('profile.index', [
-            'user' => $user,
-            'google2fa_url' => $google2fa_url,
-            'google2fa_secret' => $secret
+            'user' => Auth::user(),
+        ]);
+    }
+
+    public function security()
+    {
+        return view('profile.security', [
+            'user' => Auth::user(),
         ]);
     }
 
@@ -58,7 +49,6 @@ class ProfileController extends Controller
         }
 
         if ($request->filled('new_pin')) {
-            // Always use timing-safe hash comparison — never plaintext
             if (!$user->transaction_pin || !Hash::check($request->current_pin, $user->transaction_pin)) {
                 return response()->json(['status' => false, 'message' => 'Current PIN is incorrect.']);
             }
@@ -70,37 +60,5 @@ class ProfileController extends Controller
         }
 
         return response()->json(['status' => true, 'message' => 'Profile updated successfully.']);
-    }
-
-    public function enable2fa(Request $request)
-    {
-        $request->validate([
-            'secret' => 'required|string',
-            'one_time_password' => 'required|string|size:6'
-        ]);
-
-        $google2fa = app('pragmarx.google2fa');
-        $valid = $google2fa->verifyKey($request->secret, $request->one_time_password);
-
-        if (!$valid) {
-            return response()->json(['status' => false, 'message' => 'Invalid verification code. Please try again.']);
-        }
-
-        Auth::user()->update(['google2fa_secret' => $request->secret]);
-
-        return response()->json(['status' => true, 'message' => '2FA enabled successfully. Your account is now more secure.']);
-    }
-
-    public function disable2fa(Request $request)
-    {
-        $request->validate(['current_password' => 'required|string']);
-
-        if (!Hash::check($request->current_password, Auth::user()->password)) {
-            return response()->json(['status' => false, 'message' => 'Incorrect password.']);
-        }
-
-        Auth::user()->update(['google2fa_secret' => null]);
-
-        return response()->json(['status' => true, 'message' => '2FA disabled successfully. We recommend keeping it enabled for better security.']);
     }
 }

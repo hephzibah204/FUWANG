@@ -9,6 +9,7 @@ use App\Http\Controllers\FeedController;
 use App\Http\Controllers\Admin\AdminManagementController;
 use App\Http\Controllers\Admin\DeliveryAgentController;
 use App\Http\Controllers\ReferralController;
+use App\Http\Controllers\TourController;
 
 $installerEnabled = filter_var(env('INSTALLER_ENABLED', false), FILTER_VALIDATE_BOOL) && app()->environment(['local', 'testing']);
 if ($installerEnabled) {
@@ -41,6 +42,9 @@ Route::get('/feed.xml', [FeedController::class, 'feed'])->name('seo.feed');
 
 Route::get('/login',    [LoginController::class, 'showLoginForm'])->name('login');
 Route::post('/login',   [LoginController::class, 'login'])->middleware('throttle:5,1'); // C-1 brute-force protection
+Route::get('/login/2fa', [\App\Http\Controllers\Auth\TwoFactorController::class, 'showVerifyForm'])->name('login.2fa');
+Route::post('/login/2fa', [\App\Http\Controllers\Auth\TwoFactorController::class, 'verify'])->name('login.2fa.verify');
+
 Route::get('/register', [App\Http\Controllers\Auth\RegisterController::class, 'showRegistrationForm'])->name('register');
 Route::post('/register',[App\Http\Controllers\Auth\RegisterController::class, 'register']);
 Route::post('/logout',  [LoginController::class, 'logout'])->name('logout');
@@ -88,7 +92,7 @@ Route::middleware('guest')->group(function () {
 Route::middleware(['auth'])->group(function () {
 
     // Dashboard
-    Route::get('/dashboard', [App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard', [App\Http\Controllers\DashboardController::class, 'index'])->middleware('onboarding:dashboard')->name('dashboard');
 
     // Referrals
     Route::get('/referrals', [ReferralController::class, 'index'])->name('referrals.index');
@@ -98,9 +102,12 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/notifications/{id}', [App\Http\Controllers\NotificationController::class, 'show'])->name('notifications.show');
     Route::post('/notifications/mark-all-read', [\App\Http\Controllers\NotificationController::class, 'markAllAsRead'])->name('notifications.mark_all_read');
 
-    // Profile
+    // Profile & Security
     Route::get('/profile',  [App\Http\Controllers\ProfileController::class, 'index'])->name('profile');
     Route::post('/profile', [App\Http\Controllers\ProfileController::class, 'update'])->name('profile.update');
+    Route::get('/profile/security', [App\Http\Controllers\ProfileController::class, 'security'])->name('profile.security');
+    Route::post('/profile/security/2fa/enable', [App\Http\Controllers\User\TwoFactorController::class, 'enable'])->name('user.2fa.enable');
+    Route::post('/profile/security/2fa/disable', [App\Http\Controllers\User\TwoFactorController::class, 'disable'])->name('user.2fa.disable');
 
     // Fuwa.NG AI Chat
     Route::post('/ai/chat', [App\Http\Controllers\AiController::class, 'chat'])->name('ai.chat');
@@ -348,6 +355,7 @@ Route::middleware(['auth'])->group(function () {
         });
 
     });
+    Route::post('/tour/complete', [TourController::class, 'complete'])->name('tour.complete');
 
 }); // ── End of user auth middleware group ──────────────────
 
@@ -373,7 +381,7 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
             Route::get('/security/2fa', [App\Http\Controllers\Admin\TwoFactorSetupController::class, 'index'])->name('settings.security.2fa.index');
             Route::post('/security/2fa/enable', [App\Http\Controllers\Admin\TwoFactorSetupController::class, 'enable'])->name('settings.security.2fa.enable');
             Route::post('/security/2fa/disable', [App\Http\Controllers\Admin\TwoFactorSetupController::class, 'disable'])->name('settings.security.2fa.disable');
-            Route::get('/dashboard',                   [App\Http\Controllers\Admin\AdminController::class, 'index'])->name('dashboard');
+            Route::get('/dashboard',                   [App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard');
 
             Route::get('/chatbot/metrics',             [App\Http\Controllers\Admin\ChatbotAdminController::class, 'dashboardMetrics'])
                 ->middleware('super_admin')
@@ -492,7 +500,7 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
             // Self-Funding (Super Admin Only)
             Route::middleware('super_admin')->group(function () {
                 Route::get('/self-funding', [App\Http\Controllers\Admin\SelfFundingController::class, 'index'])->name('self_funding.index');
-                Route.post('/self-funding', [App\Http\Controllers\Admin\SelfFundingController::class, 'fund'])->name('self_funding.fund');
+                Route::post('/self-funding', [App\Http\Controllers\Admin\SelfFundingController::class, 'fund'])->name('self_funding.fund');
             });
 
             // Auctions
@@ -544,9 +552,13 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
                 ->middleware('super_admin')
                 ->name('settings.gateways.toggle');
             Route::post('/settings/referrals',         [App\Http\Controllers\Admin\SettingsController::class, 'updateReferralSettings'])->name('settings.referrals');
-            Route::get('/settings/whatsapp-widget',    [App\Http\Controllers\Admin\WhatsAppWidgetController::class, 'index'])->name('settings.whatsapp_widget');
-            Route::post('/settings/whatsapp-widget',   [App\Http\Controllers\Admin\WhatsAppWidgetController::class, 'update'])->name('settings.whatsapp_widget.update');
+            Route::post('settings/auction',           [App\Http\Controllers\Admin\SettingsController::class, 'updateAuctionSettings'])->name('settings.auction');
+            Route::get('settings/whatsapp-widget',    [App\Http\Controllers\Admin\WhatsAppWidgetController::class, 'index'])->name('settings.whatsapp_widget');
+            Route::post('settings/whatsapp-widget',   [App\Http\Controllers\Admin\WhatsAppWidgetController::class, 'update'])->name('settings.whatsapp_widget.update');
             Route::post('/media/upload',               [App\Http\Controllers\Admin\MediaController::class, 'upload'])->name('media.upload');
+
+            Route::get('settings/advanced', [App\Http\Controllers\Admin\AdvancedSettingsController::class, 'index'])->name('advanced_settings.index');
+            Route::put('settings/advanced', [App\Http\Controllers\Admin\AdvancedSettingsController::class, 'update'])->name('advanced_settings.update');
 
             Route::post('/settings/security/verifyme/ips', [App\Http\Controllers\Admin\SettingsController::class, 'updateVerifymeWebhookIps'])
                 ->middleware('admin.security')

@@ -6,7 +6,7 @@
 @include('dashboard_styles')
 <div class="nexus-dashboard">
     <!-- Premium Welcome Hero -->
-    <div class="welcome-hero mb-5">
+    <div class="welcome-hero mb-5" data-step="1" data-intro="Welcome to your Dashboard! This is your main hub for all activities.">
         <div class="hero-bg-accent"></div>
         <div class="row align-items-center position-relative">
             <div class="col-lg-7 mb-4 mb-lg-0">
@@ -25,7 +25,7 @@
                 </div>
             </div>
             <div class="col-lg-5">
-                <div class="hero-wallet-card">
+                <div class="hero-wallet-card" data-step="2" data-intro="This is your wallet. You can fund it to start using our services.">
                     <div class="hw-glow"></div>
                     <div class="hw-content">
                         <div class="d-flex justify-content-between align-items-start mb-2">
@@ -47,7 +47,7 @@
         </div>
     </div>
 
-    <div class="dashboard-section mb-5">
+    <div class="dashboard-section mb-5" data-step="3" data-intro="Here you can see your virtual accounts for easy wallet funding.">
         <div class="section-hdr mb-4">
             <div class="d-flex align-items-center">
                 <div class="section-icon lifestyle"><i class="fa-solid fa-building-columns"></i></div>
@@ -66,7 +66,7 @@
     </div>
 
     <!-- Quick Services: Identity Proofing -->
-    <div class="dashboard-section mb-5 fade-up stagger-2">
+    <div class="dashboard-section mb-5 fade-up stagger-2" data-step="4" data-intro="This section provides quick access to our identity verification services.">
         <div class="section-hdr mb-4">
             <div class="d-flex align-items-center">
                 <div class="section-icon identity"><i class="fa-solid fa-id-card"></i></div>
@@ -150,7 +150,7 @@
     <div class="row">
         <div class="col-lg-8 mb-4">
             <!-- Recent Transactions Panel -->
-            <div class="panel-card h-100">
+            <div class="panel-card h-100" data-step="5" data-intro="Track your recent operations and transactions here.">
                 <div class="panel-hdr">
                     <h3 class="h6 font-weight-bold m-0 text-white"><i class="fa-solid fa-receipt mr-2 text-primary"></i> Recent Operations</h3>
                     <a href="{{ route('history') }}" class="small text-muted">View Ledger</a>
@@ -329,6 +329,50 @@
 @endsection
 
 @push('scripts')
+@if(session('start_tour'))
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var intro = introJs();
+        intro.setOptions({
+            steps: [
+                { 
+                    element: document.querySelector('.welcome-hero'),
+                    intro: "Welcome to your Dashboard! This is your main hub for all activities."
+                },
+                {
+                    element: document.querySelector('.hero-wallet-card'),
+                    intro: "This is your wallet. You can fund it to start using our services."
+                },
+                {
+                    element: document.querySelector('#dashboardVirtualAccounts'),
+                    intro: "Here you can see your virtual accounts for easy wallet funding."
+                },
+                {
+                    element: document.querySelector('.dashboard-section .quick-grid'),
+                    intro: "This section provides quick access to our identity verification services."
+                },
+                {
+                    element: document.querySelector('#recentActivity'),
+                    intro: "Track your recent operations and transactions here."
+                }
+            ]
+        });
+
+        intro.oncomplete(function() {
+            fetch("{{ route('tour.complete') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ tour: '{{ session("start_tour") }}' })
+            });
+        });
+
+        intro.start();
+    });
+</script>
+@endif
 <script>
     window.authUserEmail = "{{ Auth::user()->email }}";
 
@@ -492,7 +536,7 @@
 
         $.post("{{ route('payment.auto_funding.ensure') }}", {_token: "{{ csrf_token() }}"})
             .done(function(res) {
-                if(res.status && res.accounts && res.accounts.length > 0) {
+                if(res..status && res.accounts && res.accounts.length > 0) {
                     $('#autoFundingAccounts').html(renderGroupedAutoFundingAccounts(res.accounts));
 
                     const pending = res.accounts.some(a => (a.status || '') === 'pending');

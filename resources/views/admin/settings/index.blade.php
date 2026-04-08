@@ -29,6 +29,7 @@
     <button class="s-tab" onclick="switchTab('tab-gateways', this)"><i class="fa fa-credit-card mr-2"></i>Payment Gateways</button>
     <button class="s-tab" onclick="switchTab('tab-features', this)"><i class="fa fa-toggle-on mr-2"></i>Service Toggles</button>
     <button class="s-tab" onclick="switchTab('tab-referrals', this)"><i class="fa fa-users mr-2"></i>Referrals & MLM</button>
+    <button class="s-tab" onclick="switchTab('tab-auction', this)"><i class="fa fa-gavel mr-2"></i>Auction Settings</button>
     <button class="s-tab" onclick="window.location.href='{{ route('admin.settings.whatsapp_widget') }}'"><i class="fa-brands fa-whatsapp mr-2 text-success"></i>WhatsApp Widget</button>
 </div>
 
@@ -1095,6 +1096,26 @@
     </form>
 </div>
 
+{{-- ── 10. Auction Settings Tab ──────────────────────── --}}
+<div class="s-panel" id="tab-auction">
+    <div class="card border-0 rounded-4 p-4" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.07) !important;">
+        <h5 class="text-white mb-1 fw-bold">Auction Settings</h5>
+        <p class="text-white-50 small mb-4">Configure the commission percentage for successful auctions.</p>
+        <form id="auctionSettingsForm">
+            @csrf
+            <div class="row">
+                <div class="col-md-6 mb-4">
+                    <label class="text-white-50 small mb-2">Commission Percentage (%)</label>
+                    <input type="number" step="0.01" name="auction_commission_percentage" class="form-control text-white rounded-3" value="{{ \App\Models\SystemSetting::get('auction_commission_percentage', 5) }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                    <small class="text-info mt-2 d-block">The percentage of the final sale price that Fuwa.NG will take as a commission.</small>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary rounded-pill px-4"><i class="fa fa-floppy-disk mr-2"></i>Save Auction Settings</button>
+        </form>
+    </div>
+</div>
+
 @endsection
 
 @push('styles')
@@ -1210,6 +1231,7 @@ handleSettingsForm('adminSelfFundingLimitForm', '{{ route("admin.settings.admin_
 handleSettingsForm('verifymeIpsForm','{{ route("admin.settings.security.verifyme_ips") }}');
 handleSettingsForm('featureTogglesForm', '{{ route("admin.settings.features") }}');
 handleSettingsForm('referralSettingsForm', '{{ route("admin.settings.referrals") }}');
+handleSettingsForm('auctionSettingsForm', '{{ route("admin.settings.auction") }}');
 
 document.addEventListener('DOMContentLoaded', function () {
     const tab = new URLSearchParams(window.location.search).get('tab');

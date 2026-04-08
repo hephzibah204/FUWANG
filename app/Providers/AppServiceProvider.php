@@ -9,6 +9,7 @@ use App\Models\FeatureToggle;
 use App\Models\EmailLog;
 use App\Models\User;
 use App\Services\Email\EmailNotificationService;
+use App\Services\NavigationService;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Mail\Events\MessageSent;
@@ -99,6 +100,11 @@ class AppServiceProvider extends ServiceProvider
                     'provider_message_id' => $messageId,
                     'sent_at' => now(),
                 ]);
+        });
+
+        View::composer('layouts.admin', function ($view) {
+            $navigationService = app(NavigationService::class);
+            $view->with('adminNavigation', $navigationService->getAdminNavigation());
         });
     }
 }

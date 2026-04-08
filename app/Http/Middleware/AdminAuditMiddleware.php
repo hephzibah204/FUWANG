@@ -15,29 +15,27 @@ class AdminAuditMiddleware
         $response = $next($request);
 
         try {
-            if (!$request->isMethodSafe()) {
-                $route = $request->route();
-                $routeName = (string) ($route?->getName() ?? '');
-                if (!str_starts_with($routeName, 'admin.audit_logs.')) {
-                    $admin = Auth::guard('admin')->user();
-                    $meta = [
-                        'method' => $request->method(),
-                        'path' => $request->path(),
-                        'route' => $routeName ?: null,
-                        'status' => $response->getStatusCode(),
-                        'params' => $this->safeArray($route?->parameters() ?? []),
-                        'query' => $this->safeArray($request->query()),
-                        'input' => $this->safeArray($request->except(['_token', '_method'])),
-                    ];
+            $route = $request->route();
+            $routeName = (string) ($route?->getName() ?? '');
+            if (!str_starts_with($routeName, 'admin.audit_logs.')) {
+                $admin = Auth::guard('admin')->user();
+                $meta = [
+                    'method' => $request->method(),
+                    'path' => $request->path(),
+                    'route' => $routeName ?: null,
+                    'status' => $response->getStatusCode(),
+                    'params' => $this->safeArray($route?->parameters() ?? []),
+                    'query' => $this->safeArray($request->query()),
+                    'input' => $this->safeArray($request->except(['_token', '_method'])),
+                ];
 
-                    AdminAuditLog::create([
-                        'admin_id' => $admin?->id,
-                        'action' => $routeName ?: ('admin.' . strtolower($request->method()) . '.' . str_replace('/', '.', $request->path())),
-                        'meta' => $meta,
-                        'ip' => $request->ip(),
-                        'user_agent' => substr((string) $request->userAgent(), 0, 1000),
-                    ]);
-                }
+                AdminAuditLog::create([
+                    'admin_id' => $admin?->id,
+                    'action' => $routeName ?: ('admin.' . strtolower($request->method()) . '.' . str_replace('/', '.', $request->path())),
+                    'meta' => $meta,
+                    'ip' => $request->ip(),
+                    'user_agent' => substr((string) $request->userAgent(), 0, 1000),
+                ]);
             }
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error('AdminAuditMiddleware: failed to write audit log', [
@@ -78,4 +76,3 @@ class AdminAuditMiddleware
         return $out;
     }
 }
-

@@ -11,6 +11,14 @@ use Illuminate\Support\Facades\DB;
 class KycService
 {
     /**
+     * Check if the entire KYC system is enabled.
+     */
+    public function isKycEnabled(): bool
+    {
+        return (bool) SystemSetting::get('kyc_enabled', true);
+    }
+
+    /**
      * Tier limits configuration
      * Returns limits for daily, monthly, and single transactions based on tier.
      */
@@ -51,6 +59,10 @@ class KycService
      */
     public function canTransact(User $user, float $amount): array
     {
+        if (!$this->isKycEnabled()) {
+            return ['allowed' => true];
+        }
+
         $tier = (int) ($user->kyc_tier ?? 0);
         $limits = $this->getTierLimits($tier);
 

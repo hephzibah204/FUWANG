@@ -1,0 +1,38 @@
+[
+    {
+        "title": "Dashboard",
+        "route": "admin.dashboard",
+        "icon": "fas fa-tachometer-alt"
+    },
+    {
+        "title": "Users",
+        "route": "admin.users.index",
+        "icon": "fas fa-users"
+    },
+    {
+        "title": "Transactions",
+        "route": "admin.transactions.index",
+        "icon": "fas fa-exchange-alt"
+    },
+    {
+        "title": "Verifications",
+        "route": "admin.verifications.index",
+        "icon": "fas fa-check-circle"
+    },
+    {
+        "title": "Settings",
+        "icon": "fas fa-cogs",
+        "children": [
+            {
+                "title": "General",
+                "route": "admin.settings.index",
+                "icon": "fas fa-sliders-h"
+            },
+            {
+                "title": "Advanced",
+                "route": "admin.advanced_settings.index",
+                "icon": "fas fa-cog"
+            }
+        ]
+    }
+]

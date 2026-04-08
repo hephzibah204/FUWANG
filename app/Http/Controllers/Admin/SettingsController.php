@@ -570,4 +570,26 @@ class SettingsController extends Controller
 
         return response()->json(['status' => true, 'message' => 'Referral settings updated successfully.']);
     }
+
+    public function updateKycSettings(Request $request)
+    {
+        $request->validate([
+            'kyc_enabled' => 'required|boolean',
+        ]);
+
+        SystemSetting::set('kyc_enabled', $request->kyc_enabled ? 'true' : 'false', 'kyc');
+
+        return response()->json(['status' => true, 'message' => 'KYC settings updated successfully.']);
+    }
+
+    public function updateAuctionSettings(Request $request)
+    {
+        $request->validate([
+            'auction_commission_percentage' => 'required|numeric|min:0|max:100',
+        ]);
+
+        SystemSetting::set('auction_commission_percentage', $request->auction_commission_percentage, 'auction');
+
+        return response()->json(['status' => true, 'message' => 'Auction settings updated successfully.']);
+    }
 }
