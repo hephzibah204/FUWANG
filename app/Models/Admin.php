@@ -2,15 +2,17 @@
 
 namespace App\Models;
 
+use App\Traits\Loggable;
 use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use PragmaRX\Google2FALaravel\Support\Traits\TwoFactorAuthenticatable;
 
 class Admin extends Authenticatable
 {
-    use Notifiable, HasRoles, HasFactory;
+    use Notifiable, HasRoles, HasFactory, TwoFactorAuthenticatable, Loggable;
 
     protected $fillable = [
         'username',
@@ -20,14 +22,12 @@ class Admin extends Authenticatable
         'avatar',
         'password',
         'is_super_admin',
-        'two_factor_secret',
-        'two_factor_enabled',
     ];
 
     protected $hidden = [
         'password',
         'remember_token',
-        'two_factor_secret',
+        'google2fa_secret',
     ];
 
     protected function casts(): array
@@ -35,8 +35,6 @@ class Admin extends Authenticatable
         return [
             'password' => 'hashed',
             'is_super_admin' => 'boolean',
-            'two_factor_enabled' => 'boolean',
-            'two_factor_secret' => 'encrypted',
         ];
     }
 
@@ -55,13 +53,5 @@ class Admin extends Authenticatable
         } catch (PermissionDoesNotExist) {
             return false;
         }
-    }
-
-    /**
-     * Get the audit logs for this admin.
-     */
-    public function auditLogs()
-    {
-        return $this->hasMany(AdminAuditLog::class);
     }
 }

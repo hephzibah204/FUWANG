@@ -42,8 +42,6 @@ Route::get('/feed.xml', [FeedController::class, 'feed'])->name('seo.feed');
 
 Route::get('/login',    [LoginController::class, 'showLoginForm'])->name('login');
 Route::post('/login',   [LoginController::class, 'login'])->middleware('throttle:5,1'); // C-1 brute-force protection
-Route::get('/login/2fa', [\App\Http\Controllers\Auth\TwoFactorController::class, 'showVerifyForm'])->name('login.2fa');
-Route::post('/login/2fa', [\App\Http\Controllers\Auth\TwoFactorController::class, 'verify'])->name('login.2fa.verify');
 
 Route::get('/register', [App\Http\Controllers\Auth\RegisterController::class, 'showRegistrationForm'])->name('register');
 Route::post('/register',[App\Http\Controllers\Auth\RegisterController::class, 'register']);
@@ -106,8 +104,6 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/profile',  [App\Http\Controllers\ProfileController::class, 'index'])->name('profile');
     Route::post('/profile', [App\Http\Controllers\ProfileController::class, 'update'])->name('profile.update');
     Route::get('/profile/security', [App\Http\Controllers\ProfileController::class, 'security'])->name('profile.security');
-    Route::post('/profile/security/2fa/enable', [App\Http\Controllers\User\TwoFactorController::class, 'enable'])->name('user.2fa.enable');
-    Route::post('/profile/security/2fa/disable', [App\Http\Controllers\User\TwoFactorController::class, 'disable'])->name('user.2fa.disable');
 
     // Fuwa.NG AI Chat
     Route::post('/ai/chat', [App\Http\Controllers\AiController::class, 'chat'])->name('ai.chat');
@@ -363,13 +359,9 @@ Route::middleware(['auth'])->group(function () {
 // IMPORTANT (C-3): Admin prefix is OUTSIDE the user auth middleware.
 // Admin login must be reachable by unauthenticated visitors.
 Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function () {
-    Route::get('/login',  [App\Http\Controllers\Admin\Auth\LoginController::class, 'showLoginForm'])->name('login');
-        Route::post('/login', [App\Http\Controllers\Admin\Auth\LoginController::class, 'login']);
-        Route::post('/logout',[App\Http\Controllers\Admin\Auth\LoginController::class, 'logout'])->name('logout');
-
-        // 2FA Routes
-        Route::get('/2fa', [App\Http\Controllers\Admin\Auth\TwoFactorController::class, 'index'])->name('2fa.index');
-        Route::post('/2fa', [App\Http\Controllers\Admin\Auth\TwoFactorController::class, 'verify'])->name('2fa.verify');
+    Route::get('/login',  [App\Http\Controllers\Admin\Auth\LoginController::class, 'showLoginForm'])->name('login')->middleware('google2fa');
+    Route::post('/login', [App\Http\Controllers\Admin\Auth\LoginController::class, 'login'])->middleware('google2fa');
+    Route::post('/logout',[App\Http\Controllers\Admin\Auth\LoginController::class, 'logout'])->name('logout');
 
         Route::middleware(['auth:admin', 'admin.audit'])->group(function () {
             // Admin Profile

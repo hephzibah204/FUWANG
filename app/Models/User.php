@@ -12,11 +12,28 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use App\Mail\PasswordResetMail;
 use App\Models\EmailLog;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Models\Activity;
+use PragmaRX\Google2FALaravel\Support\Traits\TwoFactorAuthenticatable;
 
 class User extends Authenticatable implements CanResetPasswordContract
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, CanResetPassword;
+    use LogsActivity, HasFactory, Notifiable, CanResetPassword, TwoFactorAuthenticatable;
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logFillable()
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
+    }
+
+    public function tapActivity(Activity $activity, string $eventName)
+    {
+        $activity->description = "{$eventName}d";
+    }
 
     public function sendPasswordResetNotification($token)
     {
@@ -26,16 +43,16 @@ class User extends Authenticatable implements CanResetPasswordContract
 
         $mailable = new PasswordResetMail($this, (string) $token);
 
-        if (Schema::hasTable('email_logs')) {
+        if (Schema::hasTable(\'email_logs\')) {
             EmailLog::query()->create([
-                'id' => $mailable->emailLogId,
-                'user_id' => $this->id,
-                'to_email' => $this->email,
-                'type' => 'password_reset',
-                'subject' => $mailable->envelope()->subject,
-                'status' => 'queued',
-                'metadata' => [
-                    'scope' => 'security',
+                \'id\' => $mailable->emailLogId,
+                \'user_id\' => $this->id,
+                \'to_email\' => $this->email,
+                \'type\' => \'password_reset\',
+                \'subject\' => $mailable->envelope()->subject,
+                \'status\' => \'queued\',
+                \'metadata\' => [
+                    \'scope\' => \'security\',
                 ],
             ]);
         }
@@ -49,19 +66,19 @@ class User extends Authenticatable implements CanResetPasswordContract
      * @var list<string>
      */
     protected $fillable = [
-        'fullname',
-        'number',
-        'username',
-        'email',
-        'password',
-        'reseller_id',
-        'referral_id',
-        'referred_user_id',
-        'online_status',
-        'user_status',
-        'kyc_tier',
-        'kyc_rejection_reason',
-        'completed_tours',
+        \'fullname\',
+        \'number\',
+        \'username\',
+        \'email\',
+        \'password\',
+        \'reseller_id\',
+        \'referral_id\',
+        \'referred_user_id\',
+        \'online_status\',
+        \'user_status\',
+        \'kyc_tier\',
+        \'kyc_rejection_reason\',
+        \'completed_tours\',
         // google2fa_secret intentionally excluded from mass assignment — set only via ProfileController::enable2fa
     ];
 
@@ -71,9 +88,10 @@ class User extends Authenticatable implements CanResetPasswordContract
      * @var list<string>
      */
     protected $hidden = [
-        'password',
-        'transaction_pin',
-        'remember_token',
+        \'password\',
+        \'transaction_pin\',
+        \'remember_token\',
+        \'google2fa_secret\',
     ];
 
     /**
@@ -84,9 +102,9 @@ class User extends Authenticatable implements CanResetPasswordContract
     protected function casts(): array
     {
         return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-            'completed_tours' => 'array',
+            \'email_verified_at\' => \'datetime\',
+            \'password\' => \'hashed\',
+            \'completed_tours\' => \'array\',
         ];
     }
 
@@ -95,27 +113,27 @@ class User extends Authenticatable implements CanResetPasswordContract
      */
     public function balance()
     {
-        return $this->hasOne(AccountBalance::class, 'user_id', 'id');
+        return $this->hasOne(AccountBalance::class, \'user_id\', \'id\');
     }
 
     public function referrer()
     {
-        return $this->belongsTo(User::class, 'referred_user_id', 'id');
+        return $this->belongsTo(User::class, \'referred_user_id\', \'id\');
     }
 
     public function referredUsers()
     {
-        return $this->hasMany(User::class, 'referred_user_id', 'id');
+        return $this->hasMany(User::class, \'referred_user_id\', \'id\');
     }
 
     public function referralsMade()
     {
-        return $this->hasMany(Referral::class, 'referrer_user_id', 'id');
+        return $this->hasMany(Referral::class, \'referrer_user_id\', \'id\');
     }
 
     public function referralRecord()
     {
-        return $this->hasOne(Referral::class, 'referred_user_id', 'id');
+        return $this->hasOne(Referral::class, \'referred_user_id\', \'id\');
     }
 
     /**
@@ -123,7 +141,7 @@ class User extends Authenticatable implements CanResetPasswordContract
      */
     public function transactions()
     {
-        return $this->hasMany(Transaction::class, 'user_email', 'email');
+        return $this->hasMany(Transaction::class, \'user_email\', \'email\');
     }
 
     /**

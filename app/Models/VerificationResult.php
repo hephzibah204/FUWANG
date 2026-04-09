@@ -3,9 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class VerificationResult extends Model
 {
+    use LogsActivity;
+
     protected $fillable = [
         'user_id',
         'service_type',
@@ -21,6 +25,14 @@ class VerificationResult extends Model
     protected $casts = [
         'response_data' => 'array',
     ];
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logFillable()
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
+    }
 
     public function user()
     {

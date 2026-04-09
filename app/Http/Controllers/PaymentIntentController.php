@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\PaymentIntent;
+use App\Models\Transaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
@@ -19,6 +20,17 @@ class PaymentIntentController extends Controller
         $user = Auth::user();
         if (!$user) {
             return response()->json(['status' => false, 'message' => 'Unauthorized'], 401);
+        }
+
+        $tier = $user->kyc_tier ?? 1;
+        $dailyLimit = config('kyc.tiers.' . $tier . '.daily_limit');
+
+        $todayTransactions = Transaction::where('user_email', $user->email)
+            ->whereDate('created_at', today())
+            ->sum('amount');
+
+        if ($todayTransactions + $request->amount > $dailyLimit) {
+            return response()->json(['status' => false, 'message' => 'Daily transaction limit exceeded.'], 403);
         }
 
         $reference = 'NXS-' . strtoupper(Str::random(10));
@@ -72,7 +84,7 @@ class PaymentIntentController extends Controller
             'amount_expected' => $intent->amount_expected,
             'currency' => $intent->currency,
             'intent_status' => $intent->status,
-            'expires_at' => $intent->expires_at,
+            'expires_at' => $this->expires_at,
         ]);
     }
 }

@@ -25,7 +25,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->append(\App\Http\Middleware\ErrorHandlingMiddleware::class);
         $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
         $middleware->append(\App\Http\Middleware\EnforceHttps::class);
-        
+        $middleware->append(\App\Http\Middleware\ActivityLogMiddleware::class);
+        $middleware->append(\PragmaRX\Google2FALaravel\Middleware::class);
+
         $installerEnabled = filter_var(env('INSTALLER_ENABLED', false), FILTER_VALIDATE_BOOL) && app()->environment(['local', 'testing']);
         if ($installerEnabled) {
             $middleware->append(\App\Http\Middleware\CheckInstallation::class);
@@ -46,6 +48,7 @@ return Application::configure(basePath: dirname(__DIR__))
         });
         
         $middleware->alias([
+            'google2fa' => \PragmaRX\Google2FALaravel\Middleware::class,
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
             'super_admin' => \App\Http\Middleware\SuperAdminMiddleware::class,
             'permission' => \App\Http\Middleware\CheckAdminPermission::class,
@@ -53,7 +56,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin.security' => \App\Http\Middleware\AdminSecurityMiddleware::class,
             'admin.audit' => \App\Http\Middleware\AdminAuditMiddleware::class,
             'api.token' => \App\Http\Middleware\ApiTokenAuth::class,
-            'api.ratelimit' => \App\Http\Middleware\ApiRateLimit::class,
+            'api.ratelimit' => \App\Http/Middleware\ApiRateLimit::class,
             'service.ratelimit' => \App\Http\Middleware\ServiceApiRateLimit::class,
             'kyc.enforce' => \App\Http\Middleware\EnforceKycTierLimits::class,
             'ab' => \App\Http\Middleware\AssignAbVariants::class,

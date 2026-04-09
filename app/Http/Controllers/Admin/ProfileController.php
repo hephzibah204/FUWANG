@@ -7,7 +7,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Storage;
-use App\Models\AdminAuditLog;
 
 class ProfileController extends Controller
 {
@@ -42,13 +41,7 @@ class ProfileController extends Controller
 
         $admin->save();
 
-        AdminAuditLog::create([
-            'admin_id' => $admin->id,
-            'action' => 'Updated Profile',
-            'meta' => ['details' => 'Admin updated their profile information.'],
-            'ip' => request()->ip(),
-            'user_agent' => request()->userAgent()
-        ]);
+        $admin->logActivity('Updated Profile', 'Admin updated their profile information.');
 
         return redirect()->back()->with('success', 'Profile updated successfully.');
     }
@@ -69,13 +62,7 @@ class ProfileController extends Controller
         $admin->password = Hash::make($request->password);
         $admin->save();
 
-        AdminAuditLog::create([
-            'admin_id' => $admin->id,
-            'action' => 'Updated Password',
-            'meta' => ['details' => 'Admin changed their password.'],
-            'ip' => request()->ip(),
-            'user_agent' => request()->userAgent()
-        ]);
+        $admin->logActivity('Updated Password', 'Admin changed their password.');
 
         return redirect()->back()->with('success', 'Password updated successfully.');
     }
