@@ -38,69 +38,91 @@ class VerificationController extends Controller
         $headers = is_array($provider->headers) ? $provider->headers : [];
 
         $paid = app(PaidActionService::class)->run($user, $price, 'API: NIN Verification', 'NINAPI', function () use ($headers, $endpoint, $request, $provider, $user) {
-            if (VuvaaClient::isVuvaaProvider($provider)) {
-                if ($request->mode !== 'nin') {
-                    throw new \RuntimeException('Selected provider does not support this verification mode.');
+            try {
+                if (VuvaaClient::isVuvaaProvider($provider)) {
+                    if ($request->mode !== 'nin') {
+                        throw new \RuntimeException('Selected provider does not support this verification mode.');
+                    }
+
+                    $client = new VuvaaClient($provider);
+                    $result = $client->verifyNin((string) $request->number);
+                    if (!$result['ok']) {
+                        throw new \RuntimeException((string) ($result['message'] ?? 'Verification failed.'));
+                    }
+
+                    $data = $result['data'];
+                    $vr = app(VerificationResultService::class)->create(
+                        $user,
+                        'nin_verification',
+                        (string) $request->number,
+                        (string) $provider->name,
+                        $data,
+                        'success'
+                    );
+
+                    return [
+                        'status' => true,
+                        'message' => 'NIN verified',
+                        'result_id' => $vr->id,
+                        'reference_id' => $vr->reference_id,
+                        'data' => $data,
+                    ];
                 }
 
-                $client = new VuvaaClient($provider);
-                $result = $client->verifyNin((string) $request->number);
-                if (!$result['ok']) {
-                    throw new \RuntimeException((string) ($result['message'] ?? 'Verification failed.'));
+                $slug = $request->mode === 'phone' ? 'nin_phone' : 'nin';
+                $url = str_replace('/nin', '/' . $slug, rtrim($endpoint, '/')) . '/' . $request->number;
+                $http = Http::timeout(60);
+                if (!empty($headers)) {
+                    $http = $http->withHeaders($headers);
                 }
 
-                $data = $result['data'];
-                $vr = app(VerificationResultService::class)->create(
+                $response = $http->post($url, [
+                    'firstname' => $request->firstname,
+                    'lastname' => $request->lastname,
+                    'dob' => $request->dob,
+                ]);
+
+                if ($response->successful() && ($response['status'] ?? null) === 'success') {
+                    $data = $response->json()['data'] ?? $response->json();
+                    $vr = app(VerificationResultService::class)->create(
+                        $user,
+                        'nin_verification',
+                        (string) $request->number,
+                        (string) $provider->name,
+                        $data,
+                        'success'
+                    );
+                    return [
+                        'status' => true,
+                        'message' => 'NIN verified',
+                        'result_id' => $vr->id,
+                        'reference_id' => $vr->reference_id,
+                        'data' => $data,
+                    ];
+                }
+
+                $message = (string) ($response['message'] ?? 'Verification failed.');
+                app(VerificationResultService::class)->create(
                     $user,
                     'nin_verification',
                     (string) $request->number,
                     (string) $provider->name,
-                    $data,
-                    'success'
+                    ['error' => $message],
+                    'failed'
                 );
 
-                return [
-                    'status' => true,
-                    'message' => 'NIN verified',
-                    'result_id' => $vr->id,
-                    'reference_id' => $vr->reference_id,
-                    'data' => $data,
-                ];
-            }
-
-            $slug = $request->mode === 'phone' ? 'nin_phone' : 'nin';
-            $url = str_replace('/nin', '/' . $slug, rtrim($endpoint, '/')) . '/' . $request->number;
-            $http = Http::timeout(60);
-            if (!empty($headers)) {
-                $http = $http->withHeaders($headers);
-            }
-
-            $response = $http->post($url, [
-                'firstname' => $request->firstname,
-                'lastname' => $request->lastname,
-                'dob' => $request->dob,
-            ]);
-
-            if ($response->successful() && ($response['status'] ?? null) === 'success') {
-                $data = $response->json()['data'] ?? $response->json();
-                $vr = app(VerificationResultService::class)->create(
+                throw new \RuntimeException($message);
+            } catch (\Exception $e) {
+                app(VerificationResultService::class)->create(
                     $user,
                     'nin_verification',
                     (string) $request->number,
                     (string) $provider->name,
-                    $data,
-                    'success'
+                    ['error' => $e->getMessage()],
+                    'failed'
                 );
-                return [
-                    'status' => true,
-                    'message' => 'NIN verified',
-                    'result_id' => $vr->id,
-                    'reference_id' => $vr->reference_id,
-                    'data' => $data,
-                ];
+                throw $e;
             }
-
-            throw new \RuntimeException((string) ($response['message'] ?? 'Verification failed.'));
         });
 
         if (!$paid['ok']) {
@@ -170,37 +192,59 @@ class VerificationController extends Controller
         $headers = is_array($provider->headers) ? $provider->headers : [];
 
         $paid = app(PaidActionService::class)->run($user, $price, 'API: BVN Verification', 'BVNAPI', function () use ($headers, $url, $request, $provider, $user) {
-            $http = Http::timeout(60);
-            if (!empty($headers)) {
-                $http = $http->withHeaders($headers);
-            }
+            try {
+                $http = Http::timeout(60);
+                if (!empty($headers)) {
+                    $http = $http->withHeaders($headers);
+                }
 
-            $response = $http->post($url, [
-                'firstname' => $request->firstname,
-                'lastname' => $request->lastname,
-                'dob' => $request->dob,
-            ]);
+                $response = $http->post($url, [
+                    'firstname' => $request->firstname,
+                    'lastname' => $request->lastname,
+                    'dob' => $request->dob,
+                ]);
 
-            if ($response->successful() && ($response['status'] ?? null) === 'success') {
-                $data = $response->json()['data'] ?? $response->json();
-                $result = app(VerificationResultService::class)->create(
+                if ($response->successful() && ($response['status'] ?? null) === 'success') {
+                    $data = $response->json()['data'] ?? $response->json();
+                    $result = app(VerificationResultService::class)->create(
+                        $user,
+                        'bvn_verification',
+                        (string) $request->number,
+                        (string) $provider->name,
+                        $data,
+                        'success'
+                    );
+                    return [
+                        'status' => true,
+                        'message' => 'BVN verified',
+                        'result_id' => $result->id,
+                        'reference_id' => $result->reference_id,
+                        'data' => $data,
+                    ];
+                }
+
+                $message = (string) ($response['message'] ?? 'Verification failed.');
+                app(VerificationResultService::class)->create(
                     $user,
                     'bvn_verification',
                     (string) $request->number,
                     (string) $provider->name,
-                    $data,
-                    'success'
+                    ['error' => $message],
+                    'failed'
                 );
-                return [
-                    'status' => true,
-                    'message' => 'BVN verified',
-                    'result_id' => $result->id,
-                    'reference_id' => $result->reference_id,
-                    'data' => $data,
-                ];
-            }
 
-            throw new \RuntimeException((string) ($response['message'] ?? 'Verification failed.'));
+                throw new \RuntimeException($message);
+            } catch (\Exception $e) {
+                app(VerificationResultService::class)->create(
+                    $user,
+                    'bvn_verification',
+                    (string) $request->number,
+                    (string) $provider->name,
+                    ['error' => $e->getMessage()],
+                    'failed'
+                );
+                throw $e;
+            }
         });
 
         if (!$paid['ok']) {
@@ -218,6 +262,13 @@ class VerificationController extends Controller
         if ($result->user_id !== $user->id) {
             return response()->json(['status' => false, 'message' => 'Forbidden'], 403);
         }
+
+        // Log the access to the verification result
+        activity()
+            ->performedOn($result)
+            ->causedBy($user)
+            ->withProperty('ip', $request->ip())
+            ->log('viewed_verification_result');
 
         return response()->json([
             'status' => true,

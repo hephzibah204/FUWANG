@@ -22,7 +22,9 @@ class ApiRateLimit
 
         $limit = (int) ($token->rate_limit_per_minute ?? 60);
         if ($limit <= 0) {
-            return $next($request);
+            $response = $next($request);
+            $this->addHeaders($response, $limit, 0, 0);
+            return $response;
         }
 
         $window = now()->format('YmdHi');
@@ -39,7 +41,25 @@ class ApiRateLimit
             throw new TooManyRequestsHttpException(60, 'Rate limit exceeded.');
         }
 
-        return $next($request);
+        $response = $next($request);
+
+        $remaining = max(0, $limit - $count);
+        $reset = now()->addMinute()->timestamp;
+
+        $this->addHeaders($response, $limit, $remaining, $reset);
+
+        return $response;
+    }
+
+    /**
+     * Add the rate limit headers to the response.
+     */
+    protected function addHeaders(Response $response, int $limit, int $remaining, int $reset): void
+    {
+        $response->headers->add([
+            'X-RateLimit-Limit' => $limit,
+            'X-RateLimit-Remaining' => $remaining,
+            'X-RateLimit-Reset' => $reset,
+        ]);
     }
 }
-

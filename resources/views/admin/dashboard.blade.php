@@ -32,7 +32,7 @@
                 <h3>{{ number_format($stats['total_users']) }}</h3>
                 <p>Total Users</p>
             </div>
-            <div classs="icon">
+            <div class="icon">
                 <i class="ion ion-person-add"></i>
             </div>
         </div>
@@ -45,6 +45,42 @@
             </div>
             <div class="icon">
                 <i class="ion ion-pie-graph"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-4 col-md-6">
+        <div class="small-box bg-secondary">
+            <div class="inner">
+                <h3>{{ number_format($stats['daily_verifications']) }}</h3>
+                <p>Today's Verifications</p>
+            </div>
+            <div class="icon">
+                <i class="ion ion-clipboard"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4 col-md-6">
+        <div class="small-box bg-success">
+            <div class="inner">
+                <h3>{{ number_format($stats['daily_success_verifications']) }}</h3>
+                <p>Today's Success Rate</p>
+            </div>
+            <div class="icon">
+                <i class="ion ion-checkmark"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4 col-md-12">
+        <div class="small-box bg-danger">
+            <div class="inner">
+                <h3>{{ number_format($stats['daily_failed_verifications']) }}</h3>
+                <p>Today's Failures</p>
+            </div>
+            <div class="icon">
+                <i class="ion ion-close"></i>
             </div>
         </div>
     </div>
@@ -68,6 +104,19 @@
             </div>
             <div class="card-body">
                 <canvas id="user-growth-chart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Verification History (Last 30 Days)</h3>
+            </div>
+            <div class="card-body">
+                <canvas id="verification-history-chart"></canvas>
             </div>
         </div>
     </div>
@@ -126,6 +175,39 @@
                         grid: {
                             display: true,
                         }
+                    }
+                }
+            }
+        });
+
+        // Verification History Chart
+        var verificationHistoryCtx = document.getElementById('verification-history-chart').getContext('2d');
+        var verificationHistoryChart = new Chart(verificationHistoryCtx, {
+            type: 'bar',
+            data: {
+                labels: {!! json_encode($verification_history->pluck('date')->unique()) !!},
+                datasets: [
+                    {
+                        label: 'Success',
+                        data: {!! json_encode($verification_history->where('status', 'success')->pluck('count')) !!},
+                        backgroundColor: '#00a65a',
+                    },
+                    {
+                        label: 'Failed',
+                        data: {!! json_encode($verification_history->where('status', 'failed')->pluck('count')) !!},
+                        backgroundColor: '#f56954',
+                    },
+                ]
+            },
+            options: {
+                maintainAspectRatio: false,
+                responsive: true,
+                scales: {
+                    x: {
+                        stacked: true,
+                    },
+                    y: {
+                        stacked: true
                     }
                 }
             }

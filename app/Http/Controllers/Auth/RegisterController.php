@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use App\Services\Referrals\ReferralService;
+use Illuminate\Validation\Rules\Password;
 
 class RegisterController extends Controller
 {
@@ -24,7 +25,7 @@ class RegisterController extends Controller
             'fullname' => ['required', 'string', 'max:255'],
             'username' => ['required', 'string', 'max:20', 'unique:users'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
-            'password' => ['required', 'string', 'min:8'],
+            'password' => ['required', 'string', Password::min(8)->mixedCase()->numbers()->symbols()],
             'transaction_pin' => ['required', 'string', 'min:4', 'max:4'],
             'apply_as_agent' => ['sometimes', 'boolean'],
             'state' => ['required_if:apply_as_agent,1', 'string', 'max:255'],

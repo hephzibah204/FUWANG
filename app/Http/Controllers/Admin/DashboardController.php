@@ -1,1 +1,49 @@
-<?php\n\nnamespace App\\Http\\Controllers\\Admin;\n\nuse App\\Http\Controllers\\Controller;\nuse Illuminate\\Http\\Request;\nuse App\\Models\\Transaction;\nuse App\\Models\\AuctionLot;\nuse App\\Models\\User;\nuse Carbon\\Carbon;\n\nclass DashboardController extends Controller\n{\n    public function index()\n    {\n        // Fetch data for BI dashboard\n        $stats = [\n            \'total_revenue\' => Transaction::where(\'status\', \'completed\')->sum(\'amount\'),\n            \'total_transactions\' => Transaction::count(),\n            \'total_users\' => User::count(),\n            \'total_auctions\' => AuctionLot::count(),\n        ];\n\n        $revenue_by_service = Transaction::where(\'status\', \'completed\')\n            ->select(\'service\', DB::raw(\'SUM(amount) as total\'))\n            ->groupBy(\'service\')\n            ->orderBy(\'total\', \'desc\')\n            ->get();\n\n        $user_growth = User::select(DB::raw(\'DATE(created_at) as date\'), DB::raw(\'count(*) as users\'))\n            ->where(\'created_at\', \'>=\', Carbon::now()->subDays(30))\n            ->groupBy(\'date\')\n            ->orderBy(\'date\', \'asc\')\n            ->get();\n\n        return view(\'admin.dashboard\', compact(\'stats\', \'revenue_by_service\', \'user_growth\'));\n    }\n}\n
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\Transaction;
+use App\Models\AuctionLot;
+use App\Models\User;
+use App\Models\VerificationResult;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+
+class DashboardController extends Controller
+{
+    public function index()
+    {
+        // Fetch data for BI dashboard
+        $stats = [
+            'total_revenue' => Transaction::where('status', 'completed')->sum('amount'),
+            'total_transactions' => Transaction::count(),
+            'total_users' => User::count(),
+            'total_auctions' => AuctionLot::count(),
+            'daily_verifications' => VerificationResult::where('created_at', '>=', Carbon::today())->count(),
+            'daily_success_verifications' => VerificationResult::where('created_at', '>=', Carbon::today())->where('status', 'success')->count(),
+            'daily_failed_verifications' => VerificationResult::where('created_at', '>=', Carbon::today())->where('status', 'failed')->count(),
+        ];
+
+        $revenue_by_service = Transaction::where('status', 'completed')
+            ->select('service', DB::raw('SUM(amount) as total'))
+            ->groupBy('service')
+            ->orderBy('total', 'desc')
+            ->get();
+
+        $user_growth = User::select(DB::raw('DATE(created_at) as date'), DB::raw('count(*) as users'))
+            ->where('created_at', '>=', Carbon::now()->subDays(30))
+            ->groupBy('date')
+            ->orderBy('date', 'asc')
+            ->get();
+
+        $verification_history = VerificationResult::select(DB::raw('DATE(created_at) as date'), 'status', DB::raw('count(*) as count'))
+            ->where('created_at', '>=', Carbon::now()->subDays(30))
+            ->groupBy('date', 'status')
+            ->orderBy('date', 'asc')
+            ->get();
+
+        return view('admin.dashboard', compact('stats', 'revenue_by_service', 'user_growth', 'verification_history'));
+    }
+}

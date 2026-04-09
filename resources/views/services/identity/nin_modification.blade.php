@@ -159,37 +159,37 @@
                 <div class="terms-content text-white-50 small line-height-relaxed">
                     <p class="mb-3 text-white">Welcome to the <strong>Fuwa.NG NIN Modification Suite</strong>. By proceeding, you acknowledge and agree to the following terms:</p>
                     
-                    <div class="term-item mb-3 p-3 rounded-3" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05);">
+                    <div class="term-item mb-4 p-3 rounded-3" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05);">
                         <strong class="text-white d-block mb-1">1. Authorization of Agency</strong>
                         You hereby authorize Fuwa.NG and its certified processing partners to access and utilize your personal data, including your current NIN, to execute the requested record modifications.
                     </div>
 
-                    <div class="term-item mb-3 p-3 rounded-3" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05);">
+                    <div class="term-item mb-4 p-3 rounded-3" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05);">
                         <strong class="text-white d-block mb-1">2. Independent Service Provider</strong>
                         You acknowledge that Fuwa.NG is an independent platform and is not officially affiliated with NIMC. You provide full, irrevocable consent for Fuwa.NG to act as your authorized agent in interfacing with relevant identity databases.
                     </div>
 
-                    <div class="term-item mb-3 p-3 rounded-3" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05);">
+                    <div class="term-item mb-4 p-3 rounded-3" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05);">
                         <strong class="text-white d-block mb-1">3. Third-Party Representation</strong>
                         If you are an agent submitting on behalf of a client, you solemnly declare that you have obtained explicit, verifiable authorization from the NIN owner to modify their records.
                     </div>
 
-                    <div class="term-item mb-3 p-3 rounded-3" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05);">
+                    <div class="term-item mb-4 p-3 rounded-3" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05);">
                         <strong class="text-white d-block mb-1">4. Alias Credentials Policy</strong>
                         To ensure processing efficiency, Fuwa.NG may utilize secure alias email addresses for system authentication. These aliases are for internal routing and may not provide external inbox access.
                     </div>
 
-                    <div class="term-item mb-3 p-3 rounded-3" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05);">
+                    <div class="term-item mb-4 p-3 rounded-3" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05);">
                         <strong class="text-white d-block mb-1">5. Propagation & Syncing Delays</strong>
                         While modifications are reflected instantly on NIMC portals, third-party institutions (Banks, Telcos, etc.) may take significantly longer to sync. Fuwa.NG is not responsible for these external delays.
                     </div>
 
-                    <div class="term-item mb-3 p-3 rounded-3" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05);">
+                    <div class="term-item mb-4 p-3 rounded-3" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05);">
                         <strong class="text-white d-block mb-1">6. Wallet & Refund Policy</strong>
                         All service fees are final. In the event of a technical processing failure, funds will be refunded to your Fuwa.NG wallet. Wallet balances are non-withdrawable.
                     </div>
 
-                    <div class="term-item mb-3 p-3 rounded-3" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05);">
+                    <div class="term-item mb-4 p-3 rounded-3" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05);">
                         <strong class="text-white d-block mb-1">7. Exclusivity of Submission</strong>
                         You agree not to submit the same modification request on any other platform while it is active on Fuwa.NG. Duplicate submissions result in a forfeiture of the service fee.
                     </div>
@@ -197,7 +197,7 @@
                     <p class="mt-4 mb-0 text-center font-italic">By clicking "I Agree & Proceed," you confirm that you have read, understood, and voluntarily accepted these terms in their entirety.</p>
                 </div>
             </div>
-            <div class="modal-footer border-0 p-4 pt-0 d-flex gap-3">
+            <div class="modal-footer border-0 p-4 pt-0 d-flex gap-3 flex-column flex-sm-row">
                 <button type="button" class="btn btn-outline-light rounded-pill px-4 flex-grow-1" onclick="window.location.href='{{ route('dashboard') }}'">Not Agreed</button>
                 <button type="button" id="agreeBtn" class="btn btn-primary rounded-pill px-4 flex-grow-1">I Agree & Proceed</button>
             </div>
@@ -208,12 +208,40 @@
 
 @push('styles')
 <style>
-    .line-height-relaxed { line-height: 1.6; }
+    .line-height-relaxed { line-height: 1.7; }
     .process-list { list-style: none; }
     .process-list li { display: flex; gap: 15px; margin-bottom: 20px; }
-    .p-icon { width: 28px; height: 28px; background: rgba(59, 130, 246, 0.1); color: #3b82f6; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; }
+    .p-icon { width: 28px; height: 28px; background: rgba(59, 130, 246, 0.1); color: #3b82f6; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; flex-shrink: 0; }
     .p-text { font-size: 0.85rem; color: var(--clr-text-muted); }
     .p-text strong { display: block; color: white; margin-bottom: 2px; }
+
+    @media (max-width: 767.98px) {
+        .service-page .panel-card {
+            padding: 1rem !important;
+        }
+        .form-control, .btn {
+            font-size: 0.95rem;
+            padding: 0.85rem 1rem;
+        }
+        .custom-file-upload p {
+            font-size: 0.8rem;
+        }
+        .modal-dialog {
+            margin: 0.5rem;
+        }
+        .modal-content {
+            border-radius: 15px !important;
+        }
+        .modal-body {
+            max-height: 70vh;
+        }
+        .term-item {
+            margin-bottom: 1rem !important;
+        }
+        .service-header .display-4 {
+            font-size: 2.5rem;
+        }
+    }
 </style>
 @endpush
 
@@ -245,40 +273,46 @@
 
             let oldLabel = 'Old Value';
             let newLabel = 'New Value';
-            let placeholder = 'Enter details';
+            let oldPlaceholder = 'Current detail on record';
+            let newPlaceholder = 'New detail to be updated';
 
             switch(type) {
                 case 'name':
                     oldLabel = 'Current Full Name';
                     newLabel = 'Correct Full Name';
-                    placeholder = 'e.g. John Doe';
+                    oldPlaceholder = 'e.g. Jamiu kowalski';
+                    newPlaceholder = 'e.g. John Doe';
                     break;
                 case 'dob':
                     oldLabel = 'Current Date of Birth';
                     newLabel = 'Correct Date of Birth';
-                    placeholder = 'e.g. 1990-01-01';
+                    oldPlaceholder = 'e.g. 1989-01-31';
+                    newPlaceholder = 'e.g. 1990-01-01';
                     break;
                 case 'address':
                     oldLabel = 'Current Address';
                     newLabel = 'Correct Address';
-                    placeholder = 'Enter full address';
+                    oldPlaceholder = 'Enter full old address';
+                    newPlaceholder = 'Enter full new address';
                     break;
                 case 'phone':
                     oldLabel = 'Current Phone Number';
                     newLabel = 'Correct Phone Number';
-                    placeholder = 'e.g. 08012345678';
+                    oldPlaceholder = 'e.g. 08012345679';
+                    newPlaceholder = 'e.g. 08012345678';
                     break;
                 case 'email':
                     oldLabel = 'Current Email';
                     newLabel = 'Correct Email';
-                    placeholder = 'e.g. user@example.com';
+                    oldPlaceholder = 'e.g. old@example.com';
+                    newPlaceholder = 'e.g. user@example.com';
                     break;
             }
 
             $('#oldValLabel').text(oldLabel);
             $('#newValLabel').text(newLabel);
-            $('#oldValue').attr('placeholder', 'Old ' + placeholder);
-            $('#newValue').attr('placeholder', 'New ' + placeholder);
+            $('#oldValue').attr('placeholder', oldPlaceholder);
+            $('#newValue').attr('placeholder', newPlaceholder);
             
             $('#dynamicFields').fadeIn();
         });

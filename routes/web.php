@@ -146,7 +146,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/payment/verify/paystack', [App\Http\Controllers\PaymentVerificationController::class, 'verifyPaystack'])->name('payment.verify.paystack');
     Route::post('/payment/verify/flutterwave', [App\Http\Controllers\PaymentVerificationController::class, 'verifyFlutterwave'])->name('payment.verify.flutterwave');
     Route::post('/payment/verify/monnify', [App\Http\Controllers\PaymentVerificationController::class, 'verifyMonnify'])->name('payment.verify.monnify');
-    Route::post('/payment/intents', [App\Http\Controllers\PaymentIntentController::class, 'create'])->name('payment.intents.create');
+    Route::post('/payment/intents', [App\Http\Controllers\PaymentIntentController::class, 'create'])->middleware('kyc.enforce')->name('payment.intents.create');
     Route::get('/payment/intents/{reference}', [App\Http\Controllers\PaymentIntentController::class, 'show'])->name('payment.intents.show');
     Route::post('/payment/palmpay/reserve', [App\Http\Controllers\FundingController::class, 'reservePalmpay'])->name('payment.palmpay.reserve');
     Route::post('/payment/auto-funding/ensure', [App\Http\Controllers\FundingController::class, 'ensureAutoFundingAccounts'])->name('payment.auto_funding.ensure');
@@ -158,58 +158,58 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware('feature:nin_verification')->group(function () {
         Route::get('/services/nin-suite', [App\Http\Controllers\Service\NINController::class, 'suiteIndex'])->name('services.nin.suite');
         Route::get('/services/nin',    [App\Http\Controllers\Service\NINController::class, 'index'])->name('services.nin');
-        Route::post('/services/nin/verify', [App\Http\Controllers\Service\NINController::class, 'verify'])->name('services.nin.verify');
+        Route::post('/services/nin/verify', [App\Http\Controllers\Service\NINController::class, 'verify'])->middleware('kyc.enforce')->name('services.nin.verify');
         
         // NIN Modification
         Route::get('/services/nin/modification', [App\Http\Controllers\Service\NINModificationController::class, 'index'])->name('services.nin.modification');
         Route::post('/services/nin/modification/consent', [App\Http\Controllers\Service\NINModificationController::class, 'acceptConsent'])->name('services.nin.modification.consent');
-        Route::post('/services/nin/modification/submit', [App\Http\Controllers\Service\NINModificationController::class, 'submit'])->name('services.nin.modification.submit');
+        Route::post('/services/nin/modification/submit', [App\Http\Controllers\Service\NINModificationController::class, 'submit'])->middleware('kyc.enforce')->name('services.nin.modification.submit');
     });
 
     // ── Identity & Verification Hub ─────────────────────────
     Route::middleware('feature:identity_verification')->group(function () {
         Route::get('/services/drivers-license', [App\Http\Controllers\Service\DriversLicenseController::class, 'index'])->name('services.drivers_license');
-        Route::post('/services/drivers-license/verify', [App\Http\Controllers\Service\DriversLicenseController::class, 'verify'])->name('services.drivers_license.verify');
+        Route::post('/services/drivers-license/verify', [App\Http\Controllers\Service\DriversLicenseController::class, 'verify'])->middleware('kyc.enforce')->name('services.drivers_license.verify');
 
         Route::get('/services/biometric', [App\Http\Controllers\Service\BiometricController::class, 'index'])->name('services.biometric_verify');
-        Route::post('/services/biometric/verify', [App\Http\Controllers\Service\BiometricController::class, 'verify'])->name('services.biometric_verify.verify');
+        Route::post('/services/biometric/verify', [App\Http\Controllers\Service\BiometricController::class, 'verify'])->middleware('kyc.enforce')->name('services.biometric_verify.verify');
 
         Route::get('/services/stamp-duty', [App\Http\Controllers\Service\VerificationController::class, 'stampDutyIndex'])->name('services.stamp_duty');
-        Route::post('/services/stamp-duty/verify', [App\Http\Controllers\Service\VerificationController::class, 'verifyStampDuty'])->name('services.stamp_duty.verify');
+        Route::post('/services/stamp-duty/verify', [App\Http\Controllers\Service\VerificationController::class, 'verifyStampDuty'])->middleware('kyc.enforce')->name('services.stamp_duty.verify');
 
         Route::get('/services/plate-number', [App\Http\Controllers\Service\VerificationController::class, 'plateNumberIndex'])->name('services.plate_number');
-        Route::post('/services/plate-number/verify', [App\Http\Controllers\Service\VerificationController::class, 'verifyPlateNumber'])->name('services.plate_number.verify');
+        Route::post('/services/plate-number/verify', [App\Http\Controllers\Service\VerificationController::class, 'verifyPlateNumber'])->middleware('kyc.enforce')->name('services.plate_number.verify');
 
         Route::get('/services/cac-verify', [App\Http\Controllers\Service\CacController::class, 'index'])->name('services.cac_verify');
-        Route::post('/services/cac-verify/verify', [App\Http\Controllers\Service\CacController::class, 'verify'])->name('services.cac_verify.verify');
+        Route::post('/services/cac-verify/verify', [App\Http\Controllers\Service\CacController::class, 'verify'])->middleware('kyc.enforce')->name('services.cac_verify.verify');
 
         Route::get('/services/tin-verify', [App\Http\Controllers\Service\TinController::class, 'index'])->name('services.tin_verify');
-        Route::post('/services/tin-verify/verify', [App\Http\Controllers\Service\TinController::class, 'verify'])->name('services.tin_verify.verify');
+        Route::post('/services/tin-verify/verify', [App\Http\Controllers\Service\TinController::class, 'verify'])->middleware('kyc.enforce')->name('services.tin_verify.verify');
 
         Route::get('/services/nin-face', [App\Http\Controllers\Service\BiometricController::class, 'index'])->name('services.nin_face');
-        Route::post('/services/nin-face/verify', [App\Http\Controllers\Service\BiometricController::class, 'verifyNinFace'])->name('services.nin_face.verify');
+        Route::post('/services/nin-face/verify', [App\Http\Controllers\Service\BiometricController::class, 'verifyNinFace'])->middleware('kyc.enforce')->name('services.nin_face.verify');
 
         Route::get('/services/credit-bureau', [App\Http\Controllers\Service\VerificationController::class, 'creditBureauIndex'])->name('services.credit_bureau');
-        Route::post('/services/credit-bureau/verify', [App\Http\Controllers\Service\VerificationController::class, 'verifyCreditBureau'])->name('services.credit_bureau.verify');
+        Route::post('/services/credit-bureau/verify', [App\Http\Controllers\Service\VerificationController::class, 'verifyCreditBureau'])->middleware('kyc.enforce')->name('services.credit_bureau.verify');
 
         Route::get('/services/passport', [App\Http\Controllers\Service\PassportController::class, 'index'])->name('services.passport');
-        Route::post('/services/passport/verify', [App\Http\Controllers\Service\PassportController::class, 'verify'])->name('services.passport.verify');
+        Route::post('/services/passport/verify', [App\Http\Controllers\Service\PassportController::class, 'verify'])->middleware('kyc.enforce')->name('services.passport.verify');
 
         Route::get('/services/validation', [App\Http\Controllers\Service\VerificationController::class, 'validationIndex'])->name('services.validation');
-        Route::post('/services/validation/verify', [App\Http\Controllers\Service\VerificationController::class, 'verifyValidation'])->name('services.validation.verify');
+        Route::post('/services/validation/verify', [App\Http\Controllers\Service\VerificationController::class, 'verifyValidation'])->middleware('kyc.enforce')->name('services.validation.verify');
 
         Route::get('/services/clearance', [App\Http\Controllers\Service\VerificationController::class, 'clearanceIndex'])->name('services.clearance');
-        Route::post('/services/clearance/verify', [App\Http\Controllers\Service\VerificationController::class, 'verifyClearance'])->name('services.clearance.verify');
+        Route::post('/services/clearance/verify', [App\Http\Controllers\Service\VerificationController::class, 'verifyClearance'])->middleware('kyc.enforce')->name('services.clearance.verify');
 
         Route::get('/services/personalization', [App\Http\Controllers\Service\VerificationController::class, 'personalizationIndex'])->name('services.personalization');
-        Route::post('/services/personalization/verify', [App\Http\Controllers\Service\VerificationController::class, 'verifyPersonalization'])->name('services.personalization.verify');
+        Route::post('/services/personalization/verify', [App\Http\Controllers\Service\VerificationController::class, 'verifyPersonalization'])->middleware('kyc.enforce')->name('services.personalization.verify');
 
         Route::get('/services/voters-card', [App\Http\Controllers\Service\VerificationController::class, 'votersCardIndex'])->name('services.voters_card');
-        Route::post('/services/voters-card/verify', [App\Http\Controllers\Service\VerificationController::class, 'verifyVotersCard'])->name('services.voters_card.verify');
+        Route::post('/services/voters-card/verify', [App\Http\Controllers\Service\VerificationController::class, 'verifyVotersCard'])->middleware('kyc.enforce')->name('services.voters_card.verify');
 
         Route::get('/services/address-verify', [App\Http\Controllers\Service\VerificationController::class, 'addressIndex'])->name('services.address_verify');
         Route::get('/services/address-verify/all', [App\Http\Controllers\Service\VerificationController::class, 'getAllAddressVerifications'])->name('services.address_verify.all');
-        Route::post('/services/address-verify/submit', [App\Http\Controllers\Service\VerificationController::class, 'submitAddressVerification'])->name('services.address_verify.submit');
+        Route::post('/services/address-verify/submit', [App\Http\Controllers\Service\VerificationController::class, 'submitAddressVerification'])->middleware('kyc.enforce')->name('services.address_verify.submit');
         Route::get('/services/address-verify/details/{id}', [App\Http\Controllers\Service\VerificationController::class, 'viewAddressDetails'])->name('services.address_verify.details');
         Route::delete('/services/address-verify/cancel/{id}', [App\Http\Controllers\Service\VerificationController::class, 'cancelAddressVerification'])->name('services.address_verify.cancel');
         Route::post('/services/address-verify/marketplace', [App\Http\Controllers\Service\VerificationController::class, 'fetchAddressByIdentity'])->name('services.address_verify.marketplace');
@@ -222,14 +222,14 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware('feature:legal_services')->group(function () {
             Route::get('/services/legal', [App\Http\Controllers\Service\LegalPlatformController::class, 'index'])->name('services.legal');
         Route::get('/services/legal-hub', [App\Http\Controllers\Service\LegalHubController::class, 'index'])->name('services.legal-hub');
-        Route::post('/services/legal-hub/draft', [App\Http\Controllers\Service\LegalHubController::class, 'generateDraft'])->name('services.legal-hub.draft');
-        Route::post('/services/legal-hub/finalize', [App\Http\Controllers\Service\LegalHubController::class, 'finalize'])->name('services.legal-hub.finalize');
+        Route::post('/services/legal-hub/draft', [App\Http\Controllers\Service\LegalHubController::class, 'generateDraft'])->middleware('kyc.enforce')->name('services.legal-hub.draft');
+        Route::post('/services/legal-hub/finalize', [App\Http\Controllers\Service\LegalHubController::class, 'finalize'])->middleware('kyc.enforce')->name('services.legal-hub.finalize');
     });
 
     // ── BVN Verification ───────────────────────────────────
     Route::middleware('feature:bvn_verification')->group(function () {
         Route::get('/services/bvn',    [App\Http\Controllers\Service\BVNController::class, 'index'])->name('services.bvn');
-        Route::post('/services/bvn/verify', [App\Http\Controllers\Service\BVNController::class, 'verify'])->name('services.bvn.verify');
+        Route::post('/services/bvn/verify', [App\Http\Controllers\Service\BVNController::class, 'verify'])->middleware('kyc.enforce')->name('services.bvn.verify');
     });
 
     // ── VTU Services (Airtime, Data, Cable, Electricity, Education) ───────
@@ -238,50 +238,50 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/services/vtu/providers/{serviceType}', [App\Http\Controllers\Service\VTUController::class, 'providers'])->name('services.vtu.providers');
 
         Route::get('/services/vtu/airtime',     [App\Http\Controllers\Service\VTUController::class, 'airtimeIndex'])->name('services.vtu.airtime');
-        Route::post('/services/vtu/airtime/buy', [App\Http\Controllers\Service\VTUController::class, 'buyAirtime'])->name('services.vtu.airtime.buy');
+        Route::post('/services/vtu/airtime/buy', [App\Http\Controllers\Service\VTUController::class, 'buyAirtime'])->middleware('kyc.enforce')->name('services.vtu.airtime.buy');
 
         Route::get('/services/vtu/data',        [App\Http\Controllers\Service\VTUController::class, 'dataIndex'])->name('services.vtu.data');
-        Route::post('/services/vtu/data/buy',    [App\Http\Controllers\Service\VTUController::class, 'buyData'])->name('services.vtu.data.buy');
+        Route::post('/services/vtu/data/buy',    [App\Http\Controllers\Service\VTUController::class, 'buyData'])->middleware('kyc.enforce')->name('services.vtu.data.buy');
 
         Route::get('/services/vtu/cable',       [App\Http\Controllers\Service\VTUController::class, 'cableIndex'])->name('services.vtu.cable');
-        Route::post('/services/vtu/cable/buy',   [App\Http\Controllers\Service\VTUController::class, 'buyCable'])->name('services.vtu.cable.buy');
+        Route::post('/services/vtu/cable/buy',   [App\Http\Controllers\Service\VTUController::class, 'buyCable'])->middleware('kyc.enforce')->name('services.vtu.cable.buy');
 
         Route::get('/services/vtu/electricity', [App\Http\Controllers\Service\VTUController::class, 'electricityIndex'])->name('services.vtu.electricity');
         Route::post('/services/vtu/electricity/validate', [App\Http\Controllers\Service\VTUController::class, 'validateElectricity'])->name('services.vtu.electricity.validate');
-        Route::post('/services/vtu/electricity/buy', [App\Http\Controllers\Service\VTUController::class, 'buyElectricity'])->name('services.vtu.electricity.buy');
+        Route::post('/services/vtu/electricity/buy', [App\Http\Controllers\Service\VTUController::class, 'buyElectricity'])->middleware('kyc.enforce')->name('services.vtu.electricity.buy');
 
         Route::get('/services/vtu/airtime-to-cash', [App\Http\Controllers\Service\VTUController::class, 'airtimeToCashIndex'])->name('services.vtu.airtime_to_cash');
-        Route::post('/services/vtu/airtime-to-cash/submit', [App\Http\Controllers\Service\VTUController::class, 'submitAirtimeToCash'])->name('services.vtu.airtime_to_cash.submit');
+        Route::post('/services/vtu/airtime-to-cash/submit', [App\Http\Controllers\Service\VTUController::class, 'submitAirtimeToCash'])->middleware('kyc.enforce')->name('services.vtu.airtime_to_cash.submit');
 
         Route::get('/services/vtu/internet', [App\Http\Controllers\Service\VTUController::class, 'internetIndex'])->name('services.vtu.internet');
-        Route::post('/services/vtu/internet/buy', [App\Http\Controllers\Service\VTUController::class, 'buyInternet'])->name('services.vtu.internet.buy');
+        Route::post('/services/vtu/internet/buy', [App\Http\Controllers\Service\VTUController::class, 'buyInternet'])->middleware('kyc.enforce')->name('services.vtu.internet.buy');
 
         Route::get('/services/vtu/betting', [App\Http\Controllers\Service\VTUController::class, 'bettingIndex'])->name('services.vtu.betting');
-        Route::post('/services/vtu/betting/fund', [App\Http\Controllers\Service\VTUController::class, 'fundBetting'])->name('services.vtu.betting.fund');
+        Route::post('/services/vtu/betting/fund', [App\Http\Controllers\Service\VTUController::class, 'fundBetting'])->middleware('kyc.enforce')->name('services.vtu.betting.fund');
 
         Route::get('/services/vtu/epins', [App\Http\Controllers\Service\VTUController::class, 'epinIndex'])->name('services.vtu.epin');
-        Route::post('/services/vtu/epins/buy', [App\Http\Controllers\Service\VTUController::class, 'buyEpin'])->name('services.vtu.epin.buy');
+        Route::post('/services/vtu/epins/buy', [App\Http\Controllers\Service\VTUController::class, 'buyEpin'])->middleware('kyc.enforce')->name('services.vtu.epin.buy');
 
         Route::get('/services/vtu/recharge-printing', [App\Http\Controllers\Service\VTUController::class, 'rechargePrintingIndex'])->name('services.vtu.recharge_printing');
-        Route::post('/services/vtu/recharge-printing/generate', [App\Http\Controllers\Service\VTUController::class, 'generateRechargePins'])->name('services.vtu.recharge_printing.generate');
+        Route::post('/services/vtu/recharge-printing/generate', [App\Http\Controllers\Service\VTUController::class, 'generateRechargePins'])->middleware('kyc.enforce')->name('services.vtu.recharge_printing.generate');
         Route::get('/services/vtu/recharge-printing/query', [App\Http\Controllers\Service\VTUController::class, 'queryRechargeOrder'])->name('services.vtu.recharge_printing.query');
         Route::get('/services/vtu/recharge-printing/data-plans', [App\Http\Controllers\Service\VTUController::class, 'fetchDatabundlePlans'])->name('services.vtu.recharge_printing.data_plans');
 
         // Education Hub under VTU Hub
         Route::get('/services/vtu/education/waec',       [App\Http\Controllers\Service\VTUController::class, 'waecIndex'])->name('services.education.waec');
-        Route::post('/services/vtu/education/waec/buy',  [App\Http\Controllers\Service\VTUController::class, 'buyWaecPin'])->name('services.education.waec.buy');
+        Route::post('/services/vtu/education/waec/buy',  [App\Http\Controllers\Service\VTUController::class, 'buyWaecPin'])->middleware('kyc.enforce')->name('services.education.waec.buy');
         
         Route::get('/services/vtu/education/waec-registration',       [App\Http\Controllers\Service\VTUController::class, 'waecRegistrationIndex'])->name('services.education.waec_registration');
-        Route::post('/services/vtu/education/waec-registration/buy',  [App\Http\Controllers\Service\VTUController::class, 'buyWaecRegistrationPin'])->name('services.education.waec_registration.buy');
+        Route::post('/services/vtu/education/waec-registration/buy',  [App\Http\Controllers\Service\VTUController::class, 'buyWaecRegistrationPin'])->middleware('kyc.enforce')->name('services.education.waec_registration.buy');
 
         Route::get('/services/vtu/education/neco',       [App\Http\Controllers\Service\VTUController::class, 'necoIndex'])->name('services.education.neco');
-        Route::post('/services/vtu/education/neco/buy',  [App\Http\Controllers\Service\VTUController::class, 'buyNecoPin'])->name('services.education.neco.buy');
+        Route::post('/services/vtu/education/neco/buy',  [App\Http\Controllers\Service\VTUController::class, 'buyNecoPin'])->middleware('kyc.enforce')->name('services.education.neco.buy');
 
         Route::get('/services/vtu/education/nabteb',     [App\Http\Controllers\Service\VTUController::class, 'nabtebIndex'])->name('services.education.nabteb');
-        Route::post('/services/vtu/education/nabteb/buy', [App\Http\Controllers\Service\VTUController::class, 'buyNabtebPin'])->name('services.education.nabteb.buy');
+        Route::post('/services/vtu/education/nabteb/buy', [App\Http\Controllers\Service\VTUController::class, 'buyNabtebPin'])->middleware('kyc.enforce')->name('services.education.nabteb.buy');
 
         Route::get('/services/vtu/education/jamb',       [App\Http\Controllers\Service\VTUController::class, 'jambIndex'])->name('services.education.jamb');
-        Route::post('/services/vtu/education/jamb/buy',  [App\Http\Controllers\Service\VTUController::class, 'buyJambPin'])->name('services.education.jamb.buy');
+        Route::post('/services/vtu/education/jamb/buy',  [App\Http\Controllers\Service\VTUController::class, 'buyJambPin'])->middleware('kyc.enforce')->name('services.education.jamb.buy');
 
         // (M-9) Duplicate airtime/data routes removed — canonical routes are inside `feature:vtu_services` group above
     });
@@ -290,7 +290,7 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware('feature:insurance_services')->group(function () {
         Route::get('/services/insurance/motor',        [App\Http\Controllers\Service\InsuranceController::class, 'motorIndex'])->name('services.insurance.motor');
         Route::get('/services/insurance/motor/options', [App\Http\Controllers\Service\InsuranceController::class, 'getMotorOptions'])->name('services.insurance.motor.options');
-        Route::post('/services/insurance/motor/buy',   [App\Http\Controllers\Service\InsuranceController::class, 'buyMotorInsurance'])->name('services.insurance.motor.buy');
+        Route::post('/services/insurance/motor/buy',   [App\Http\Controllers\Service\InsuranceController::class, 'buyMotorInsurance'])->middleware('kyc.enforce')->name('services.insurance.motor.buy');
     });
 
     // ── Fuwa.NG Extended Services ─────────────────────────────
@@ -299,13 +299,13 @@ Route::middleware(['auth'])->group(function () {
         // Agency Banking
         Route::middleware('feature:agency_banking')->group(function () {
             Route::get('/agency-banking',        [App\Http\Controllers\NexusServiceController::class, 'agencyBanking'])->name('agency');
-            Route::post('/agency-banking/request',[App\Http\Controllers\NexusServiceController::class, 'agencyRequest'])->name('agency.request');
+            Route::post('/agency-banking/request',[App\Http\Controllers\NexusServiceController::class, 'agencyRequest'])->middleware('kyc.enforce')->name('agency.request');
         });
 
         // Auctions
         Route::middleware('feature:auctions')->group(function () {
             Route::get('/auctions/dashboard', [App\Http\Controllers\UserAuctionController::class, 'dashboard'])->name('auctions.dashboard');
-            Route::post('/auctions/bid', [App\Http\Controllers\UserAuctionController::class, 'placeBid'])->name('auctions.bid');
+            Route::post('/auctions/bid', [App\Http\Controllers\UserAuctionController::class, 'placeBid'])->middleware('kyc.enforce')->name('auctions.bid');
             Route::post('/auctions/watchlist/add', [App\Http\Controllers\UserAuctionController::class, 'addToWatchlist'])->name('auctions.watchlist.add');
             Route::post('/auctions/watchlist/remove', [App\Http\Controllers\UserAuctionController::class, 'removeFromWatchlist'])->name('auctions.watchlist.remove');
         });
@@ -313,41 +313,41 @@ Route::middleware(['auth'])->group(function () {
         // Notary Services
         Route::middleware('feature:notary_services')->group(function () {
             Route::get('/notary',                [App\Http\Controllers\NexusServiceController::class, 'notary'])->name('notary');
-            Route::post('/notary/submit',        [App\Http\Controllers\NexusServiceController::class, 'notarySubmit'])->name('notary.submit');
-            Route::post('/notary/pay',           [App\Http\Controllers\NexusServiceController::class, 'notaryPay'])->name('notary.pay');
+            Route::post('/notary/submit',        [App\Http\Controllers\NexusServiceController::class, 'notarySubmit'])->middleware('kyc.enforce')->name('notary.submit');
+            Route::post('/notary/pay',           [App\Http\Controllers\NexusServiceController::class, 'notaryPay'])->middleware('kyc.enforce')->name('notary.pay');
         });
 
         // Post Office & Logistics
         Route::middleware('feature:post_office')->group(function () {
             Route::get('/logistics/dashboard', [App\Http\Controllers\UserLogisticsController::class, 'dashboard'])->name('user.logistics.dashboard');
             Route::get('/logistics/book',      [App\Http\Controllers\UserLogisticsController::class, 'book'])->name('user.logistics.book');
-            Route::post('/logistics/book',     [App\Http\Controllers\UserLogisticsController::class, 'store'])->name('user.logistics.store');
+            Route::post('/logistics/book',     [App\Http\Controllers\UserLogisticsController::class, 'store'])->middleware('kyc.enforce')->name('user.logistics.store');
         });
 
         // Ticketing
         Route::middleware('feature:ticketing')->group(function () {
             Route::get('/ticketing',             [App\Http\Controllers\NexusServiceController::class, 'ticketing'])->name('ticketing');
-            Route::post('/ticketing/buy',        [App\Http\Controllers\NexusServiceController::class, 'buyTicket'])->name('ticketing.buy');
+            Route::post('/ticketing/buy',        [App\Http\Controllers\NexusServiceController::class, 'buyTicket'])->middleware('kyc.enforce')->name('ticketing.buy');
         });
 
         // Virtual Cards
         Route::middleware('feature:virtual_cards')->group(function () {
             Route::get('/virtual-card',          [App\Http\Controllers\NexusServiceController::class, 'virtualCard'])->name('virtual_card');
-            Route::post('/virtual-card/create',  [App\Http\Controllers\NexusServiceController::class, 'createVirtualCard'])->name('virtual_card.create');
-            Route::post('/virtual-card/fund',    [App\Http\Controllers\NexusServiceController::class, 'fundVirtualCard'])->name('virtual_card.fund');
+            Route::post('/virtual-card/create',  [App\Http\Controllers\NexusServiceController::class, 'createVirtualCard'])->middleware('kyc.enforce')->name('virtual_card.create');
+            Route::post('/virtual-card/fund',    [App\Http\Controllers\NexusServiceController::class, 'fundVirtualCard'])->middleware('kyc.enforce')->name('virtual_card.fund');
         });
 
         // FX Exchange
         Route::middleware('feature:fx_exchange')->group(function () {
             Route::get('/fx',                    [App\Http\Controllers\NexusServiceController::class, 'fx'])->name('fx');
-            Route::post('/fx/exchange',          [App\Http\Controllers\NexusServiceController::class, 'exchangeCurrency'])->name('fx.exchange');
+            Route::post('/fx/exchange',          [App\Http\Controllers\NexusServiceController::class, 'exchangeCurrency'])->middleware('kyc.enforce')->name('fx.exchange');
             Route::get('/fx/rates',              [App\Http\Controllers\NexusServiceController::class, 'fxRates'])->name('fx.rates');
         });
 
         // Invoicing
         Route::middleware('feature:invoicing')->group(function () {
             Route::get('/invoicing',             [App\Http\Controllers\NexusServiceController::class, 'invoicing'])->name('invoicing');
-            Route::post('/invoicing/create',     [App\Http\Controllers\NexusServiceController::class, 'createInvoice'])->name('invoicing.create');
+            Route::post('/invoicing/create',     [App\Http\Controllers\NexusServiceController::class, 'createInvoice'])->middleware('kyc.enforce')->name('invoicing.create');
         });
 
     });
@@ -360,7 +360,7 @@ Route::middleware(['auth'])->group(function () {
 // Admin login must be reachable by unauthenticated visitors.
 Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function () {
     Route::get('/login',  [App\Http\Controllers\Admin\Auth\LoginController::class, 'showLoginForm'])->name('login')->middleware('google2fa');
-    Route::post('/login', [App\Http\Controllers\Admin\Auth\LoginController::class, 'login'])->middleware('google2fa');
+    Route::post('/login', [App\Http\Controllers\Admin\Auth\LoginController::class, 'login'])->middleware('google2fa', 'throttle:5,1');
     Route::post('/logout',[App\Http\Controllers\Admin\Auth\LoginController::class, 'logout'])->name('logout');
 
         Route::middleware(['auth:admin', 'admin.audit'])->group(function () {
@@ -513,7 +513,7 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
             Route::post('/auctions/sellers', [App\Http\Controllers\Admin\AuctionController::class, 'storeSeller'])->name('auctions.sellers.store');
             Route::put('/auctions/sellers/{seller}', [App\Http\Controllers\Admin\AuctionController::class, 'updateSeller'])->name('auctions.sellers.update');
             Route::delete('/auctions/sellers/{seller}', [App\Http\Controllers\Admin\AuctionController::class, 'destroySeller'])->name('auctions.sellers.destroy');
-            Route::post('/auctions/sellers/{id}/restore', [App\Http\Controllers\Admin\AuctionController::class, 'restoreSeller'])->name('auctions.sellers.restore');
+            Route::post('/auctions/sellers/{id}/restore', [App\Http->Controllers\Admin\AuctionController::class, 'restoreSeller'])->name('auctions.sellers.restore');
 
             // Operations
             Route::get('/ops/invoices',                [App\Http\Controllers\Admin\AdminOperationsController::class, 'invoices'])->name('operations.invoices');
@@ -522,21 +522,21 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
             Route::post('/ops/logistics/{id}/status',  [App\Http\Controllers\Admin\AdminOperationsController::class, 'updateLogisticsStatus'])->name('operations.logistics.status');
             Route::middleware('permission:manage_notary')->group(function () {
                 Route::get('/ops/notary',                  [App\Http\Controllers\Admin\AdminOperationsController::class, 'notary'])->name('operations.notary');
-                Route::post('/ops/notary/{id}/status',     [App\Http\Controllers\Admin\AdminOperationsController::class, 'updateNotaryStatus'])->name('operations.notary.status');
+                Route::post('/ops/notary/{id}/status',     [App\Http->Controllers\Admin\AdminOperationsController::class, 'updateNotaryStatus'])->name('operations.notary.status');
             });
 
             // Settings
-            Route::get('/settings',                    [App\Http\Controllers\Admin\SettingsController::class, 'index'])->name('settings.index');
-            Route::post('/settings/notification',      [App\Http\Controllers\Admin\SettingsController::class, 'updateNotification'])->name('settings.notification');
-            Route::post('/settings/pricing',           [App\Http\Controllers\Admin\SettingsController::class, 'updatePricing'])->name('settings.pricing');
-            Route::post('/settings/manual-funding',    [App\Http\Controllers\Admin\SettingsController::class, 'updateManualFunding'])->name('settings.manual_funding');
-            Route::post('/settings/api-settings',      [App\Http\Controllers\Admin\SettingsController::class, 'updateApiSettings'])->name('settings.api_settings');
-            Route::post('/settings/api-keys',          [App\Http\Controllers\Admin\SettingsController::class, 'updateApiKeys'])->name('settings.api_keys');
-            Route::post('/settings/notary-docs',       [App\Http\Controllers\Admin\SettingsController::class, 'updateNotaryDocs'])->name('settings.notary_docs');
-            Route::post('/settings/branding',          [App\Http\Controllers\Admin\SettingsController::class, 'updateBranding'])->name('settings.branding');
-            Route::post('/settings/system-pricing',    [App\Http\Controllers\Admin\SettingsController::class, 'updateSystemPricing'])->name('settings.system_pricing');
-            Route::post('/settings/theme',             [App\Http\Controllers\Admin\SettingsController::class, 'updateTheme'])->name('settings.theme');
-            Route::post('/settings/admin-security',    [App\Http\Controllers\Admin\SettingsController::class, 'updateAdminSecurity'])
+            Route::get('/settings',                    [App\Http->Controllers\Admin\SettingsController::class, 'index'])->name('settings.index');
+            Route::post('/settings/notification',      [App\Http->Controllers\Admin\SettingsController::class, 'updateNotification'])->name('settings.notification');
+            Route::post('/settings/pricing',           [App\Http->Controllers\Admin\SettingsController::class, 'updatePricing'])->name('settings.pricing');
+            Route::post('/settings/manual-funding',    [App\Http->Controllers\Admin\SettingsController::class, 'updateManualFunding'])->name('settings.manual_funding');
+            Route::post('/settings/api-settings',      [App\Http->Controllers\Admin\SettingsController::class, 'updateApiSettings'])->name('settings.api_settings');
+            Route::post('/settings/api-keys',          [App\Http->Controllers\Admin\SettingsController::class, 'updateApiKeys'])->name('settings.api_keys');
+            Route::post('/settings/notary-docs',       [App\Http->Controllers\Admin\SettingsController::class, 'updateNotaryDocs'])->name('settings.notary_docs');
+            Route::post('/settings/branding',          [App\Http->Controllers\Admin\SettingsController::class, 'updateBranding'])->name('settings.branding');
+            Route::post('/settings/system-pricing',    [App\Http->Controllers\Admin\SettingsController::class, 'updateSystemPricing'])->name('settings.system_pricing');
+            Route::post('/settings/theme',             [App\Http->Controllers\Admin\SettingsController::class, 'updateTheme'])->name('settings.theme');
+            Route::post('/settings/admin-security',    [App\Http->Controllers\Admin\SettingsController::class, 'updateAdminSecurity'])
                 ->middleware('super_admin')
                 ->name('settings.admin_security');
             Route::post('/settings/features',          [App\Http\Controllers\Admin\SettingsController::class, 'updateFeatureToggles'])->name('settings.features');
@@ -546,7 +546,7 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
             Route::post('/settings/referrals',         [App\Http\Controllers\Admin\SettingsController::class, 'updateReferralSettings'])->name('settings.referrals');
             Route::post('settings/auction',           [App\Http\Controllers\Admin\SettingsController::class, 'updateAuctionSettings'])->name('settings.auction');
             Route::get('settings/whatsapp-widget',    [App\Http\Controllers\Admin\WhatsAppWidgetController::class, 'index'])->name('settings.whatsapp_widget');
-            Route::post('settings/whatsapp-widget',   [App\Http\Controllers\Admin\WhatsAppWidgetController::class, 'update'])->name('settings.whatsapp_widget.update');
+            Route::post('settings/whatsapp-widget',   [App\Http->Controllers\Admin\WhatsAppWidgetController::class, 'update'])->name('settings.whatsapp_widget.update');
             Route::post('/media/upload',               [App\Http\Controllers\Admin\MediaController::class, 'upload'])->name('media.upload');
 
             Route::get('settings/advanced', [App\Http\Controllers\Admin\AdvancedSettingsController::class, 'index'])->name('advanced_settings.index');

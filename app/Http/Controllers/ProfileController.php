@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 
 class ProfileController extends Controller
 {
@@ -31,7 +32,7 @@ class ProfileController extends Controller
             'fullname'         => 'sometimes|string|max:100',
             'number'           => 'sometimes|string|digits:11',
             'current_password' => 'required_with:new_password|string',
-            'new_password'     => 'nullable|string|min:6|confirmed',
+            'new_password'     => ['nullable', 'string', 'confirmed', Password::min(8)->mixedCase()->numbers()->symbols()],
             'current_pin'      => 'required_with:new_pin|string',
             'new_pin'          => 'nullable|string|digits:4',
         ]);

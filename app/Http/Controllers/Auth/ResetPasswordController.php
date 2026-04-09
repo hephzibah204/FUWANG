@@ -6,8 +6,9 @@ use App\Http\Controllers\Controller;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\Password as PasswordBroker;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rules\Password;
 
 class ResetPasswordController extends Controller
 {
@@ -24,10 +25,10 @@ class ResetPasswordController extends Controller
         $request->validate([
             'token' => ['required', 'string'],
             'email' => ['required', 'email'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'password' => ['required', 'string', Password::min(8)->mixedCase()->numbers()->symbols(), 'confirmed'],
         ]);
 
-        $status = Password::reset(
+        $status = PasswordBroker::reset(
             $request->only('email', 'password', 'password_confirmation', 'token'),
             function ($user, $password) {
                 $user->forceFill([
@@ -40,7 +41,7 @@ class ResetPasswordController extends Controller
             }
         );
 
-        if ($status === Password::PASSWORD_RESET) {
+        if ($status === PasswordBroker::PASSWORD_RESET) {
             return redirect()->route('login')->with([
                 'status' => 'Your password has been updated. Please sign in.',
             ]);
@@ -51,4 +52,3 @@ class ResetPasswordController extends Controller
         ])->withInput($request->only('email'));
     }
 }
-

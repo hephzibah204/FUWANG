@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Services\PushNotificationService;
 use Illuminate\Support\ServiceProvider;
 
 use Illuminate\Support\Facades\Blade;
@@ -55,6 +56,7 @@ class AppServiceProvider extends ServiceProvider
             }
 
             app(EmailNotificationService::class)->sendWelcome($event->user);
+            app(PushNotificationService::class)->sendWelcome($event->user);
         });
 
         Event::listen(Login::class, function (Login $event) {
@@ -71,6 +73,7 @@ class AppServiceProvider extends ServiceProvider
             $at = now()->toIso8601String();
 
             app(EmailNotificationService::class)->sendLoginAlert($event->user, $ip, $ua, $at);
+            app(PushNotificationService::class)->sendLoginAlert($event->user, $ip, $ua, $at);
         });
 
         Event::listen(MessageSent::class, function (MessageSent $event) {

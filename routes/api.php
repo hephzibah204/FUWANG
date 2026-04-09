@@ -28,11 +28,11 @@ Route::prefix('v1')->group(function () {
         Route::get('/me', [\App\Http\Controllers\Api\AuthController::class, 'me']);
         Route::delete('/auth/token', [\App\Http\Controllers\Api\AuthController::class, 'revokeCurrent']);
 
-        Route::post('/verifications/nin', [\App\Http\Controllers\Api\VerificationController::class, 'verifyNin']);
-        Route::post('/verifications/bvn', [\App\Http\Controllers\Api\VerificationController::class, 'verifyBvn']);
+        Route::post('/verifications/nin', [\App\Http\Controllers\Api\VerificationController::class, 'verifyNin'])->middleware('kyc.enforce');
+        Route::post('/verifications/bvn', [\App\Http\Controllers\Api\VerificationController::class, 'verifyBvn'])->middleware('kyc.enforce');
         Route::get('/verifications/{id}', [\App\Http\Controllers\Api\VerificationController::class, 'getResult']);
 
-        Route::prefix('vuvaa')->group(function () {
+        Route::prefix('vuvaa')->middleware('kyc.enforce')->group(function () {
             Route::post('/create_user', [\App\Http\Controllers\Api\VuvaaController::class, 'createUser']);
             Route::post('/login', [\App\Http\Controllers\Api\VuvaaController::class, 'login']);
             Route::post('/verify_nin', [\App\Http\Controllers\Api\VuvaaController::class, 'verifyNin']);
@@ -48,7 +48,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/legal/catalog/{documentType}', [\App\Http\Controllers\Api\LegalCatalogController::class, 'show']);
         Route::get('/legal/pricing/{documentType}', [\App\Http\Controllers\Api\LegalCatalogController::class, 'pricing']);
 
-        Route::prefix('vtu')->group(function () {
+        Route::prefix('vtu')->middleware('kyc.enforce')->group(function () {
             Route::post('/airtime', [\App\Http\Controllers\Api\VtuApiController::class, 'airtime']);
             Route::post('/data', [\App\Http\Controllers\Api\VtuApiController::class, 'data']);
             Route::post('/cable', [\App\Http\Controllers\Api\VtuApiController::class, 'cable']);

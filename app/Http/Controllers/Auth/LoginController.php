@@ -46,6 +46,8 @@ class LoginController extends Controller
         if (Auth::attempt($credentials, $remember)) {
             $request->session()->regenerate();
 
+            Auth::logoutOtherDevices($request->password);
+
             $user = Auth::user();
 
             $status = $user?->user_status ?? 'active';

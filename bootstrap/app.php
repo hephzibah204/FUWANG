@@ -25,6 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->append(\App\Http\Middleware\ErrorHandlingMiddleware::class);
         $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
         $middleware->append(\App\Http\Middleware\EnforceHttps::class);
+        $middleware->append(\App\Http\Middleware\ContentSecurityPolicy::class);
         $middleware->append(\App\Http\Middleware\ActivityLogMiddleware::class);
         $middleware->append(\PragmaRX\Google2FALaravel\Middleware::class);
 
