@@ -104,6 +104,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/profile',  [App\Http\Controllers\ProfileController::class, 'index'])->name('profile');
     Route::post('/profile', [App\Http\Controllers\ProfileController::class, 'update'])->name('profile.update');
     Route::get('/profile/security', [App\Http\Controllers\ProfileController::class, 'security'])->name('profile.security');
+    Route::get('/profile/activity', [App\Http\Controllers\ActivityLogController::class, 'index'])->name('profile.activity');
 
     // Fuwa.NG AI Chat
     Route::post('/ai/chat', [App\Http\Controllers\AiController::class, 'chat'])->name('ai.chat');
@@ -529,7 +530,7 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
             Route::get('/settings',                    [App\Http->Controllers\Admin\SettingsController::class, 'index'])->name('settings.index');
             Route::post('/settings/notification',      [App\Http->Controllers\Admin\SettingsController::class, 'updateNotification'])->name('settings.notification');
             Route::post('/settings/pricing',           [App\Http->Controllers\Admin\SettingsController::class, 'updatePricing'])->name('settings.pricing');
-            Route::post('/settings/manual-funding',    [App\Http->Controllers\Admin\SettingsController::class, 'updateManualFunding'])->name('settings.manual_funding');
+            Route::post('/settings/manual-funding',    [App\Http\Controllers\Admin\SettingsController::class, 'updateManualFunding'])->name('settings.manual_funding');
             Route::post('/settings/api-settings',      [App\Http->Controllers\Admin\SettingsController::class, 'updateApiSettings'])->name('settings.api_settings');
             Route::post('/settings/api-keys',          [App\Http->Controllers\Admin\SettingsController::class, 'updateApiKeys'])->name('settings.api_keys');
             Route::post('/settings/notary-docs',       [App\Http->Controllers\Admin\SettingsController::class, 'updateNotaryDocs'])->name('settings.notary_docs');
@@ -539,14 +540,14 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
             Route::post('/settings/admin-security',    [App\Http->Controllers\Admin\SettingsController::class, 'updateAdminSecurity'])
                 ->middleware('super_admin')
                 ->name('settings.admin_security');
-            Route::post('/settings/features',          [App\Http\Controllers\Admin\SettingsController::class, 'updateFeatureToggles'])->name('settings.features');
+            Route::post('/settings/features',          [App\Http->Controllers\Admin\SettingsController::class, 'updateFeatureToggles'])->name('settings.features');
             Route::post('/settings/gateways/toggle',   [App\Http\Controllers\Admin\SettingsController::class, 'toggleGateway'])
                 ->middleware('super_admin')
                 ->name('settings.gateways.toggle');
             Route::post('/settings/referrals',         [App\Http\Controllers\Admin\SettingsController::class, 'updateReferralSettings'])->name('settings.referrals');
             Route::post('settings/auction',           [App\Http\Controllers\Admin\SettingsController::class, 'updateAuctionSettings'])->name('settings.auction');
             Route::get('settings/whatsapp-widget',    [App\Http\Controllers\Admin\WhatsAppWidgetController::class, 'index'])->name('settings.whatsapp_widget');
-            Route::post('settings/whatsapp-widget',   [App\Http->Controllers\Admin\WhatsAppWidgetController::class, 'update'])->name('settings.whatsapp_widget.update');
+            Route::post('settings/whatsapp-widget',   [App\Http\Controllers\Admin\WhatsAppWidgetController::class, 'update'])->name('settings.whatsapp_widget.update');
             Route::post('/media/upload',               [App\Http\Controllers\Admin\MediaController::class, 'upload'])->name('media.upload');
 
             Route::get('settings/advanced', [App\Http\Controllers\Admin\AdvancedSettingsController::class, 'index'])->name('advanced_settings.index');

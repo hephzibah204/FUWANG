@@ -188,6 +188,9 @@
             <div class="nav-item {{ Request::routeIs('profile') ? 'active' : '' }}">
                 <a href="{{ route('profile') }}"><i class="fa-solid fa-user-gear"></i> Profile</a>
             </div>
+            <div class="nav-item {{ Request::routeIs('profile.activity') ? 'active' : '' }}">
+                <a href="{{ route('profile.activity') }}"><i class="fa-solid fa-list-check"></i> Activity Log</a>
+            </div>
             <div class="nav-item {{ Request::routeIs('tickets.*') ? 'active' : '' }}">
                 <a href="{{ route('tickets.index') }}"><i class="fa-solid fa-headset text-success"></i> Support Center</a>
             </div>
