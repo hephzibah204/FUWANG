@@ -13,18 +13,15 @@ class ReferralAuditLog extends Model
 
     protected $fillable = [
         'referral_id',
-        'actor_user_id',
-        'referrer_user_id',
-        'referred_user_id',
+        'user_id',
         'action',
-        'status',
-        'message',
-        'context',
         'created_at',
+        'description',
+        'metadata',
     ];
 
     protected $casts = [
-        'context' => 'array',
+        'metadata' => 'array',
         'created_at' => 'datetime',
     ];
 
@@ -33,4 +30,3 @@ class ReferralAuditLog extends Model
         return $this->belongsTo(Referral::class);
     }
 }
-

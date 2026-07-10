@@ -39,6 +39,69 @@
             </div>
         </div>
 
+        <x-nexus.kyc-tier-callout :kyc="$kycSummary" />
+
+        @if(($deliveryAgent ?? null) && ($showAgentDetailsPrompt ?? false))
+            <div class="card glass-card border-0 rounded-4 overflow-hidden mb-4" style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.25) !important;">
+                <div class="card-body p-4">
+                    <h5 class="text-white mb-2"><i class="fa fa-id-card mr-2 text-warning"></i>Complete Delivery Agent Verification</h5>
+                    <p class="text-white-50 mb-3 small">
+                        Thanks for applying as a delivery agent. Please complete these details to continue your approval process.
+                    </p>
+
+                    @if ($errors->any())
+                        <div class="alert alert-danger py-2 px-3 small" style="background: rgba(220,53,69,0.12); border: 1px solid rgba(220,53,69,0.35); color: #ffb3bd;">
+                            {{ $errors->first() }}
+                        </div>
+                    @endif
+
+                    <form action="{{ route('profile.delivery_agent.update') }}" method="POST" enctype="multipart/form-data">
+                        @csrf
+                        <div class="form-group mb-3">
+                            <label class="text-white-50 small mb-2" for="means_of_identification">Means of Identification</label>
+                            <select class="form-control" id="means_of_identification" name="means_of_identification" required>
+                                <option value="">-- Select --</option>
+                                <option value="nin" @selected(old('means_of_identification', $deliveryAgent->means_of_identification) === 'nin')>National Identification Number (NIN)</option>
+                                <option value="drivers_license" @selected(old('means_of_identification', $deliveryAgent->means_of_identification) === 'drivers_license')>Driver's License</option>
+                                <option value="voters_card" @selected(old('means_of_identification', $deliveryAgent->means_of_identification) === 'voters_card')>Voter's Card</option>
+                                <option value="passport" @selected(old('means_of_identification', $deliveryAgent->means_of_identification) === 'passport')>International Passport</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label class="text-white-50 small mb-2" for="identification_number">Identification Number</label>
+                            <input type="text" class="form-control" id="identification_number" name="identification_number" value="{{ old('identification_number', $deliveryAgent->identification_number) }}" required>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label class="text-white-50 small mb-2" for="proof_of_address">Proof of Address (JPG, PNG, PDF)</label>
+                            <input type="file" class="form-control" id="proof_of_address" name="proof_of_address" accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf" {{ $deliveryAgent->proof_of_address ? '' : 'required' }}>
+                            @if($deliveryAgent->proof_of_address)
+                                <small class="text-white-50 d-block mt-2">
+                                    Existing file:
+                                    <a href="{{ \Illuminate\Support\Facades\Storage::url($deliveryAgent->proof_of_address) }}" target="_blank" class="text-warning">View uploaded proof</a>
+                                </small>
+                            @endif
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label class="text-white-50 small mb-2" for="next_of_kin_name">Next of Kin Name</label>
+                            <input type="text" class="form-control" id="next_of_kin_name" name="next_of_kin_name" value="{{ old('next_of_kin_name', $deliveryAgent->next_of_kin_name) }}" required>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label class="text-white-50 small mb-2" for="next_of_kin_phone">Next of Kin Phone Number</label>
+                            <input type="text" class="form-control" id="next_of_kin_phone" name="next_of_kin_phone" value="{{ old('next_of_kin_phone', $deliveryAgent->next_of_kin_phone) }}" required>
+                        </div>
+
+                        <button type="submit" class="btn btn-warning font-weight-bold px-4">
+                            <i class="fa fa-save mr-2"></i> Save Agent Details
+                        </button>
+                    </form>
+                </div>
+            </div>
+        @endif
+
         <h5 class="mb-3 font-weight-bold text-white">Security & Settings</h5>
         <div class="list-group shadow-sm rounded-4 border-0 mb-4 overflow-hidden">
             <button type="button" onclick="changePassword()" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3 px-4" style="background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.05); color: #fff;">
@@ -189,7 +252,7 @@ if (toggle2fa) {
                 html: `
                     <div class="text-center mb-4">
                         <div class="bg-white p-3 d-inline-block rounded-3 mb-3" style="width: 200px; height: 200px;">
-                            {!! \PragmaRX\Google2FALaravel\Facade::getQRCodeInline(config('app.name'), $user->email, $google2fa_secret) !!}
+                            <img src="{{ $google2fa_qr_url }}" width="200" height="200" alt="2FA setup QR code" style="display:block;margin:0 auto;">
                         </div>
                         <p class="small text-white-50 mb-3">Scan this code with Google Authenticator or Authy</p>
                         <div class="p-2 rounded bg-dark border border-secondary mb-3">
@@ -215,7 +278,7 @@ if (toggle2fa) {
             }).then((result) => {
                 if (result.isConfirmed) {
                     $.post('{{ route("profile.2fa.enable") }}', {
-                        secret: '{{ $google2fa_secret }}',
+                        secret: @json($google2fa_secret),
                         one_time_password: result.value,
                         _token: '{{ csrf_token() }}'
                     }, function(res) {

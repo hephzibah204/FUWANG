@@ -103,7 +103,7 @@ class PaidActionServiceTest extends TestCase
         $this->assertSame(1000.0, (float) $balance->user_balance);
 
         $tx = Transaction::where('transaction_id', $paid['txId'])->firstOrFail();
-        $this->assertSame('failed', $tx->status);
+        $this->assertSame('refunded', $tx->status);
 
         $refund = Transaction::where('transaction_id', $paid['txId'] . '-RF')->first();
         $this->assertNotNull($refund);

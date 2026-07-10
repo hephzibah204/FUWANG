@@ -5,6 +5,7 @@ namespace App\Services\VirtualAccounts\Providers;
 use App\Models\User;
 use App\Models\VirtualAccount;
 use App\Services\VirtualAccounts\Dto\VirtualAccountCreationResult;
+use App\Support\PaymentProviderCredentials;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -17,21 +18,17 @@ class PayvesselVirtualAccountProvider extends AbstractHttpProvider
 
     public function supportsVirtualAccounts(): bool
     {
-        $cfg = $this->getGatewayConfig('payvessel');
-        $apiCenter = $cfg['apiCenter'];
-        $endpoint = $apiCenter?->payvessel_endpoint ?: ($cfg['config']['endpoint'] ?? null);
-        $apiKey = $apiCenter?->payvessel_api_key ?: ($cfg['config']['api_key'] ?? null);
-        return (bool) ($endpoint && $apiKey);
+        $p = PaymentProviderCredentials::payvessel($this->getGatewayConfig('payvessel')['apiCenter']);
+
+        return (bool) ($p['endpoint'] && $p['api_key']);
     }
 
     public function create(User $user): VirtualAccountCreationResult
     {
-        $cfg = $this->getGatewayConfig('payvessel');
-        $apiCenter = $cfg['apiCenter'];
-
-        $endpoint = $apiCenter?->payvessel_endpoint ?: ($cfg['config']['endpoint'] ?? null);
-        $apiKey = $apiCenter?->payvessel_api_key ?: ($cfg['config']['api_key'] ?? null);
-        $businessId = $apiCenter?->payvessel_businessid ?: ($cfg['config']['business_id'] ?? null);
+        $p = PaymentProviderCredentials::payvessel($this->getGatewayConfig('payvessel')['apiCenter']);
+        $endpoint = $p['endpoint'];
+        $apiKey = $p['api_key'];
+        $businessId = $p['business_id'];
 
         if (!$endpoint || !$apiKey) {
             return new VirtualAccountCreationResult(false, gateway: 'payvessel', message: 'PayVessel is not configured');

@@ -1,0 +1,1376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fuwa..NG — Get Priority Access</title>
+<meta name="description" content="Stop losing customers because your systems can't verify or process payments fast enough. Fuwa.NG is the unified API for identity, payments, and AI-legal tools.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,700;12..96,800&family=Instrument+Sans:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #04060a;
+  --bg2: #080c13;
+  --surface: rgba(255,255,255,0.038);
+  --border: rgba(255,255,255,0.07);
+  --border-lit: rgba(61,220,180,0.28);
+  --accent: #2dfdb8;
+  --accent-dim: rgba(45,253,184,0.12);
+  --accent2: #7b6dff;
+  --warn: #ff5e5e;
+  --gold: #f7c948;
+  --text: #eef2f7;
+  --muted: rgba(238,242,247,0.45);
+  --card: rgba(10,15,22,0.8);
+  --r: 18px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Instrument Sans', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+  cursor: default;
+}
+
+/* ── BACKGROUNDS ── */
+.bg-mesh {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse 70% 45% at 8% 12%, rgba(45,253,184,0.07) 0%, transparent 65%),
+    radial-gradient(ellipse 55% 40% at 92% 85%, rgba(123,109,255,0.09) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 30% at 50% 45%, rgba(247,201,72,0.03) 0%, transparent 55%);
+}
+
+.grid {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  opacity: 0.12;
+  background-image:
+    linear-gradient(rgba(45,253,184,0.2) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(45,253,184,0.2) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 90% 70% at 50% 40%, black 20%, transparent 75%);
+}
+
+/* ── NAV ── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+  padding: 18px 52px;
+  display: flex; align-items: center; justify-content: space-between;
+  background: rgba(4,6,10,0.75);
+  backdrop-filter: blur(24px);
+  border-bottom: 1px solid var(--border);
+}
+
+.logo {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 1.35rem; font-weight: 800;
+  letter-spacing: -0.03em;
+  background: linear-gradient(120deg, var(--accent), #a8ffe8 50%, var(--accent2));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+
+.nav-right { display: flex; align-items: center; gap: 14px; }
+
+.trust-pill {
+  font-size: 0.7rem; font-weight: 500;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  padding: 4px 12px; border-radius: 100px;
+  letter-spacing: 0.05em;
+}
+
+.status-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--accent);
+  animation: blink 2s infinite;
+  display: inline-block; margin-right: 6px;
+}
+
+@keyframes blink {
+  0%,100% { opacity: 1; } 50% { opacity: 0.3; }
+}
+
+/* ── PAGE WRAPPER ── */
+.page {
+  position: relative; z-index: 10;
+  padding: 120px 24px 80px;
+  display: flex; flex-direction: column; align-items: center;
+  gap: 0;
+}
+
+/* ── PAIN HOOK ── */
+.pain-bar {
+  display: inline-flex; align-items: center; gap: 10px;
+  background: rgba(255,94,94,0.08);
+  border: 1px solid rgba(255,94,94,0.2);
+  border-radius: 100px;
+  padding: 7px 18px;
+  font-size: 0.75rem; font-weight: 500;
+  color: #ff8b8b;
+  margin-bottom: 32px;
+  animation: fadeDown 0.7s ease both;
+}
+
+/* ── HERO ── */
+.hero {
+  text-align: center;
+  max-width: 780px;
+  animation: fadeDown 0.85s ease both 0.08s;
+  margin-bottom: 28px;
+}
+
+.hero h1 {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: clamp(2.2rem, 5.5vw, 3.9rem);
+  font-weight: 800;
+  line-height: 1.07;
+  letter-spacing: -0.03em;
+  margin-bottom: 20px;
+}
+
+.hl { background: linear-gradient(130deg, var(--accent) 0%, #a8ffe0 45%, var(--accent2) 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+.hero .sub {
+  font-size: 1.05rem; line-height: 1.72;
+  color: var(--muted);
+  max-width: 560px; margin: 0 auto;
+  font-weight: 400;
+}
+
+.hero .sub strong { color: var(--text); font-weight: 500; }
+
+/* ── WHO IS THIS FOR ── */
+.for-section {
+  margin: 32px 0 44px;
+  animation: fadeDown 0.9s ease both 0.15s;
+}
+
+.for-label {
+  font-size: 0.7rem; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  color: var(--muted);
+  text-align: center; margin-bottom: 14px;
+}
+
+.for-chips {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 10px;
+}
+
+.chip {
+  padding: 7px 16px;
+  border-radius: 100px;
+  font-size: 0.78rem; font-weight: 500;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  transition: all 0.2s;
+  cursor: default;
+}
+
+.chip:hover {
+  border-color: rgba(45,253,184,0.3);
+  color: var(--text);
+  background: rgba(45,253,184,0.05);
+}
+
+/* ── SOCIAL PROOF ── */
+.proof-row {
+  display: flex; align-items: center; gap: 16px;
+  margin-bottom: 44px;
+  animation: fadeDown 0.95s ease both 0.2s;
+}
+
+.avs { display: flex; }
+.av {
+  width: 32px; height: 32px; border-radius: 50%;
+  border: 2px solid var(--bg); margin-left: -9px;
+  font-size: 0.65rem; font-weight: 700;
+  font-family: 'Bricolage Grotesque', sans-serif;
+  display: flex; align-items: center; justify-content: center;
+}
+.av:first-child { margin-left: 0; }
+.av1 { background: linear-gradient(135deg, #2dfdb8, #7b6dff); color: #04060a; }
+.av2 { background: linear-gradient(135deg, #f7c948, #ff5e5e); color: #04060a; }
+.av3 { background: linear-gradient(135deg, #a8edea, #fed6e3); color: #04060a; }
+.av4 { background: linear-gradient(135deg, #6ddcff, #7b6dff); color: white; }
+.proof-txt { font-size: 0.83rem; color: var(--muted); }
+.proof-txt strong { color: var(--text); }
+
+/* ── FORM CARD ── */
+.form-card {
+  width: 100%; max-width: 500px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 26px;
+  padding: 38px;
+  backdrop-filter: blur(32px);
+  box-shadow: 0 0 80px rgba(45,253,184,0.05), 0 50px 100px rgba(0,0,0,0.6);
+  animation: fadeUp 1s ease both 0.3s;
+  position: relative; overflow: hidden;
+  margin-bottom: 64px;
+}
+
+.form-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(45,253,184,0.6) 50%, transparent 100%);
+}
+
+/* Steps */
+.steps {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 30px;
+}
+
+.stp {
+  width: 30px; height: 30px; border-radius: 50%;
+  border: 1.5px solid var(--border);
+  color: var(--muted);
+  font-size: 0.75rem; font-weight: 700;
+  font-family: 'Bricolage Grotesque', sans-serif;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.3s;
+}
+.stp.active { border-color: var(--accent); background: var(--accent); color: var(--bg); }
+.stp.done { border-color: rgba(45,253,184,0.35); color: var(--accent); background: rgba(45,253,184,0.08); }
+.sline { flex: 1; height: 1px; background: var(--border); transition: background 0.4s; }
+.sline.lit { background: rgba(45,253,184,0.35); }
+
+/* Fields */
+.ftitle {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 1.2rem; font-weight: 700;
+  margin-bottom: 6px;
+}
+.fsub { font-size: 0.82rem; color: var(--muted); margin-bottom: 26px; line-height: 1.55; }
+
+.field { margin-bottom: 16px; }
+
+label {
+  display: block;
+  font-size: 0.72rem; font-weight: 500;
+  color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.07em;
+  margin-bottom: 8px;
+}
+
+.input-wrap { position: relative; }
+
+input[type="text"], input[type="email"], input[type="tel"], select {
+  width: 100%;
+  background: rgba(255,255,255,0.035);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 13px 16px;
+  font-family: 'Instrument Sans', sans-serif;
+  font-size: 0.92rem; color: var(--text);
+  outline: none;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+  -webkit-appearance: none;
+}
+
+select {
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='rgba(238,242,247,0.4)' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 38px;
+}
+
+select option { background: #0d1520; color: var(--text); }
+
+input::placeholder { color: rgba(238,242,247,0.2); }
+input:focus, select:focus {
+  border-color: rgba(45,253,184,0.45);
+  background: rgba(45,253,184,0.03);
+  box-shadow: 0 0 0 3px rgba(45,253,184,0.07);
+}
+input.err { border-color: rgba(255,94,94,0.55); }
+
+.ferr { font-size: 0.73rem; color: var(--warn); margin-top: 5px; display: none; }
+.ferr.show { display: block; }
+
+.phone-hint {
+  font-size: 0.72rem; color: rgba(45,253,184,0.7);
+  margin-top: 5px; display: flex; align-items: center; gap: 5px;
+}
+
+/* Buttons */
+.btn-next {
+  width: 100%; padding: 14px 20px;
+  background: linear-gradient(135deg, var(--accent) 0%, #00dba0 100%);
+  color: var(--bg);
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 0.92rem; font-weight: 700;
+  border: none; border-radius: 12px; cursor: pointer;
+  position: relative; overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s;
+  margin-top: 6px; letter-spacing: 0.01em;
+}
+.btn-next:hover { transform: translateY(-2px); box-shadow: 0 10px 36px rgba(45,253,184,0.32); }
+.btn-next:active { transform: translateY(0); }
+.btn-next.loading { opacity: 0.65; cursor: not-allowed; pointer-events: none; }
+
+.btn-back {
+  background: none; border: none; color: var(--muted);
+  font-family: 'Instrument Sans', sans-serif;
+  font-size: 0.82rem; cursor: pointer;
+  padding: 6px 0; margin-bottom: 16px;
+  display: flex; align-items: center; gap: 5px;
+  transition: color 0.2s;
+}
+.btn-back:hover { color: var(--text); }
+
+/* ── SUCCESS ── */
+.success { display: none; text-align: center; }
+.success.show { display: block; }
+.ffields.hide { display: none; }
+
+.s-icon {
+  width: 68px; height: 68px; border-radius: 50%;
+  background: linear-gradient(135deg, rgba(45,253,184,0.15), rgba(123,109,255,0.18));
+  border: 1px solid rgba(45,253,184,0.25);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.7rem; margin: 0 auto 18px;
+  animation: pop 0.5s cubic-bezier(0.34,1.56,0.64,1);
+}
+
+@keyframes pop {
+  0% { transform: scale(0); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.s-title {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 1.45rem; font-weight: 800; margin-bottom: 10px;
+}
+.s-body { font-size: 0.85rem; color: var(--muted); line-height: 1.65; margin-bottom: 22px; }
+
+.queue-pill {
+  display: inline-block;
+  background: rgba(45,253,184,0.09);
+  border: 1px solid rgba(45,253,184,0.22);
+  border-radius: 100px; padding: 5px 16px;
+  font-size: 0.78rem; color: var(--accent);
+  font-weight: 500; margin-bottom: 24px;
+}
+
+/* ── REFERRAL TIERS ── */
+.tiers {
+  background: rgba(255,255,255,0.025);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px;
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.tiers-title {
+  font-size: 0.72rem; font-weight: 500;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--muted); margin-bottom: 14px;
+}
+
+.tier-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  transition: all 0.25s;
+}
+.tier-row:last-child { border-bottom: none; }
+.tier-row.unlocked { opacity: 0.5; }
+
+.tier-num {
+  min-width: 28px; height: 28px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.75rem; font-weight: 700;
+  font-family: 'Bricolage Grotesque', sans-serif;
+}
+
+.tier-row:nth-child(2) .tier-num { background: rgba(45,253,184,0.12); color: var(--accent); }
+.tier-row:nth-child(3) .tier-num { background: rgba(247,201,72,0.12); color: var(--gold); }
+.tier-row:nth-child(4) .tier-num { background: rgba(123,109,255,0.15); color: #b0a8ff; }
+
+.tier-info { flex: 1; }
+.tier-label { font-size: 0.8rem; font-weight: 500; color: var(--text); }
+.tier-desc { font-size: 0.72rem; color: var(--muted); margin-top: 1px; }
+
+.tier-badge {
+  font-size: 0.7rem; font-weight: 600;
+  padding: 3px 10px; border-radius: 100px;
+}
+
+.tier-row:nth-child(2) .tier-badge { background: rgba(45,253,184,0.1); color: var(--accent); }
+.tier-row:nth-child(3) .tier-badge { background: rgba(247,201,72,0.1); color: var(--gold); }
+.tier-row:nth-child(4) .tier-badge { background: rgba(123,109,255,0.12); color: #b0a8ff; border: 1px solid rgba(123,109,255,0.25); }
+
+/* Referral link */
+.ref-box {
+  background: rgba(255,255,255,0.025);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 18px;
+}
+
+.ref-box label { margin-bottom: 10px; display: block; text-transform: none; letter-spacing: 0; font-size: 0.78rem; }
+
+.ref-row { display: flex; gap: 8px; }
+.ref-val {
+  flex: 1; background: rgba(255,255,255,0.035);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 9px 12px; font-size: 0.75rem; color: var(--accent);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-family: monospace; outline: none;
+  user-select: all; -webkit-user-select: all;
+}
+.ref-val:focus { border-color: rgba(45,253,184,0.4); box-shadow: 0 0 0 3px rgba(45,253,184,0.07); }
+
+.btn-copy {
+  padding: 9px 14px;
+  background: rgba(45,253,184,0.09);
+  border: 1px solid rgba(45,253,184,0.22);
+  border-radius: 8px; color: var(--accent);
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 0.75rem; font-weight: 600; cursor: pointer;
+  transition: background 0.2s; white-space: nowrap;
+}
+.btn-copy:hover { background: rgba(45,253,184,0.16); }
+
+.share-row { display: flex; gap: 10px; }
+.share-btn {
+  flex: 1; padding: 10px 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 10px;
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 0.78rem; font-weight: 600;
+  color: var(--text); cursor: pointer;
+  transition: all 0.2s;
+}
+.share-btn:hover { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.14); }
+
+/* ── TRUST STRIP ── */
+.trust-strip {
+  width: 100%; max-width: 860px;
+  display: flex; align-items: center; justify-content: center;
+  flex-wrap: wrap; gap: 28px;
+  padding: 28px 40px;
+  background: rgba(10,15,22,0.6);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  backdrop-filter: blur(20px);
+  margin-bottom: 64px;
+  animation: fadeUp 1.1s ease both 0.45s;
+}
+
+.trust-item {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 0.78rem; color: var(--muted);
+}
+
+.trust-item .ti {
+  font-size: 1.1rem; opacity: 0.9;
+}
+
+/* ── FEATURES ── */
+.features {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
+  width: 100%; max-width: 860px;
+  margin-bottom: 80px;
+  animation: fadeUp 1.15s ease both 0.55s;
+}
+
+.fc {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 20px; padding: 26px;
+  backdrop-filter: blur(18px);
+  transition: transform 0.25s, border-color 0.25s, box-shadow 0.25s;
+  position: relative; overflow: hidden;
+}
+
+.fc::after {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  opacity: 0; transition: opacity 0.3s;
+}
+.fc:nth-child(1)::after { background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+.fc:nth-child(2)::after { background: linear-gradient(90deg, var(--accent2), var(--gold)); }
+.fc:nth-child(3)::after { background: linear-gradient(90deg, var(--gold), var(--accent)); }
+
+.fc:hover { transform: translateY(-5px); border-color: rgba(255,255,255,0.11); box-shadow: 0 24px 48px rgba(0,0,0,0.45); }
+.fc:hover::after { opacity: 1; }
+
+.fc-icon {
+  width: 42px; height: 42px; border-radius: 11px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.2rem; margin-bottom: 16px;
+}
+.fc:nth-child(1) .fc-icon { background: rgba(45,253,184,0.1); }
+.fc:nth-child(2) .fc-icon { background: rgba(123,109,255,0.12); }
+.fc:nth-child(3) .fc-icon { background: rgba(247,201,72,0.1); }
+
+.fc h3 {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 0.92rem; font-weight: 700; margin-bottom: 9px;
+}
+.fc p { font-size: 0.8rem; color: var(--muted); line-height: 1.6; }
+
+/* ── LIVE TICKER ── */
+.live-bar {
+  position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%);
+  z-index: 300;
+  background: rgba(8,12,19,0.88);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  padding: 9px 20px;
+  font-size: 0.76rem; color: var(--muted);
+  backdrop-filter: blur(24px);
+  display: flex; align-items: center; gap: 10px;
+  white-space: nowrap;
+  animation: slideBarUp 0.6s ease both 2.5s;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  transition: opacity 0.4s;
+}
+.ticker-g { color: var(--accent); font-weight: 500; }
+
+.float-count {
+  position: fixed; bottom: 68px; right: 22px; z-index: 300;
+  background: rgba(8,12,19,0.85);
+  border: 1px solid rgba(45,253,184,0.2);
+  border-radius: 100px; padding: 9px 16px;
+  font-size: 0.76rem; color: var(--accent);
+  font-family: 'Bricolage Grotesque', sans-serif; font-weight: 600;
+  backdrop-filter: blur(14px);
+  animation: slideBarUp 0.6s ease both 3s, glow-pulse 3s ease-in-out infinite 3.5s;
+  display: flex; align-items: center; gap: 7px;
+}
+@keyframes glow-pulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(45,253,184,0.2); }
+  50% { box-shadow: 0 0 0 7px rgba(45,253,184,0); }
+}
+
+/* ── EXIT INTENT ── */
+.overlay {
+  position: fixed; inset: 0; z-index: 500;
+  background: rgba(4,6,10,0.85);
+  backdrop-filter: blur(10px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.35s;
+}
+.overlay.show { opacity: 1; pointer-events: all; }
+
+.exit-card {
+  background: var(--card);
+  border: 1px solid rgba(45,253,184,0.2);
+  border-radius: 24px; padding: 40px;
+  max-width: 440px; width: 100%;
+  text-align: center;
+  box-shadow: 0 0 80px rgba(45,253,184,0.08);
+  transform: scale(0.9);
+  transition: transform 0.35s cubic-bezier(0.34,1.4,0.64,1);
+  position: relative;
+}
+.overlay.show .exit-card { transform: scale(1); }
+.overlay.show .exit-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(45,253,184,0.6), transparent);
+}
+
+.exit-close {
+  position: absolute; top: 16px; right: 18px;
+  background: none; border: none; color: var(--muted);
+  font-size: 1.2rem; cursor: pointer;
+  transition: color 0.2s;
+}
+.exit-close:hover { color: var(--text); }
+
+.exit-card h2 {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 1.35rem; font-weight: 800; margin-bottom: 12px;
+}
+.exit-card p { font-size: 0.85rem; color: var(--muted); line-height: 1.6; margin-bottom: 24px; }
+
+.exit-input {
+  width: 100%;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 13px 16px;
+  font-family: 'Instrument Sans', sans-serif;
+  font-size: 0.92rem; color: var(--text);
+  outline: none; margin-bottom: 12px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.exit-input:focus {
+  border-color: rgba(45,253,184,0.45);
+  box-shadow: 0 0 0 3px rgba(45,253,184,0.07);
+}
+.exit-input::placeholder { color: rgba(238,242,247,0.2); }
+
+.btn-exit-cta {
+  width: 100%; padding: 13px;
+  background: linear-gradient(135deg, var(--accent), #00dba0);
+  color: var(--bg);
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 0.9rem; font-weight: 700;
+  border: none; border-radius: 12px; cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.btn-exit-cta:hover { transform: translateY(-1px); box-shadow: 0 8px 28px rgba(45,253,184,0.3); }
+
+.exit-skip {
+  margin-top: 12px; font-size: 0.75rem; color: var(--muted);
+  cursor: pointer; transition: color 0.2s;
+}
+.exit-skip:hover { color: var(--text); }
+
+/* ── FOOTER ── */
+footer {
+  position: relative; z-index: 10;
+  text-align: center; padding: 28px 24px;
+  border-top: 1px solid var(--border);
+}
+footer p { font-size: 0.75rem; color: var(--muted); line-height: 1.9; }
+footer .ft { color: var(--accent); font-style: italic; }
+
+/* ── CANVAS ── */
+#ccanvas { position: fixed; inset: 0; z-index: 400; pointer-events: none; }
+
+/* ── ANIMATIONS ── */
+@keyframes fadeDown {
+  0% { opacity: 0; transform: translateY(-18px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeUp {
+  0% { opacity: 0; transform: translateY(28px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideBarUp {
+  0% { opacity: 0; transform: translateX(-50%) translateY(18px); }
+  100% { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 720px) {
+  nav { padding: 14px 18px; }
+  .features { grid-template-columns: 1fr; }
+  .form-card { padding: 26px 20px; }
+  .trust-strip { gap: 16px; padding: 22px 20px; }
+  .float-count { display: none; }
+}
+@media (max-width: 480px) {
+  .live-bar { font-size: 0.7rem; padding: 8px 16px; }
+}
+</style>
+</head>
+<body>
+
+<div class="bg-mesh"></div>
+<div class="grid"></div>
+<canvas id="ccanvas"></canvas>
+
+<!-- EXIT INTENT OVERLAY -->
+<div class="overlay" id="exit-overlay">
+  <div class="exit-card">
+    <button class="exit-close" onclick="closeExit()">✕</button>
+    <div style="font-size:1.8rem;margin-bottom:14px;">⚡</div>
+    <h2>Wait — want priority access?</h2>
+    <p>You're seconds away from skipping the queue. Drop your email and we'll notify you the moment the gates open.</p>
+    <input class="exit-input" type="email" id="exit-email" placeholder="your@email.com">
+    <button class="btn-exit-cta" onclick="submitExit()">Secure My Priority Access</button>
+    <p class="exit-skip" onclick="closeExit()">No thanks, I'll wait in line</p>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav>
+  <div class="logo">Fuwa..NG</div>
+  <div class="nav-right">
+    <span class="trust-pill"><span class="status-dot"></span>CBN & Global Compliance</span>
+    <span class="trust-pill">Q2 2026</span>
+  </div>
+</nav>
+
+<!-- PAGE -->
+<div class="page">
+
+  <!-- REFERRED BY BANNER (hidden by default, shown if ?ref= present) -->
+  <div id="ref-banner" style="display:none;width:100%;max-width:500px;margin-bottom:16px;padding:10px 18px;background:rgba(45,253,184,0.07);border:1px solid rgba(45,253,184,0.2);border-radius:12px;font-size:0.8rem;color:var(--accent);text-align:center">
+    🎉 You were invited! Join now and your referrer moves up the queue.
+  </div>
+
+  <!-- PAIN HOOK -->
+  <div class="pain-bar">
+    ⚠️ &nbsp;Fragmented APIs are costing Nigerian businesses customers every day
+  </div>
+
+  <!-- HERO -->
+  <div class="hero">
+    <h1>
+      Stop Losing Customers<br>
+      <span class="hl">Because Your Stack Can't Keep Up</span>
+    </h1>
+    <p class="sub">
+      <strong>Fuwa.NG</strong> gives you instant KYC, global payments, and AI-powered legal tools —
+      all in one unified API. Built for teams that ship fast and scale hard.
+    </p>
+  </div>
+
+  <!-- WHO IS THIS FOR -->
+  <div class="for-section">
+    <div class="for-label">Built for</div>
+    <div class="for-chips">
+      <span class="chip">🔐 Fintech startups scaling KYC</span>
+      <span class="chip">📦 Logistics & marketplaces</span>
+      <span class="chip">🌍 Agencies handling global payments</span>
+      <span class="chip">🏢 Enterprises escaping fragmented APIs</span>
+    </div>
+  </div>
+
+  <!-- SOCIAL PROOF -->
+  <div class="proof-row">
+    <div class="avs">
+      <div class="av av1">AK</div>
+      <div class="av av2">FO</div>
+      <div class="av av3">ME</div>
+      <div class="av av4">+</div>
+    </div>
+    <p class="proof-txt"><strong>1,200+</strong> builders & ops teams already on the list</p>
+  </div>
+
+  <!-- FORM CARD -->
+  <div class="form-card">
+    <!-- STEPS -->
+    <div class="steps" id="steps-bar">
+      <div class="stp active" id="s1">1</div>
+      <div class="sline" id="sl1"></div>
+      <div class="stp" id="s2">2</div>
+      <div class="sline" id="sl2"></div>
+      <div class="stp" id="s3">✓</div>
+    </div>
+
+    <!-- FIELDS -->
+    <div class="ffields" id="ff">
+
+      <!-- STEP 1 -->
+      <div id="step1">
+        <div class="ftitle">What should we call you?</div>
+        <div class="fsub">Quick — takes 10 seconds. We follow up when you're in.</div>
+        <div class="field">
+          <label for="fn">Full Name</label>
+          <input type="text" id="fn" placeholder="e.g. Alaba Chidi Ibrahim" autocomplete="name">
+          <div class="ferr" id="en">Please enter your full name.</div>
+        </div>
+        <div class="field">
+          <label for="fu">What do you want to use Fuwa for?</label>
+          <select id="fu">
+            <option value="" disabled selected>Select your primary use case</option>
+            <option value="verification">KYC (NIN, BVN, CAC)</option>
+            <option value="payments">Global Payments & FX</option>
+            <option value="legal">AI Legal Documents</option>
+            <option value="all">All-in-One API Suite</option>
+          </select>
+          <div class="ferr" id="eu">Please select a use case.</div>
+        </div>
+        <button class="btn-next" onclick="goStep2()">Continue →</button>
+      </div>
+
+      <!-- STEP 2 -->
+      <div id="step2" style="display:none">
+        <button class="btn-back" onclick="goStep1()">← Back</button>
+        <div class="ftitle">How do we reach you?</div>
+        <div class="fsub">Use a business email for priority access.</div>
+        <div class="field">
+          <label for="fe">Business Email</label>
+          <input type="email" id="fe" placeholder="you@company.com" autocomplete="email">
+          <div class="ferr" id="ee">Please enter a valid email address.</div>
+        </div>
+        <div class="field">
+          <label for="fp">Phone Number <span style="color:var(--muted);font-size:0.7rem;text-transform:none;letter-spacing:0">(optional)</span></label>
+          <input type="tel" id="fp" placeholder="+234 800 000 0000" autocomplete="tel">
+          <div class="ferr" id="ep">Please enter a valid phone number.</div>
+          <div class="phone-hint">📲 Add phone to get our SMS launch alert — faster than email</div>
+        </div>
+        <button class="btn-next" id="sub-btn" onclick="submitForm()">Get Early Access 🚀</button>
+      </div>
+
+    </div>
+
+    <!-- SUCCESS -->
+    <div class="success" id="suc">
+      <div class="s-icon">🎉</div>
+      <h2 class="s-title">You're on the list!</h2>
+      <p class="s-body">We've sent a confirmation to your email. Share your link with friends to move up the queue — the more you share, the faster you get in.</p>
+      <div class="queue-pill">You are #<span id="qnum">451</span> in line</div>
+
+      <!-- REFERRAL TIERS -->
+      <div class="tiers">
+        <div class="tiers-title">🏆 Referral Rewards — move up by sharing</div>
+        <div class="tier-row">
+          <div class="tier-num">1</div>
+          <div class="tier-info">
+            <div class="tier-label">1 referral</div>
+            <div class="tier-desc">Move up 20 spots instantly</div>
+          </div>
+          <span class="tier-badge">+20 spots</span>
+        </div>
+        <div class="tier-row">
+          <div class="tier-num">3</div>
+          <div class="tier-info">
+            <div class="tier-label">3 referrals</div>
+            <div class="tier-desc">Jump ahead 100 spots</div>
+          </div>
+          <span class="tier-badge">+100 spots</span>
+        </div>
+        <div class="tier-row">
+          <div class="tier-num">10</div>
+          <div class="tier-info">
+            <div class="tier-label">10 referrals</div>
+            <div class="tier-desc">Skip the queue entirely</div>
+          </div>
+          <span class="tier-badge">🔑 Beta Access</span>
+        </div>
+      </div>
+
+      <!-- REFERRAL LINK -->
+      <div class="ref-box">
+        <label>🔗 Your unique referral link</label>
+        <div class="ref-row">
+          <input class="ref-val" id="rlink" type="text" readonly onclick="this.select()" style="cursor:text">
+          <button class="btn-copy" id="copy-btn" onclick="copyRef()">Copy</button>
+        </div>
+        <div style="margin-top:10px;font-size:0.72rem;color:var(--muted)">
+          Referrals so far: <strong id="ref-count" style="color:var(--accent)">0</strong>
+          <span id="ref-tier-msg" style="margin-left:8px;color:var(--accent)"></span>
+        </div>
+        <div style="margin-top:8px;height:4px;background:rgba(255,255,255,0.06);border-radius:100px;overflow:hidden">
+          <div id="ref-bar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:100px;transition:width 0.6s ease"></div>
+        </div>
+      </div>
+
+      <!-- SHARE -->
+      <div class="share-row">
+        <button class="share-btn" onclick="shareWA()">📲 WhatsApp</button>
+        <button class="share-btn" onclick="shareX()">𝕏 Twitter</button>
+        <button class="share-btn" onclick="shareLI()">💼 LinkedIn</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TRUST STRIP -->
+  <div class="trust-strip">
+    <div class="trust-item"><span class="ti">🏦</span> <span>CBN & NDPR compliant</span></div>
+    <div class="trust-item"><span class="ti">🌍</span> <span>Global standards ready</span></div>
+    <div class="trust-item"><span class="ti">⚡</span> <span>Sub-200ms KYC</span></div>
+    <div class="trust-item"><span class="ti">🔐</span> <span>Bank-grade encryption</span></div>
+    <div class="trust-item"><span class="ti">🛠️</span> <span>Built by experienced engineers & operators</span></div>
+  </div>
+
+  <!-- FEATURES -->
+  <div class="features">
+    <div class="fc">
+      <div class="fc-icon">🔐</div>
+      <h3>Identity Suite</h3>
+      <p>KYC in milliseconds — NIN, BVN, CAC, and DL with audit-ready reports and full compliance trails.</p>
+    </div>
+    <div class="fc">
+      <div class="fc-icon">💸</div>
+      <h3>Unified Finance</h3>
+      <p>Automated FX, invoicing, and global payouts — engineered for high-scale Nigerian and African operations.</p>
+    </div>
+    <div class="fc">
+      <div class="fc-icon">⚖️</div>
+      <h3>AI Legal Hub</h3>
+      <p>Generate compliant contracts and legal documents using standardized verified templates in seconds.</p>
+    </div>
+  </div>
+
+</div><!-- /page -->
+
+<!-- LIVE TICKER -->
+<div class="live-bar" id="lticker">
+  <span class="status-dot"></span>
+  <span id="tmsg">A <span class="ticker-g">fintech startup in Yaba</span> just joined the waitlist 30 seconds ago.</span>
+</div>
+
+<!-- FLOAT COUNT -->
+<div class="float-count" id="fcount">
+  🔥 <span id="fcnum">382</span> joined today
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <p>© 2026 Fuwa..NG. All rights reserved.<br>
+  <span class="ft">Built for builders who ship fast.</span></p>
+</footer>
+
+<script>
+// ══════════════════════════════════════════════
+// ⚙️  CONFIG
+// ══════════════════════════════════════════════
+// Supabase — paste your values from Project Settings → API
+const SB_URL  = 'https://xxfrtdgosllilammwiok.supabase.co';
+const SB_ANON = 'sb_publishable_0UuYlqLD72mUxIRjBf-tPQ_qwSROpd_';
+
+// ── SUPABASE HELPERS ──
+async function sbInsert(row) {
+  const res = await fetch(`${SB_URL}/rest/v1/waitlist_entries`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SB_ANON,
+      'Authorization': 'Bearer ' + SB_ANON,
+      'Prefer': 'return=representation'
+    },
+    body: JSON.stringify(row)
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || data.error || 'Supabase insert failed');
+  return data[0];
+}
+
+async function sbGetCount() {
+  const res = await fetch(`${SB_URL}/rest/v1/waitlist_entries?select=id`, {
+    headers: {
+      'apikey': SB_ANON,
+      'Authorization': 'Bearer ' + SB_ANON,
+      'Prefer': 'count=exact',
+      'Range': '0-0'
+    }
+  });
+  const range = res.headers.get('content-range');   // e.g. "0-0/453"
+  if (range && range.includes('/')) return parseInt(range.split('/')[1], 10);
+  return null;
+}
+
+async function sbIncrementReferral(refCode) {
+  // increment referral_count on the row that owns this referral_code
+  await fetch(`${SB_URL}/rest/v1/rpc/increment_referral`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SB_ANON,
+      'Authorization': 'Bearer ' + SB_ANON
+    },
+    body: JSON.stringify({ ref_code: refCode })
+  });
+}
+
+async function sbGetReferralCount(refCode) {
+  const res = await fetch(
+    `${SB_URL}/rest/v1/waitlist_entries?referral_code=eq.${refCode}&select=referral_count`,
+    { headers: { 'apikey': SB_ANON, 'Authorization': 'Bearer ' + SB_ANON } }
+  );
+  const data = await res.json();
+  return data && data[0] ? data[0].referral_count : 0;
+}
+
+// ── QUEUE — persists across sessions via localStorage ──
+// Starts at 1200 for the first-ever visitor on this device,
+// then increments by 1 each time someone submits on that device.
+const QUEUE_KEY   = 'fuwa_queue_pos';
+const QUEUE_START = 1200;
+
+function getNextQueuePosition() {
+  const stored = localStorage.getItem(QUEUE_KEY);
+  const next   = stored ? parseInt(stored, 10) + 1 : QUEUE_START;
+  localStorage.setItem(QUEUE_KEY, next);
+  return next;
+}
+
+// ── REFERRAL — read ?ref= from URL on page load ──
+const urlRef = new URLSearchParams(window.location.search).get('ref') || '';
+
+// Show referral banner if visitor arrived via a referral link
+if (urlRef) {
+  const banner = document.getElementById('ref-banner');
+  if (banner) banner.style.display = 'block';
+}
+
+// ── STATE ──
+let step = 1;
+let ud = {};
+let refCode = '';
+let exitShown = false;
+
+// ── STEPS ──
+function goStep2() {
+  const name = document.getElementById('fn').value.trim();
+  const use  = document.getElementById('fu').value;
+  let ok = true;
+
+  if (name.length < 2) { showErr('en', 'fn'); ok = false; }
+  else hideErr('en', 'fn');
+
+  if (!use) { showErr('eu', 'fu'); ok = false; }
+  else hideErr('eu', 'fu');
+
+  if (!ok) return;
+  ud.name = name; ud.useCase = use;
+
+  document.getElementById('step1').style.display = 'none';
+  document.getElementById('step2').style.display = 'block';
+  markStep(1, 'done'); markStep(2, 'active');
+  document.getElementById('sl1').classList.add('lit');
+  step = 2;
+  document.getElementById('fe').focus();
+}
+
+function goStep1() {
+  document.getElementById('step2').style.display = 'none';
+  document.getElementById('step1').style.display = 'block';
+  markStep(1, 'active'); markStep(2, '');
+  document.getElementById('sl1').classList.remove('lit');
+  step = 1;
+}
+
+function markStep(n, state) {
+  const el = document.getElementById('s' + n);
+  el.className = 'stp';
+  if (state === 'active') { el.classList.add('active'); el.textContent = n; }
+  else if (state === 'done') { el.classList.add('done'); el.textContent = '✓'; }
+  else { el.textContent = n; }
+}
+
+// ── ERRORS ──
+function showErr(eid, fid) {
+  document.getElementById(eid).classList.add('show');
+  document.getElementById(fid).classList.add('err');
+}
+function hideErr(eid, fid) {
+  document.getElementById(eid).classList.remove('show');
+  document.getElementById(fid).classList.remove('err');
+}
+
+// ── SUBMIT ──
+function submitForm() {
+  const email = document.getElementById('fe').value.trim();
+  const phone = document.getElementById('fp').value.trim();
+  let ok = true;
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showErr('ee','fe'); ok = false; }
+  else hideErr('ee','fe');
+
+  if (phone && !/^[\+]?[\d\s\-\(\)]{7,15}$/.test(phone)) { showErr('ep','fp'); ok = false; }
+  else hideErr('ep','fp');
+
+  if (!ok) return;
+  ud.email = email; ud.phone = phone;
+
+  const btn = document.getElementById('sub-btn');
+  btn.textContent = 'Securing your spot…';
+  btn.classList.add('loading');
+
+  // ── BUILD ROW ──
+  const referralCode = genRef(ud.email);
+
+  // ── POST TO SUPABASE (sole backend — Resend email fires via DB webhook) ──
+  (async () => {
+    try {
+      // get real count BEFORE insert so queue = count + 1
+      const currentCount = await sbGetCount();
+      const queuePos = currentCount !== null ? currentCount + 1 : null;
+
+      const row = {
+        name:           ud.name,
+        email:          ud.email,
+        phone:          ud.phone || null,
+        use_case:       ud.useCase || null,
+        referred_by:    urlRef || null,
+        referral_code:  referralCode,
+        source:         'main-form',
+        queue_position: queuePos,
+        referral_count: 0
+      };
+
+      await sbInsert(row);
+
+      // if this signup came via a referral, increment that referrer's count
+      if (urlRef) await sbIncrementReferral(urlRef);
+
+      showSuccess(queuePos);
+      launchConfetti();
+
+    } catch(err) {
+      const msg = err.message || '';
+      console.error('Supabase error:', msg);  // open browser console to see exact error
+      if (msg.includes('duplicate') || msg.includes('unique') || msg.includes('23505')) {
+        btn.textContent = '⚠️ This email is already on the list!';
+      } else if (msg.includes('permission') || msg.includes('policy') || msg.includes('42501')) {
+        btn.textContent = '⚠️ Permission error — RLS policy issue';
+      } else if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+        btn.textContent = '⚠️ Network error — check your connection';
+      } else {
+        btn.textContent = '⚠️ ' + (msg.slice(0, 60) || 'Something went wrong — try again');
+      }
+      btn.classList.remove('loading');
+      setTimeout(() => { btn.textContent = 'Get Early Access 🚀'; }, 6000);
+    }
+  })();
+}
+
+// ── SUCCESS ──
+async function showSuccess(realQueuePos) {
+  document.getElementById('ff').classList.add('hide');
+  document.getElementById('suc').classList.add('show');
+  document.getElementById('steps-bar').style.display = 'none';
+  markStep(2, 'done'); markStep(3, 'active');
+  document.getElementById('sl2').classList.add('lit');
+
+  // Use real Supabase count if available, else localStorage fallback
+  const qPos = realQueuePos !== null && realQueuePos !== undefined
+    ? realQueuePos
+    : getNextQueuePosition();
+  document.getElementById('qnum').textContent = qPos.toLocaleString();
+
+  // Generate referral code and build the real shareable URL
+  refCode = genRef(ud.email || 'user');
+  const refUrl = getReferralUrl();
+  document.getElementById('rlink').value = refUrl;
+
+  // Load real referral count from Supabase, fallback to localStorage
+  try {
+    const realCount = await sbGetReferralCount(refCode);
+    localStorage.setItem('fuwa_ref_count_' + refCode, realCount);
+  } catch(e) { /* use localStorage value */ }
+  updateReferralUI();
+}
+
+// ── REFERRAL ENGINE ──
+const REF_COUNT_KEY = 'fuwa_ref_count_';   // per-refCode count stored locally
+const BASE_URL = window.location.origin + window.location.pathname; // real page URL
+
+function genRef(email) {
+  // deterministic: same email always produces same code
+  const h = email.split('').reduce((a,c) => ((a << 5) - a) + c.charCodeAt(0), 0);
+  return Math.abs(h).toString(36).toUpperCase().slice(0,7);
+}
+
+function getReferralUrl() {
+  return BASE_URL + '?ref=' + refCode;
+}
+
+function getReferralCount() {
+  return parseInt(localStorage.getItem(REF_COUNT_KEY + refCode) || '0', 10);
+}
+
+function incrementReferralCount() {
+  const key = REF_COUNT_KEY + refCode;
+  const current = parseInt(localStorage.getItem(key) || '0', 10);
+  const next = current + 1;
+  localStorage.setItem(key, next);
+  return next;
+}
+
+function updateReferralUI() {
+  const count = getReferralCount();
+  const countEl = document.getElementById('ref-count');
+  const msgEl   = document.getElementById('ref-tier-msg');
+  const barEl   = document.getElementById('ref-bar');
+  if (!countEl) return;
+
+  countEl.textContent = count;
+
+  // tier logic
+  let pct = 0, msg = '';
+  if (count === 0)       { pct = 0;   msg = 'Share to start moving up!'; }
+  else if (count < 3)    { pct = (count/3)*33;  msg = '🔼 Moving up! ' + (3-count) + ' more for +100 spots'; }
+  else if (count < 10)   { pct = 33 + ((count-3)/7)*56; msg = '🔥 ' + (10-count) + ' more for Beta Access!'; }
+  else                   { pct = 100; msg = '🔑 Beta Access unlocked!'; }
+
+  barEl.style.width = pct + '%';
+  msgEl.textContent = msg;
+}
+
+// ── COPY ──
+function copyRef() {
+  const url = getReferralUrl();
+  const btn = document.getElementById('copy-btn');
+
+  // modern clipboard API with fallback
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(() => {
+      showCopied(btn);
+    }).catch(() => fallbackCopy(url, btn));
+  } else {
+    fallbackCopy(url, btn);
+  }
+}
+
+function fallbackCopy(text, btn) {
+  // execCommand fallback for older browsers / http pages
+  const el = document.getElementById('rlink');
+  el.select();
+  el.setSelectionRange(0, 99999);
+  try {
+    document.execCommand('copy');
+    showCopied(btn);
+  } catch(e) {
+    btn.textContent = 'Select & copy manually';
+    setTimeout(() => btn.textContent = 'Copy', 3000);
+  }
+}
+
+async function showCopied(btn) {
+  btn.textContent = '✓ Copied!';
+  btn.style.background = 'rgba(45,253,184,0.22)';
+  setTimeout(() => {
+    btn.textContent = 'Copy';
+    btn.style.background = '';
+  }, 2500);
+  // increment locally immediately for instant feedback
+  incrementReferralCount();
+  updateReferralUI();
+  // sync real count from Supabase in background
+  try {
+    const real = await sbGetReferralCount(refCode);
+    localStorage.setItem('fuwa_ref_count_' + refCode, real);
+    updateReferralUI();
+  } catch(e) {}
+}
+
+// ── SHARE ──
+function shareWA() {
+  const url = getReferralUrl();
+  const msg = encodeURIComponent('I just joined the Fuwa.NG waitlist 🚀\n\nNigeria\'s unified API for KYC, global payments, and AI legal docs is almost here.\n\nGet early access: ' + url);
+  window.open('https://wa.me/?text=' + msg, '_blank');
+  incrementReferralCount(); updateReferralUI();
+}
+
+function shareX() {
+  const url = getReferralUrl();
+  const msg = encodeURIComponent('Joined @FuwaNg waitlist 🔐💸⚖️\n\nBank-grade KYC, global payments, AI legal tools — one unified API for Nigeria.\n\nGet early access: ' + url);
+  window.open('https://twitter.com/intent/tweet?text=' + msg, '_blank');
+  incrementReferralCount(); updateReferralUI();
+}
+
+function shareLI() {
+  const url = getReferralUrl();
+  window.open('https://www.linkedin.com/sharing/share-offsite/?url=' + encodeURIComponent(url), '_blank');
+  incrementReferralCount(); updateReferralUI();
+}
+
+// ── CONFETTI ──
+function launchConfetti() {
+  const c = document.getElementById('ccanvas');
+  const ctx = c.getContext('2d');
+  c.width = window.innerWidth; c.height = window.innerHeight;
+  const cols = ['#2dfdb8','#7b6dff','#ff5e5e','#f7c948','#a8fff0','#ffffff','#6ddcff'];
+  const pieces = Array.from({length:130}, () => ({
+    x: Math.random()*c.width, y: -20 - Math.random()*180,
+    w: 5+Math.random()*9, h: 7+Math.random()*5,
+    color: cols[Math.floor(Math.random()*cols.length)],
+    angle: Math.random()*Math.PI*2,
+    spin: (Math.random()-0.5)*0.18,
+    vx: (Math.random()-0.5)*4.5,
+    vy: 3+Math.random()*5,
+    opacity: 1
+  }));
+  let f = 0;
+  function draw() {
+    ctx.clearRect(0,0,c.width,c.height);
+    pieces.forEach(p => {
+      ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.angle);
+      ctx.globalAlpha = p.opacity;
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);
+      ctx.restore();
+      p.x+=p.vx; p.y+=p.vy; p.angle+=p.spin; p.vy+=0.1;
+      if (p.y>c.height) p.opacity -= 0.04;
+    });
+    f++;
+    if (f < 200) requestAnimationFrame(draw);
+    else ctx.clearRect(0,0,c.width,c.height);
+  }
+  draw();
+}
+
+// ── LIVE TICKER ──
+const tdata = [
+  {who:'A fintech startup in Yaba', time:'30 seconds ago'},
+  {who:'A logistics company in Abuja', time:'just now'},
+  {who:'An agency team in Lekki', time:'1 minute ago'},
+  {who:'A marketplace founder in Kano', time:'2 minutes ago'},
+  {who:'An ops team in Port Harcourt', time:'just now'},
+  {who:'A developer in Ibadan', time:'3 minutes ago'},
+  {who:'A startup in Enugu', time:'45 seconds ago'},
+  {who:'An enterprise team in Accra', time:'4 minutes ago'},
+];
+let ti = 0;
+function rotateTicker() {
+  ti = (ti+1) % tdata.length;
+  const t = tdata[ti];
+  const el = document.getElementById('tmsg');
+  el.style.opacity = '0';
+  setTimeout(() => {
+    el.innerHTML = `<span class="ticker-g">${t.who}</span> joined the waitlist ${t.time}.`;
+    el.style.opacity = '1';
+    el.style.transition = 'opacity 0.45s';
+  }, 380);
+}
+setInterval(rotateTicker, 5500);
+
+// ── FLOAT COUNT ──
+let fnum = 382;
+setInterval(() => {
+  if (Math.random() > 0.55) {
+    fnum++;
+    document.getElementById('fcnum').textContent = fnum.toLocaleString();
+  }
+}, 7000);
+
+// ── EXIT INTENT ──
+document.addEventListener('mouseleave', e => {
+  if (e.clientY < 30 && !exitShown) {
+    exitShown = true;
+    document.getElementById('exit-overlay').classList.add('show');
+  }
+});
+
+function closeExit() {
+  document.getElementById('exit-overlay').classList.remove('show');
+}
+
+function submitExit() {
+  const val = document.getElementById('exit-email').value.trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) {
+    document.getElementById('exit-email').style.borderColor = 'rgba(255,94,94,0.5)';
+    return;
+  }
+
+  const btn = document.querySelector('.btn-exit-cta');
+  btn.textContent = 'Saving your spot…';
+  btn.disabled = true;
+
+  sbInsert({
+    email:          val,
+    name:           'Unknown',
+    referral_code:  genRef(val),
+    referred_by:    urlRef || null,
+    source:         'exit-intent-popup',
+    referral_count: 0
+  })
+  .then(() => closeExit())
+  .catch(() => closeExit());  // close either way — don't punish the user
+}
+
+// ── ENTER KEY ──
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  if (step === 1) goStep2();
+  else if (step === 2) submitForm();
+});
+</script>
+</body>
+</html>

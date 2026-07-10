@@ -9,9 +9,12 @@ use App\Models\User;
 use App\Support\DbTable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Cache;
 use App\Mail\LowBalanceMail;
+use App\Mail\WalletRefundMail;
+use App\Models\CustomApi;
 use App\Models\SystemSetting;
 
 class WalletService
@@ -100,13 +103,15 @@ class WalletService
                 $txId = $prefix . '-' . strtoupper(bin2hex(random_bytes(4)));
             }
 
+            $status = str_starts_with($orderType, 'Admin') ? 'success' : 'pending';
+
             $tx = Transaction::create([
                 'user_email' => $user->email,
                 'order_type' => $orderType,
                 'balance_before' => $oldBalance,
                 'balance_after' => $newBalance,
                 'transaction_id' => $txId,
-                'status' => 'pending',
+                'status' => $status,
             ]);
 
             // Low Balance Notification
@@ -203,75 +208,91 @@ class WalletService
 
     public function markSuccessById(int $id): void
     {
-        Transaction::where('id', $id)->update(['status' => 'success']);
+        $tx = Transaction::query()->where('id', $id)->first();
+        if (!$tx) {
+            return;
+        }
+        $tx->status = 'success';
+        $tx->save();
     }
 
     public function markTransactionSuccess(string $transactionId): void
     {
-        Transaction::where('transaction_id', $transactionId)->update(['status' => 'success']);
+        $tx = Transaction::query()->where('transaction_id', $transactionId)->first();
+        if (!$tx) {
+            return;
+        }
+        $tx->status = 'success';
+        $tx->save();
     }
 
     public function failAndRefund(User $user, float $amount, string $orderType, string $transactionId): void
     {
-        DB::transaction(function () use ($user, $amount, $orderType, $transactionId) {
-            $balance = AccountBalance::query()
-                ->where('user_id', $user->id)
-                ->lockForUpdate()
+        $creditId = $transactionId . '-RF';
+        $creditType = 'Refund – ' . $orderType;
+
+        try {
+            DB::transaction(function () use ($user, $amount, $creditType, $creditId, $transactionId) {
+                $result = $this->credit($user, $amount, $creditType, $creditId);
+                if (!($result['ok'] ?? false)) {
+                    throw new \RuntimeException($result['message'] ?? 'Credit failed');
+                }
+                $tx = Transaction::query()->where('transaction_id', $transactionId)->first();
+                if ($tx) {
+                    $tx->status = 'refunded';
+                    $tx->save();
+                }
+            });
+            $this->notifyWalletRefund($user, $amount, $creditType, $creditId);
+        } catch (\Throwable $e) {
+            Log::error('failAndRefund failed', [
+                'user_id' => $user->id,
+                'transaction_id' => $transactionId,
+                'amount' => $amount,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Queue email and (when configured) SMS after a wallet refund is applied.
+     */
+    public function notifyWalletRefund(User $user, float $amount, string $reasonSummary, string $referenceId): void
+    {
+        try {
+            Mail::to($user->email)->queue(new WalletRefundMail($user, $amount, $reasonSummary, $referenceId));
+        } catch (\Throwable $e) {
+            Log::warning('Wallet refund email queue failed', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        $phone = trim((string) ($user->number ?? ''));
+        if ($phone === '') {
+            return;
+        }
+
+        try {
+            $provider = CustomApi::query()
+                ->where('service_type', 'sms_gateway')
+                ->where('status', true)
+                ->orderByDesc('priority')
                 ->first();
-
-            if (!$balance) {
-                // Check legacy table if new table is empty
-                $legacyBalance = 0.00;
-                if (Schema::hasTable('account_balance') && DbTable::isBaseTable('account_balance')) {
-                    $legacy = DB::table('account_balance')->where('email', $user->email)->lockForUpdate()->first();
-                    if ($legacy) {
-                        $legacyBalance = (float) $legacy->user_balance;
-                    }
-                }
-
-                $balance = AccountBalance::create([
-                    'user_id' => $user->id,
-                    'email' => $user->email,
-                    'user_balance' => $legacyBalance,
-                    'api_key' => 'user',
-                ]);
-                $balance = AccountBalance::query()->where('id', $balance->id)->lockForUpdate()->first();
+            if (!$provider) {
+                return;
             }
 
-            if ($balance) {
-                $beforeRefund = round((float) $balance->user_balance, 2);
-                $afterRefund = round($beforeRefund + $amount, 2);
-                $balance->user_balance = $afterRefund;
-                $balance->save();
+            $site = (string) SystemSetting::get('site_name', config('app.name'));
+            $message = $site . ': NGN ' . number_format($amount, 2) . ' refunded to your wallet. Ref: ' . $referenceId;
 
-                if (Schema::hasTable('account_balance') && DbTable::isBaseTable('account_balance')) {
-                    $legacy = DB::table('account_balance')->where('email', $user->email)->lockForUpdate()->first();
-                    if ($legacy) {
-                        DB::table('account_balance')->where('email', $user->email)->update([
-                            'user_balance' => $afterRefund,
-                        ]);
-                    } else {
-                        DB::table('account_balance')->insert([
-                            'email' => $user->email,
-                            'user_balance' => $afterRefund,
-                            'api_key' => 'user',
-                            'created_at' => now(),
-                        ]);
-                    }
-                }
-
-                Transaction::create([
-                    'user_email' => $user->email,
-                    'order_type' => 'Refund – ' . $orderType,
-                    'balance_before' => $beforeRefund,
-                    'balance_after' => $afterRefund,
-                    'transaction_id' => $transactionId . '-RF',
-                    'status' => 'success',
-                ]);
-            }
-
-            Transaction::where('transaction_id', $transactionId)->update(['status' => 'failed']);
-        });
+            app(SmsService::class)->send($provider, $phone, $message, null);
+        } catch (\Throwable $e) {
+            Log::warning('Wallet refund SMS failed', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**

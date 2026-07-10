@@ -1,6 +1,6 @@
 @extends('layouts.nexus')
 
-@section('title', 'G-Soft Verify - AI Legal Hub & Next-Gen Identity Verification')
+@section('title', 'Fuwa.NG - AI Legal Hub & Next-Gen Identity Verification')
 
 @section('content')
 <div class="welcome-wrapper">

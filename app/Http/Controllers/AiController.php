@@ -25,6 +25,8 @@ class AiController extends Controller
 
         return response()->json([
             'success' => $aiResponse['status'],
+            'status' => $aiResponse['status'],
+            'message' => $aiResponse['text'] ?? $aiResponse['message'],
             'response' => $aiResponse['text'] ?? $aiResponse['message']
         ]);
     }

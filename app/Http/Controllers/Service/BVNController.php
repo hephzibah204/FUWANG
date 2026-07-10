@@ -8,6 +8,7 @@ use App\Models\ApiCenter;
 use App\Models\CustomApi;
 use App\Models\VerificationPrice;
 use App\Models\VerificationResult;
+use App\Services\DataVerify\DataVerifyClient;
 use App\Services\PaidActionService;
 use App\Services\VerificationResultService;
 use Illuminate\Support\Facades\Auth;
@@ -56,6 +57,8 @@ class BVNController extends Controller
      */
     public function verify(Request $request)
     {
+        $expectsJson = $request->expectsJson() || $request->ajax() || $request->wantsJson();
+
         // Require mode: standard, match, combi
         $request->validate([
             'mode' => ['required', 'string', 'in:standard,match,combi'],
@@ -65,17 +68,63 @@ class BVNController extends Controller
 
         $mode = $request->input('mode');
         $user = Auth::user();
+        $providerContext = [
+            'mode' => $mode,
+            'provider_source' => 'unresolved',
+            'provider_id' => null,
+            'provider_name' => null,
+            'provider_identifier' => null,
+            'provider_endpoint' => null,
+        ];
 
         // 1. Determine Identity & Price
         list($price, $orderType, $serviceType, $txReference) = $this->determinePricing($request, $mode);
 
-        $paid = app(PaidActionService::class)->run($user, (float) $price, (string) $orderType, (string) $txReference, function () use ($request, $mode, $serviceType, $user) {
+        $paid = app(PaidActionService::class)->run($user, (float) $price, (string) $orderType, (string) $txReference, function () use ($request, $mode, $serviceType, $user, &$providerContext) {
             $provider = null;
             if ($request->filled('api_provider_id')) {
                 $provider = CustomApi::find($request->api_provider_id);
+                if ($provider && $provider->service_type !== $serviceType) {
+                    throw new \RuntimeException('Selected provider does not support this BVN verification mode.');
+                }
             } else {
                 $provider = CustomApi::where('service_type', $serviceType)->where('status', true)->first();
             }
+
+            if ($provider) {
+                $providerContext = [
+                    'mode' => $mode,
+                    'provider_source' => 'custom_api',
+                    'provider_id' => $provider->id,
+                    'provider_name' => $provider->name,
+                    'provider_identifier' => $provider->provider_identifier,
+                    'provider_endpoint' => $provider->endpoint,
+                ];
+            } else {
+                $apiCenter = ApiCenter::first();
+                $activeProvidersCount = CustomApi::where('service_type', $serviceType)->where('status', true)->count();
+                $providerContext = [
+                    'mode' => $mode,
+                    'provider_source' => 'legacy_api_center',
+                    'provider_id' => null,
+                    'provider_name' => 'Legacy API',
+                    'provider_identifier' => 'legacy',
+                    'provider_endpoint' => $apiCenter->dataverify_endpoint_bvn ?? null,
+                ];
+
+                Log::warning('BVN verification fell back to legacy provider', [
+                    'user' => $user->id,
+                    'service_type' => $serviceType,
+                    'mode' => $mode,
+                    'active_custom_providers' => $activeProvidersCount,
+                    'requested_api_provider_id' => $request->input('api_provider_id'),
+                ]);
+            }
+
+            Log::info('BVN verification provider resolved', array_merge([
+                'user' => $user->id,
+                'service_type' => $serviceType,
+            ], $providerContext));
 
             $response = null;
             if ($provider) {
@@ -119,11 +168,29 @@ class BVNController extends Controller
         });
 
         if (!$paid['ok']) {
-            Log::error('BVN Verification Failed: ' . $paid['message'], ['user' => $user->id]);
-            return response()->json(['status' => false, 'message' => $paid['message']]);
+            Log::error('BVN Verification Failed: ' . $paid['message'], array_merge([
+                'user' => $user->id,
+                'service_type' => $serviceType,
+                'number' => (string) $request->input('number'),
+            ], $providerContext));
+
+            if ($expectsJson) {
+                return response()->json(['status' => false, 'message' => $paid['message']]);
+            }
+
+            return back()
+                ->withErrors(['bvn' => $paid['message']])
+                ->withInput();
         }
 
-        return response()->json($paid['result']);
+        if ($expectsJson) {
+            return response()->json($paid['result']);
+        }
+
+        return redirect()
+            ->route('services.bvn')
+            ->with('status', $paid['result']['message'] ?? 'BVN verified successfully.')
+            ->with('bvn_active_panel', 'vault');
     }
 
     /**
@@ -177,6 +244,24 @@ class BVNController extends Controller
      */
     private function callCustomProvider($provider, Request $request, $mode)
     {
+        if (DataVerifyClient::isDataVerifyProvider($provider)) {
+            if ($mode !== 'standard') {
+                return [
+                    'status' => false,
+                    'message' => 'Selected mode is not supported by DataVerify for BVN.',
+                ];
+            }
+
+            $client = new DataVerifyClient($provider);
+            $result = $client->verifyBvn((string) $request->number, (string) $request->input('verification_type', ''));
+
+            return [
+                'status' => $result['ok'],
+                'data' => $result['data'],
+                'message' => $result['message'],
+            ];
+        }
+
         $payload = [];
         $url = rtrim($provider->endpoint, '/') . '/' . urlencode($request->number);
         $headers = is_array($provider->headers) ? $provider->headers : [];
@@ -282,6 +367,13 @@ class BVNController extends Controller
             return ['status' => false, 'message' => 'Legacy BVN endpoint not configured.'];
         }
 
+        if (str_contains(strtolower((string) $endpoint), '/bvn_slip/')) {
+            Log::warning('Legacy BVN endpoint appears to be a slip endpoint', [
+                'endpoint' => $endpoint,
+                'expected' => 'A BVN verification endpoint, not a slip/pdf endpoint.',
+            ]);
+        }
+
         $payload = [
             'api_key' => $apiKey,
             'bvn' => $request->number,
@@ -297,15 +389,48 @@ class BVNController extends Controller
             $payload['id_type'] = $request->id_type;
         }
 
-        $http = Http::timeout(45)->post($endpoint, $payload);
+        Log::info('Legacy BVN outbound request', [
+            'mode' => $mode,
+            'endpoint' => $endpoint,
+            'payload' => array_merge($payload, [
+                'api_key' => $this->maskApiKey((string) $apiKey),
+            ]),
+        ]);
+
+        $http = Http::timeout(45)->asJson()->post($endpoint, $payload);
+
+        Log::info('Legacy BVN upstream response', [
+            'mode' => $mode,
+            'endpoint' => $endpoint,
+            'http_status' => $http->status(),
+            'response_body' => $http->body(),
+        ]);
 
         if ($http->successful()) {
             $resData = $http->json();
+            $status = $resData['status'] ?? null;
+            $responseCode = (string) ($resData['response_code'] ?? '');
+            $isSuccessStatus = $status === true || strtolower((string) $status) === 'success' || $responseCode === '00' || $responseCode === '0';
 
-            if (isset($resData['status']) && $resData['status'] === true && isset($resData['data'])) {
+            if ($isSuccessStatus && isset($resData['data']) && is_array($resData['data'])) {
                 return [
                     'status' => true,
                     'data' => $resData['data'],
+                ];
+            }
+
+            // Some providers wrap the actual payload under user_data.data.
+            if ($isSuccessStatus && isset($resData['user_data']['data']) && is_array($resData['user_data']['data'])) {
+                return [
+                    'status' => true,
+                    'data' => $resData['user_data']['data'],
+                ];
+            }
+
+            if ($isSuccessStatus && isset($resData['user_data']) && is_array($resData['user_data'])) {
+                return [
+                    'status' => true,
+                    'data' => $resData['user_data'],
                 ];
             }
 
@@ -326,5 +451,16 @@ class BVNController extends Controller
             'status' => false,
             'message' => 'Legacy BVN API returned an error: ' . $http->status(),
         ];
+    }
+
+    private function maskApiKey(string $value): string
+    {
+        $value = trim($value);
+        $len = strlen($value);
+        if ($len <= 6) {
+            return str_repeat('*', max($len, 1));
+        }
+
+        return substr($value, 0, 3) . str_repeat('*', $len - 6) . substr($value, -3);
     }
 }

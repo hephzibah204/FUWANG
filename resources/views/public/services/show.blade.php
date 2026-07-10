@@ -3,7 +3,7 @@
 @section('title', ($service['title'] ?? 'Service') . ' | ' . ($service['tagline'] ?? config('app.name')))
 @section('meta_description', $service['summary'] ?? 'Explore services offered by ' . config('app.name'))
 @section('meta_keywords', implode(', ', [$service['title'], $service['category'], 'Nigeria', 'Fuwa.NG']))
-@section('canonical', route('explore.service', ['slug' => $slug]))
+@section('canonical', route('public.services.show', ['slug' => $slug]))
 
 @section('og_title', $service['title'] ?? 'Service')
 @section('og_description', $service['summary'] ?? 'Explore services offered by ' . config('app.name'))
@@ -468,7 +468,7 @@ SVG;
     @endif
     "potentialAction": {
         "@type": "ViewAction",
-        "target": "{{ route('explore.service', ['slug' => $slug]) }}"
+        "target": "{{ route('public.services.show', ['slug' => $slug]) }}"
     }
 }
 </script>

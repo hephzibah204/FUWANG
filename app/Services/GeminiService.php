@@ -11,7 +11,7 @@ use App\Services\LegalDrafting\LegalDraftRequest;
 class GeminiService
 {
     protected ?string $apiKey;
-    protected string $baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
+    protected string $baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
     public function __construct()
     {
@@ -22,7 +22,13 @@ class GeminiService
         } else {
             // Fallback to legacy ApiCenter
             $apiCenter = ApiCenter::first();
-            $this->apiKey = $apiCenter->gemini_api_key ?? null;
+            $this->apiKey = $apiCenter?->gemini_api_key;
+        }
+
+        // Fallback to env-based config (GEMINI_API_KEY) when DB credentials are not set.
+        if (! is_string($this->apiKey) || trim($this->apiKey) === '') {
+            $envKey = config('services.gemini.key');
+            $this->apiKey = is_string($envKey) && trim($envKey) !== '' ? $envKey : null;
         }
     }
 
@@ -38,7 +44,7 @@ class GeminiService
         try {
             $fullPrompt = $systemInstruction ? "Instructions: $systemInstruction\n\nUser Request: $prompt" : $prompt;
 
-            $response = Http::post($this->baseUrl . '?key=' . $this->apiKey, [
+            $response = Http::timeout(45)->post($this->baseUrl . '?key=' . $this->apiKey, [
                 'contents' => [
                     [
                         'parts' => [

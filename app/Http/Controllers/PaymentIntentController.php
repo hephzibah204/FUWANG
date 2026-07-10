@@ -25,9 +25,12 @@ class PaymentIntentController extends Controller
         $tier = $user->kyc_tier ?? 1;
         $dailyLimit = config('kyc.tiers.' . $tier . '.daily_limit');
 
-        $todayTransactions = Transaction::where('user_email', $user->email)
+        // `transactions` has no `amount` column; amount is balance_after - balance_before (see Transaction::getAmountAttribute).
+        $todayTransactions = (float) Transaction::query()
+            ->where('user_email', $user->email)
             ->whereDate('created_at', today())
-            ->sum('amount');
+            ->selectRaw('COALESCE(SUM(balance_after - balance_before), 0) as daily_flow')
+            ->value('daily_flow');
 
         if ($todayTransactions + $request->amount > $dailyLimit) {
             return response()->json(['status' => false, 'message' => 'Daily transaction limit exceeded.'], 403);
@@ -84,7 +87,7 @@ class PaymentIntentController extends Controller
             'amount_expected' => $intent->amount_expected,
             'currency' => $intent->currency,
             'intent_status' => $intent->status,
-            'expires_at' => $this->expires_at,
+            'expires_at' => $intent->expires_at,
         ]);
     }
 }

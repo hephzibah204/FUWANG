@@ -18,11 +18,10 @@
 {{-- Tab Navigation --}}
 <div class="tab-strip mb-4">
     <button class="s-tab active" onclick="switchTab('tab-notification', this)"><i class="fa fa-bell mr-2"></i>Notification</button>
-    <button class="s-tab" onclick="switchTab('tab-pricing', this)"><i class="fa fa-tag mr-2"></i>Pricing</button>
+    <button class="s-tab" onclick="switchTab('tab-pricing', this)"><i class="fa fa-tag mr-2"></i>Pricing (All Services)</button>
     <button class="s-tab" onclick="switchTab('tab-banking', this)"><i class="fa fa-building-columns mr-2"></i>Payment Info</button>
     <button class="s-tab" onclick="switchTab('tab-api-settings', this)"><i class="fa fa-toggle-on mr-2"></i>API Config</button>
     <button class="s-tab" onclick="switchTab('tab-api-keys', this)"><i class="fa fa-key mr-2"></i>API Keys</button>
-    <button class="s-tab" onclick="switchTab('tab-system-pricing', this)"><i class="fa fa-money-bill-trend-up mr-2"></i>System Pricing</button>
     <button class="s-tab" onclick="switchTab('tab-theme', this)"><i class="fa fa-palette mr-2"></i>Theme</button>
     <button class="s-tab" onclick="switchTab('tab-notary', this)"><i class="fa fa-gavel mr-2"></i>Notary & Branding</button>
     <button class="s-tab" onclick="switchTab('tab-security', this)"><i class="fa fa-shield-halved mr-2"></i>Security</button>
@@ -109,6 +108,59 @@
                 </div>
             </div>
             <button type="submit" class="btn btn-primary rounded-pill px-4"><i class="fa fa-floppy-disk mr-2"></i>Save Pricing</button>
+        </form>
+
+        <hr style="border-color: rgba(255,255,255,0.07);" class="my-4">
+
+        <h5 class="text-white mb-1 fw-bold">Extended Services Pricing</h5>
+        <p class="text-white-50 small mb-4">Manage pricing for AI Legal Hub and other advanced modules.</p>
+        <form id="systemPricingForm">
+            @csrf
+            <div class="row">
+                @php
+                    $pricing = [
+                        'cac_verification_price' => 'CAC Verification',
+                        'tin_verification_price' => 'TIN Verification',
+                        'voters_card_price' => 'Voters Card (PVC)',
+                        'passport_verification_price' => 'Passport Verification',
+                        'nin_modification_price' => 'NIN Modification',
+                        'nin_face_price' => 'NIN Face Verification',
+                        'credit_report_price' => 'Credit Report',
+                        'combined_verify_price' => 'Combined Verification',
+                        'bvn_match_price' => 'BVN Match',
+                        'address_verify_price' => 'Address Verification',
+                        'drivers_license_price' => 'Drivers License Verify',
+                        'biometric_verify_price' => 'Biometric Verification',
+                        'plate_number_price' => 'Plate Number Verification',
+                        'stamp_duty_price' => 'Stamp Duty Verification',
+                        'legal_hub_base_price' => 'Legal Hub Base (Custom Docs)',
+                        'nda_generation_price' => 'NDA Drafting',
+                        'sales_agreement_price' => 'Sales Agreement Drafting',
+                        'waec_result_price' => 'WAEC Result Checker',
+                        'waec_reg_pin_price' => 'WAEC Registration PIN',
+                        'motor_insurance_price' => 'Motor Insurance',
+                        'agency_banking_price' => 'Agency Banking Fee',
+                        'virtual_card_price' => 'Virtual Card Issuance',
+                        'virtual_card_creation_fee_ngn' => 'Virtual Card Creation Fee',
+                        'virtual_card_funding_fee_ngn' => 'Virtual Card Funding Fee',
+                        'virtual_card_fx_rate_usd' => 'Virtual Card FX Rate (USD)',
+                        'virtual_card_fx_rate_gbp' => 'Virtual Card FX Rate (GBP)',
+                        'virtual_card_fx_rate_eur' => 'Virtual Card FX Rate (EUR)',
+                        'fx_exchange_price' => 'FX Exchange Fee',
+                        'invoicing_price' => 'Invoicing Service',
+                        'logistics_price' => 'Post Office / Logistics',
+                        'ticketing_price' => 'Ticketing Service',
+                        'auction_price' => 'Auction Participation',
+                    ];
+                @endphp
+                @foreach($pricing as $key => $label)
+                    <div class="col-md-4 mb-4">
+                        <label class="text-white-50 small mb-2">{{ $label }} (₦)</label>
+                        <input type="number" name="pricing[{{ $key }}]" class="form-control text-white rounded-3" value="{{ \App\Models\SystemSetting::get($key, 500) }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                    </div>
+                @endforeach
+            </div>
+            <button type="submit" class="btn btn-primary rounded-pill px-4"><i class="fa-solid fa-floppy-disk mr-2"></i>Save Extended Pricing</button>
         </form>
     </div>
 </div>
@@ -209,6 +261,7 @@
                             <li>Payvessel: <span class="font-monospace">{{ url('/webhooks/payvessel') }}</span> or <span class="font-monospace">{{ url('/payvessel_webhook.php') }}</span></li>
                             <li>Palmpay: <span class="font-monospace">{{ url('/webhooks/palmpay') }}</span> or <span class="font-monospace">{{ url('/palmpay_webhook.php') }}</span></li>
                             <li>Paystack: <span class="font-monospace">{{ url('/webhooks/paystack') }}</span></li>
+                            <li>Monnify: <span class="font-monospace">{{ url('/webhooks/monnify') }}</span></li>
                             <li>Flutterwave: <span class="font-monospace">{{ url('/webhooks/flutterwave') }}</span></li>
                         </ul>
                         <div>After saving keys/endpoints here, test webhooks from the provider dashboard to confirm a successful delivery.</div>
@@ -234,11 +287,11 @@
                 </div>
                 <div class="col-md-4 mb-4">
                     <label class="text-white-50 small mb-2">NIN Endpoint</label>
-                    <input type="text" name="dataverify_endpoint_nin" class="form-control text-white rounded-3 font-monospace" value="{{ $ac->dataverify_endpoint_nin ?? 'https://dataverify.com.ng/developers/nin_api/' }}" placeholder="https://dataverify.com.ng/developers/nin_api/" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                    <input type="text" name="dataverify_endpoint_nin" class="form-control text-white rounded-3 font-monospace" value="{{ $ac->dataverify_endpoint_nin ?? 'https://dataverify.com.ng/developers/nin_slips/nin_premium' }}" placeholder="https://dataverify.com.ng/developers/nin_slips/nin_premium" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
                 </div>
                 <div class="col-md-4 mb-4">
                     <label class="text-white-50 small mb-2">Phone Endpoint</label>
-                    <input type="text" name="dataverify_endpoint_phone" class="form-control text-white rounded-3 font-monospace" value="{{ $ac->dataverify_endpoint_phone ?? 'https://dataverify.com.ng/developers/nin_api/fetch_by_phone' }}" placeholder="https://dataverify.com.ng/developers/nin_api/fetch_by_phone" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                    <input type="text" name="dataverify_endpoint_phone" class="form-control text-white rounded-3 font-monospace" value="{{ $ac->dataverify_endpoint_phone ?? 'https://dataverify.com.ng/developers/nin_slips/nin_premium_phone' }}" placeholder="https://dataverify.com.ng/developers/nin_slips/nin_premium_phone" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
                 </div>
                 <div class="col-md-4 mb-4">
                     <label class="text-white-50 small mb-2">Tracking ID Endpoint</label>
@@ -254,11 +307,11 @@
                 </div>
                 <div class="col-md-4 mb-4">
                     <label class="text-white-50 small mb-2">Standard Slip Endpoint</label>
-                    <input type="text" name="dataverify_endpoint_standard_slip" class="form-control text-white rounded-3 font-monospace" value="{{ $ac->dataverify_endpoint_standard_slip ?? 'https://dataverify.com.ng/developers/standard_slip/' }}" placeholder="https://dataverify.com.ng/developers/standard_slip/" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                    <input type="text" name="dataverify_endpoint_standard_slip" class="form-control text-white rounded-3 font-monospace" value="{{ $ac->dataverify_endpoint_standard_slip ?? 'https://dataverify.com.ng/developers/nin_slips/nin_standard' }}" placeholder="https://dataverify.com.ng/developers/nin_slips/nin_standard" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
                 </div>
                 <div class="col-md-4 mb-4">
                     <label class="text-white-50 small mb-2">Regular Slip Endpoint</label>
-                    <input type="text" name="dataverify_endpoint_regular_slip" class="form-control text-white rounded-3 font-monospace" value="{{ $ac->dataverify_endpoint_regular_slip ?? 'https://dataverify.com.ng/developers/regular_slip/' }}" placeholder="https://dataverify.com.ng/developers/regular_slip/" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                    <input type="text" name="dataverify_endpoint_regular_slip" class="form-control text-white rounded-3 font-monospace" value="{{ $ac->dataverify_endpoint_regular_slip ?? 'https://dataverify.com.ng/developers/nin_slips/nin_regular' }}" placeholder="https://dataverify.com.ng/developers/nin_slips/nin_regular" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
                 </div>
                 <div class="col-md-4 mb-4">
                     <label class="text-white-50 small mb-2">vNIN Slip Endpoint</label>
@@ -457,62 +510,6 @@
                 </div>
             </div>
             <button type="submit" class="btn btn-warning rounded-pill px-4 text-dark font-weight-bold"><i class="fa fa-key mr-2"></i>Save API Keys</button>
-        </form>
-    </div>
-</div>
-
-{{-- ── 5.5 System Pricing Tab ────────────────────────── --}}
-<div class="s-panel" id="tab-system-pricing">
-    <div class="card border-0 rounded-4 p-4" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.07) !important;">
-        <h5 class="text-white mb-1 fw-bold">Extended Services Pricing</h5>
-        <p class="text-white-50 small mb-4">Manage pricing for AI Legal Hub and other advanced modules.</p>
-        <form id="systemPricingForm">
-            @csrf
-            <div class="row">
-                @php 
-                    $pricing = [
-                        'cac_verification_price' => 'CAC Verification',
-                        'tin_verification_price' => 'TIN Verification',
-                        'voters_card_price' => 'Voters Card (PVC)',
-                        'passport_verification_price' => 'Passport Verification',
-                        'nin_modification_price' => 'NIN Modification',
-                        'nin_face_price' => 'NIN Face Verification',
-                        'credit_report_price' => 'Credit Report',
-                        'combined_verify_price' => 'Combined Verification',
-                        'bvn_match_price' => 'BVN Match',
-                        'address_verify_price' => 'Address Verification',
-                        'drivers_license_price' => 'Drivers License Verify',
-                        'biometric_verify_price' => 'Biometric Verification',
-                        'plate_number_price' => 'Plate Number Verification',
-                        'stamp_duty_price' => 'Stamp Duty Verification',
-                        'legal_hub_base_price' => 'Legal Hub Base (Custom Docs)',
-                        'nda_generation_price' => 'NDA Drafting',
-                        'sales_agreement_price' => 'Sales Agreement Drafting',
-                        'waec_result_price' => 'WAEC Result Checker',
-                        'waec_reg_pin_price' => 'WAEC Registration PIN',
-                        'motor_insurance_price' => 'Motor Insurance',
-                        'agency_banking_price' => 'Agency Banking Fee',
-                        'virtual_card_price' => 'Virtual Card Issuance',
-                        'virtual_card_creation_fee_ngn' => 'Virtual Card Creation Fee',
-                        'virtual_card_funding_fee_ngn' => 'Virtual Card Funding Fee',
-                        'virtual_card_fx_rate_usd' => 'Virtual Card FX Rate (USD)',
-                        'virtual_card_fx_rate_gbp' => 'Virtual Card FX Rate (GBP)',
-                        'virtual_card_fx_rate_eur' => 'Virtual Card FX Rate (EUR)',
-                        'fx_exchange_price' => 'FX Exchange Fee',
-                        'invoicing_price' => 'Invoicing Service',
-                        'logistics_price' => 'Post Office / Logistics',
-                        'ticketing_price' => 'Ticketing Service',
-                        'auction_price' => 'Auction Participation',
-                    ];
-                @endphp
-                @foreach($pricing as $key => $label)
-                    <div class="col-md-4 mb-4">
-                        <label class="text-white-50 small mb-2">{{ $label }} (₦)</label>
-                        <input type="number" name="pricing[{{ $key }}]" class="form-control text-white rounded-3" value="{{ \App\Models\SystemSetting::get($key, 500) }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
-                    </div>
-                @endforeach
-            </div>
-            <button type="submit" class="btn btn-primary rounded-pill px-4"><i class="fa-solid fa-floppy-disk mr-2"></i>Save System Pricing</button>
         </form>
     </div>
 </div>
@@ -860,8 +857,8 @@
         <p class="text-white-50 small mb-4">Toggle visibility of payment gateways for users. Inactive providers will not appear in the "Fund Wallet" modal.</p>
         @if(!$canManageSecurity)
             <div class="mb-4">
-                <span class="badge badge-warning text-dark">Read-only</span>
-                <span class="text-white-50 small ml-2">Only Super Admin can update gateway visibility.</span>
+                <span class="badge badge-warning text-dark">Limited access</span>
+                <span class="text-white-50 small ml-2">Some API key and security actions still require Super Admin. Gateway on/off is available to all admins who can open this page.</span>
             </div>
         @endif
         
@@ -905,8 +902,8 @@
                             <div class="custom-control custom-switch">
                                 <input type="checkbox" class="custom-control-input gateway-toggle" 
                                        id="gw_toggle_{{ $gateway->id }}" 
-                                       data-id="{{ $gateway->id }}" 
-                                       {{ $gateway->is_active ? 'checked' : '' }} {{ !$canManageSecurity ? 'disabled' : '' }}>
+                                       data-gateway-id="{{ $gateway->id }}" 
+                                       {{ $gateway->is_active ? 'checked' : '' }}>
                                 <label class="custom-control-label" for="gw_toggle_{{ $gateway->id }}"></label>
                             </div>
                         </td>
@@ -1438,99 +1435,115 @@ if (secretForm) {
     });
 }
 
-function showAddDocModal() {
-    $('#notaryModalTitle').text('Add Document Type');
-    $('#notaryDocForm')[0].reset();
-    $('#notaryDocModal').modal('show');
-}
+// Notary modals + payment gateway toggles use jQuery/Bootstrap from Vite (deferred). Bind after jQuery exists.
+(function initAdminSettingsJqueryBindings() {
+    if (typeof window.jQuery === 'undefined') {
+        window.setTimeout(initAdminSettingsJqueryBindings, 50);
+        return;
+    }
+    var $ = window.jQuery;
 
-function editNotaryDoc(doc) {
-    $('#notaryModalTitle').text('Edit ' + doc.document_type);
-    $('#doc_type').val(doc.document_type).prop('readonly', true);
-    $('#doc_price').val(doc.price);
-    $('#doc_desc').val(doc.description);
-    $('#court_required').prop('checked', doc.requires_court_stamp);
-    $('#notaryDocModal').modal('show');
-}
+    window.showAddDocModal = function () {
+        $('#notaryModalTitle').text('Add Document Type');
+        $('#notaryDocForm')[0].reset();
+        $('#notaryDocModal').modal('show');
+    };
 
-$('#notaryDocForm').on('submit', function(e) {
-    e.preventDefault();
-    const data = new FormData(this);
-    const btn = $(this).find('[type="submit"]');
-    const originalText = btn.html();
-    btn.disabled = true;
-    btn.html('<i class="fa fa-spinner fa-spin mr-2"></i>Saving…');
+    window.editNotaryDoc = function (doc) {
+        $('#notaryModalTitle').text('Edit ' + doc.document_type);
+        $('#doc_type').val(doc.document_type).prop('readonly', true);
+        $('#doc_price').val(doc.price);
+        $('#doc_desc').val(doc.description);
+        $('#court_required').prop('checked', doc.requires_court_stamp);
+        $('#notaryDocModal').modal('show');
+    };
 
-    $.ajax({
-        url: '{{ route("admin.settings.notary_docs") }}',
-        method: 'POST',
-        data: data,
-        processData: false,
-        contentType: false,
-        success(res) {
-            Swal.fire({ icon: 'success', title: 'Saved!', text: res.message, background: '#141826', color: '#fff' });
-            setTimeout(() => location.reload(), 1500);
-        },
-        error(xhr) {
-            Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to save.', background: '#141826', color: '#fff' });
-        },
-        complete() {
-            btn.disabled = false;
-            btn.html(originalText);
-        }
-    });
-});
+    $('#notaryDocForm').on('submit', function(e) {
+        e.preventDefault();
+        const data = new FormData(this);
+        const btn = $(this).find('[type="submit"]');
+        const originalText = btn.html();
+        btn.disabled = true;
+        btn.html('<i class="fa fa-spinner fa-spin mr-2"></i>Saving…');
 
-// Gateway Toggles
-$(document).on('change', '.gateway-toggle', function() {
-    const id = $(this).data('id');
-    const isActive = $(this).is(':checked') ? 1 : 0;
-    const $toggle = $(this);
-    
-    // Lock toggle during request
-    $toggle.prop('disabled', true);
-    
-    $.ajax({
-        url: '{{ route("admin.settings.gateways.toggle") }}',
-        method: 'POST',
-        data: {
-            _token: '{{ csrf_token() }}',
-            id: id,
-            is_active: isActive
-        },
-        success(res) {
-            Swal.fire({ 
-                icon: 'success', 
-                title: 'Updated', 
-                text: res.message, 
-                background: '#141826', 
-                color: '#fff',
-                timer: 1500,
-                showConfirmButton: false
-            });
-            // Update the status badge in the UI
-            const $row = $toggle.closest('tr');
-            const $badgeCell = $row.find('td:nth-child(2)');
-            if (res.is_active) {
-                $badgeCell.html('<span class="badge badge-success px-3 py-2 rounded-pill"><i class="fa fa-check-circle mr-1"></i> Active</span>');
-            } else {
-                $badgeCell.html('<span class="badge badge-secondary px-3 py-2 rounded-pill" style="background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.5);"><i class="fa fa-times-circle mr-1"></i> Inactive</span>');
+        $.ajax({
+            url: '{{ route("admin.settings.notary_docs") }}',
+            method: 'POST',
+            data: data,
+            processData: false,
+            contentType: false,
+            success(res) {
+                Swal.fire({ icon: 'success', title: 'Saved!', text: res.message, background: '#141826', color: '#fff' });
+                setTimeout(() => location.reload(), 1500);
+            },
+            error(xhr) {
+                Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to save.', background: '#141826', color: '#fff' });
+            },
+            complete() {
+                btn.disabled = false;
+                btn.html(originalText);
             }
-        },
-        error(xhr) {
-            $toggle.prop('checked', !isActive); // Revert
-            Swal.fire({ 
-                icon: 'error', 
-                title: 'Error', 
-                text: xhr.responseJSON?.message || 'Failed to toggle gateway status.', 
-                background: '#141826', 
-                color: '#fff' 
-            });
-        },
-        complete() {
-            $toggle.prop('disabled', false);
-        }
+        });
     });
-});
+
+    $(document).on('change', '.gateway-toggle', function() {
+        const id = $(this).attr('data-gateway-id');
+        const isActive = $(this).is(':checked') ? 1 : 0;
+        const $toggle = $(this);
+        if (!id) {
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Missing gateway id.', background: '#141826', color: '#fff' });
+            return;
+        }
+
+        $toggle.prop('disabled', true);
+
+        $.ajax({
+            url: '{{ route("admin.settings.gateways.toggle") }}',
+            method: 'POST',
+            dataType: 'json',
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            data: {
+                _token: '{{ csrf_token() }}',
+                id: id,
+                is_active: isActive
+            },
+            success(res) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Updated',
+                    text: res.message,
+                    background: '#141826',
+                    color: '#fff',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+                const $row = $toggle.closest('tr');
+                const $badgeCell = $row.find('td:nth-child(2)');
+                if (res.is_active) {
+                    $badgeCell.html('<span class="badge badge-success px-3 py-2 rounded-pill"><i class="fa fa-check-circle mr-1"></i> Active</span>');
+                } else {
+                    $badgeCell.html('<span class="badge badge-secondary px-3 py-2 rounded-pill" style="background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.5);"><i class="fa fa-times-circle mr-1"></i> Inactive</span>');
+                }
+            },
+            error(xhr) {
+                $toggle.prop('checked', !isActive);
+                const msg = xhr.responseJSON?.message
+                    || (xhr.responseJSON?.errors && Object.values(xhr.responseJSON.errors).flat().join(' '))
+                    || (xhr.status === 419 ? 'Session expired. Refresh the page and try again.' : null)
+                    || 'Failed to toggle gateway status.';
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: msg,
+                    background: '#141826',
+                    color: '#fff'
+                });
+            },
+            complete() {
+                $toggle.prop('disabled', false);
+            }
+        });
+    });
+})();
 </script>
 @endpush

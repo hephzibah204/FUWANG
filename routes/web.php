@@ -3,6 +3,8 @@
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\GoogleAuthController;
+use App\Http\Controllers\Auth\TwoFactorChallengeController;
 use App\Http\Controllers\BlogController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\FeedController;
@@ -30,7 +32,18 @@ if (app()->environment(['local', 'testing'])) {
 
 // Debug routes removed for production
 
-Route::get('/', [\App\Http\Controllers\HomeController::class, 'index'])->middleware(['ab:home_hero', 'track.view:home'])->name('home');
+// Temporary static landing: set TEMPORARY_STATIC_HOME=false in .env to restore the Laravel home.
+$__staticLanding = public_path('index.html');
+if (is_file($__staticLanding) && filter_var(env('TEMPORARY_STATIC_HOME', false), FILTER_VALIDATE_BOOL)) {
+    Route::get('/', function () use ($__staticLanding) {
+        return response()->file($__staticLanding, [
+            'Content-Type' => 'text/html; charset=UTF-8',
+        ]);
+    })->name('home');
+} else {
+    Route::get('/', [\App\Http\Controllers\HomeController::class, 'index'])->middleware(['ab:home_hero', 'track.view:home'])->name('home');
+}
+unset($__staticLanding);
 
 Route::get('/services/price-list', [\App\Http\Controllers\PriceListController::class, 'index'])->name('services.price_list');
 
@@ -45,17 +58,33 @@ Route::post('/login',   [LoginController::class, 'login'])->middleware('throttle
 
 Route::get('/register', [App\Http\Controllers\Auth\RegisterController::class, 'showRegistrationForm'])->name('register');
 Route::post('/register',[App\Http\Controllers\Auth\RegisterController::class, 'register']);
+Route::get('/auth/google/redirect', [GoogleAuthController::class, 'redirect'])->name('auth.google.redirect');
+Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])->name('auth.google.callback');
+Route::get('/2fa/challenge', [TwoFactorChallengeController::class, 'show'])->name('2fa.challenge');
+Route::post('/2fa/challenge', [TwoFactorChallengeController::class, 'verify'])->middleware('throttle:6,1')->name('2fa.verify');
+Route::post('/2fa/cancel', [TwoFactorChallengeController::class, 'cancel'])->name('2fa.cancel');
 Route::post('/logout',  [LoginController::class, 'logout'])->name('logout');
 
 Route::post('/ab/event', [\App\Http\Controllers\AbEventController::class, 'store'])->name('ab.event');
 
 Route::get('/explore', [\App\Http\Controllers\PublicServiceController::class, 'index'])->middleware('track.view:explore_index')->name('public.services.index');
-Route::get('/explore/auctions', [\App\Http\Controllers\PublicAuctionController::class, 'index'])->middleware('track.view:public_auctions_index')->name('public.auctions.index');
-Route::get('/explore/auctions/{lotCode}', [\App\Http\Controllers\PublicAuctionController::class, 'show'])->middleware('track.view:public_auction_detail')->name('public.auctions.show');
+Route::get('/explore/auctions', function () {
+    return redirect('/auction', 301);
+})->name('public.auctions.index_legacy');
+Route::get('/explore/auctions/{lotCode}', function (string $lotCode) {
+    return redirect('/auction/' . $lotCode, 301);
+})->name('public.auctions.show_legacy');
 
 // Logistics
-Route::get('/explore/logistics', [App\Http\Controllers\PublicLogisticsController::class, 'index'])->name('public.logistics.index');
-Route::post('/explore/logistics/track', [App\Http\Controllers\PublicLogisticsController::class, 'track'])->name('public.logistics.track');
+Route::get('/explore/logistics', function () {
+    return redirect('/logistics', 301);
+})->name('public.logistics.index_legacy');
+Route::post('/explore/logistics/track', function () {
+    return redirect('/logistics/track', 307);
+})->name('public.logistics.track_legacy');
+
+require __DIR__ . '/logistics.php';
+require __DIR__ . '/auctions.php';
 
 if (app()->environment('local')) {
     Route::get('/debug/auctions-summary', function () {
@@ -88,6 +117,16 @@ Route::middleware('guest')->group(function () {
 });
 
 Route::middleware(['auth'])->group(function () {
+    Route::get('/email/verify', [\App\Http\Controllers\Auth\EmailVerificationController::class, 'notice'])->name('verification.notice');
+    Route::get('/email/verify/{id}/{hash}', [\App\Http\Controllers\Auth\EmailVerificationController::class, 'verify'])
+        ->middleware(['signed', 'throttle:6,1'])
+        ->name('verification.verify');
+    Route::post('/email/verification-notification', [\App\Http\Controllers\Auth\EmailVerificationController::class, 'send'])
+        ->middleware('throttle:6,1')
+        ->name('verification.send');
+});
+
+Route::middleware(['auth', 'verified'])->group(function () {
 
     // Dashboard
     Route::get('/dashboard', [App\Http\Controllers\DashboardController::class, 'index'])->middleware('onboarding:dashboard')->name('dashboard');
@@ -103,8 +142,23 @@ Route::middleware(['auth'])->group(function () {
     // Profile & Security
     Route::get('/profile',  [App\Http\Controllers\ProfileController::class, 'index'])->name('profile');
     Route::post('/profile', [App\Http\Controllers\ProfileController::class, 'update'])->name('profile.update');
+    Route::post('/profile/delivery-agent', [App\Http\Controllers\ProfileController::class, 'updateDeliveryAgentDetails'])->name('profile.delivery_agent.update');
     Route::get('/profile/security', [App\Http\Controllers\ProfileController::class, 'security'])->name('profile.security');
+    Route::post('/profile/2fa/enable', [App\Http\Controllers\ProfileController::class, 'enableTwoFactor'])->name('profile.2fa.enable');
+    Route::post('/profile/2fa/disable', [App\Http\Controllers\ProfileController::class, 'disableTwoFactor'])->name('profile.2fa.disable');
     Route::get('/profile/activity', [App\Http\Controllers\ActivityLogController::class, 'index'])->name('profile.activity');
+
+    Route::prefix('account/kyc')->name('account.kyc.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Account\KycVerificationController::class, 'index'])->name('index');
+        Route::middleware('feature:nin_verification')->group(function () {
+            Route::get('/nin', [\App\Http\Controllers\Account\KycVerificationController::class, 'ninForm'])->name('nin');
+            Route::post('/nin', [\App\Http\Controllers\Account\KycVerificationController::class, 'ninSubmit'])->middleware('kyc.enforce')->name('nin.submit');
+        });
+        Route::middleware('feature:bvn_verification')->group(function () {
+            Route::get('/bvn', [\App\Http\Controllers\Account\KycVerificationController::class, 'bvnForm'])->name('bvn');
+            Route::post('/bvn', [\App\Http\Controllers\Account\KycVerificationController::class, 'bvnSubmit'])->middleware('kyc.enforce')->name('bvn.submit');
+        });
+    });
 
     // Fuwa.NG AI Chat
     Route::post('/ai/chat', [App\Http\Controllers\AiController::class, 'chat'])->name('ai.chat');
@@ -160,6 +214,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/services/nin-suite', [App\Http\Controllers\Service\NINController::class, 'suiteIndex'])->name('services.nin.suite');
         Route::get('/services/nin',    [App\Http\Controllers\Service\NINController::class, 'index'])->name('services.nin');
         Route::post('/services/nin/verify', [App\Http\Controllers\Service\NINController::class, 'verify'])->middleware('kyc.enforce')->name('services.nin.verify');
+        Route::post('/services/nin/validation/status', [App\Http\Controllers\Service\NINController::class, 'validationStatus'])->middleware('kyc.enforce')->name('services.nin.validation.status');
         
         // NIN Modification
         Route::get('/services/nin/modification', [App\Http\Controllers\Service\NINModificationController::class, 'index'])->name('services.nin.modification');
@@ -360,8 +415,8 @@ Route::middleware(['auth'])->group(function () {
 // IMPORTANT (C-3): Admin prefix is OUTSIDE the user auth middleware.
 // Admin login must be reachable by unauthenticated visitors.
 Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function () {
-    Route::get('/login',  [App\Http\Controllers\Admin\Auth\LoginController::class, 'showLoginForm'])->name('login')->middleware('google2fa');
-    Route::post('/login', [App\Http\Controllers\Admin\Auth\LoginController::class, 'login'])->middleware('google2fa', 'throttle:5,1');
+    Route::get('/login',  [App\Http\Controllers\Admin\Auth\LoginController::class, 'showLoginForm'])->name('login');
+    Route::post('/login', [App\Http\Controllers\Admin\Auth\LoginController::class, 'login'])->middleware('throttle:5,1');
     Route::post('/logout',[App\Http\Controllers\Admin\Auth\LoginController::class, 'logout'])->name('logout');
 
         Route::middleware(['auth:admin', 'admin.audit'])->group(function () {
@@ -399,6 +454,14 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
             // Delivery Agent Management
             Route::resource('delivery-agents', DeliveryAgentController::class)->only(['index', 'update']);
 
+            // Logistics RBAC Management
+            Route::middleware('super_admin')->group(function () {
+                Route::resource('logistics-staff', \App\Http\Controllers\Admin\LogisticsStaffManagementController::class)->except(['show']);
+                Route::post('logistics-staff/{logisticsStaff}/impersonate', [\App\Http\Controllers\Admin\LogisticsStaffManagementController::class, 'impersonate'])
+                    ->name('logistics-staff.impersonate');
+                Route::resource('referral-tiers', \App\Http\Controllers\Admin\ReferralTierController::class)->except(['show']);
+            });
+
             Route::get('/services',                    [App\Http\Controllers\Admin\ServiceManagementController::class, 'index'])->name('services.index');
             Route::post('/services/toggles/{feature}', [App\Http\Controllers\Admin\ServiceManagementController::class, 'setToggle'])->name('services.toggles.set');
 
@@ -422,6 +485,7 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
                 Route::post('/users/fund',                 [App\Http\Controllers\Admin\AdminController::class, 'fundUser'])->name('users.fund');
                 Route::post('/users/deduct',               [App\Http\Controllers\Admin\AdminController::class, 'deductUser'])->name('users.deduct');
                 Route::post('/users/refund',               [App\Http\Controllers\Admin\AdminController::class, 'refundUser'])->name('users.refund');
+                Route::get('/users/{id}/refundable-transactions', [App\Http\Controllers\Admin\AdminController::class, 'refundableTransactions'])->whereNumber('id')->name('users.refundable_transactions');
             });
 
             // Support Tickets
@@ -490,6 +554,16 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
             Route::get('/audit-logs',                  [App\Http\Controllers\Admin\AdminAuditLogController::class, 'index'])->name('audit_logs.index');
             Route::get('/queue',                       [App\Http\Controllers\Admin\QueueMonitorController::class, 'index'])->name('queue.index');
 
+            // API Applications
+            Route::get('/api-applications',            [App\Http\Controllers\Admin\AdminController::class, 'apiApplications'])->name('api_applications.index');
+            Route::post('/api-applications/{id}/status', [App\Http\Controllers\Admin\AdminController::class, 'updateApiStatus'])->name('api_applications.update_status');
+            Route::middleware('admin.security')->group(function () {
+                Route::get('/developer-api', [App\Http\Controllers\Admin\DeveloperApiAdminController::class, 'index'])->name('developer_api.index');
+                Route::post('/developer-api/pricing', [App\Http\Controllers\Admin\DeveloperApiAdminController::class, 'updatePricing'])->name('developer_api.pricing');
+                Route::post('/developer-api/docs', [App\Http\Controllers\Admin\DeveloperApiAdminController::class, 'updateDocs'])->name('developer_api.docs');
+                Route::post('/developer-api/endpoints', [App\Http\Controllers\Admin\DeveloperApiAdminController::class, 'updateEndpoints'])->name('developer_api.endpoints');
+            });
+
             // Self-Funding (Super Admin Only)
             Route::middleware('super_admin')->group(function () {
                 Route::get('/self-funding', [App\Http\Controllers\Admin\SelfFundingController::class, 'index'])->name('self_funding.index');
@@ -514,7 +588,7 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
             Route::post('/auctions/sellers', [App\Http\Controllers\Admin\AuctionController::class, 'storeSeller'])->name('auctions.sellers.store');
             Route::put('/auctions/sellers/{seller}', [App\Http\Controllers\Admin\AuctionController::class, 'updateSeller'])->name('auctions.sellers.update');
             Route::delete('/auctions/sellers/{seller}', [App\Http\Controllers\Admin\AuctionController::class, 'destroySeller'])->name('auctions.sellers.destroy');
-            Route::post('/auctions/sellers/{id}/restore', [App\Http->Controllers\Admin\AuctionController::class, 'restoreSeller'])->name('auctions.sellers.restore');
+            Route::post('/auctions/sellers/{id}/restore', [App\Http\Controllers\Admin\AuctionController::class, 'restoreSeller'])->name('auctions.sellers.restore');
 
             // Operations
             Route::get('/ops/invoices',                [App\Http\Controllers\Admin\AdminOperationsController::class, 'invoices'])->name('operations.invoices');
@@ -523,26 +597,26 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
             Route::post('/ops/logistics/{id}/status',  [App\Http\Controllers\Admin\AdminOperationsController::class, 'updateLogisticsStatus'])->name('operations.logistics.status');
             Route::middleware('permission:manage_notary')->group(function () {
                 Route::get('/ops/notary',                  [App\Http\Controllers\Admin\AdminOperationsController::class, 'notary'])->name('operations.notary');
-                Route::post('/ops/notary/{id}/status',     [App\Http->Controllers\Admin\AdminOperationsController::class, 'updateNotaryStatus'])->name('operations.notary.status');
+                Route::post('/ops/notary/{id}/status',     [App\Http\Controllers\Admin\AdminOperationsController::class, 'updateNotaryStatus'])->name('operations.notary.status');
             });
 
             // Settings
-            Route::get('/settings',                    [App\Http->Controllers\Admin\SettingsController::class, 'index'])->name('settings.index');
-            Route::post('/settings/notification',      [App\Http->Controllers\Admin\SettingsController::class, 'updateNotification'])->name('settings.notification');
-            Route::post('/settings/pricing',           [App\Http->Controllers\Admin\SettingsController::class, 'updatePricing'])->name('settings.pricing');
+            Route::get('/settings',                    [App\Http\Controllers\Admin\SettingsController::class, 'index'])->name('settings.index');
+            Route::post('/settings/notification',      [App\Http\Controllers\Admin\SettingsController::class, 'updateNotification'])->name('settings.notification');
+            Route::post('/settings/pricing',           [App\Http\Controllers\Admin\SettingsController::class, 'updatePricing'])->name('settings.pricing');
             Route::post('/settings/manual-funding',    [App\Http\Controllers\Admin\SettingsController::class, 'updateManualFunding'])->name('settings.manual_funding');
-            Route::post('/settings/api-settings',      [App\Http->Controllers\Admin\SettingsController::class, 'updateApiSettings'])->name('settings.api_settings');
-            Route::post('/settings/api-keys',          [App\Http->Controllers\Admin\SettingsController::class, 'updateApiKeys'])->name('settings.api_keys');
-            Route::post('/settings/notary-docs',       [App\Http->Controllers\Admin\SettingsController::class, 'updateNotaryDocs'])->name('settings.notary_docs');
-            Route::post('/settings/branding',          [App\Http->Controllers\Admin\SettingsController::class, 'updateBranding'])->name('settings.branding');
-            Route::post('/settings/system-pricing',    [App\Http->Controllers\Admin\SettingsController::class, 'updateSystemPricing'])->name('settings.system_pricing');
-            Route::post('/settings/theme',             [App\Http->Controllers\Admin\SettingsController::class, 'updateTheme'])->name('settings.theme');
-            Route::post('/settings/admin-security',    [App\Http->Controllers\Admin\SettingsController::class, 'updateAdminSecurity'])
+            Route::post('/settings/api-settings',      [App\Http\Controllers\Admin\SettingsController::class, 'updateApiSettings'])->name('settings.api_settings');
+            Route::post('/settings/api-keys',          [App\Http\Controllers\Admin\SettingsController::class, 'updateApiKeys'])->name('settings.api_keys');
+            Route::post('/settings/notary-docs',       [App\Http\Controllers\Admin\SettingsController::class, 'updateNotaryDocs'])->name('settings.notary_docs');
+            Route::post('/settings/branding',          [App\Http\Controllers\Admin\SettingsController::class, 'updateBranding'])->name('settings.branding');
+            Route::post('/settings/system-pricing',    [App\Http\Controllers\Admin\SettingsController::class, 'updateSystemPricing'])->name('settings.system_pricing');
+            Route::post('/settings/theme',             [App\Http\Controllers\Admin\SettingsController::class, 'updateTheme'])->name('settings.theme');
+            Route::post('/settings/admin-security',    [App\Http\Controllers\Admin\SettingsController::class, 'updateAdminSecurity'])
                 ->middleware('super_admin')
                 ->name('settings.admin_security');
-            Route::post('/settings/features',          [App\Http->Controllers\Admin\SettingsController::class, 'updateFeatureToggles'])->name('settings.features');
-            Route::post('/settings/gateways/toggle',   [App\Http\Controllers\Admin\SettingsController::class, 'toggleGateway'])
-                ->middleware('super_admin')
+            Route::post('/settings/features',          [App\Http\Controllers\Admin\SettingsController::class, 'updateFeatureToggles'])->name('settings.features');
+            // Authorization matches $canManageSecurity on settings page (not only is_super_admin flag).
+            Route::post('/settings/gateways/toggle', [App\Http\Controllers\Admin\SettingsController::class, 'toggleGateway'])
                 ->name('settings.gateways.toggle');
             Route::post('/settings/referrals',         [App\Http\Controllers\Admin\SettingsController::class, 'updateReferralSettings'])->name('settings.referrals');
             Route::post('settings/auction',           [App\Http\Controllers\Admin\SettingsController::class, 'updateAuctionSettings'])->name('settings.auction');

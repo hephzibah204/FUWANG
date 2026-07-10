@@ -16,7 +16,7 @@ class FeedController extends Controller
             ['loc' => route('services.price_list'), 'priority' => '0.8', 'changefreq' => 'weekly'],
             ['loc' => route('public.services.index'), 'priority' => '0.9', 'changefreq' => 'daily'],
             ['loc' => route('public.auctions.index'), 'priority' => '0.8', 'changefreq' => 'daily'],
-            ['loc' => route('public.logistics.index'), 'priority' => '0.7', 'changefreq' => 'weekly'],
+            ['loc' => route('logistics.home'), 'priority' => '0.7', 'changefreq' => 'weekly'],
         ];
         return response()->view('seo.sitemap', compact('posts', 'pages', 'extraUrls'))->header('Content-Type', 'application/xml');
     }

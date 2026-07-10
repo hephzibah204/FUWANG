@@ -38,6 +38,15 @@ class ApiTokenAuth
             throw new AuthenticationException('API token user not found.', 'API token user not found.');
         }
 
+        if ($user->api_access_status !== 'approved') {
+            return response()->json([
+                'status'  => false,
+                'message' => 'API access is not approved. Please contact support.',
+                'error'   => 'api_access_denied',
+                'status'  => $user->api_access_status ?: 'none',
+            ], 403);
+        }
+
         $minBalance = (float) \App\Models\SystemSetting::get('api_min_wallet_balance', 100.0);
         $userBalance = (float) ($user->balance->user_balance ?? 0.0);
 

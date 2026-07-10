@@ -13,6 +13,16 @@ class VuvaaClient
 {
     private const TOKEN_TTL_SECONDS = 10800;
 
+    public static function isVuvaaProvider(CustomApi $provider): bool
+    {
+        $id = strtolower((string) ($provider->provider_identifier ?? ''));
+        if (str_contains($id, 'vuvaa')) {
+            return true;
+        }
+
+        return str_contains(strtolower((string) ($provider->endpoint ?? '')), 'vuvaa.com');
+    }
+
     private readonly array $cfg;
     private readonly VuvaaCrypto $crypto;
     private readonly string $endpoint;
@@ -44,9 +54,23 @@ class VuvaaClient
             'username' => $this->username(),
             'nin' => $nin,
             'reference_id' => $referenceId,
+            'reason' => $this->defaultReason(),
         ];
 
-        return $this->postEncrypted('/verify_nin', $data, true);
+        return $this->postEncrypted($this->path('verify_nin_path', '/verify_nin'), $data, true);
+    }
+
+    public function verifyBvn(string $bvn, ?string $referenceId = null): array
+    {
+        $referenceId = $referenceId ?: $this->generateReferenceId();
+
+        $data = [
+            'username' => $this->username(),
+            'bvn' => $bvn,
+            'reference_id' => $referenceId,
+        ];
+
+        return $this->postEncrypted('/verify_bvn', $data, true);
     }
 
     public function verifyInPerson(string $nin, string $selfieBase64, ?string $referenceId = null): array
@@ -57,24 +81,31 @@ class VuvaaClient
         $data = [
             'username' => $this->username(),
             'nin' => $nin,
-            'selfie' => $selfieBase64,
+            'selfieImage' => $selfieBase64,
             'reference_id' => $referenceId,
+            'reason' => $this->defaultReason(),
         ];
 
-        return $this->postEncrypted('/in_person_verification', $data, true);
+        return $this->postEncrypted($this->path('in_person_path', '/in_person_verification'), $data, true);
     }
 
-    public function verifyShareCode(string $shareCode, ?string $referenceId = null): array
+    public function verifyShareCode(string $shareCode, ?string $referenceId = null, ?string $reason = null): array
     {
         $referenceId = $referenceId ?: $this->generateReferenceId();
 
+        $reason = trim((string) $reason);
+        if ($reason === '') {
+            $reason = $this->defaultReason();
+        }
+
         $data = [
             'username' => $this->username(),
-            'share_code' => $shareCode,
+            'shareCode' => $shareCode,
             'reference_id' => $referenceId,
+            'reason' => $reason,
         ];
 
-        return $this->postEncrypted('/share_code', $data, true);
+        return $this->postEncrypted($this->path('share_code_path', '/share_code'), $data, true);
     }
 
     public function requery(string $referenceId): array
@@ -84,7 +115,7 @@ class VuvaaClient
             'reference_id' => $referenceId,
         ];
 
-        return $this->postEncrypted('/requery', $data, true);
+        return $this->postEncrypted($this->path('requery_path', '/requery'), $data, true);
     }
 
     public function getWalletDetails(): array
@@ -195,17 +226,33 @@ class VuvaaClient
 
         $json = $response->json();
         if (!is_array($json) || !isset($json['payload'])) {
+            \Illuminate\Support\Facades\Log::error('Vuvaa Response Payload Missing', [
+                'status' => $status,
+                'body' => $body,
+            ]);
             return ['ok' => false, 'message' => 'Invalid response format: missing payload.', 'data' => $json ?: $body];
         }
 
         try {
             $decrypted = $this->crypto->decryptBase64ToArray($json['payload']);
         } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Vuvaa Decryption Exception', [
+                'error' => $e->getMessage(),
+                'payload' => $json['payload'],
+            ]);
             return ['ok' => false, 'message' => 'Decryption failed: ' . $e->getMessage(), 'data' => []];
         }
 
-        $statusCode = (string) ($decrypted['statusCode'] ?? $decrypted['status_code'] ?? '');
-        $ok = $statusCode === '00';
+        $statusCode = $decrypted['statusCode'] ?? $decrypted['status_code'] ?? $decrypted['status'] ?? null;
+        $statusText = strtolower((string) $statusCode);
+        $ok = in_array($statusText, ['00', '200', 'success', 'ok', 'true'], true);
+
+        // Normalize wallet units so callers can read a stable key.
+        if (isset($decrypted['data'][0]['validation_units'])) {
+            $decrypted['wallet_units'] = (int) $decrypted['data'][0]['validation_units'];
+        } elseif (isset($decrypted['data']['validation_units'])) {
+            $decrypted['wallet_units'] = (int) $decrypted['data']['validation_units'];
+        }
 
         return [
             'ok' => $ok,
@@ -245,6 +292,21 @@ class VuvaaClient
             return last(explode(',', $value));
         }
         return $value;
+    }
+
+    private function path(string $key, string $fallback): string
+    {
+        $configured = trim((string) ($this->cfg[$key] ?? ''));
+        if ($configured === '') {
+            return $fallback;
+        }
+
+        return '/' . ltrim($configured, '/');
+    }
+
+    private function defaultReason(): string
+    {
+        return trim((string) ($this->cfg['reason'] ?? env('VUVAA_REASON') ?? 'nyscCheck'));
     }
 
     private function tokenCacheKey(): string

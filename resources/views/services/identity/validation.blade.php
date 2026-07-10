@@ -4,6 +4,24 @@
 
 @section('content')
 <div class="service-page fade-in">
+    @if(session('status'))
+        <div class="alert alert-success mb-4">
+            <strong>{{ session('status') }}</strong>
+            @if(session('validation_provider'))
+                <span class="d-block small mt-1">Provider: {{ session('validation_provider') }}</span>
+            @endif
+            @if(session('validation_reference_id'))
+                <span class="d-block small">Reference: {{ session('validation_reference_id') }}</span>
+            @endif
+        </div>
+    @endif
+
+    @if($errors->any())
+        <div class="alert alert-danger mb-4">
+            {{ $errors->first() }}
+        </div>
+    @endif
+
     <!-- Service Header -->
     <div class="service-header-card mb-4" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(5, 150, 105, 0.05)); border-color: rgba(16, 185, 129, 0.2);">
         <div class="sh-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);">
@@ -26,7 +44,8 @@
                 <div class="panel-card p-4 mb-4" id="searchPanel">
                     <div class="d-flex align-items-center mb-4 pb-3 border-bottom border-white-5">
                         <h2 class="h6 font-weight-bold m-0"><i class="fa-solid fa-magnifying-glass mr-2 text-primary"></i> Validation Lookup</h2>
-                        <span class="ml-auto badge badge-primary py-2 px-3">₦{{ number_format($price ?? 700, 2) }}</span>
+                        <span class="ml-auto badge badge-primary py-2 px-3 mr-2">₦{{ number_format($price ?? 700, 2) }}</span>
+                        <span class="badge badge-outline-light py-2 px-3">Provider: {{ $providerLabel ?? 'Robosttech' }}</span>
                     </div>
 
                     <form id="validationForm" action="{{ route('services.validation.verify') }}" method="POST">
@@ -50,11 +69,13 @@
             </div>
 
             <!-- Result Area -->
-            <div class="col-lg-12" id="resultArea" style="display: none;">
+            <div class="col-lg-12" id="resultArea" style="{{ session('validation_result') ? '' : 'display: none;' }}">
                 <div class="panel-card p-4">
                     <h4 class="h6 font-weight-bold mb-4 border-bottom border-white-5 pb-2">Validation Result</h4>
                     <div id="resultContent" class="text-white">
-                        <!-- Dynamic -->
+                        @if(session('validation_result'))
+                            <pre class="text-white">{{ json_encode(session('validation_result'), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre>
+                        @endif
                     </div>
                 </div>
                 <div class="text-center mt-5">
@@ -155,18 +176,39 @@
                     $.ajax({
                         url: $(this).attr('action'),
                         method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
                         data: $(this).serialize(),
                         success: function(response) {
+                            const providerText = response.provider ? ('Provider: ' + response.provider) : '';
                             if (response.status) {
                                 viewResult(response.data);
-                                Swal.fire({ title: 'Validation Successful!', icon: 'success', background: '#0a0a0f', color: '#fff' });
+                                Swal.fire({
+                                    title: 'Validation Successful!',
+                                    text: (response.reference_id ? ('Reference: ' + response.reference_id + '\n') : '') + providerText,
+                                    icon: 'success',
+                                    background: '#0a0a0f',
+                                    color: '#fff'
+                                });
                             } else {
-                                Swal.fire({ title: 'Validation Failed', text: response.message, icon: 'error', background: '#0a0a0f', color: '#fff' });
+                                Swal.fire({
+                                    title: 'Validation Failed',
+                                    text: response.message + (providerText ? ('\n' + providerText) : ''),
+                                    icon: 'error',
+                                    background: '#0a0a0f',
+                                    color: '#fff'
+                                });
                                 btn.prop('disabled', false).html(originalHtml);
                             }
                         },
-                        error: function() {
-                            Swal.fire({ title: 'Error', text: 'Validation service is currently busy.', icon: 'error', background: '#0a0a0f', color: '#fff' });
+                        error: function(xhr) {
+                            let msg = 'Validation service is currently busy.';
+                            if (xhr.responseJSON && xhr.responseJSON.message) {
+                                msg = xhr.responseJSON.message;
+                            }
+                            Swal.fire({ title: 'Error', text: msg, icon: 'error', background: '#0a0a0f', color: '#fff' });
                             btn.prop('disabled', false).html(originalHtml);
                         }
                     });

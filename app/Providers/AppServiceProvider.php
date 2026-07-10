@@ -8,7 +8,9 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Blade;
 use App\Models\FeatureToggle;
 use App\Models\EmailLog;
+use App\Models\Transaction;
 use App\Models\User;
+use App\Observers\TransactionObserver;
 use App\Services\Email\EmailNotificationService;
 use App\Services\NavigationService;
 use Illuminate\Auth\Events\Login;
@@ -109,5 +111,7 @@ class AppServiceProvider extends ServiceProvider
             $navigationService = app(NavigationService::class);
             $view->with('adminNavigation', $navigationService->getAdminNavigation());
         });
+
+        Transaction::observe(TransactionObserver::class);
     }
 }

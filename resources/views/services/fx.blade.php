@@ -190,7 +190,7 @@
     .curr-selector-nexus { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 12px 18px; border-radius: 12px; font-weight: 700; outline: none; transition: 0.3s; }
     .curr-selector-nexus:focus { border-color: #a855f7; background: rgba(255,255,255,0.12); }
     
-    @keyframes fadeInUp {
+    @@keyframes fadeInUp {
         from { opacity: 0; transform: translateY(20px); }
         to { opacity: 1; transform: translateY(0); }
     }
@@ -199,7 +199,7 @@
 
 @push('scripts')
 <script>
-    const RATES = @json($rates ?? ['USD' => 1710, 'GBP' => 2145, 'EUR' => 1820, 'CAD' => 1240, 'AUD' => 980, 'CNY' => 215]);
+    const RATES = @json($rates);
     const FX_FEE = {{ (float) ($fxFeePercent ?? 1.5) }};
 
     function switchS(id, btn) {

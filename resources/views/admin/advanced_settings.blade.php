@@ -1,4 +1,4 @@
-@extends('layouts.admin')
+@extends('layouts.nexus')
 
 @section('title', 'Advanced Settings')
 

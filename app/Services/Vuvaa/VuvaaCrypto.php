@@ -39,7 +39,7 @@ class VuvaaCrypto
             throw new \RuntimeException('Failed to base64 decode payload.');
         }
 
-        $plain = openssl_decrypt(
+        $decrypted = openssl_decrypt(
             $cipherText,
             'AES-256-CBC',
             $this->key,
@@ -47,13 +47,18 @@ class VuvaaCrypto
             $this->iv
         );
 
-        if ($plain === false) {
+        if ($decrypted === false) {
             throw new \RuntimeException('Failed to decrypt payload.');
         }
 
-        $data = json_decode(trim($plain), true);
+        $plain = trim($decrypted);
+        $data = json_decode($plain, true);
         if (!is_array($data)) {
-            throw new \RuntimeException('Decrypted payload is not valid JSON.');
+            \Illuminate\Support\Facades\Log::error('Vuvaa Decryption JSON Error', [
+                'plain_text' => $plain,
+                'json_error' => json_last_error_msg()
+            ]);
+            throw new \RuntimeException('Decrypted payload is not valid JSON. Error: ' . json_last_error_msg());
         }
 
         return $data;

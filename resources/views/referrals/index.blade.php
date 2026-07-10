@@ -45,9 +45,9 @@
             <div class="card-body">
                 <h4 class="card-title">Your Referral Link</h4>
                 <div class="input-group">
-                    <input type="text" class="form-control" value="{{ $referralLink }}" readonly>
+                    <input type="text" id="referralLinkInput" class="form-control" value="{{ $referralLink }}" readonly>
                     <div class="input-group-append">
-                        <button class="btn btn-primary" type="button" onclick="copyToClipboard('{{ $referralLink }}')">Copy</button>
+                        <button class="btn btn-primary" type="button" onclick="copyReferralLink()">Copy Full URL</button>
                     </div>
                 </div>
             </div>
@@ -130,14 +130,39 @@
 
 @push('scripts')
 <script>
-    function copyToClipboard(text) {
-        var dummy = document.createElement("textarea");
-        document.body.appendChild(dummy);
-        dummy.value = text;
-        dummy.select();
-        document.execCommand("copy");
-        document.body.removeChild(dummy);
-        alert("Copied to clipboard!");
+    function copyReferralLink() {
+        const input = document.getElementById('referralLinkInput');
+        if (!input) return;
+
+        const text = input.value || '';
+        if (!text) return;
+
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(text)
+                .then(() => {
+                    if (window.nexusToast) {
+                        window.nexusToast('Referral URL copied successfully.');
+                    } else {
+                        alert('Referral URL copied successfully.');
+                    }
+                })
+                .catch(() => fallbackCopy(input, text));
+            return;
+        }
+
+        fallbackCopy(input, text);
+    }
+
+    function fallbackCopy(input, text) {
+        input.focus();
+        input.select();
+        input.setSelectionRange(0, text.length);
+        document.execCommand('copy');
+        if (window.nexusToast) {
+            window.nexusToast('Referral URL copied successfully.');
+        } else {
+            alert('Referral URL copied successfully.');
+        }
     }
 </script>
 @endpush

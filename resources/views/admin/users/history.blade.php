@@ -1,16 +1,21 @@
 @extends('layouts.nexus')
 
-@section('title', 'Transaction History – {{ $user->fullname }}')
+@section('title')
+Transaction History{{ $user ? ' – ' . $user->fullname : '' }}
+@endsection
 
 @section('content')
+@php
+    $historyLabel = $user?->fullname ?? $email;
+@endphp
 <div class="row mb-4">
     <div class="col-12 d-flex align-items-center">
         <a href="{{ route('admin.users.index') }}" class="btn btn-dark rounded-circle mr-3 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px; background: rgba(255,255,255,0.05) !important; border: 1px solid rgba(255,255,255,0.1);">
             <i class="fa fa-arrow-left text-white"></i>
         </a>
         <div>
-            <h3 class="text-white mb-0 fw-bold">{{ $user->fullname }}'s History</h3>
-            <p class="text-white-50 mb-0">All funding & deduction events for {{ $user->email }}</p>
+            <h3 class="text-white mb-0 fw-bold">{{ $historyLabel }}'s History</h3>
+            <p class="text-white-50 mb-0">All funding & deduction events for {{ $user->email ?? $email }}</p>
         </div>
     </div>
 </div>

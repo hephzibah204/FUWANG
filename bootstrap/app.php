@@ -27,8 +27,6 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->append(\App\Http\Middleware\EnforceHttps::class);
         $middleware->append(\App\Http\Middleware\ContentSecurityPolicy::class);
         $middleware->append(\App\Http\Middleware\ActivityLogMiddleware::class);
-        $middleware->append(\PragmaRX\Google2FALaravel\Middleware::class);
-
         $installerEnabled = filter_var(env('INSTALLER_ENABLED', false), FILTER_VALIDATE_BOOL) && app()->environment(['local', 'testing']);
         if ($installerEnabled) {
             $middleware->append(\App\Http\Middleware\CheckInstallation::class);
@@ -53,16 +51,24 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
             'super_admin' => \App\Http\Middleware\SuperAdminMiddleware::class,
             'permission' => \App\Http\Middleware\CheckAdminPermission::class,
+            'logistics.permission' => \App\Http\Middleware\CheckLogisticsPermission::class,
+            'logistics.permission.api' => \App\Http\Middleware\CheckLogisticsPermissionApi::class,
+            'logistics.role' => \App\Http\Middleware\RequireLogisticsRole::class,
+            'logistics.jwt' => \App\Http\Middleware\LogisticsStaffJwtAuth::class,
+            'delivery_agent' => \App\Http\Middleware\EnsureDeliveryAgent::class,
             'feature' => \App\Http\Middleware\CheckFeatureToggle::class,
             'admin.security' => \App\Http\Middleware\AdminSecurityMiddleware::class,
             'admin.audit' => \App\Http\Middleware\AdminAuditMiddleware::class,
+            'auction_admin.audit' => \App\Http\Middleware\AuctionAdminAuditMiddleware::class,
             'api.token' => \App\Http\Middleware\ApiTokenAuth::class,
-            'api.ratelimit' => \App\Http/Middleware\ApiRateLimit::class,
+            'api.endpoint' => \App\Http\Middleware\DeveloperApiEndpointAccess::class,
+            'api.ratelimit' => \App\Http\Middleware\ApiRateLimit::class,
             'service.ratelimit' => \App\Http\Middleware\ServiceApiRateLimit::class,
             'kyc.enforce' => \App\Http\Middleware\EnforceKycTierLimits::class,
             'ab' => \App\Http\Middleware\AssignAbVariants::class,
             'track.view' => \App\Http\Middleware\LogPageView::class,
             'onboarding' => \App\Http\Middleware\OnboardingMiddleware::class,
+            'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

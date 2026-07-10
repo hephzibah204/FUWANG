@@ -45,6 +45,16 @@ return [
             'driver' => 'session',
             'provider' => 'admins',
         ],
+
+        'auction_admin' => [
+            'driver' => 'session',
+            'provider' => 'auction_admins',
+        ],
+
+        'logistics_staff' => [
+            'driver' => 'session',
+            'provider' => 'logistics_staff',
+        ],
     ],
 
     /*
@@ -75,6 +85,16 @@ return [
             'model' => App\Models\Admin::class,
         ],
 
+        'auction_admins' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\AuctionAdmin::class,
+        ],
+
+        'logistics_staff' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\LogisticsStaff::class,
+        ],
+
         // 'users' => [
         //     'driver' => 'database',
         //     'table' => 'users',
@@ -103,6 +123,20 @@ return [
     'passwords' => [
         'users' => [
             'provider' => 'users',
+            'table' => env('AUTH_PASSWORD_RESET_TOKEN_TABLE', 'password_reset_tokens'),
+            'expire' => 60,
+            'throttle' => 60,
+        ],
+
+        'auction_admins' => [
+            'provider' => 'auction_admins',
+            'table' => env('AUTH_PASSWORD_RESET_TOKEN_TABLE', 'password_reset_tokens'),
+            'expire' => 60,
+            'throttle' => 60,
+        ],
+
+        'logistics_staff' => [
+            'provider' => 'logistics_staff',
             'table' => env('AUTH_PASSWORD_RESET_TOKEN_TABLE', 'password_reset_tokens'),
             'expire' => 60,
             'throttle' => 60,

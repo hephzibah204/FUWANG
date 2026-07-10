@@ -13,8 +13,14 @@ class AddGoogle2faSecretToAdminsTable extends Migration
      */
     public function up()
     {
+        if (! Schema::hasTable('admins')) {
+            return;
+        }
+
         Schema::table('admins', function (Blueprint $table) {
-            $table->string('google2fa_secret')->nullable()->after('password');
+            if (! Schema::hasColumn('admins', 'google2fa_secret')) {
+                $table->string('google2fa_secret')->nullable()->after('password');
+            }
         });
     }
 
@@ -25,8 +31,14 @@ class AddGoogle2faSecretToAdminsTable extends Migration
      */
     public function down()
     {
+        if (! Schema::hasTable('admins')) {
+            return;
+        }
+
         Schema::table('admins', function (Blueprint $table) {
-            $table->dropColumn('google2fa_secret');
+            if (Schema::hasColumn('admins', 'google2fa_secret')) {
+                $table->dropColumn('google2fa_secret');
+            }
         });
     }
 }

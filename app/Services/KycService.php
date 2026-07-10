@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\SystemSetting;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Models\VerificationResult;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -59,7 +60,7 @@ class KycService
      */
     public function canTransact(User $user, float $amount): array
     {
-        if (!$this->isKycEnabled()) {
+        if (! $this->isKycEnabled()) {
             return ['allowed' => true];
         }
 
@@ -70,7 +71,7 @@ class KycService
         if ($amount > $limits['single']) {
             return [
                 'allowed' => false,
-                'message' => "Tier {$tier} limit: single transactions are capped at ₦" . number_format($limits['single'], 2) . ". Please upgrade your KYC to increase limits.",
+                'message' => "Tier {$tier} limit: single transactions are capped at ₦".number_format($limits['single'], 2).'. Please upgrade your KYC to increase limits.',
             ];
         }
 
@@ -78,9 +79,10 @@ class KycService
         $dailySpent = $this->getDailySpent($user);
         if (($dailySpent + $amount) > $limits['daily']) {
             $remaining = max(0, $limits['daily'] - $dailySpent);
+
             return [
                 'allowed' => false,
-                'message' => "Daily limit exceeded. Your current Tier allows ₦" . number_format($limits['daily'], 2) . " daily. You have already spent ₦" . number_format($dailySpent, 2) . ". Remaining today: ₦" . number_format($remaining, 2) . ".",
+                'message' => 'Daily limit exceeded. Your current Tier allows ₦'.number_format($limits['daily'], 2).' daily. You have already spent ₦'.number_format($dailySpent, 2).'. Remaining today: ₦'.number_format($remaining, 2).'.',
             ];
         }
 
@@ -88,9 +90,10 @@ class KycService
         $monthlySpent = $this->getMonthlySpent($user);
         if (($monthlySpent + $amount) > $limits['monthly']) {
             $remaining = max(0, $limits['monthly'] - $monthlySpent);
+
             return [
                 'allowed' => false,
-                'message' => "Monthly limit exceeded for Tier {$tier}. Total monthly allowed: ₦" . number_format($limits['monthly'], 2) . ". Remaining for this month: ₦" . number_format($remaining, 2) . ".",
+                'message' => "Monthly limit exceeded for Tier {$tier}. Total monthly allowed: ₦".number_format($limits['monthly'], 2).'. Remaining for this month: ₦'.number_format($remaining, 2).'.',
             ];
         }
 
@@ -135,14 +138,16 @@ class KycService
             'Educational E-PIN',
             'NIN Verification',
             'BVN Verification',
+            'Account KYC NIN',
+            'Account KYC BVN',
             'Identity Verification',
             'Service Payment',
             'Wallet Debit',
             'Admin Deduction',
-            'Agency Banking Withdrawal'
+            'Agency Banking Withdrawal',
         ];
     }
-    
+
     /**
      * Refresh user KYC tier based on their existing verification records.
      */
@@ -150,36 +155,82 @@ class KycService
     {
         $currentTier = (int) ($user->kyc_tier ?? 0);
         $newTier = 0;
-        
+
         // Tier 1: Email verified
         if ($user->email_verified_at) {
             $newTier = 1;
         }
-        
-        // Tier 2: NIN or BVN verified
-        $hasNIN = \App\Models\VerificationResult::where('user_id', $user->id)
-            ->where('service_type', 'nin')
-            ->where('status', 'success')
-            ->exists();
-            
-        $hasBVN = \App\Models\VerificationResult::where('user_id', $user->id)
-            ->where('service_type', 'bvn')
-            ->where('status', 'success')
-            ->exists();
-            
-        if ($hasNIN || $hasBVN) {
+
+        // Tier 2: successful NIN or BVN verification (match VerificationResultService / controllers)
+        if ($this->userHasSuccessfulNinOrBvn($user)) {
             $newTier = 2;
         }
-        
+
         // Tier 3: Advanced verification (Manual check usually)
         // We only upgrade to tier 3 if specifically set, but we can auto-upgrade to Tier 2
-        
+
         if ($newTier > $currentTier) {
             $user->kyc_tier = $newTier;
             $user->save();
+
             return $newTier;
         }
-        
+
         return $currentTier;
+    }
+
+    /**
+     * UI copy: current tier, limits, and what the user should do next to upgrade.
+     *
+     * @return array{
+     *     kyc_enabled: bool,
+     *     tier: int,
+     *     label: string,
+     *     daily_limit: float,
+     *     single_limit: float,
+     *     email_verified: bool,
+     *     has_nin_or_bvn: bool,
+     *     needs_email: bool,
+     *     needs_identity: bool,
+     *     nin_service_enabled: bool,
+     *     bvn_service_enabled: bool
+     * }
+     */
+    public function tierUpgradeSummary(User $user): array
+    {
+        $kycEnabled = $this->isKycEnabled();
+        $tier = (int) ($user->kyc_tier ?? 0);
+        $limits = $this->getTierLimits($tier);
+        $emailVerified = (bool) $user->email_verified_at;
+        $hasIdentity = $this->userHasSuccessfulNinOrBvn($user);
+
+        return [
+            'kyc_enabled' => $kycEnabled,
+            'tier' => $tier,
+            'label' => $limits['label'],
+            'daily_limit' => $limits['daily'],
+            'single_limit' => $limits['single'],
+            'email_verified' => $emailVerified,
+            'has_nin_or_bvn' => $hasIdentity,
+            'needs_email' => $kycEnabled && ! $emailVerified,
+            'needs_identity' => $kycEnabled && $tier < 2 && ! $hasIdentity,
+            'nin_service_enabled' => SystemSetting::get('nin_service_enabled', 'true') === 'true',
+            'bvn_service_enabled' => SystemSetting::get('bvn_service_enabled', 'true') === 'true',
+        ];
+    }
+
+    private function userHasSuccessfulNinOrBvn(User $user): bool
+    {
+        $ninTypes = ['nin', 'nin_verification', 'nin_face_verification', 'kyc_tier_nin'];
+        $bvnTypes = ['bvn', 'bvn_verification', 'bvn_matching', 'bvn_nin_phone_verification', 'kyc_tier_bvn'];
+
+        return VerificationResult::query()
+            ->where('user_id', $user->id)
+            ->where('status', 'success')
+            ->where(function ($q) use ($ninTypes, $bvnTypes) {
+                $q->whereIn('service_type', $ninTypes)
+                    ->orWhereIn('service_type', $bvnTypes);
+            })
+            ->exists();
     }
 }

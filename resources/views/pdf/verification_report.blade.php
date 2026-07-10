@@ -27,7 +27,7 @@
 </head>
 <body>
     <div class="header">
-        <div class="logo">G-SOFT VERIFY</div>
+        <div class="logo">{{ \App\Models\SystemSetting::get('site_name', 'Fuwa.NG') }}</div>
         <div class="report-title">Official Verification Certificate</div>
     </div>
 
@@ -57,10 +57,20 @@
         <div class="result-title">Verification Details</div>
         <div class="data-grid">
             @foreach($result->response_data as $key => $value)
-                @if(!is_array($value))
+                @php
+                    $k = strtolower((string) $key);
+                    $skipKeys = [
+                        'photo', 'image', 'passport',
+                        'photo_base64', 'photobase64', 'image_base64', 'imagebase64',
+                        'encrypted_data', 'payload',
+                    ];
+                    $isSkipKey = in_array($k, $skipKeys, true);
+                    $isTooLong = is_string($value) && strlen($value) > 250;
+                @endphp
+                @if(!$isSkipKey && !is_array($value))
                     <div class="data-row">
                         <div class="data-label">{{ strtoupper(str_replace('_', ' ', $key)) }}</div>
-                        <div class="data-value">{{ $value ?: 'N/A' }}</div>
+                        <div class="data-value">{{ $isTooLong ? '[REDACTED]' : ($value ?: 'N/A') }}</div>
                     </div>
                 @endif
             @endforeach
@@ -68,7 +78,7 @@
     </div>
 
     <div class="footer">
-        <p>This document is an official verification report from {{ \App\Models\SystemSetting::get('site_name', 'Fuwa.NG') }} Verify. To verify the authenticity of this document, visit our portal and enter the Reference ID above.</p>
+        <p>This document is an official verification report from {{ \App\Models\SystemSetting::get('site_name', 'Fuwa.NG') }}. To verify the authenticity of this document, visit our portal and enter the Reference ID above.</p>
         <p>&copy; {{ date('Y') }} {{ \App\Models\SystemSetting::get('site_name', 'Fuwa.NG') }}. All rights reserved.</p>
     </div>
 </body>

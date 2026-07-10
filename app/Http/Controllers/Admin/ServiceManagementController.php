@@ -75,6 +75,12 @@ class ServiceManagementController extends Controller
             ],
             [
                 'group' => 'Payments',
+                'name' => 'Logistics Ops (Staff)',
+                'feature_key' => 'logistics_ops',
+                'custom_api_service_type' => null,
+            ],
+            [
+                'group' => 'Payments',
                 'name' => 'Virtual Cards',
                 'feature_key' => 'virtual_cards',
                 'custom_api_service_type' => null,

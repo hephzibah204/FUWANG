@@ -48,6 +48,29 @@
                     </div>
                 </div>
 
+                @php
+                    $hasTier2Identity = \App\Support\UserKycIdentifiers::preferredPaymentIdentity(auth()->user()) !== null;
+                @endphp
+                @if (! $hasTier2Identity)
+                    <div class="alert mb-3 py-2 px-3 small" role="note" style="background: rgba(234, 179, 8, 0.08); border: 1px solid rgba(234, 179, 8, 0.28); color: #fde68a;">
+                        <i class="fa-solid fa-id-card mr-1"></i>
+                        <strong>Monnify and Flutterwave</strong> need a <strong>successful account KYC BVN or NIN verification</strong> before dedicated bank numbers can be issued. Complete Tier 2 verification first, then use <strong>Load Accounts</strong>.
+                        @if (\Illuminate\Support\Facades\Route::has('account.kyc.nin') || \Illuminate\Support\Facades\Route::has('account.kyc.bvn'))
+                            <span class="d-block mt-2">
+                                @if (\Illuminate\Support\Facades\Route::has('account.kyc.nin'))
+                                    <a href="{{ route('account.kyc.nin') }}" class="text-white font-weight-bold" style="text-decoration: underline;">Account KYC NIN</a>
+                                @endif
+                                @if (\Illuminate\Support\Facades\Route::has('account.kyc.nin') && \Illuminate\Support\Facades\Route::has('account.kyc.bvn'))
+                                    <span class="text-white-50 mx-2">·</span>
+                                @endif
+                                @if (\Illuminate\Support\Facades\Route::has('account.kyc.bvn'))
+                                    <a href="{{ route('account.kyc.bvn') }}" class="text-white font-weight-bold" style="text-decoration: underline;">Account KYC BVN</a>
+                                @endif
+                            </span>
+                        @endif
+                    </div>
+                @endif
+
                 <div class="d-flex align-items-center justify-content-between flex-wrap" style="gap: 10px;">
                     <div class="small text-white-50">Generate or fetch your dedicated accounts below.</div>
                     <button type="button" class="btn btn-outline-light btn-sm" id="loadAccountsBtn">Load Accounts</button>
@@ -178,6 +201,10 @@
             }
             if (typeof window.openPayModal === 'function') {
                 window.openPayModal('Wallet Funding', amt, 'Credit your Fuwa.NG wallet');
+            } else if (window.Swal) {
+                window.Swal.fire('Error', 'Payment system is still loading. Refresh the page and try again.', 'error');
+            } else {
+                alert('Payment system is still loading. Refresh the page and try again.');
             }
         });
 
@@ -186,8 +213,9 @@
             wrapEl.innerHTML = '';
             try {
                 const res = await csrfPost('/payment/auto-funding/ensure', {});
-                if (res && res.status && res.accounts) {
+                if (res && res.status && Array.isArray(res.accounts) && res.accounts.length > 0) {
                     renderAccounts(res.accounts);
+                    statusEl.textContent = 'Use any of the accounts below. Transfer confirms automatically when supported by the provider.';
                     const pending = res.accounts.some((a) => (a.status || '') === 'pending');
                     if (pending) {
                         statusEl.textContent = 'Some accounts are activating. This page will update automatically.';

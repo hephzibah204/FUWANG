@@ -26,7 +26,11 @@ class DeliveryAgentController extends Controller
             'approval_status' => ['required', 'string', 'in:approved,rejected'],
         ]);
 
-        $agent->update(['approval_status' => $request->approval_status]);
+        $agent->approval_status = $request->approval_status;
+        if ($request->approval_status === 'approved' && $agent->availability_status === 'offline') {
+            $agent->availability_status = 'available';
+        }
+        $agent->save();
 
         return back()->with('success', 'Agent status updated successfully.');
     }

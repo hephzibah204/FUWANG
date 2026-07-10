@@ -1,3 +1,7 @@
+# Apache: allow ~64MB request bodies (413 if too small). Nginx: add client_max_body_size 64m; to server/location.
+# PHP upload limits: see public/.user.ini (FPM) or php.ini (upload_max_filesize, post_max_size).
+LimitRequestBody 67108864
+
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes

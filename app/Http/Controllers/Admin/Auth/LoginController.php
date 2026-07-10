@@ -14,11 +14,19 @@ class LoginController extends Controller
 {
     public function showLoginForm()
     {
+        if (Auth::guard('admin')->check()) {
+            return redirect()->route('admin.dashboard');
+        }
+
         return view('admin.auth.login');
     }
 
     public function login(Request $request)
     {
+        if (Auth::guard('admin')->check()) {
+            return redirect()->route('admin.dashboard');
+        }
+
         $credentials = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required'],
@@ -62,7 +70,7 @@ class LoginController extends Controller
                 'user_agent' => $request->userAgent(),
             ]);
 
-            return redirect()->intended(route('admin.dashboard'));
+            return redirect()->route('admin.dashboard');
         }
 
         RateLimiter::hit($throttleKey, 600); // 10 minutes lock if exceeded

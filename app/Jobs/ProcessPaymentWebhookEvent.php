@@ -8,6 +8,7 @@ use App\Models\PaymentWebhookEvent;
 use App\Models\User;
 use App\Services\WalletService;
 use App\Support\DbTable;
+use App\Support\PaymentProviderCredentials;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -215,7 +216,7 @@ class ProcessPaymentWebhookEvent implements ShouldQueue
         $txRef = trim((string) ($obj['tx_ref'] ?? ''));
 
         $apiCenter = ApiCenter::first();
-        $secret = $apiCenter?->flutterwave_secret_key;
+        $secret = PaymentProviderCredentials::flutterwave($apiCenter)['secret_key'];
         if (!$secret) {
             throw new \RuntimeException('Flutterwave is not configured');
         }

@@ -16,7 +16,7 @@
 
     <div class="card border-0 shadow-sm" style="background: #1e293b;">
         <div class="card-body">
-            <form action="{{ route('admin.posts.store') }}" method="POST" enctype="multipart/form-data">
+            <form id="postForm" action="{{ route('admin.posts.store') }}" method="POST" enctype="multipart/form-data">
                 @csrf
 
                 <div class="form-group">
@@ -33,17 +33,18 @@
 
                 <div class="form-group">
                     <label class="text-white-50 small">Content</label>
-                    <textarea id="contentInput" name="content" class="form-control @error('content') is-invalid @enderror" rows="12" required style="display:none;">{{ old('content') }}</textarea>
+                    {{-- Do not use required on this hidden field: the real body is in #contentEditor; native validation would block submit before our handler runs. --}}
+                    <textarea id="contentInput" name="content" class="form-control @error('content') is-invalid @enderror" rows="12" style="display:none;">{{ old('content') }}</textarea>
                     <div class="d-flex flex-wrap mb-2" style="gap: 8px;">
-                        <button class="btn btn-sm btn-outline-light" type="button" onclick="fmt('bold')"><i class="fa-solid fa-bold"></i></button>
-                        <button class="btn btn-sm btn-outline-light" type="button" onclick="fmt('italic')"><i class="fa-solid fa-italic"></i></button>
-                        <button class="btn btn-sm btn-outline-light" type="button" onclick="fmt('underline')"><i class="fa-solid fa-underline"></i></button>
-                        <button class="btn btn-sm btn-outline-light" type="button" onclick="fmt('insertUnorderedList')"><i class="fa-solid fa-list-ul"></i></button>
-                        <button class="btn btn-sm btn-outline-light" type="button" onclick="fmt('insertOrderedList')"><i class="fa-solid fa-list-ol"></i></button>
-                        <button class="btn btn-sm btn-outline-light" type="button" onclick="setBlock('h2')">H2</button>
-                        <button class="btn btn-sm btn-outline-light" type="button" onclick="setBlock('h3')">H3</button>
-                        <button class="btn btn-sm btn-outline-light" type="button" onclick="setLink()"><i class="fa-solid fa-link"></i></button>
-                        <button class="btn btn-sm btn-outline-light" type="button" onclick="fmt('removeFormat')"><i class="fa-solid fa-eraser"></i></button>
+                        <button class="btn btn-sm btn-outline-light" type="button" onclick="postEditorFmt('bold')"><i class="fa-solid fa-bold"></i></button>
+                        <button class="btn btn-sm btn-outline-light" type="button" onclick="postEditorFmt('italic')"><i class="fa-solid fa-italic"></i></button>
+                        <button class="btn btn-sm btn-outline-light" type="button" onclick="postEditorFmt('underline')"><i class="fa-solid fa-underline"></i></button>
+                        <button class="btn btn-sm btn-outline-light" type="button" onclick="postEditorFmt('insertUnorderedList')"><i class="fa-solid fa-list-ul"></i></button>
+                        <button class="btn btn-sm btn-outline-light" type="button" onclick="postEditorFmt('insertOrderedList')"><i class="fa-solid fa-list-ol"></i></button>
+                        <button class="btn btn-sm btn-outline-light" type="button" onclick="postEditorSetBlock('h2')">H2</button>
+                        <button class="btn btn-sm btn-outline-light" type="button" onclick="postEditorSetBlock('h3')">H3</button>
+                        <button class="btn btn-sm btn-outline-light" type="button" onclick="postEditorSetLink()"><i class="fa-solid fa-link"></i></button>
+                        <button class="btn btn-sm btn-outline-light" type="button" onclick="postEditorFmt('removeFormat')"><i class="fa-solid fa-eraser"></i></button>
                     </div>
                     <div id="contentEditor" class="form-control @error('content') is-invalid @enderror" contenteditable="true" style="min-height: 260px; background: rgba(255,255,255,0.04); color: #fff; border: 1px solid rgba(255,255,255,0.1);"></div>
                     @error('content')<div class="invalid-feedback">{{ $message }}</div>@enderror
@@ -99,29 +100,44 @@
 
 @push('scripts')
 <script>
+(function () {
     const contentInput = document.getElementById('contentInput');
     const contentEditor = document.getElementById('contentEditor');
-    if (contentInput && contentEditor) {
-        contentEditor.innerHTML = contentInput.value || '';
-        const form = contentInput.closest('form');
-        if (form) {
-            form.addEventListener('submit', function (e) {
-                const txt = (contentEditor.innerText || '').trim();
-                if (!txt) {
-                    e.preventDefault();
-                    contentEditor.focus();
-                    return;
-                }
-                contentInput.value = contentEditor.innerHTML;
-            });
+    const form = document.getElementById('postForm');
+    if (!contentInput || !contentEditor || !form) return;
+
+    contentEditor.innerHTML = contentInput.value || '';
+
+    form.addEventListener('submit', function (e) {
+        const text = (contentEditor.innerText || '').trim();
+        const hasMedia = contentEditor.querySelector('img, video, iframe, picture source');
+        if (!text && !hasMedia) {
+            e.preventDefault();
+            if (window.nexusToast) {
+                window.nexusToast('Please add some body content to the post.', 'error');
+            } else {
+                alert('Please add some body content to the post.');
+            }
+            contentEditor.focus();
+            return;
         }
-    }
-    function fmt(cmd) { document.execCommand(cmd, false, null); }
-    function setBlock(tag) { document.execCommand('formatBlock', false, tag); }
-    function setLink() {
+        contentInput.value = contentEditor.innerHTML;
+    });
+
+    window.postEditorFmt = function (cmd) {
+        contentEditor.focus();
+        document.execCommand(cmd, false, null);
+    };
+    window.postEditorSetBlock = function (tag) {
+        contentEditor.focus();
+        document.execCommand('formatBlock', false, tag);
+    };
+    window.postEditorSetLink = function () {
+        contentEditor.focus();
         const url = prompt('Enter URL');
         if (!url) return;
         document.execCommand('createLink', false, url);
-    }
+    };
+})();
 </script>
 @endpush

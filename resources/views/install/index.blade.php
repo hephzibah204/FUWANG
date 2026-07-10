@@ -117,7 +117,7 @@
                         <label for="db_database" class="text-sm font-medium text-gray-700 sm:text-right mt-2">Database Name</label>
                         <div class="sm:col-span-2 group relative">
                             <input type="text" name="db_database" id="db_database" value="{{ old('db_database', 'laravel') }}" class="wp-input w-full">
-                            <p class="text-xs text-gray-500 mt-1">The name of the database you want to use with GSoft. If using SQLite, this is the file path (e.g., <code>database/database.sqlite</code>).</p>
+                            <p class="text-xs text-gray-500 mt-1">The name of the database you want to use with Fuwa. If using SQLite, this is the file path (e.g., <code>database/database.sqlite</code>).</p>
                             <p class="text-red-600 text-xs mt-1 hidden validation-error"></p>
                             @error('db_database')
                                 <p class="text-red-600 text-xs mt-1 server-error">{{ $message }}</p>

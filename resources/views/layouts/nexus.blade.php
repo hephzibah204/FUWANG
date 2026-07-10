@@ -61,9 +61,13 @@
     <script src="https://js.paystack.co/v1/inline.js" defer></script>
     <script src="https://checkout.flutterwave.com/v3.js" defer></script>
     <script src="https://sdk.monnify.com/plugin/monnify.js" defer></script>
+    <meta name="auth-user-email" content="{{ Auth::check() ? Auth::user()->email : '' }}">
+    <meta name="auth-user-name" content="{{ Auth::check() ? (Auth::user()->fullname ?? Auth::user()->username) : '' }}">
     <script nonce="{{ $cspNonce ?? '' }}">
-        window.authUserEmail = @json(Auth::check() ? Auth::user()->email : null);
-        window.authUserName = @json(Auth::check() ? (Auth::user()->fullname ?? Auth::user()->username) : null);
+        const authEmailMeta = document.querySelector('meta[name="auth-user-email"]');
+        const authNameMeta = document.querySelector('meta[name="auth-user-name"]');
+        window.authUserEmail = authEmailMeta ? authEmailMeta.getAttribute('content') : null;
+        window.authUserName = authNameMeta ? authNameMeta.getAttribute('content') : null;
     </script>
     
     @vite(['resources/js/vendor.js', 'resources/js/app.js', 'resources/js/layout.js'])
@@ -76,6 +80,16 @@
             --clr-accent-1: {{ \App\Models\SystemSetting::get('theme_accent_1', '#10b981') }};
             --clr-accent-2: {{ \App\Models\SystemSetting::get('theme_accent_2', '#8b5cf6') }};
             --clr-accent-3: {{ \App\Models\SystemSetting::get('theme_accent_3', '#f59e0b') }};
+            --select-surface: #111827;
+            --select-surface-hover: #172033;
+            --select-surface-disabled: #0b1220;
+            --select-border: rgba(148, 163, 184, 0.38);
+            --select-text: #f8fafc;
+            --select-muted: #94a3b8;
+            --option-surface: #ffffff;
+            --option-surface-hover: #f8fafc;
+            --option-selected: #bfdbfe;
+            --option-text: #111827;
         }
         
         body {
@@ -106,6 +120,39 @@
         .modal-content { background: var(--clr-bg-card); backdrop-filter: blur(20px); border: var(--border-glass); border-radius: 20px; }
         .form-control { background: rgba(255,255,255,0.05); border: var(--border-glass); color: #fff; border-radius: 12px; padding: 12px; }
         .form-control:focus { background: rgba(255,255,255,0.08); border-color: var(--clr-primary); color: #fff; box-shadow: none; }
+        select.form-control {
+            background-color: var(--select-surface) !important;
+            color: var(--select-text) !important;
+            border-color: var(--select-border) !important;
+        }
+        select.form-control:hover { background-color: var(--select-surface-hover) !important; }
+        select.form-control:focus {
+            background-color: var(--select-surface-hover) !important;
+            border-color: var(--clr-primary) !important;
+            color: var(--select-text) !important;
+            box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.18) !important;
+        }
+        select.form-control:disabled {
+            background-color: var(--select-surface-disabled) !important;
+            color: var(--select-muted) !important;
+            border-color: rgba(148, 163, 184, 0.22) !important;
+            opacity: 1;
+            cursor: not-allowed;
+        }
+        select.form-control option {
+            color: var(--option-text);
+            background: var(--option-surface);
+        }
+        select.form-control option:hover,
+        select.form-control option:focus {
+            color: var(--option-text);
+            background: var(--option-surface-hover);
+        }
+        select.form-control option:checked,
+        select.form-control option[selected] {
+            color: var(--option-text);
+            background: var(--option-selected);
+        }
         .btn-primary { background: linear-gradient(135deg, var(--clr-primary), var(--clr-primary-hover)); border: none; border-radius: 12px; padding: 12px 24px; font-weight: 600; }
         .btn-primary:hover { transform: translateY(-2px); box-shadow: var(--shadow-glow); }
         .dropdown-menu { background: var(--clr-bg-nav); backdrop-filter: blur(15px); border: var(--border-glass); border-radius: 15px; }
@@ -243,9 +290,20 @@
     $adminUser = Auth::guard('admin')->user();
     $authUser = $webUser ?: $adminUser;
     $isAuthed = (bool) $authUser;
-    $isAdmin = (bool) $adminUser;
+    $adminPath = trim((string) config('app.admin_path', 'admin'), '/');
+    $onAdminArea = $adminPath !== '' && (request()->is($adminPath) || request()->is($adminPath . '/*'));
+    $routeName = request()->route()?->getName();
+    if (! $onAdminArea && is_string($routeName) && str_starts_with($routeName, 'admin.')) {
+        $onAdminArea = true;
+    }
+    // Full admin chrome only on admin URLs — both guards can be logged in at once (same session).
+    $showFullAdminSidebar = (bool) $adminUser && $onAdminArea;
+    $displayUser = ($onAdminArea && $adminUser) ? $adminUser : ($webUser ?? $adminUser);
+    $webUnreadCount = $webUser ? (int) $webUser->unreadNotifications()->count() : 0;
+    $isAuthPage = request()->routeIs('login', 'register', 'password.*', 'admin.login', 'admin.2fa.*');
+    $showDashboardChrome = $isAuthed && ! $isAuthPage;
 @endphp
-<body class="{{ $isAuthed ? 'dashboard-body' : '' }}">
+<body class="{{ $showDashboardChrome ? 'dashboard-body' : '' }}">
     <!-- Background Elements -->
     <div class="bg-glow blob-1"></div>
     <div class="bg-glow blob-2"></div>
@@ -254,7 +312,7 @@
         $hideNav = trim($__env->yieldContent('hide_nav')) === 'true';
     @endphp
 
-    @if($isAuthed)
+    @if($showDashboardChrome)
     <!-- Top Horizontal Navigation -->
     <aside class="sidebar" id="sidebar" aria-label="Main Navigation" role="navigation">
         <div class="sidebar-header">
@@ -273,7 +331,7 @@
             <div class="nav-item">
                 <a href="{{ url('/') }}"><i class="fa-solid fa-house"></i> <span class="nav-text">Home</span></a>
             </div>
-            @if($isAdmin)
+            @if($showFullAdminSidebar)
             <div class="nav-section">Admin</div>
             <div class="nav-item {{ Request::routeIs('admin.dashboard') ? 'active' : '' }}">
                 <a href="{{ route('admin.dashboard') }}"><i class="fa-solid fa-gauge-high"></i> <span class="nav-text">Dashboard</span></a>
@@ -323,13 +381,24 @@
                 </div>
             </div>
 
+            @php
+                $contentAdmin = Auth::guard('admin')->user();
+                $canManageBlog = $contentAdmin && $contentAdmin->hasPermission('manage_blog');
+                $canManagePages = $contentAdmin && $contentAdmin->hasPermission('manage_pages');
+            @endphp
+            @if($canManageBlog || $canManagePages)
             <div class="nav-item has-submenu">
                 <button type="button" class="submenu-toggle" aria-expanded="false"><i class="fa-solid fa-globe"></i> <span class="nav-text">Content</span> <i class="fa-solid fa-chevron-down ml-auto small submenu-arrow"></i></button>
                 <div class="submenu" role="region">
+                    @if($canManageBlog)
                     <a href="{{ route('admin.posts.index') }}" class="{{ Request::routeIs('admin.posts.*') ? 'active' : '' }}">Blog Posts</a>
+                    @endif
+                    @if($canManagePages)
                     <a href="{{ route('admin.pages.index') }}" class="{{ Request::routeIs('admin.pages.*') ? 'active' : '' }}">Pages</a>
+                    @endif
                 </div>
             </div>
+            @endif
 
             <div class="nav-item has-submenu">
                 <button type="button" class="submenu-toggle" aria-expanded="false"><i class="fa-solid fa-sitemap"></i> <span class="nav-text">Operations</span> <i class="fa-solid fa-chevron-down ml-auto small submenu-arrow"></i></button>
@@ -337,7 +406,9 @@
                     <a href="{{ route('admin.operations.invoices') }}" class="{{ Request::routeIs('admin.operations.invoices') ? 'active' : '' }}">Invoices</a>
                     <a href="{{ route('admin.operations.logistics') }}" class="{{ Request::routeIs('admin.operations.logistics') ? 'active' : '' }}">Logistics</a>
                     <a href="{{ route('admin.operations.notary') }}" class="{{ Request::routeIs('admin.operations.notary') ? 'active' : '' }}">Notary</a>
-                    <a href="{{ route('admin.shipping-providers.index') }}" class="{{ Request::routeIs('admin.shipping-providers.*') ? 'active' : '' }}">Shipping</a>
+                    @if(\Illuminate\Support\Facades\Route::has('admin.shipping-providers.index'))
+                        <a href="{{ route('admin.shipping-providers.index') }}" class="{{ Request::routeIs('admin.shipping-providers.*') ? 'active' : '' }}">Shipping</a>
+                    @endif
                 </div>
             </div>
 
@@ -347,23 +418,21 @@
                     <a href="{{ route('admin.settings.index') }}" class="{{ Request::routeIs('admin.settings.*') ? 'active' : '' }}">Settings</a>
                     <a href="{{ route('admin.sandbox.index') }}" class="{{ Request::routeIs('admin.sandbox.*') ? 'active' : '' }}">Sandbox</a>
                     @if(Auth::guard('admin')->user()?->is_super_admin)
+                    <a href="{{ route('admin.developer_api.index') }}" class="{{ Request::routeIs('admin.developer_api.*') ? 'active' : '' }}">Developer API</a>
                     <a href="{{ route('admin.audit_logs.index') }}" class="{{ Request::routeIs('admin.audit_logs.*') ? 'active' : '' }}">Audit Logs</a>
                     <a href="{{ route('admin.queue.index') }}" class="{{ Request::routeIs('admin.queue.*') ? 'active' : '' }}">Queue Monitor</a>
                     @endif
                 </div>
             </div>
-            @else
+            @elseif($webUser)
             <div class="nav-section">Main Menu</div>
             <div class="nav-item {{ Request::routeIs('dashboard') ? 'active' : '' }}">
                 <a href="{{ route('dashboard') }}"><i class="fa-solid fa-house"></i> <span class="nav-text">Overview</span></a>
             </div>
             <div class="nav-item {{ Request::routeIs('notifications.*') ? 'active' : '' }}">
                 <a href="{{ route('notifications.index') }}"><i class="fa-solid fa-bell"></i> <span class="nav-text">Notifications
-                    @php 
-                        $unread = Auth::user()->unreadNotifications->count(); 
-                    @endphp
-                    @if($unread > 0)
-                        <span class="badge badge-primary badge-pill ml-auto px-2" style="font-size: 0.65rem;">{{ $unread }}</span>
+                    @if($webUnreadCount > 0)
+                        <span class="badge badge-primary badge-pill ml-auto px-2" style="font-size: 0.65rem;">{{ $webUnreadCount }}</span>
                     @endif
                 </span></a>
             </div>
@@ -453,8 +522,8 @@
                 <button type="button" class="submenu-toggle" aria-expanded="false"><i class="fa-solid fa-truck text-danger"></i> <span class="nav-text">Logistics & Utilities</span> <i class="fa-solid fa-chevron-down ml-auto small submenu-arrow"></i></button>
                 <div class="submenu" role="region">
                     @if(\App\Models\SystemSetting::get('post_office_service_enabled', 'true') === 'true')
-                        <a href="{{ route('public.logistics.index') }}" target="_blank"
-                           class="{{ request()->routeIs('public.logistics.index') ? 'active' : '' }}">Logistics Hub</a>
+                        <a href="{{ route('logistics.home') }}" target="_blank"
+                           class="{{ request()->routeIs('logistics.home') ? 'active' : '' }}">Logistics Hub</a>
                     @endif
                     @if(\App\Models\SystemSetting::get('education_service_enabled', 'true') === 'true')
                         <a href="{{ route('services.education.waec') }}" class="{{ Request::routeIs('services.education.waec') ? 'active' : '' }}">WAEC Result</a>
@@ -466,7 +535,7 @@
                 </div>
             </div>
 
-            @if(($webUser?->role ?? null) === 'admin' || $adminUser)
+            @if(($webUser?->role ?? null) === 'admin')
             <div class="nav-section">Admin Management</div>
             
             @if(Auth::guard('admin')->user()?->is_super_admin)
@@ -486,6 +555,12 @@
             </div>
             @endif
 
+            @if(Auth::guard('admin')->user()?->is_super_admin)
+            <div class="nav-item {{ Request::routeIs('admin.logistics-staff.*') ? 'active' : '' }}">
+                <a href="{{ route('admin.logistics-staff.index') }}"><i class="fa-solid fa-truck-fast text-danger"></i> <span class="nav-text">Logistics Staff</span></a>
+            </div>
+            @endif
+
             <div class="nav-item {{ Request::routeIs('admin.users.*') ? 'active' : '' }}">
                 <a href="{{ route('admin.users.index') }}"><i class="fa-solid fa-users"></i> <span class="nav-text">Users Directory</span></a>
             </div>
@@ -501,15 +576,18 @@
             @endif
 
             <div class="nav-section">Account Settings</div>
-            @if($isAdmin)
-            <div class="nav-item {{ Request::routeIs('admin.profile.*') ? 'active' : '' }}">
-                <a href="{{ route('admin.profile.edit') }}"><i class="fa-solid fa-user-gear"></i> <span class="nav-text">Profile Settings</span></a>
-            </div>
-            @else
             <div class="nav-item {{ Request::routeIs('profile') ? 'active' : '' }}">
                 <a href="{{ route('profile') }}"><i class="fa-solid fa-user-gear"></i> <span class="nav-text">Profile</span></a>
             </div>
-            @endif
+            @elseif($adminUser)
+            <div class="nav-section">Admin</div>
+            <div class="nav-item {{ Request::routeIs('admin.dashboard') ? 'active' : '' }}">
+                <a href="{{ route('admin.dashboard') }}"><i class="fa-solid fa-gauge-high"></i> <span class="nav-text">Admin Dashboard</span></a>
+            </div>
+            <div class="nav-section">Account</div>
+            <div class="nav-item {{ Request::routeIs('admin.profile.*') ? 'active' : '' }}">
+                <a href="{{ route('admin.profile.edit') }}"><i class="fa-solid fa-user-gear"></i> <span class="nav-text">Admin Profile</span></a>
+            </div>
             @endif
         
             <div class="nav-item mt-auto pt-3" style="border-top: 1px solid rgba(255,255,255,0.05);">
@@ -522,16 +600,18 @@
 
         <div class="sidebar-footer">
             <a
-                href="{{ $isAdmin ? route('admin.profile.edit') : route('profile') }}"
+                href="{{ $showFullAdminSidebar ? route('admin.profile.edit') : route('profile') }}"
                 class="sidebar-user-link mr-3"
-                aria-label="{{ $isAdmin ? 'Edit admin profile' : 'Edit profile' }}"
+                aria-label="{{ $showFullAdminSidebar ? 'Edit admin profile' : 'Edit profile' }}"
             >
                 <div class="sidebar-user">
                     <div class="sidebar-user-avatar">
                         @php
-                            $sidebarAvatar = $isAdmin ? ($adminUser?->avatar ?? null) : null;
-                            $sidebarName = $webUser?->fullname ?? $webUser?->username ?? $adminUser?->fullname ?? $adminUser?->username ?? 'Admin';
-                            $sidebarRole = $isAdmin ? 'Admin' : ucfirst($webUser?->role ?? 'User');
+                            $sidebarAvatar = $showFullAdminSidebar ? ($adminUser?->avatar ?? null) : null;
+                            $sidebarName = $showFullAdminSidebar
+                                ? ($adminUser?->fullname ?? $adminUser?->username ?? 'Admin')
+                                : ($webUser?->fullname ?? $webUser?->username ?? 'User');
+                            $sidebarRole = $showFullAdminSidebar ? 'Admin' : ucfirst($webUser?->role ?? 'User');
                         @endphp
                         @if($sidebarAvatar)
                             <img src="{{ \Illuminate\Support\Facades\Storage::url($sidebarAvatar) }}" alt="{{ $sidebarName }}" class="sidebar-user-avatar-img">
@@ -545,7 +625,7 @@
                     </div>
                 </div>
             </a>
-            <form action="{{ $isAdmin ? route('admin.logout') : route('logout') }}" method="POST" id="logout-form">
+            <form action="{{ $showFullAdminSidebar ? route('admin.logout') : route('logout') }}" method="POST" id="logout-form">
                 @csrf
                 <button type="submit" class="logout-btn">
                     <i class="fa-solid fa-arrow-right-from-bracket"></i>
@@ -554,7 +634,7 @@
         </div>
     </aside>
     @endif
-    @if(!$isAuthed && !$hideNav)
+    @if(!$showDashboardChrome && !$hideNav)
         <!-- Public Top Navigation -->
         <nav class="navbar navbar-expand-lg navbar-dark fixed-top public-nav py-3" style="background: rgba(3, 7, 18, 0.95); backdrop-filter: blur(15px); border-bottom: 1px solid rgba(255,255,255,0.05); z-index: 1050;">
             <div class="container">
@@ -569,7 +649,7 @@
                     <ul class="navbar-nav mx-auto d-flex flex-row">
                         <li class="nav-item mx-2"><a class="nav-link text-white small font-weight-bold" href="{{ url('/') }}#services">Services</a></li>
                         <li class="nav-item mx-2"><a class="nav-link text-white small font-weight-bold" href="{{ route('public.auctions.index') }}">Auctions</a></li>
-                        <li class="nav-item mx-2"><a class="nav-link text-white small font-weight-bold" href="{{ route('public.logistics.index') }}">Logistics</a></li>
+                        <li class="nav-item mx-2"><a class="nav-link text-white small font-weight-bold" href="{{ route('logistics.home') }}">Logistics</a></li>
                         <li class="nav-item mx-2"><a class="nav-link text-white small font-weight-bold" href="{{ url('/explore/notary-services') }}">Notary</a></li>
                         <li class="nav-item mx-2"><a class="nav-link text-white small font-weight-bold" href="{{ url('/') }}#legal-hub">AI Legal Hub</a></li>
                         <li class="nav-item mx-2"><a class="nav-link text-white small font-weight-bold" href="{{ route('services.price_list') }}">Pricing</a></li>
@@ -586,11 +666,11 @@
     @endif
 
     <!-- Main Content Area -->
-    <main class="{{ $isAuthed ? 'main-content' : 'main m-0' }}">
-        @if($isAuthed)
+    <main class="{{ $showDashboardChrome ? 'main-content' : 'main m-0' }}">
+        @if($showDashboardChrome)
         <header class="top-header">
             <!-- Mobile Toggle -->
-            <button class="mobile-toggle d-lg-none mr-3" id="sidebarToggle" type="button" aria-label="Toggle Navigation Sidebar" aria-expanded="false" aria-controls="sidebar">
+            <button class="mobile-toggle d-lg-none mr-3" id="sidebarToggle" type="button" aria-label="Toggle Navigation Sidebar" aria-expanded="false" aria-controls="sidebar" onclick="return window.__toggleNexusSidebar(event);">
                 <i class="fa-solid fa-bars" aria-hidden="true"></i>
             </button>
 
@@ -602,7 +682,7 @@
                 </div>
             </div>
             <div class="topbar-greeting d-none d-sm-block">
-                Welcome back, <span>{{ explode(' ', $authUser->fullname ?? $authUser->username ?? 'Admin')[0] }}</span>
+                Welcome back, <span>{{ explode(' ', $displayUser->fullname ?? $displayUser->username ?? 'User')[0] }}</span>
             </div>
             <div class="header-actions">
                 <button class="action-btn text-decoration-none" id="highContrastToggle" title="Toggle High Contrast Mode" aria-label="High Contrast">
@@ -614,13 +694,10 @@
                     <h5 class="m-0">₦{{ number_format($webUser->balance?->user_balance ?? 0, 2) }}</h5>
                 </div>
                 @endif
-                @if($webUser)
+                @if($webUser && ! $showFullAdminSidebar)
                 <a class="action-btn text-decoration-none" href="{{ route('notifications.index') }}" aria-label="Notifications">
                     <i class="fa-regular fa-bell"></i>
-                    @php 
-                        $unreadCount = $webUser->unreadNotifications->count(); 
-                    @endphp
-                    @if($unreadCount > 0)
+                    @if($webUnreadCount > 0)
                         <span class="notification-dot"></span>
                     @endif
                 </a>
@@ -630,7 +707,7 @@
         @endif
 
         @php $publicWrapperClass = trim($__env->yieldContent('public_wrapper_class')); @endphp
-        @if($isAuthed)
+        @if($showDashboardChrome)
             <div class="dashboard-content fade-in">
                 @if(session('error'))
                     <div class="alert alert-danger" style="background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.25); color: #fecaca;">
@@ -674,8 +751,8 @@
             @endif
         @endif
 
-        <footer class="py-4 {{ $isAuthed ? 'px-4' : '' }}" style="margin-top: auto; border-top: 1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.02);">
-            <div class="{{ $isAuthed ? '' : 'container' }}">
+        <footer class="py-4 {{ $showDashboardChrome ? 'px-4' : '' }}" style="margin-top: auto; border-top: 1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.02);">
+            <div class="{{ $showDashboardChrome ? '' : 'container' }}">
                 <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between" style="gap: 12px;">
                     <div class="text-white-50 small">
                         © {{ date('Y') }} {{ \App\Models\SystemSetting::get('site_name', 'Fuwa.NG') }}. All rights reserved.
@@ -686,7 +763,7 @@
                         <a class="text-white-50 small" href="{{ route('blog.index') }}">Blog</a>
                         @if($webUser)
                             <a class="text-white-50 small" href="{{ route('tickets.index') }}">Support</a>
-                        @elseif($isAdmin)
+                        @elseif($showFullAdminSidebar)
                             <a class="text-white-50 small" href="{{ route('admin.tickets') }}">Support</a>
                         @else
                             <a class="text-white-50 small" href="{{ route('login') }}">Support</a>
@@ -737,8 +814,8 @@
     <div class="nexus-toast-container" id="nexusToastContainer"></div>
 
     <!-- Scripts -->
-    <script src="{{ $assetPrefix . '/assets/nexus/js/csrf-fetch.js' }}"></script>
-    <script src="{{ $assetPrefix . '/assets/nexus/js/nexus.js' }}"></script>
+    <script src="{{ $assetPrefix . '/assets/nexus/js/csrf-fetch.js?v=' . @filemtime(public_path('assets/nexus/js/csrf-fetch.js')) }}"></script>
+    <script src="{{ $assetPrefix . '/assets/nexus/js/nexus.js?v=' . @filemtime(public_path('assets/nexus/js/nexus.js')) }}"></script>
     <script>
         // High Contrast Logic
         const hcToggle = document.getElementById('highContrastToggle');
@@ -774,18 +851,47 @@
             }, duration);
         }
     </script>
-    @if($isAuthed)
-        <script src="{{ $assetPrefix . '/assets/nexus/js/payment-modal.js' }}"></script>
-        <script src="{{ $assetPrefix . '/assets/nexus/js/nexus-ai.js' }}"></script>
+    @if($showDashboardChrome)
+        <script src="{{ $assetPrefix . '/assets/nexus/js/payment-modal.js?v=' . @filemtime(public_path('assets/nexus/js/payment-modal.js')) }}"></script>
+        <script src="{{ $assetPrefix . '/assets/nexus/js/nexus-ai.js?v=' . @filemtime(public_path('assets/nexus/js/nexus-ai.js')) }}"></script>
     @endif
     @stack('scripts')
     <script nonce="{{ $cspNonce ?? '' }}">
+        window.__toggleNexusSidebar = function (event) {
+            if (event && typeof event.preventDefault === 'function') {
+                event.preventDefault();
+            }
+            var sidebar = document.getElementById('sidebar');
+            var mobileToggle = document.getElementById('sidebarToggle');
+            if (!sidebar || !mobileToggle) {
+                return false;
+            }
+            if (window.matchMedia('(max-width: 991.98px)').matches) {
+                sidebar.classList.remove('minimized');
+            }
+            var isOpen = sidebar.classList.toggle('open');
+            mobileToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            return false;
+        };
+
         document.addEventListener('DOMContentLoaded', () => {
+            const sidebarHandledByExternalJs = !!window.__NEXUS_SIDEBAR_HANDLED;
+
+            // Public mobile navbar toggle fallback (independent of Bootstrap JS)
+            const publicToggle = document.querySelector('.public-nav .navbar-toggler[data-target="#navbarNav"]');
+            const publicNav = document.getElementById('navbarNav');
+            if (publicToggle && publicNav) {
+                publicToggle.addEventListener('click', () => {
+                    const isOpen = publicNav.classList.toggle('show');
+                    publicToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+                });
+            }
+
             // Sidebar Navigation Logic
             const sidebar = document.getElementById('sidebar');
             const minBtn = document.getElementById('minimizeSidebarBtn');
             
-            if (sidebar && minBtn) {
+            if (sidebar && minBtn && !sidebarHandledByExternalJs) {
                 // Restore minimize state
                 if (localStorage.getItem('sidebar-minimized') === 'true') {
                     sidebar.classList.add('minimized');
@@ -847,10 +953,9 @@
 
             // Mobile Sidebar Toggle
             const mobileToggle = document.getElementById('sidebarToggle');
-            if (mobileToggle && sidebar) {
+            if (mobileToggle && sidebar && !sidebarHandledByExternalJs) {
                 mobileToggle.addEventListener('click', () => {
-                    const isOpen = sidebar.classList.toggle('open');
-                    mobileToggle.setAttribute('aria-expanded', isOpen);
+                    window.__toggleNexusSidebar();
                 });
                 
                 // Close sidebar when clicking outside on mobile

@@ -23,15 +23,20 @@
             <h2>Create Account</h2>
             <p class="auth-sub">Enter your details to get started</p>
 
-            <form action="{{ url('register') }}" method="POST" id="registerForm" class="auth-form">
+            <form action="{{ url('register') }}" method="POST" id="registerForm" class="auth-form" enctype="multipart/form-data">
                 @csrf
                 <p class="text-danger small text-center" id="errorMsg"></p>
+                @if ($errors->any())
+                    <div class="alert alert-danger py-2 px-3 small" style="background: rgba(220,53,69,0.12); border: 1px solid rgba(220,53,69,0.35); color: #ffb3bd;">
+                        {{ $errors->first() }}
+                    </div>
+                @endif
 
                 <div class="form-group">
                     <label for="fullname">Full Name</label>
                     <div class="input-wrap">
                         <i class="fa-regular fa-user"></i>
-                        <input type="text" id="fullname" name="fullname" placeholder="John Doe" required>
+                        <input type="text" id="fullname" name="fullname" placeholder="John Doe" value="{{ old('fullname') }}" required>
                     </div>
                 </div>
 
@@ -39,7 +44,7 @@
                     <label for="username">Username</label>
                     <div class="input-wrap">
                         <i class="fa-solid fa-at"></i>
-                        <input type="text" id="username" name="username" maxlength="20" placeholder="johndoe" required>
+                        <input type="text" id="username" name="username" maxlength="20" placeholder="johndoe" value="{{ old('username') }}" required>
                     </div>
                 </div>
 
@@ -47,7 +52,15 @@
                     <label for="email">Email Address</label>
                     <div class="input-wrap">
                         <i class="fa-regular fa-envelope"></i>
-                        <input type="email" id="email" name="email" placeholder="you@example.com" required>
+                        <input type="email" id="email" name="email" placeholder="you@example.com" value="{{ old('email') }}" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="referral_code">Invite Code (Optional)</label>
+                    <div class="input-wrap">
+                        <i class="fa-solid fa-gift"></i>
+                        <input type="text" id="referral_code" name="referral_code" placeholder="Enter invite code" value="{{ old('referral_code', request('ref') ?? request('referral_code')) }}">
                     </div>
                 </div>
 
@@ -63,33 +76,7 @@
                     <label for="transaction_pin">Transaction PIN (4 Digits)</label>
                     <div class="input-wrap">
                         <i class="fa-solid fa-key"></i>
-                        <input type="tel" id="transaction_pin" name="transaction_pin" placeholder="1234" required maxlength="4">
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="apply_as_agent" id="apply_as_agent">
-                        <label class="form-check-label" for="apply_as_agent">
-                            Apply as Delivery Agent
-                        </label>
-                    </div>
-                </div>
-
-                <div id="agent-fields" style="display: none;">
-                    <div class="form-group">
-                        <label for="state">State</label>
-                        <div class="input-wrap">
-                            <i class="fa-solid fa-map-marker-alt"></i>
-                            <input type="text" id="state" name="state" placeholder="e.g. Lagos">
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label for="city">City</label>
-                        <div class="input-wrap">
-                            <i class="fa-solid fa-city"></i>
-                            <input type="text" id="city" name="city" placeholder="e.g. Ikeja">
-                        </div>
+                        <input type="tel" id="transaction_pin" name="transaction_pin" placeholder="1234" value="{{ old('transaction_pin') }}" required maxlength="4">
                     </div>
                 </div>
 
@@ -101,6 +88,12 @@
             </form>
 
             <p class="auth-switch">Already have an account? <a href="{{ route('login') }}">Sign In</a></p>
+            <div class="auth-divider"><span>or continue with</span></div>
+            <div class="oauth-buttons">
+                <a class="oauth-btn text-decoration-none" href="{{ route('auth.google.redirect') }}">
+                    <i class="fa-brands fa-google mr-2"></i> Google
+                </a>
+            </div>
         </div>
     </div>
 </div>
@@ -108,19 +101,26 @@
 
 @push('scripts')
 <script>
-    $(document).ready(function() {
-        $('#apply_as_agent').change(function() {
-            if(this.checked) {
-                $('#agent-fields').slideDown();
-                $('#state').prop('required', true);
-                $('#city').prop('required', true);
-            } else {
-                $('#agent-fields').slideUp();
-                $('#state').prop('required', false);
-                $('#city').prop('required', false);
+    function registerFormWhenJQueryReady(fn) {
+        function tryBind() {
+            if (window.jQuery) {
+                window.jQuery(fn);
+                return true;
             }
-        });
-
+            return false;
+        }
+        if (tryBind()) {
+            return;
+        }
+        var attempts = 0;
+        var id = setInterval(function () {
+            attempts += 1;
+            if (tryBind() || attempts > 200) {
+                clearInterval(id);
+            }
+        }, 50);
+    }
+    registerFormWhenJQueryReady(function($) {
         function normalizeRedirect(raw) {
             if (typeof raw !== 'string') {
                 return null;
@@ -149,51 +149,104 @@
             // Auto-detect referral from URL if not already set
             const urlParams = new URLSearchParams(window.location.search);
             const ref = urlParams.get('ref');
-            if (ref && !form.find('input[name="referral_code"]').length) {
-                $('<input>').attr({
-                    type: 'hidden',
-                    name: 'referral_code',
-                    value: ref
-                }).appendTo(form);
+            if (ref) {
+                const existing = form.find('input[name="referral_code"]');
+                if (existing.length) {
+                    if (!String(existing.val() || '').trim()) {
+                        existing.val(ref);
+                    }
+                } else {
+                    $('<input>').attr({
+                        type: 'hidden',
+                        name: 'referral_code',
+                        value: ref
+                    }).appendTo(form);
+                }
             }
 
             btn.html('<i class="fa-solid fa-spinner fa-spin mr-2"></i> Processing...');
             btn.prop('disabled', true);
 
+            var formEl = form[0];
+            var payload = new FormData(formEl);
+
             $.ajax({
                 url: form.attr('action'),
                 method: 'POST',
-                data: form.serialize(),
+                data: payload,
+                processData: false,
+                contentType: false,
                 dataType: 'json',
-                headers: { 'Accept': 'application/json' },
+                timeout: 120000,
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                },
                 success: function(response) {
-                    if (response.status === 'success') {
-                        Swal.fire({
-                            title: 'Success',
-                            text: response.message,
-                            icon: 'success',
-                            background: '#0a0a0f',
-                            color: '#fff',
-                            confirmButtonColor: '#3b82f6'
-                        }).then(() => {
+                    btn.html(originalBtnText);
+                    btn.prop('disabled', false);
+                    try {
+                        if (response && response.status === 'success') {
                             const target = normalizeRedirect(response.redirect) || (window.location.origin + '/dashboard');
-                            try {
-                                window.location.assign(target);
-                            } catch (e) {
-                                window.location.href = target;
+                            if (window.Swal && typeof window.Swal.fire === 'function') {
+                                window.Swal.fire({
+                                    title: 'Success',
+                                    text: response.message || 'Registration successful.',
+                                    icon: 'success',
+                                    background: '#0a0a0f',
+                                    color: '#fff',
+                                    confirmButtonColor: '#3b82f6'
+                                }).then(function () {
+                                    try {
+                                        window.location.assign(target);
+                                    } catch (e) {
+                                        window.location.href = target;
+                                    }
+                                });
+                            } else {
+                                try {
+                                    window.location.assign(target);
+                                } catch (e) {
+                                    window.location.href = target;
+                                }
                             }
-                        });
-                    } else {
-                        $('#errorMsg').text(response.message);
-                        btn.html(originalBtnText);
-                        btn.prop('disabled', false);
+                        } else {
+                            $('#errorMsg').text((response && response.message) ? response.message : 'Registration could not be completed.');
+                        }
+                    } catch (e) {
+                        $('#errorMsg').text('Something went wrong. Please try again.');
                     }
                 },
                 error: function(xhr) {
                     var message = 'An error occurred. Please try again.';
-                    if (xhr.status === 422) {
-                        var errors = xhr.responseJSON.errors;
-                        message = Object.values(errors).flat()[0];
+                    try {
+                        var body = xhr.responseJSON;
+                        if (!body && xhr.responseText) {
+                            try {
+                                body = JSON.parse(xhr.responseText);
+                            } catch (parseErr) {
+                                body = null;
+                            }
+                        }
+
+                        if (xhr.status === 422 && body && body.errors) {
+                            var flat = Object.values(body.errors).flat();
+                            if (flat.length) {
+                                message = flat[0];
+                            }
+                        } else if (xhr.status === 413) {
+                            message = 'Upload is too large. Please use a smaller file and try again.';
+                        } else if (xhr.status === 419) {
+                            message = 'Your session expired. Refresh this page and try again.';
+                        } else if (body && body.message) {
+                            message = body.message;
+                        } else if (xhr.status === 0 || xhr.statusText === 'timeout') {
+                            message = 'Request timed out. Check your connection and try again.';
+                        } else if (xhr.status >= 500) {
+                            message = 'Server error while creating your account. Please try again in a moment.';
+                        }
+                    } catch (e) {
+                        /* keep default message */
                     }
                     $('#errorMsg').text(message);
                     btn.html(originalBtnText);
@@ -222,12 +275,31 @@
     .input-wrap { position: relative; display: flex; align-items: center; transition: all 0.3s ease; }
     .input-wrap i { position: absolute; left: 18px; color: var(--clr-text-muted); transition: color 0.3s ease; }
     .input-wrap:focus-within i { color: var(--clr-primary); }
-    .input-wrap input { width: 100%; padding: 14px 15px 14px 45px !important; border-radius: 14px; transition: all 0.3s ease; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); }
-    .input-wrap input:focus { background: rgba(255,255,255,0.06); border-color: var(--clr-primary); box-shadow: 0 0 15px rgba(59, 130, 246, 0.3); outline: none; }
+    .input-wrap input,
+    .input-wrap select.form-select-auth { width: 100%; padding: 14px 15px 14px 45px !important; border-radius: 14px; transition: all 0.3s ease; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); color: #fff; appearance: auto; -webkit-appearance: menulist; }
+    .input-wrap select.form-select-auth:disabled { opacity: 0.5; cursor: not-allowed; }
+    .input-wrap input:focus,
+    .input-wrap select.form-select-auth:focus { background: rgba(255,255,255,0.06); border-color: var(--clr-primary); box-shadow: 0 0 15px rgba(59, 130, 246, 0.3); outline: none; }
     .btn-full { width: 100%; padding: 16px !important; font-size: 1.05rem; border-radius: 14px; font-weight: 700; letter-spacing: 0.5px; margin-top: 15px; transition: all 0.3s ease; }
     .auth-switch { text-align: center; margin-top: 25px; font-size: 0.95rem; color: var(--clr-text-muted); }
     .auth-switch a { color: var(--clr-primary); font-weight: 600; transition: color 0.3s ease; }
     .auth-switch a:hover { color: var(--clr-primary-hover); text-decoration: underline; }
+    .auth-divider { position: relative; text-align: center; margin: 20px 0; }
+    .auth-divider::before { content: ""; position: absolute; top: 50%; left: 0; right: 0; height: 1px; background: rgba(255,255,255,0.08); }
+    .auth-divider span { position: relative; background: #080b12; padding: 0 15px; font-size: 0.8rem; color: var(--clr-text-muted); text-transform: uppercase; letter-spacing: 1px; }
+    .oauth-buttons { display: flex; gap: 15px; }
+    .oauth-btn { flex: 1; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 14px; border-radius: 14px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; }
+    .oauth-btn:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.2); transform: translateY(-2px); color: #fff; }
     .form-check { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; }
+    .auth-form .agent-fields { display: flex; flex-direction: column; gap: 1.25rem; }
+    .auth-file-input {
+        width: 100%;
+        padding: 12px 14px;
+        border-radius: 14px;
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.08);
+        color: var(--clr-text-muted);
+        font-size: 0.9rem;
+    }
 </style>
 @endpush

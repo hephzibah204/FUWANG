@@ -98,18 +98,32 @@ class ServiceRouter
         $response = $http->post($endpoint, $payload);
 
         if ($response->successful()) {
-            $data = $response->json();
-            return [
-                'status' => true,
-                'data' => $data,
-                'provider' => $provider->name,
-                'provider_id' => $provider->id
-            ];
+            try {
+                $data = $response->json();
+                if (!is_array($data)) {
+                    throw new \RuntimeException('Provider returned invalid JSON response.');
+                }
+                return [
+                    'status' => true,
+                    'data' => $data,
+                    'provider' => $provider->name,
+                    'provider_id' => $provider->id
+                ];
+            } catch (\Exception $e) {
+                return [
+                    'status' => false,
+                    'message' => 'JSON Parsing Error: ' . $e->getMessage(),
+                    'provider' => $provider->name
+                ];
+            }
         }
+
+        $errorData = $response->json();
+        $message = (is_array($errorData) ? ($errorData['message'] ?? $errorData['detail'] ?? null) : null) ?: 'Provider connection error (' . $response->status() . ')';
 
         return [
             'status' => false,
-            'message' => $response->json()['message'] ?? $response->json()['detail'] ?? 'Provider connection error',
+            'message' => $message,
             'provider' => $provider->name
         ];
     }

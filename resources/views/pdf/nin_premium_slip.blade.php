@@ -4,113 +4,267 @@
     <meta charset="utf-8">
     <title>NIN Premium Slip - {{ $result->reference_id }}</title>
     <style>
-        body { font-family: DejaVu Sans, sans-serif; color: #0f172a; font-size: 12px; }
-        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #0891b2; padding-bottom: 12px; margin-bottom: 16px; }
-        .brand { font-weight: 900; color: #0891b2; font-size: 20px; letter-spacing: 0.5px; }
-        .meta { font-size: 11px; color: #334155; }
-        .qr { width: 86px; height: 86px; border: 1px dashed #94a3b8; text-align: center; line-height: 86px; font-size: 10px; color: #64748b; }
-        .section { margin-bottom: 14px; }
-        .title { font-weight: 800; font-size: 13px; color: #0e7490; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 8px; }
-        .grid { display: table; width: 100%; border-collapse: collapse; }
-        .row { display: table-row; }
-        .cell { display: table-cell; padding: 7px 9px; border: 1px solid #e2e8f0; vertical-align: top; }
-        .label { font-size: 10px; color: #64748b; text-transform: uppercase; }
-        .value { font-size: 12px; color: #0f172a; font-weight: 700; }
-        .photo { width: 110px; height: 130px; object-fit: cover; border: 2px solid #0891b2; }
-        .pill { display: inline-block; padding: 4px 10px; border-radius: 999px; background: #dcfce7; color: #166534; font-weight: 800; font-size: 10px; }
-        .fine { font-size: 10px; color: #475569; }
+        @page { margin: 0; }
+        body { font-family: 'Helvetica', 'Arial', sans-serif; margin: 0; padding: 0; background: #ffffff; }
+        .sheet { width: 500px; margin: 0 auto; }
+
+        .card {
+            width: 500px;
+            height: 300px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .front {
+            background: #e6f4ea;
+            border: 1px solid #008751;
+        }
+
+        .front::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: radial-gradient(#008751 0.5px, transparent 0.5px);
+            background-size: 10px 10px;
+            opacity: 0.12;
+            z-index: 0;
+        }
+
+        .watermark {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 0.07;
+            width: 360px;
+            text-align: center;
+            font-size: 42px;
+            font-weight: 900;
+            letter-spacing: 6px;
+            color: #008751;
+            z-index: 0;
+        }
+
+        .header {
+            text-align: left;
+            padding: 12px 16px 0 16px;
+            z-index: 2;
+            position: relative;
+        }
+
+        .brand-row { display: table; width: 100%; }
+        .brand-left { display: table-cell; vertical-align: top; }
+        .brand-right { display: table-cell; vertical-align: top; text-align: right; }
+        .badge { display: inline-block; padding: 4px 8px; background: #008751; color: #ffffff; font-size: 10px; font-weight: 900; letter-spacing: 0.4px; text-transform: uppercase; border-radius: 10px; }
+        .ref { margin-top: 6px; font-size: 9px; font-weight: 900; color: rgba(17, 24, 39, 0.75); letter-spacing: 0.2px; }
+
+        .country {
+            color: #008751;
+            font-size: 16px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            line-height: 1.05;
+        }
+
+        .slip-type {
+            color: #111827;
+            font-size: 12px;
+            font-weight: 900;
+            text-transform: uppercase;
+            margin-top: 2px;
+        }
+
+        .main-content { padding: 10px 16px; z-index: 2; position: relative; }
+
+        .photo-container {
+            float: left;
+            width: 92px;
+            height: 112px;
+            background: #ffffff;
+            overflow: hidden;
+            border: 1px solid rgba(0, 0, 0, 0.25);
+        }
+
+        .photo-container img { width: 100%; height: 100%; object-fit: cover; }
+
+        .details { margin-left: 108px; }
+
+        .field { margin-bottom: 10px; }
+
+        .label { font-size: 9px; color: rgba(17, 24, 39, 0.55); text-transform: uppercase; font-weight: 800; letter-spacing: 0.2px; }
+
+        .value { font-size: 13px; font-weight: 900; color: #111827; }
+
+        .mini-grid { display: table; width: 100%; }
+        .mini-col { display: table-cell; width: 50%; }
+
+        .qr-container {
+            position: absolute;
+            top: 18px;
+            right: 16px;
+            text-align: center;
+            z-index: 3;
+        }
+
+        .qr-code {
+            width: 92px;
+            height: 92px;
+            background: #ffffff;
+            border: 1px solid rgba(0, 0, 0, 0.35);
+            padding: 4px;
+            box-sizing: border-box;
+        }
+
+        .nga { font-size: 26px; font-weight: 900; color: #111827; line-height: 1; margin-top: 6px; }
+        .issue-date { font-size: 10px; font-weight: 900; color: #111827; margin-top: 2px; }
+
+        .nin-container { position: absolute; bottom: 16px; left: 0; width: 100%; text-align: center; z-index: 3; }
+        .nin-label { font-size: 11px; font-weight: 900; color: #111827; margin-bottom: 4px; }
+        .nin-value { font-size: 30px; font-weight: 900; letter-spacing: 6px; color: #111827; }
+
+        .divider { width: 500px; height: 2px; background: #111827; }
+
+        .back { background: #ffffff; border: 1px solid #111827; }
+
+        .back-inner {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 500px;
+            height: 300px;
+            transform: rotate(180deg);
+            transform-origin: 50% 50%;
+            padding: 18px 22px;
+            box-sizing: border-box;
+        }
+
+        .back-title { text-align: center; font-size: 30px; font-weight: 900; margin-top: 18px; margin-bottom: 2px; color: #111827; }
+        .back-subtitle { text-align: center; font-size: 14px; font-weight: 700; margin-bottom: 16px; color: #111827; }
+        .back-text { font-size: 12px; line-height: 1.45; text-align: center; color: #111827; }
+        .back-text p { margin: 12px 0; }
+        .meta { margin-top: 14px; border-top: 1px solid rgba(17, 24, 39, 0.15); padding-top: 12px; }
+        .meta-title { text-align: center; font-size: 11px; font-weight: 900; letter-spacing: 0.4px; text-transform: uppercase; color: #111827; margin-bottom: 8px; }
+        .meta-table { width: 100%; border-collapse: collapse; font-size: 9px; color: #111827; }
+        .meta-table td { padding: 4px 0; vertical-align: top; }
+        .meta-k { width: 36%; font-weight: 900; color: rgba(17, 24, 39, 0.75); text-transform: uppercase; letter-spacing: 0.25px; }
+        .meta-v { width: 64%; font-weight: 800; }
+        .back-sign { text-align: center; font-size: 14px; font-weight: 900; margin-top: 20px; color: #111827; }
+
+        .clearfix::after { content: ""; clear: both; display: table; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <div>
-            <div class="brand">{{ \App\Models\SystemSetting::get('site_name', 'G-Soft Verify') }}</div>
-            <div class="meta">NIN Premium Slip • Reference {{ $result->reference_id }} • {{ $result->created_at->format('Y-m-d H:i') }}</div>
-        </div>
-        <div class="qr">SECURE QR</div>
-    </div>
-    <div class="section">
-        <table style="width:100%;">
-            <tr>
-                <td style="width:70%; vertical-align:top;">
-                    <div class="title">Identity Overview</div>
-                    <div class="grid">
-                        <div class="row">
-                            <div class="cell">
-                                <div class="label">First Name</div>
-                                <div class="value">{{ $result->response_data['firstname'] ?? '' }}</div>
-                            </div>
-                            <div class="cell">
-                                <div class="label">Middle Name</div>
-                                <div class="value">{{ $result->response_data['middlename'] ?? '' }}</div>
-                            </div>
-                            <div class="cell">
-                                <div class="label">Last Name</div>
-                                <div class="value">{{ $result->response_data['lastname'] ?? $result->response_data['surname'] ?? '' }}</div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="cell">
-                                <div class="label">Gender</div>
-                                <div class="value">{{ strtoupper($result->response_data['gender'] ?? '') }}</div>
-                            </div>
-                            <div class="cell">
+    <div class="sheet">
+        <div class="card front">
+            <div class="watermark">NIGERIA</div>
+
+            <div class="header">
+                <div class="brand-row">
+                    <div class="brand-left">
+                        <div class="country">FEDERAL REPUBLIC OF NIGERIA</div>
+                        <div class="slip-type">DIGITAL NIN SLIP</div>
+                        <div class="ref">{{ \App\Models\SystemSetting::get('site_name', 'Fuwa.NG') }} • {{ $result->reference_id }}</div>
+                    </div>
+                    <div class="brand-right">
+                        <div class="badge">Premium</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="main-content clearfix">
+                <div class="photo-container">
+                    @php $photo = $result->response_data['photo'] ?? $result->response_data['image'] ?? null; @endphp
+                    @if($photo)
+                        <img src="{{ str_starts_with($photo, 'http') || str_starts_with($photo, 'data:') ? $photo : 'data:image/jpeg;base64,' . $photo }}">
+                    @endif
+                </div>
+
+                <div class="details">
+                    <div class="field">
+                        <div class="label">Surname/Nom</div>
+                        <div class="value">{{ strtoupper($result->response_data['lastname'] ?? $result->response_data['surname'] ?? '') }}</div>
+                    </div>
+                    <div class="field">
+                        <div class="label">Given Names/Prénoms</div>
+                        <div class="value">{{ strtoupper($result->response_data['firstname'] ?? '') }} {{ strtoupper($result->response_data['middlename'] ?? '') }}</div>
+                    </div>
+                    <div class="mini-grid">
+                        <div class="mini-col">
+                            <div class="field">
                                 <div class="label">Date of Birth</div>
                                 <div class="value">{{ $result->response_data['birthdate'] ?? $result->response_data['dob'] ?? '' }}</div>
                             </div>
-                            <div class="cell">
-                                <div class="label">NIN</div>
-                                <div class="value">{{ $result->response_data['nin'] ?? '—' }}</div>
-                            </div>
                         </div>
-                        <div class="row">
-                            <div class="cell">
-                                <div class="label">Phone</div>
-                                <div class="value">{{ $result->response_data['telephoneno'] ?? $result->response_data['phone'] ?? '' }}</div>
-                            </div>
-                            <div class="cell">
-                                <div class="label">State of Origin</div>
-                                <div class="value">{{ $result->response_data['self_origin_state'] ?? $result->response_data['state'] ?? '' }}</div>
-                            </div>
-                            <div class="cell">
-                                <div class="label">LGA of Origin</div>
-                                <div class="value">{{ $result->response_data['self_origin_lga'] ?? $result->response_data['lga'] ?? '' }}</div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="cell">
-                                <div class="label">Residence State</div>
-                                <div class="value">{{ $result->response_data['residence_state'] ?? '' }}</div>
-                            </div>
-                            <div class="cell">
-                                <div class="label">Residence LGA</div>
-                                <div class="value">{{ $result->response_data['residence_lga'] ?? '' }}</div>
-                            </div>
-                            <div class="cell">
-                                <div class="label">Nationality</div>
-                                <div class="value">{{ $result->response_data['nationality'] ?? '' }}</div>
+                        <div class="mini-col">
+                            <div class="field">
+                                <div class="label">Sex/Sexe</div>
+                                <div class="value">{{ strtoupper(substr($result->response_data['gender'] ?? '—', 0, 1)) }}</div>
                             </div>
                         </div>
                     </div>
-                </td>
-                <td style="width:30%; text-align:center; vertical-align:top;">
-                    @php $photo = $result->response_data['photo'] ?? $result->response_data['image'] ?? null; @endphp
-                    @if($photo)
-                        <img class="photo" src="{{ str_starts_with($photo, 'http') || str_starts_with($photo, 'data:') ? $photo : 'data:image/jpeg;base64,' . $photo }}">
-                    @else
-                        <div class="photo" style="line-height:130px; color:#94a3b8; border-style:dashed;">No Photo</div>
+                </div>
+            </div>
+
+            <div class="qr-container">
+                <div class="qr-code">
+                    @php
+                        $qrData = "NIN:" . ($result->response_data['nin'] ?? '') . "\nName:" . ($result->response_data['firstname'] ?? '') . " " . ($result->response_data['lastname'] ?? '');
+                        $qrCode = \App\Support\QrCodeDataUri::make($qrData, 92);
+                    @endphp
+                    @if($qrCode)
+                        <img src="{{ $qrCode }}" style="width: 100%; height: 100%;">
                     @endif
-                    <div style="margin-top:8px;"><span class="pill">VERIFIED</span></div>
-                </td>
-            </tr>
-        </table>
-    </div>
-    <div class="section">
-        <div class="title">Notes</div>
-        <div class="fine">This premium slip presents expanded fields and enhanced formatting suitable for official reviews. Data is sourced via {{ $result->provider_name }} and tied to Reference {{ $result->reference_id }}.</div>
-    </div>
-    <div class="section fine" style="border-top:1px solid #e2e8f0; padding-top:8px;">
-        &copy; {{ date('Y') }} {{ \App\Models\SystemSetting::get('site_name', 'G-Soft Verify') }}. For verification, scan the QR or visit our portal and enter the reference ID.
+                </div>
+                <div class="nga">NGA</div>
+                <div class="issue-date">ISSUE DATE<br><strong>{{ $result->created_at->format('d M Y') }}</strong></div>
+            </div>
+
+            <div class="nin-container">
+                <div class="nin-label">National Identification Number (NIN)</div>
+                <div class="nin-value">
+                    @php
+                        $nin = preg_replace('/\D+/', '', (string) ($result->response_data['nin'] ?? '00000000000')) ?: '00000000000';
+                        $formattedNin = substr($nin, 0, 4) . ' ' . substr($nin, 4, 3) . ' ' . substr($nin, 7);
+                    @endphp
+                    {{ $formattedNin }}
+                </div>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="card back">
+            <div class="back-inner">
+                <div class="back-title">DISCLAIMER</div>
+                <div class="back-subtitle">Trust but verify</div>
+                <div class="back-text">
+                    <p>Kindly ensure each time this slip is presented, that you verify the credentials using a Government approved verification resource.</p>
+                    <p>The details on the front of this NIN slip must exactly match the verification result.</p>
+                    <p>If this NIN was not issued to the permitted bearer on the front of this document, please do not accept any receipt.</p>
+                </div>
+                <div class="meta">
+                    <div class="meta-title">Verification Details</div>
+                    @php
+                        $phone = $result->response_data['telephoneno'] ?? $result->response_data['phone'] ?? null;
+                        $address = $result->response_data['address'] ?? $result->response_data['residence'] ?? null;
+                        $mode = $result->response_data['_verification_mode'] ?? null;
+                    @endphp
+                    <table class="meta-table">
+                        <tr><td class="meta-k">Reference</td><td class="meta-v">{{ $result->reference_id }}</td></tr>
+                        <tr><td class="meta-k">Generated</td><td class="meta-v">{{ $result->created_at->format('d M Y, H:i') }}</td></tr>
+                        <tr><td class="meta-k">Provider</td><td class="meta-v">{{ $result->provider_name ?? '—' }}</td></tr>
+                        <tr><td class="meta-k">Mode</td><td class="meta-v">{{ $mode ?: '—' }}</td></tr>
+                        <tr><td class="meta-k">Phone</td><td class="meta-v">{{ $phone ?: '—' }}</td></tr>
+                        <tr><td class="meta-k">Address</td><td class="meta-v">{{ $address ?: '—' }}</td></tr>
+                    </table>
+                </div>
+                <div class="back-sign">{{ \App\Models\SystemSetting::get('site_name', 'Fuwa.NG') }}</div>
+            </div>
+        </div>
     </div>
 </body>
 </html>

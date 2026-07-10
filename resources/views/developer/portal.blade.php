@@ -136,6 +136,49 @@ const data = await res.json();</pre>
     </div>
 </div>
 
+<div class="row">
+    <div class="col-12">
+        <div class="card border-0 rounded-4 p-4" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.07) !important;">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <div>
+                    <h5 class="text-white mb-1 fw-bold">Available Endpoints</h5>
+                    <p class="text-white-50 small mb-0">Only endpoints enabled by the platform are listed here.</p>
+                </div>
+                <div class="text-white-50 small">
+                    NIN: ₦{{ number_format($developerPricing['developer_api_nin_price'], 2) }} |
+                    BVN Basic: ₦{{ number_format($developerPricing['developer_api_bvn_basic_price'], 2) }} |
+                    BVN Premium: ₦{{ number_format($developerPricing['developer_api_bvn_premium_price'], 2) }}
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-borderless text-white small mb-0">
+                    <thead>
+                        <tr class="text-white-50 border-bottom border-white-10">
+                            <th>Name</th>
+                            <th>Method</th>
+                            <th>Path</th>
+                            <th>Summary</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($endpoints as $endpoint)
+                            <tr class="border-bottom border-white-10">
+                                <td class="py-3">{{ $endpoint->name }}</td>
+                                <td class="py-3"><span class="badge badge-primary">{{ $endpoint->method }}</span></td>
+                                <td class="py-3 font-monospace text-white-50">{{ '/' . ltrim($endpoint->path_pattern, '/') }}</td>
+                                <td class="py-3 text-white-50">{{ $endpoint->docs_summary ?: '—' }}</td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="4" class="text-center py-4 text-white-50">No endpoints are enabled right now.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="createTokenModal" tabindex="-1" role="dialog" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" role="document">
         <div class="modal-content border-0" style="background: #1a1f2e; border-radius: 20px;">
@@ -260,4 +303,3 @@ function revokeToken(id) {
 }
 </script>
 @endpush
-

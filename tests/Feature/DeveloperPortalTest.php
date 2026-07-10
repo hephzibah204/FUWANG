@@ -21,9 +21,11 @@ class DeveloperPortalTest extends TestCase
     {
         $user = User::create([
             'fullname' => 'Dev User',
+            'username' => 'dev_user_01',
             'email' => 'dev@example.com',
             'password' => Hash::make('Password@123'),
         ]);
+        $user->forceFill(['email_verified_at' => now()])->save();
 
         $this->actingAs($user)
             ->get('/developer')
@@ -59,4 +61,3 @@ class DeveloperPortalTest extends TestCase
         $this->get(route('developer.openapi.v1'))->assertRedirect('/login');
     }
 }
-

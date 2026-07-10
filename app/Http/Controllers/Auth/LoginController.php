@@ -7,11 +7,16 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use App\Models\User;
 
 class LoginController extends Controller
 {
+    private const USER_2FA_PENDING = 'user_2fa_pending';
+    private const USER_2FA_ID = 'user_2fa_id';
+    private const USER_2FA_REMEMBER = 'user_2fa_remember';
+
     public function showLoginForm()
     {
         return view('auth.login');
@@ -26,6 +31,8 @@ class LoginController extends Controller
 
         $wantsJson = $request->expectsJson() || $request->ajax() || $request->wantsJson();
         $ipAddress = $request->ip();
+        $service = $request->input('service');
+        $service = is_string($service) ? $service : null;
 
         if (! app()->environment('local')) {
             if (Schema::hasTable('login_attempts')) {
@@ -43,10 +50,8 @@ class LoginController extends Controller
 
         $remember = $request->boolean('remember');
 
-        if (Auth::attempt($credentials, $remember)) {
+        if (Auth::attempt($credentials, false)) {
             $request->session()->regenerate();
-
-            Auth::logoutOtherDevices($request->password);
 
             $user = Auth::user();
 
@@ -73,10 +78,56 @@ class LoginController extends Controller
                 DB::table('login_attempts')->where('ip_address', $ipAddress)->delete();
             }
 
-            // Update online status
-            $user->update(['online_status' => 'online']);
+            if (! empty($user->google2fa_secret)) {
+                $this->setTwoFactorPending($request, $user->id, $remember);
+                Auth::logout();
 
-            $redirect = route('dashboard');
+                if ($wantsJson) {
+                    return response()->json([
+                        'status' => '2fa_required',
+                        'message' => 'Two-factor authentication code required.',
+                        'redirect' => route('2fa.challenge'),
+                    ]);
+                }
+
+                return redirect()->route('2fa.challenge');
+            }
+
+            Auth::login($user, $remember);
+            Auth::logoutOtherDevices($request->password);
+
+            // Update online status
+            if ($user instanceof User) {
+                $user->update(['online_status' => 'online']);
+            }
+
+            if ($service === 'logistics') {
+                if (Schema::hasTable('logistics_profiles')) {
+                    \App\Models\LogisticsProfile::query()->firstOrCreate([
+                        'user_id' => $user->id,
+                    ], [
+                        'contact_person' => $user->fullname,
+                        'email' => $user->email,
+                        'is_active' => true,
+                    ]);
+                } else {
+                    Log::warning('Skipping logistics profile creation during login because logistics_profiles table is missing.', [
+                        'user_id' => $user->id,
+                        'service' => $service,
+                    ]);
+                }
+                session(['url.intended' => route('logistics.dashboard')]);
+            }
+
+            if ($service === 'auctions') {
+                session(['url.intended' => route('auction.dashboard')]);
+            }
+
+            $redirect = ($user instanceof \Illuminate\Contracts\Auth\MustVerifyEmail && ! $user->hasVerifiedEmail())
+                ? route('verification.notice')
+                : ($service === 'logistics'
+                    ? route('logistics.dashboard')
+                    : ($service === 'auctions' ? route('auction.dashboard') : route('dashboard')));
             if ($wantsJson) {
                 return response()->json([
                     'status' => 'success',
@@ -115,7 +166,7 @@ class LoginController extends Controller
     public function logout(Request $request)
     {
         $user = Auth::user();
-        if ($user) {
+        if ($user instanceof User) {
             $user->update(['online_status' => 'offline']);
         }
 
@@ -124,5 +175,12 @@ class LoginController extends Controller
         $request->session()->regenerateToken();
 
         return redirect('/');
+    }
+
+    private function setTwoFactorPending(Request $request, int $userId, bool $remember): void
+    {
+        $request->session()->put(self::USER_2FA_PENDING, true);
+        $request->session()->put(self::USER_2FA_ID, $userId);
+        $request->session()->put(self::USER_2FA_REMEMBER, $remember);
     }
 }

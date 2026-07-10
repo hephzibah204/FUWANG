@@ -33,21 +33,32 @@
         <nav class="mt-2">
             <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
                 @foreach ($adminNavigation as $item)
-                    <li class="nav-item {{ (isset($item['children']) && in_array(request()->route()->getName(), array_column($item['children'], 'route'))) ? 'menu-open' : '' }}">
-                        <a href="{{ isset($item['children']) ? '#' : route($item['route']) }}" class="nav-link {{ (isset($item['children']) && in_array(request()->route()->getName(), array_column($item['children'], 'route'))) || request()->route()->getName() == $item['route'] ? 'active' : '' }}">
+                    @php
+                        $currentRoute = request()->route()?->getName();
+                        $childRoutes = isset($item['children'])
+                            ? array_values(array_filter(array_column($item['children'], 'route')))
+                            : [];
+                        $hasChildren = !empty($childRoutes);
+                        $itemRoute = $item['route'] ?? null;
+                        $isOpen = $hasChildren && $currentRoute && in_array($currentRoute, $childRoutes, true);
+                        $isActive = $isOpen || ($itemRoute && $currentRoute === $itemRoute);
+                    @endphp
+                    <li class="nav-item {{ $isOpen ? 'menu-open' : '' }}">
+                        <a href="{{ $hasChildren || !$itemRoute ? '#' : route($itemRoute) }}" class="nav-link {{ $isActive ? 'active' : '' }}">
                             <i class="nav-icon {{ $item['icon'] }}"></i>
                             <p>
                                 {{ $item['title'] }}
-                                @if (isset($item['children']))
+                                @if ($hasChildren)
                                     <i class="right fas fa-angle-left"></i>
                                 @endif
                             </p>
                         </a>
-                        @if (isset($item['children']))
+                        @if ($hasChildren)
                             <ul class="nav nav-treeview">
                                 @foreach ($item['children'] as $child)
+                                    @continue(empty($child['route']))
                                     <li class="nav-item">
-                                        <a href="{{ route($child['route']) }}" class="nav-link {{ request()->route()->getName() == $child['route'] ? 'active' : '' }}">
+                                        <a href="{{ route($child['route']) }}" class="nav-link {{ $currentRoute === $child['route'] ? 'active' : '' }}">
                                             <i class="far fa-circle nav-icon"></i>
                                             <p>{{ $child['title'] }}</p>
                                         </a>

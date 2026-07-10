@@ -122,7 +122,9 @@ class AdminController extends Controller
 
     public function users(Request $request)
     {
-        $query = User::query()->with('balance');
+        $query = User::query()
+            ->with('balance')
+            ->withExists(['transactions as has_transactions']);
 
         if ($request->has('search')) {
             $search = $request->get('search');
@@ -327,45 +329,120 @@ class AdminController extends Controller
         }
     }
 
+    public function apiApplications(Request $request)
+    {
+        $query = User::whereIn('api_access_status', ['pending', 'approved', 'rejected']);
+
+        if ($request->has('status')) {
+            $query->where('api_access_status', $request->get('status'));
+        }
+
+        $applications = $query->latest()->paginate(20);
+        return view('admin.api_applications.index', compact('applications'));
+    }
+
+    public function updateApiStatus(Request $request, $id)
+    {
+        $request->validate([
+            'status' => 'required|in:approved,rejected,none',
+            'reason' => 'nullable|string|max:255',
+        ]);
+
+        $user = User::findOrFail($id);
+        $oldStatus = $user->api_access_status;
+        $user->api_access_status = $request->status;
+        
+        $details = $user->api_application_details ?? [];
+        $details['reviewed_at'] = now()->toIso8601String();
+        $details['reviewed_by'] = Auth::guard('admin')->id();
+        $details['review_reason'] = $request->reason;
+        $user->api_application_details = $details;
+        
+        $user->save();
+
+        AdminAuditLog::create([
+            'admin_id' => Auth::guard('admin')->id(),
+            'action' => 'admin.api.update_status',
+            'meta' => [
+                'target_user' => $user->email,
+                'old_status' => $oldStatus,
+                'new_status' => $request->status,
+                'reason' => $request->reason,
+            ],
+            'ip' => $request->ip(),
+            'user_agent' => substr((string) $request->userAgent(), 0, 1000),
+        ]);
+
+        return back()->with('success', "API access status for {$user->email} updated to {$request->status}.");
+    }
+
     public function refundUser(Request $request)
     {
         $request->validate([
             'transaction_id' => 'required|string|exists:transactions,transaction_id',
-            'note'           => 'nullable|string|max:255',
+            'note' => 'nullable|string|max:255',
         ]);
 
         try {
-            DB::beginTransaction();
-
             $transaction = Transaction::where('transaction_id', $request->transaction_id)->firstOrFail();
-            
+
             if ($transaction->status === 'refunded') {
                 return response()->json(['status' => false, 'message' => 'Transaction already refunded.'], 422);
             }
 
-            $user = User::where('email', $transaction->user_email)->firstOrFail();
-            $amount = abs($transaction->balance_before - $transaction->balance_after);
-            $note = trim((string) ($request->note ?? ''));
+            $adminCreditId = 'REF-' . $request->transaction_id;
+            if (Transaction::where('transaction_id', $adminCreditId)->exists()
+                || Transaction::where('transaction_id', $request->transaction_id . '-RF')->exists()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'This debit was already reversed (a refund credit already exists).',
+                ], 422);
+            }
 
-            app(WalletService::class)->credit(
-                $user, 
-                $amount, 
-                'Admin Refund: ' . $transaction->transaction_id . ($note !== '' ? (' - ' . $note) : ''),
-                'REF-' . $transaction->transaction_id
-            );
+            $before = round((float) $transaction->balance_before, 2);
+            $after = round((float) $transaction->balance_after, 2);
+            if ($after >= $before) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Only debit transactions (wallet outflow) can be refunded.',
+                ], 422);
+            }
+
+            $amount = round($before - $after, 2);
+            if ($amount <= 0) {
+                return response()->json(['status' => false, 'message' => 'Invalid refund amount.'], 422);
+            }
+
+            $user = User::where('email', $transaction->user_email)->firstOrFail();
+            $note = trim((string) ($request->note ?? ''));
+            $orderType = 'Admin Refund: ' . $transaction->transaction_id . ($note !== '' ? (' – ' . $note) : '');
+            $creditTxId = $adminCreditId;
+
+            DB::beginTransaction();
+
+            $credit = app(WalletService::class)->credit($user, $amount, $orderType, $creditTxId);
+            if (!($credit['ok'] ?? false)) {
+                DB::rollBack();
+
+                return response()->json([
+                    'status' => false,
+                    'message' => $credit['message'] ?? 'Could not credit wallet.',
+                ], 422);
+            }
 
             $transaction->status = 'refunded';
             $transaction->save();
 
-            // Audit
             $admin = Auth::guard('admin')->user();
             AdminAuditLog::create([
                 'admin_id' => $admin?->id,
                 'action' => 'admin.user.refund',
                 'meta' => [
                     'transaction_id' => $transaction->transaction_id,
+                    'credit_transaction_id' => $creditTxId,
                     'amount' => $amount,
                     'user' => $user->email,
+                    'note' => $note,
                 ],
                 'ip' => $request->ip(),
                 'user_agent' => substr((string) $request->userAgent(), 0, 1000),
@@ -373,16 +450,17 @@ class AdminController extends Controller
 
             DB::commit();
 
-            return response()->json([
-                'status'  => true,
-                'message' => "✅ Successfully refunded ₦" . number_format($amount, 2) . " for TX: " . $transaction->transaction_id,
-            ]);
+            app(WalletService::class)->notifyWalletRefund($user, $amount, $orderType, $creditTxId);
 
+            return response()->json([
+                'status' => true,
+                'message' => '✅ Successfully refunded ₦' . number_format($amount, 2) . ' for TX: ' . $transaction->transaction_id,
+            ]);
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Admin wallet refund failed', [
                 'error' => $e->getMessage(),
-                'tx_id' => $request->transaction_id
+                'tx_id' => $request->transaction_id,
             ]);
 
             return response()->json([
@@ -390,6 +468,59 @@ class AdminController extends Controller
                 'message' => 'Operation failed: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Debit transactions eligible for admin refund (success/pending, balance decreased).
+     */
+    public function refundableTransactions(int $id)
+    {
+        $user = User::findOrFail($id);
+        $candidates = $user->transactions()
+            ->whereIn('status', ['success', 'pending'])
+            ->whereColumn('balance_after', '<', 'balance_before')
+            ->latest()
+            ->limit(80)
+            ->get(['transaction_id', 'order_type', 'balance_before', 'balance_after', 'status', 'created_at']);
+
+        $ids = $candidates->pluck('transaction_id')->all();
+        $refundIds = [];
+        foreach ($ids as $tid) {
+            $refundIds[] = 'REF-' . $tid;
+            $refundIds[] = $tid . '-RF';
+        }
+        $existingRefundIds = $refundIds === []
+            ? collect()
+            : Transaction::query()
+                ->where('user_email', $user->email)
+                ->whereIn('transaction_id', $refundIds)
+                ->pluck('transaction_id');
+
+        $blockedOriginal = [];
+        foreach ($existingRefundIds as $rid) {
+            if (str_starts_with($rid, 'REF-')) {
+                $blockedOriginal[substr($rid, 4)] = true;
+            } elseif (str_ends_with($rid, '-RF') && strlen($rid) > 3) {
+                $blockedOriginal[substr($rid, 0, -3)] = true;
+            }
+        }
+
+        $rows = $candidates
+            ->filter(fn (Transaction $t) => !isset($blockedOriginal[$t->transaction_id]))
+            ->take(50)
+            ->values();
+
+        return response()->json([
+            'transactions' => $rows->map(function (Transaction $t) {
+                return [
+                    'transaction_id' => $t->transaction_id,
+                    'order_type' => $t->order_type,
+                    'amount' => round(abs((float) $t->balance_before - (float) $t->balance_after), 2),
+                    'status' => $t->status,
+                    'created_at' => $t->created_at?->toIso8601String(),
+                ];
+            }),
+        ]);
     }
 
     public function updateUserStatus($id, Request $request)
@@ -447,13 +578,12 @@ class AdminController extends Controller
         ]);
     }
 
-    public function userHistory($email)
+    public function userHistory(string $email)
     {
-        $transactions = Transaction::where('user_email', $email)->latest()->paginate(15);
-        $verifications = VerificationResult::whereHas('user', function($q) use ($email) {
-            $q->where('email', $email);
-        })->latest()->paginate(15);
+        $email = urldecode($email);
+        $user = User::where('email', $email)->first();
+        $history = Transaction::where('user_email', $email)->latest()->paginate(15);
 
-        return view('admin.users.history', compact('transactions', 'verifications', 'email'));
+        return view('admin.users.history', compact('user', 'history', 'email'));
     }
 }

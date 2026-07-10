@@ -11,17 +11,21 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('referral_tiers', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
-            $table->text('description')->nullable();
-            $table->decimal('commission_rate', 5, 2);
-            $table->integer('minimum_referrals');
-            $table->timestamps();
-        });
+        if (! Schema::hasTable('referral_tiers')) {
+            Schema::create('referral_tiers', function (Blueprint $table) {
+                $table->id();
+                $table->string('name');
+                $table->text('description')->nullable();
+                $table->decimal('commission_rate', 5, 2);
+                $table->integer('minimum_referrals');
+                $table->timestamps();
+            });
+        }
 
         Schema::table('users', function (Blueprint $table) {
-            $table->foreignId('referral_tier_id')->nullable()->constrained('referral_tiers');
+            if (! Schema::hasColumn('users', 'referral_tier_id')) {
+                $table->foreignId('referral_tier_id')->nullable()->constrained('referral_tiers');
+            }
         });
     }
 
@@ -31,8 +35,10 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->dropForeign(['referral_tier_id']);
-            $table->dropColumn('referral_tier_id');
+            if (Schema::hasColumn('users', 'referral_tier_id')) {
+                $table->dropForeign(['referral_tier_id']);
+                $table->dropColumn('referral_tier_id');
+            }
         });
         
         Schema::dropIfExists('referral_tiers');

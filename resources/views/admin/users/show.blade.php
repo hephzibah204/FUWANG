@@ -15,24 +15,25 @@
             </div>
         </div>
         @php
-            $hasRecentTransactions = !empty($hasTransactions) && !empty($transactions);
+            $hasRecentTransactions = $hasTransactions && $transactions->isNotEmpty();
             $refundButtonStyle = 'background: rgba(245,158,11,0.15); color: #f59e0b; border: 1px solid rgba(245,158,11,0.3); font-weight: 600;';
-
             if (! $hasRecentTransactions) {
-                $refundButtonStyle .= ' opacity: 0.45; cursor: not-allowed;';
+                $refundButtonStyle .= ' opacity: 0.7;';
             }
         @endphp
+        @if(Auth::guard('admin')->user()?->is_super_admin)
         <div class="d-flex gap-2" style="gap: 10px;">
             <button type="button" class="btn btn-sm rounded-pill px-4 fund-btn" data-id="{{ $user->id }}" data-email="{{ $user->email }}" data-name="{{ $user->fullname }}" data-balance="{{ optional($user->balance)->user_balance ?? 0 }}" style="background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid rgba(34,197,94,0.3); font-weight: 600;">
                 <i class="fa fa-plus mr-1"></i>Fund
             </button>
-            <button type="button" class="btn btn-sm rounded-pill px-4 refund-btn" data-id="{{ $user->id }}" data-email="{{ $user->email }}" data-name="{{ $user->fullname }}" data-balance="{{ optional($user->balance)->user_balance ?? 0 }}" @disabled(!$hasRecentTransactions) style="{{ $refundButtonStyle }}">
+            <button type="button" class="btn btn-sm rounded-pill px-4 refund-btn" data-id="{{ $user->id }}" data-email="{{ $user->email }}" data-name="{{ $user->fullname }}" data-balance="{{ optional($user->balance)->user_balance ?? 0 }}" style="{{ $refundButtonStyle }}" title="Refund a past wallet debit">
                 <i class="fa fa-rotate-left mr-1"></i>Refund
             </button>
             <button type="button" class="btn btn-sm rounded-pill px-4 deduct-btn" data-id="{{ $user->id }}" data-email="{{ $user->email }}" data-name="{{ $user->fullname }}" data-balance="{{ optional($user->balance)->user_balance ?? 0 }}" style="background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); font-weight: 600;">
                 <i class="fa fa-minus mr-1"></i>Deduct
             </button>
         </div>
+        @endif
     </div>
 </div>
 
@@ -165,8 +166,9 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse($transactions as $tx)
-                                    @php
+                            <?php if (isset($transactions) && count($transactions) > 0): ?>
+                                <?php foreach ($transactions as $tx): ?>
+                                    <?php
                                         $delta = (float) $tx->balance_before - (float) $tx->balance_after;
                                         $isDebit = $delta > 0;
                                         $statusPalette = [
@@ -175,7 +177,7 @@
                                             'pending' => ['bg' => 'rgba(245,158,11,0.1)', 'fg' => '#f59e0b'],
                                         ];
                                         $statusColor = $statusPalette[$tx->status ?? ''] ?? ['bg' => 'rgba(255,255,255,0.06)', 'fg' => '#9ca3af'];
-                                    @endphp
+                                    ?>
                                     <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
                                         <td class="py-3 px-4 align-middle">
                                             <code class="text-white-50">{{ $tx->transaction_id }}</code>
@@ -183,9 +185,9 @@
                                         <td class="py-3 px-4 align-middle">
                                             <div class="d-flex flex-column">
                                                 <span class="text-white">{{ \Illuminate\Support\Str::limit($tx->order_type ?? 'Payment', 30) }}</span>
-                                                @if($tx->funding_note)
+                                                <?php if (!empty($tx->funding_note)): ?>
                                                     <small class="text-white-50 mt-1"><i class="fa fa-info-circle mr-1"></i>{{ $tx->funding_note }}</small>
-                                                @endif
+                                                <?php endif; ?>
                                             </div>
                                         </td>
                                         <td class="py-3 px-4 align-middle">
@@ -202,11 +204,12 @@
                                             </span>
                                         </td>
                                     </tr>
-                            @empty
+                                <?php endforeach; ?>
+                            <?php else: ?>
                                 <tr>
                                     <td colspan="5" class="text-center py-5 text-white-50">No recent transactions found.</td>
                                 </tr>
-                            @endforelse
+                            <?php endif; ?>
                         </tbody>
                     </table>
                 </div>
@@ -222,6 +225,115 @@
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" nonce="{{ $cspNonce ?? '' }}"></script>
 <script nonce="{{ $cspNonce ?? '' }}">
+function refundWalletFlow(userId, email, name, currentBalance) {
+    const listUrl = '{{ route("admin.users.refundable_transactions", ["id" => "__UID__"]) }}'.replace('__UID__', String(userId));
+    const refundRoute = '{{ route("admin.users.refund") }}';
+    const http = window.axios;
+    if (!http) {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Network library not loaded. Refresh the page.', background: '#141826', color: '#fff' });
+        return;
+    }
+    Swal.fire({
+        title: 'Loading…',
+        text: 'Fetching refundable debits…',
+        background: '#141826',
+        color: '#fff',
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+    });
+    http.get(listUrl)
+        .then((res) => {
+            Swal.close();
+            const txs = res.data.transactions || [];
+            if (!txs.length) {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Nothing to refund',
+                    text: 'No eligible debit transactions found for this user.',
+                    background: '#141826',
+                    color: '#fff'
+                });
+                return;
+            }
+            const optionsHtml = txs.map((t) => {
+                const amt = Number(t.amount).toLocaleString('en-NG', { minimumFractionDigits: 2 });
+                const label = (t.order_type || '').replace(/</g, '');
+                return `<option value="${String(t.transaction_id).replace(/"/g, '&quot;')}">₦${amt} — ${label} — ${String(t.transaction_id).replace(/</g, '')}</option>`;
+            }).join('');
+            Swal.fire({
+                title: 'Refund Wallet',
+                html: `
+                    <p class="text-white-50 small mb-3">Target: <strong class="text-white">${name}</strong> (${email})</p>
+                    <p class="text-white-50 small mb-3">Current Balance: <strong style="color:#6ee7b7">₦${parseFloat(currentBalance).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</strong></p>
+                    <p class="text-white-50 small mb-2 text-left" style="max-width:380px;margin-left:auto;margin-right:auto;">Select the debit to reverse. The wallet will be credited by the same amount shown on that line.</p>
+                    <select id="refund_tx_id" class="form-control text-white mb-3" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); width: 100%; max-width: 380px;">
+                        ${optionsHtml}
+                    </select>
+                    <input type="text" id="wallet_note" class="form-control text-white" placeholder="Note / Reason (optional)" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); width: 100%; max-width: 380px;">
+                `,
+                background: '#141826',
+                color: '#fff',
+                confirmButtonColor: '#eab308',
+                confirmButtonText: 'Refund Wallet',
+                showCancelButton: true,
+                cancelButtonColor: '#374151',
+                focusConfirm: false,
+                preConfirm: () => {
+                    const sel = Swal.getPopup().querySelector('#refund_tx_id');
+                    const noteInput = Swal.getPopup().querySelector('#wallet_note');
+                    if (!sel || !sel.value) {
+                        Swal.showValidationMessage('Please select a transaction');
+                        return false;
+                    }
+                    return { transaction_id: sel.value, note: noteInput ? noteInput.value : '' };
+                }
+            }).then((result) => {
+                if (!result.isConfirmed) return;
+                Swal.fire({
+                    title: 'Processing…',
+                    text: 'Applying refund…',
+                    background: '#141826',
+                    color: '#fff',
+                    allowOutsideClick: false,
+                    didOpen: () => Swal.showLoading()
+                });
+                http.post(refundRoute, {
+                    transaction_id: result.value.transaction_id,
+                    note: result.value.note
+                })
+                    .then((r) => {
+                        const data = r.data;
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Success!',
+                            text: data.message || 'Refund completed',
+                            background: '#141826',
+                            color: '#fff',
+                            confirmButtonColor: '#3b82f6'
+                        }).then(() => location.reload());
+                    })
+                    .catch((err) => {
+                        console.error('Refund failed:', err);
+                        const msg = err.response?.data?.message || err.message || 'An unexpected error occurred.';
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Operation Failed',
+                            text: msg,
+                            background: '#141826',
+                            color: '#fff',
+                            confirmButtonColor: '#ef4444'
+                        });
+                    });
+            });
+        })
+        .catch((err) => {
+            Swal.close();
+            console.error('Refundable list failed:', err);
+            const msg = err.response?.data?.message || err.message || 'Could not load transactions.';
+            Swal.fire({ icon: 'error', title: 'Error', text: msg, background: '#141826', color: '#fff' });
+        });
+}
+
 function walletAction(actionType, email, name, currentBalance) {
     const isFund   = actionType === 'fund';
     const isRefund = actionType === 'refund';
@@ -268,8 +380,12 @@ function walletAction(actionType, email, name, currentBalance) {
                 didOpen: () => Swal.showLoading()
             });
 
-            // Modernized with axios
-            axios.post(route, {
+            const http = window.axios;
+            if (!http) {
+                Swal.fire({ icon: 'error', title: 'Error', text: 'Network library not loaded. Refresh the page.', background: '#141826', color: '#fff' });
+                return;
+            }
+            http.post(route, {
                 email: email,
                 amount: result.value.amount,
                 note: result.value.note
@@ -301,103 +417,126 @@ function walletAction(actionType, email, name, currentBalance) {
     });
 }
 
-$(document).on('click', '.fund-btn', function(e) {
-    e.preventDefault();
-    walletAction('fund', $(this).data('email'), $(this).data('name'), $(this).data('balance'));
-});
-$(document).on('click', '.refund-btn', function(e) {
-    e.preventDefault();
-    if ($(this).prop('disabled')) return;
-    walletAction('refund', $(this).data('email'), $(this).data('name'), $(this).data('balance'));
-});
-$(document).on('click', '.deduct-btn', function(e) {
-    e.preventDefault();
-    walletAction('deduct', $(this).data('email'), $(this).data('name'), $(this).data('balance'));
-});
+(function () {
+    function bindAdminUserActions() {
+        document.body.addEventListener('click', function (e) {
+            const fundBtn = e.target.closest('.fund-btn');
+            if (fundBtn) {
+                e.preventDefault();
+                walletAction('fund', fundBtn.dataset.email, fundBtn.dataset.name, fundBtn.dataset.balance);
+                return;
+            }
+            const refundBtn = e.target.closest('.refund-btn');
+            if (refundBtn) {
+                e.preventDefault();
+                refundWalletFlow(refundBtn.dataset.id, refundBtn.dataset.email, refundBtn.dataset.name, refundBtn.dataset.balance);
+                return;
+            }
+            const deductBtn = e.target.closest('.deduct-btn');
+            if (deductBtn) {
+                e.preventDefault();
+                walletAction('deduct', deductBtn.dataset.email, deductBtn.dataset.name, deductBtn.dataset.balance);
+                return;
+            }
+            const resetBtn = e.target.closest('.reset-pass-btn');
+            if (resetBtn) {
+                e.preventDefault();
+                const id = resetBtn.dataset.id;
+                const name = resetBtn.dataset.name;
+                const url = '{{ route("admin.users.reset_password", ["id" => "__ID__"]) }}'.replace('__ID__', String(id));
 
-$(document).on('click', '.reset-pass-btn', function(e) {
-    e.preventDefault();
-    const id = $(this).data('id');
-    const name = $(this).data('name');
-    const url = '{{ route("admin.users.reset_password", ["id" => "__ID__"]) }}'.replace('__ID__', String(id));
+                Swal.fire({
+                    title: 'Reset Password',
+                    html: `
+                        <p class="text-white-50 small mb-3">Target: <strong class="text-white">${name}</strong></p>
+                        <input type="password" id="new_password" class="swal2-input" placeholder="Leave empty to auto-generate" style="font-size:1rem; background: rgba(255,255,255,0.05); color: #fff; border: 1px solid rgba(255,255,255,0.2);">
+                    `,
+                    background: '#141826',
+                    color: '#fff',
+                    confirmButtonColor: '#3b82f6',
+                    confirmButtonText: 'Reset',
+                    showCancelButton: true,
+                    cancelButtonColor: '#374151',
+                    focusConfirm: false,
+                    preConfirm: () => {
+                        const password = Swal.getPopup().querySelector('#new_password').value;
+                        return { password };
+                    }
+                }).then((result) => {
+                    if (!result.isConfirmed) return;
+                    Swal.fire({ title: 'Processing…', text: 'Securing account...', background: '#141826', color: '#fff', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                    const http = window.axios;
+                    if (!http) {
+                        Swal.fire({ icon: 'error', title: 'Error', text: 'Network library not loaded. Refresh the page.', background: '#141826', color: '#fff' });
+                        return;
+                    }
+                    http.post(url, { password: result.value.password })
+                        .then(res => {
+                            const data = res.data;
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Success!',
+                                html: `<div class="text-left text-white"><p class="mb-2">${data.message}</p><p class="mb-0"><strong>Temporary Password:</strong> <span class="text-warning">${data.temporary_password}</span></p></div>`,
+                                background: '#141826',
+                                color: '#fff'
+                            });
+                        })
+                        .catch(err => {
+                            console.error('Password Reset Failed:', err);
+                            const msg = err.response?.data?.message || err.message || 'An error occurred.';
+                            Swal.fire({ icon: 'error', title: 'Failed', text: msg, background: '#141826', color: '#fff' });
+                        });
+                });
+                return;
+            }
+            const statusBtn = e.target.closest('.status-btn');
+            if (statusBtn) {
+                e.preventDefault();
+                const id = statusBtn.dataset.id;
+                const status = statusBtn.dataset.status;
+                const name = statusBtn.dataset.name;
+                const url = '{{ route("admin.users.status", ["id" => "__ID__"]) }}'.replace('__ID__', String(id));
 
-    Swal.fire({
-        title: 'Reset Password',
-        html: `
-            <p class="text-white-50 small mb-3">Target: <strong class="text-white">${name}</strong></p>
-            <input type="password" id="new_password" class="swal2-input" placeholder="Leave empty to auto-generate" style="font-size:1rem; background: rgba(255,255,255,0.05); color: #fff; border: 1px solid rgba(255,255,255,0.2);">
-        `,
-        background: '#141826',
-        color: '#fff',
-        confirmButtonColor: '#3b82f6',
-        confirmButtonText: 'Reset',
-        showCancelButton: true,
-        cancelButtonColor: '#374151',
-        focusConfirm: false,
-        preConfirm: () => {
-            const password = Swal.getPopup().querySelector('#new_password').value;
-            return { password };
-        }
-    }).then((result) => {
-        if (!result.isConfirmed) return;
-        Swal.fire({ title: 'Processing…', text: 'Securing account...', background: '#141826', color: '#fff', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-        axios.post(url, {
-            password: result.value.password
-        })
-        .then(res => {
-            const data = res.data;
-            Swal.fire({
-                icon: 'success',
-                title: 'Success!',
-                html: `<div class="text-left text-white"><p class="mb-2">${data.message}</p><p class="mb-0"><strong>Temporary Password:</strong> <span class="text-warning">${data.temporary_password}</span></p></div>`,
-                background: '#141826',
-                color: '#fff'
-            });
-        })
-        .catch(err => {
-            console.error('Password Reset Failed:', err);
-            const msg = err.response?.data?.message || err.message || 'An error occurred.';
-            Swal.fire({ icon: 'error', title: 'Failed', text: msg, background: '#141826', color: '#fff' });
+                const actionLabel = status === 'active' ? 'Activate' : (status === 'suspended' ? 'Suspend' : 'Delete');
+                const confirmColor = status === 'active' ? '#22c55e' : '#ef4444';
+
+                Swal.fire({
+                    title: `${actionLabel} User`,
+                    text: `Are you sure you want to ${actionLabel.toLowerCase()} ${name}?`,
+                    icon: 'warning',
+                    background: '#141826',
+                    color: '#fff',
+                    showCancelButton: true,
+                    confirmButtonColor: confirmColor,
+                    confirmButtonText: `Yes, ${actionLabel}`,
+                    cancelButtonColor: '#374151'
+                }).then((result) => {
+                    if (!result.isConfirmed) return;
+                    Swal.fire({ title: 'Processing…', text: 'Applying changes...', background: '#141826', color: '#fff', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                    const http = window.axios;
+                    if (!http) {
+                        Swal.fire({ icon: 'error', title: 'Error', text: 'Network library not loaded.', background: '#141826', color: '#fff' });
+                        return;
+                    }
+                    http.post(url, { user_status: status })
+                    .then(res => {
+                        const data = res.data;
+                        Swal.fire({ icon: 'success', title: 'Done!', text: data.message, background: '#141826', color: '#fff' }).then(() => location.reload());
+                    })
+                    .catch(err => {
+                        console.error('Status Update Failed:', err);
+                        const msg = err.response?.data?.message || err.message || 'An error occurred.';
+                        Swal.fire({ icon: 'error', title: 'Failed', text: msg, background: '#141826', color: '#fff' });
+                    });
+                });
+            }
         });
-    });
-});
-
-$(document).on('click', '.status-btn', function(e) {
-    e.preventDefault();
-    const id = $(this).data('id');
-    const status = $(this).data('status');
-    const name = $(this).data('name');
-    const url = '{{ route("admin.users.status", ["id" => "__ID__"]) }}'.replace('__ID__', String(id));
-
-    const actionLabel = status === 'active' ? 'Activate' : (status === 'suspended' ? 'Suspend' : 'Delete');
-    const confirmColor = status === 'active' ? '#22c55e' : '#ef4444';
-
-    Swal.fire({
-        title: `${actionLabel} User`,
-        text: `Are you sure you want to ${actionLabel.toLowerCase()} ${name}?`,
-        icon: 'warning',
-        background: '#141826',
-        color: '#fff',
-        showCancelButton: true,
-        confirmButtonColor: confirmColor,
-        confirmButtonText: `Yes, ${actionLabel}`,
-        cancelButtonColor: '#374151'
-    }).then((result) => {
-        if (!result.isConfirmed) return;
-        Swal.fire({ title: 'Processing…', text: 'Applying changes...', background: '#141826', color: '#fff', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-        axios.post(url, {
-            user_status: status
-        })
-        .then(res => {
-            const data = res.data;
-            Swal.fire({ icon: 'success', title: 'Done!', text: data.message, background: '#141826', color: '#fff' }).then(() => location.reload());
-        })
-        .catch(err => {
-            console.error('Status Update Failed:', err);
-            const msg = err.response?.data?.message || err.message || 'An error occurred.';
-            Swal.fire({ icon: 'error', title: 'Failed', text: msg, background: '#141826', color: '#fff' });
-        });
-    });
-});
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', bindAdminUserActions);
+    } else {
+        bindAdminUserActions();
+    }
+})();
 </script>
 @endpush

@@ -119,9 +119,9 @@
                 <div class="text-center small text-white-50 mb-0">No fees. Only pay if you win.</div>
             @else
                 <div class="p-4 text-center rounded bg-dark border-glass">
-                    <p class="mb-3">Sign in to participate in this auction.</p>
-                    <a href="{{ route('login') }}" class="btn btn-primary btn-block mb-2">Sign In</a>
-                    <a href="{{ route('register') }}" class="btn btn-outline-light btn-block btn-sm">Create Account</a>
+                    <p class="mb-3">Sign in to bid or watch this lot.</p>
+                    <a href="{{ route('auction.login') }}" class="btn btn-primary btn-block mb-2">Sign In</a>
+                    <a href="{{ route('auction.register') }}" class="btn btn-outline-light btn-block btn-sm">Create Account</a>
                 </div>
             @endif
 
@@ -225,7 +225,7 @@ $(() => {
         btn.prop('disabled', true).text('PROCESSING...');
 
         $.ajax({
-            url: "{{ \Illuminate\Support\Facades\Route::has('auctions.bid') ? route('auctions.bid') : url('/auctions/bid') }}",
+            url: "{{ \Illuminate\Support\Facades\Route::has('auction.bid') ? route('auction.bid') : (\Illuminate\Support\Facades\Route::has('services.auctions.bid') ? route('services.auctions.bid') : url('/services/auctions/bid')) }}",
             method: 'POST',
             data: {
                 _token: $('meta[name="csrf-token"]').attr('content'),

@@ -33,10 +33,10 @@
                         @csrf
                         <div class="row">
                             <div class="col-md-8 mb-4">
-                                <label for="number" class="font-weight-600 mb-2 small text-muted">Identification Number</label>
+                                <label for="tracking_id" class="font-weight-600 mb-2 small text-muted">NIMC Tracking ID</label>
                                 <div class="input-wrap">
                                     <i class="fa-solid fa-hashtag"></i>
-                                    <input type="text" id="number" name="number" class="form-control" placeholder="Enter ID Number for personalization" required>
+                                    <input type="text" id="tracking_id" name="tracking_id" class="form-control" placeholder="Enter NIMC Tracking ID (e.g., ABC12345XYZ)" required>
                                 </div>
                             </div>
                             <div class="col-md-4 text-right mt-2 d-flex align-items-end justify-content-end">
@@ -71,7 +71,7 @@
                             <thead>
                                 <tr>
                                     <th>Reference</th>
-                                    <th>Identifier</th>
+                                    <th>Tracking ID</th>
                                     <th>Date</th>
                                     <th class="text-right">Action</th>
                                 </tr>

@@ -25,6 +25,9 @@
 
             <form action="{{ url('login') }}" method="POST" id="loginForm" class="auth-form">
                 @csrf
+                @if(request('service'))
+                    <input type="hidden" name="service" value="{{ request('service') }}">
+                @endif
                 <p class="text-danger small text-center" id="errorMsg">
                     @if($errors->any())
                         {{ $errors->first() }}
@@ -72,7 +75,9 @@
 
             <div class="auth-divider"><span>or continue with</span></div>
             <div class="oauth-buttons">
-                <button class="oauth-btn"><i class="fa-brands fa-google mr-2"></i> Google</button>
+                <a class="oauth-btn text-decoration-none" href="{{ route('auth.google.redirect') }}">
+                    <i class="fa-brands fa-google mr-2"></i> Google
+                </a>
             </div>
         </div>
     </div>
@@ -130,7 +135,7 @@
                 headers: { 'Accept': 'application/json' },
                 timeout: 15000,
                 success: function(response) {
-                    if (response.status === 'success') {
+                    if ((response.status === 'success' || response.status === '2fa_required') && response.redirect) {
                         const target = normalizeRedirect(response.redirect) || (window.location.origin + '/dashboard');
                         try {
                             window.location.assign(target);

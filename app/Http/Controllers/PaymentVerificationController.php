@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ApiCenter;
 use App\Services\WalletService;
+use App\Support\PaymentProviderCredentials;
 use App\Models\PaymentIntent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -140,8 +141,9 @@ class PaymentVerificationController extends Controller
         }
 
         $apiCenter = ApiCenter::first();
-        $apiKey = $apiCenter?->monnify_api_key;
-        $secretKey = $apiCenter?->monnify_secret_key;
+        $mnf = PaymentProviderCredentials::monnify($apiCenter);
+        $apiKey = $mnf['api_key'];
+        $secretKey = $mnf['secret_key'];
         if (!$apiKey || !$secretKey) {
             return response()->json(['status' => false, 'message' => 'Monnify is not configured.'], 422);
         }
@@ -313,7 +315,7 @@ class PaymentVerificationController extends Controller
         }
 
         $apiCenter = ApiCenter::first();
-        $secretKey = $apiCenter?->flutterwave_secret_key;
+        $secretKey = PaymentProviderCredentials::flutterwave($apiCenter)['secret_key'];
         if (!$secretKey) {
             return response()->json(['status' => false, 'message' => 'Flutterwave is not configured.'], 422);
         }

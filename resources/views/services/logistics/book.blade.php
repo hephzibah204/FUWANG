@@ -26,16 +26,69 @@
                         <input type="text" name="sender_name" class="form-control tracking-input py-2" value="{{ auth()->user()->fullname }}" required>
                     </div>
                     <div class="col-md-6 mb-3">
-                        <label class="text-white-50 small mb-2">Sender Address</label>
-                        <input type="text" name="sender_address" class="form-control tracking-input py-2" required>
+                        <label class="text-white-50 small mb-2">Sender State</label>
+                        <select name="sender_state" id="sender_state" class="form-control tracking-input py-2" required>
+                            <option value="">Select state</option>
+                            @foreach(($nigeriaStates ?? []) as $stateName)
+                                <option value="{{ $stateName }}">{{ $stateName }}</option>
+                            @endforeach
+                        </select>
                     </div>
                     <div class="col-md-6 mb-3">
                         <label class="text-white-50 small mb-2">Recipient Name</label>
                         <input type="text" name="recipient_name" class="form-control tracking-input py-2" required>
                     </div>
                     <div class="col-md-6 mb-3">
+                        <label class="text-white-50 small mb-2">Recipient State</label>
+                        <select name="recipient_state" id="recipient_state" class="form-control tracking-input py-2" required>
+                            <option value="">Select state</option>
+                            @foreach(($nigeriaStates ?? []) as $stateName)
+                                <option value="{{ $stateName }}">{{ $stateName }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="text-white-50 small mb-2">Pickup Method</label>
+                        <select name="pickup_method" id="pickup_method" class="form-control tracking-input py-2" required>
+                            <option value="center_dropoff">Drop-off at Center</option>
+                            <option value="home_pickup">Home Pickup</option>
+                        </select>
+                        <small class="text-white-50 d-block mt-1">Select how you want your package picked up.</small>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="text-white-50 small mb-2">Delivery Method</label>
+                        <select name="delivery_method" id="delivery_method" class="form-control tracking-input py-2" required>
+                            <option value="home_delivery">Home Delivery</option>
+                            <option value="center_pickup">Pickup at Center</option>
+                        </select>
+                        <small class="text-white-50 d-block mt-1">Select how the recipient will receive the package.</small>
+                    </div>
+
+                    <div class="col-md-6 mb-3" id="sender_address_wrap">
+                        <label class="text-white-50 small mb-2">Sender Address</label>
+                        <input type="text" name="sender_address" id="sender_address" class="form-control tracking-input py-2" placeholder="House number, street, area">
+                    </div>
+                    <div class="col-md-6 mb-3" id="recipient_address_wrap">
                         <label class="text-white-50 small mb-2">Recipient Address</label>
-                        <input type="text" name="recipient_address" class="form-control tracking-input py-2" required>
+                        <input type="text" name="recipient_address" id="recipient_address" class="form-control tracking-input py-2" placeholder="House number, street, area">
+                    </div>
+
+                    <div class="col-md-6 mb-3 d-none" id="pickup_center_wrap">
+                        <label class="text-white-50 small mb-2">Pickup Center (Drop-off)</label>
+                        <select name="pickup_center_id" id="pickup_center_id" class="form-control tracking-input py-2">
+                            <option value="">Select pickup center</option>
+                        </select>
+                        <small class="text-white-50 d-block mt-1" id="pickup_center_help"></small>
+                    </div>
+
+                    <div class="col-md-6 mb-3 d-none" id="dropoff_center_wrap">
+                        <label class="text-white-50 small mb-2">Drop-off Center (Recipient Pickup)</label>
+                        <select name="dropoff_center_id" id="dropoff_center_id" class="form-control tracking-input py-2">
+                            <option value="">Select drop-off center</option>
+                        </select>
+                        <small class="text-white-50 d-block mt-1" id="dropoff_center_help"></small>
                     </div>
                 </div>
             </div>
@@ -79,6 +132,13 @@
                                     <div class="font-weight-bold text-warning">Overnight</div>
                                     <small class="d-block text-white-50">Next Day</small>
                                     <input type="radio" name="delivery_type" value="overnight" class="d-none">
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-2">
+                                <div class="delivery-option p-3 rounded-lg border border-glass cursor-pointer text-center speed-card" data-speed="same_day">
+                                    <div class="font-weight-bold" style="color: var(--po-primary);">Same-day</div>
+                                    <small class="d-block text-white-50">Today</small>
+                                    <input type="radio" name="delivery_type" value="same_day" class="d-none">
                                 </div>
                             </div>
                         </div>
@@ -140,7 +200,19 @@
 
 @push('scripts')
 <script>
-    const pricing = @json($logisticsPricing);
+    const logisticsStoreUrl = <?php echo json_encode(
+        \Illuminate\Support\Facades\Route::has('services.user.logistics.store')
+            ? route('services.user.logistics.store')
+            : route('user.logistics.store')
+    ); ?>;
+    const logisticsDashboardUrl = <?php echo json_encode(
+        \Illuminate\Support\Facades\Route::has('services.user.logistics.dashboard')
+            ? route('services.user.logistics.dashboard')
+            : route('user.logistics.dashboard')
+    ); ?>;
+    const pricing = <?php echo json_encode($logisticsPricing); ?>;
+    const centersUrl = <?php echo json_encode(route('logistics.centers')); ?>;
+    const quoteUrl = <?php echo json_encode(route('logistics.pricing.quote')); ?>;
     
     function calculate() {
         const weight = parseFloat($('#weight').val()) || 0;
@@ -160,15 +232,130 @@
         $('#displayTotal, #breakdownTotal').text(total.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
     }
 
+    let quoteTimer = null;
+    function requestQuote() {
+        if (quoteTimer) {
+            clearTimeout(quoteTimer);
+        }
+        quoteTimer = setTimeout(function () {
+            const payload = {
+                _token: $('input[name=_token]').val(),
+                sender_state: $('#sender_state').val(),
+                recipient_state: $('#recipient_state').val(),
+                pickup_method: $('#pickup_method').val(),
+                delivery_method: $('#delivery_method').val(),
+                pickup_center_id: $('#pickup_center_id').val(),
+                dropoff_center_id: $('#dropoff_center_id').val(),
+                sender_address: $('#sender_address').val(),
+                recipient_address: $('#recipient_address').val(),
+                weight: $('#weight').val(),
+                delivery_type: $('.speed-card.active').data('speed'),
+            };
+
+            if (!payload.sender_state || !payload.recipient_state) {
+                calculate();
+                return;
+            }
+
+            $.post(quoteUrl, payload, function (res) {
+                if (!res || !res.status) {
+                    calculate();
+                    return;
+                }
+                const total = parseFloat(res.total) || 0;
+                $('#displayTotal, #breakdownTotal').text(total.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+                const w = parseFloat(res.breakdown?.weight_surcharge) || 0;
+                const m = parseFloat(res.breakdown?.speed_multiplier) || 1;
+                $('#weightCost').text('₦' + w.toLocaleString());
+                $('#speedCost').text('x' + m.toFixed(2));
+            }).fail(function () {
+                calculate();
+            });
+        }, 250);
+    }
+
+    function labelAvailability(status) {
+        if (!status) return '';
+        const s = String(status).toLowerCase();
+        if (s === 'available') return 'Available';
+        if (s === 'limited') return 'Limited';
+        if (s === 'closed') return 'Closed';
+        return status;
+    }
+
+    function loadCenters(state, type, targetSelect, helpEl) {
+        if (!state) {
+            targetSelect.empty().append('<option value="">Select ' + type + ' center</option>');
+            helpEl.text('');
+            return;
+        }
+
+        targetSelect.prop('disabled', true);
+        targetSelect.empty().append('<option value="">Loading...</option>');
+        helpEl.text('');
+
+        $.get(centersUrl, { state: state, type: type }, function (res) {
+            targetSelect.empty().append('<option value="">Select ' + type + ' center</option>');
+            if (!res || !res.status || !Array.isArray(res.centers)) {
+                targetSelect.prop('disabled', false);
+                return;
+            }
+            res.centers.forEach(function (c) {
+                const status = labelAvailability(c.availability_status);
+                const disabled = String(c.availability_status).toLowerCase() === 'closed' ? 'disabled' : '';
+                const text = String(c.name) + (c.city ? (' (' + c.city + ')') : '') + ' - ' + status;
+                targetSelect.append('<option value="' + c.id + '" ' + disabled + '>' + text + '</option>');
+            });
+            targetSelect.prop('disabled', false);
+            helpEl.text('Updated in real-time based on center availability.');
+        }).fail(function () {
+            targetSelect.empty().append('<option value="">Select ' + type + ' center</option>');
+            targetSelect.prop('disabled', false);
+        });
+    }
+
+    function syncPickupDeliveryUi() {
+        const pickupMethod = $('#pickup_method').val();
+        const deliveryMethod = $('#delivery_method').val();
+
+        if (pickupMethod === 'center_dropoff') {
+            $('#pickup_center_wrap').removeClass('d-none');
+            $('#sender_address_wrap').addClass('d-none');
+        } else {
+            $('#pickup_center_wrap').addClass('d-none');
+            $('#sender_address_wrap').removeClass('d-none');
+        }
+
+        if (deliveryMethod === 'center_pickup') {
+            $('#dropoff_center_wrap').removeClass('d-none');
+            $('#recipient_address_wrap').addClass('d-none');
+        } else {
+            $('#dropoff_center_wrap').addClass('d-none');
+            $('#recipient_address_wrap').removeClass('d-none');
+        }
+
+        const senderState = $('#sender_state').val();
+        const recipientState = $('#recipient_state').val();
+        loadCenters(senderState, 'pickup', $('#pickup_center_id'), $('#pickup_center_help'));
+        loadCenters(recipientState, 'dropoff', $('#dropoff_center_id'), $('#dropoff_center_help'));
+    }
+
     $('.speed-card').click(function() {
         $('.speed-card').removeClass('active');
         $(this).addClass('active');
         $(this).find('input').prop('checked', true);
-        calculate();
+        requestQuote();
     });
 
-    $('#weight').on('input', calculate);
+    $('#weight').on('input', requestQuote);
     calculate();
+
+    $('#sender_state, #recipient_state, #pickup_method, #delivery_method').on('change', function () {
+        syncPickupDeliveryUi();
+        requestQuote();
+    });
+    syncPickupDeliveryUi();
+    requestQuote();
 
     $('#bookForm').submit(function(e) {
         e.preventDefault();
@@ -185,16 +372,16 @@
                 const btn = $('#submitBtn');
                 btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Processing...');
                 
-                $.post("{{ route('user.logistics.store') }}", $(this).serialize(), function(res) {
+                $.post(logisticsStoreUrl, $(this).serialize(), function(res) {
                     btn.prop('disabled', false).html('Confirm & Book <i class="fa fa-arrow-right ml-2"></i>');
                     if (res.status) {
                         Swal.fire({
                             title: 'Success!',
-                            html: `Shipment booked. Tracking ID: <b class="text-primary">${res.tracking_id}</b>`,
+                            html: 'Shipment booked. Tracking ID: <b class="text-primary">' + res.tracking_id + '</b>',
                             icon: 'success',
                             confirmButtonColor: '#f59e0b'
                         }).then(() => {
-                            window.location.href = "{{ route('user.logistics.dashboard') }}";
+                            window.location.href = logisticsDashboardUrl;
                         });
                     } else {
                         Swal.fire('Error', res.message, 'error');

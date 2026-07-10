@@ -7,6 +7,7 @@ use App\Models\ApiCenter;
 use App\Models\PaymentWebhookEvent;
 use App\Models\User;
 use App\Support\DbTable;
+use App\Support\PaymentProviderCredentials;
 use App\Jobs\ProcessPaymentWebhookEvent;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -356,7 +357,7 @@ class WebhookController extends Controller
         $sig = $this->getHeaderValue($request, 'monnify-signature');
 
         $apiCenter = ApiCenter::first();
-        $clientSecret = $apiCenter?->monnify_secret_key;
+        $clientSecret = PaymentProviderCredentials::monnify($apiCenter)['secret_key'];
         if (!$clientSecret) {
             return response()->json(['message' => 'API credentials not found'], 400);
         }

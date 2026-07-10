@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
 use App\Models\AdminAuditLog;
+use App\Models\PaymentGateway;
 use App\Models\SystemSetting;
 use App\Services\ImageOptimizer;
 use Illuminate\Http\Request;
@@ -12,24 +13,19 @@ use Illuminate\Support\Facades\DB;
 use App\Models\Setting;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 
 class SettingsController extends Controller
 {
     public function index()
     {
-        $settings      = DB::table('settings')->first();
         $apiSettings   = DB::table('api_settings')->first();
         $apiCenter     = DB::table('api_centers')->first();
         $notification  = DB::table('notifying_centers')->first();
         $verifyPrices  = DB::table('verification_prices')->first();
-        $idPrices      = null;
-        if (DB::getSchemaBuilder()->hasTable('id_verification_prices')) {
-            $idPrices = DB::table('id_verification_prices')->first();
-        }
-        $manualFunding = DB::table('manual_funding')->first(); // verify if this is singular in db
+        $manualFunding = DB::table('manual_funding')->first();
         $notaryDocs    = DB::table('notary_settings')->get();
-        $systemSettings = \App\Models\SystemSetting::all()->groupBy('group');
-        $gateways = \App\Models\PaymentGateway::orderBy('priority', 'asc')->get();
+        $gateways = PaymentGateway::orderBy('priority', 'asc')->get();
         $admin = Auth::guard('admin')->user();
         $canManageSecurity = false;
         if ($admin) {
@@ -50,8 +46,8 @@ class SettingsController extends Controller
             ->get();
 
         return view('admin.settings.index', compact(
-            'settings', 'apiSettings', 'apiCenter', 'notification',
-            'verifyPrices', 'idPrices', 'manualFunding', 'notaryDocs', 'systemSettings',
+            'apiSettings', 'apiCenter', 'notification',
+            'verifyPrices', 'manualFunding', 'notaryDocs',
             'gateways',
             'canManageSecurity',
             'verifymeWebhookIps',
@@ -256,24 +252,17 @@ class SettingsController extends Controller
     public function toggleGateway(Request $request)
     {
         $request->validate([
-            'id' => 'required|exists:payment_gateways,id',
-            'is_active' => 'required|boolean',
+            'id' => ['required', 'integer', Rule::exists(PaymentGateway::class, 'id')],
+            // jQuery form POST sends 0/1 strings; Laravel's boolean rule can reject some clients.
+            'is_active' => ['required', Rule::in([0, 1, '0', '1', true, false, 'true', 'false'])],
         ]);
 
-        $admin = Auth::guard('admin')->user();
-        $isSuperAdmin = false;
-        if ($admin) {
-            $isSuperAdmin = (($admin->is_super_admin ?? false) || (($admin->role ?? null) === 'superadmin')) || Admin::count() <= 1;
-        }
+        $gateway = \App\Models\PaymentGateway::findOrFail($request->integer('id'));
+        $isActive = $request->boolean('is_active');
+        $gateway->update(['is_active' => $isActive]);
+        $gateway->refresh();
 
-        if (!$isSuperAdmin) {
-            return response()->json(['status' => false, 'message' => 'Unauthorized'], 403);
-        }
-
-        $gateway = \App\Models\PaymentGateway::findOrFail($request->id);
-        $gateway->update(['is_active' => $request->is_active]);
-
-        $status = $request->is_active ? 'activated' : 'deactivated';
+        $status = $isActive ? 'activated' : 'deactivated';
         Log::info('Payment gateway ' . $gateway->name . ' was ' . $status . ' by admin ID: ' . (Auth::guard('admin')->id() ?? 'unknown'));
 
         return response()->json([
@@ -554,12 +543,14 @@ class SettingsController extends Controller
             $request->referral_reward_amount,
             'referrals'
         );
-        
-        if ($request->has('matrix_enabled')) {
-            SystemSetting::set('matrix_enabled', $request->has('matrix_enabled') ? 'true' : 'false', 'referrals');
-            SystemSetting::set('matrix_depth', $request->input('matrix_depth', 0), 'referrals');
-            
-            $depth = (int)$request->input('matrix_depth', 0);
+
+        $matrixEnabled = $request->boolean('matrix_enabled');
+        SystemSetting::set('matrix_enabled', $matrixEnabled ? 'true' : 'false', 'referrals');
+
+        $depth = $matrixEnabled ? (int) $request->input('matrix_depth', 0) : 0;
+        SystemSetting::set('matrix_depth', $depth, 'referrals');
+
+        if ($matrixEnabled) {
             for ($i = 1; $i <= $depth; $i++) {
                 $key = 'matrix_level_' . $i . '_percentage';
                 if ($request->has($key)) {

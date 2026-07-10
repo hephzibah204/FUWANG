@@ -47,15 +47,14 @@ class PublicServiceDiscoveryTest extends TestCase
             'end_at' => now()->addHour(),
         ]);
 
-        $this->get('/explore/auctions')
+        $this->get('/auction')
             ->assertOk()
             ->assertSee('Live Auctions', false)
             ->assertSee('Test Lot', false);
 
-        $this->get('/explore/auctions/' . $lot->lot_code)
+        $this->get('/auction/' . $lot->lot_code)
             ->assertOk()
             ->assertSee('Test Lot', false)
             ->assertSee('Sign in to bid or watch', false);
     }
 }
-

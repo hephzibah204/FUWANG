@@ -30,7 +30,7 @@ class SecurityHeaders
                 "object-src 'none'",
                 "img-src 'self' data: https:",
                 "script-src 'self' 'nonce-{$nonce}' https://js.paystack.co https://checkout.flutterwave.com https://cdn.jsdelivr.net",
-                "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net",
+                "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://paystack.com",
                 "font-src 'self' data: https://fonts.gstatic.com",
                 "connect-src 'self' https: https://cdn.jsdelivr.net",
                 "upgrade-insecure-requests",

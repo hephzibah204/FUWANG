@@ -160,5 +160,21 @@
         document.querySelectorAll('.s-tab').forEach(t => t.classList.remove('active'));
         btn.classList.add('active');
     }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const defaultPanel = @json(session('bvn_active_panel'));
+        if (defaultPanel !== 'vault') {
+            return;
+        }
+
+        const vaultBtn = Array.from(document.querySelectorAll('.s-tab')).find((btn) => {
+            const onclick = btn.getAttribute('onclick') || '';
+            return onclick.includes("switchMainPanel('vault'");
+        });
+
+        if (vaultBtn) {
+            switchMainPanel('vault', vaultBtn);
+        }
+    });
 </script>
 @endpush

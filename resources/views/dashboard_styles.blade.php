@@ -53,6 +53,11 @@
         background: rgba(255, 255, 255, 0.1);
         filter: blur(40px);
         border-radius: 50%;
+        pointer-events: none;
+    }
+    .hw-content {
+        position: relative;
+        z-index: 1;
     }
     .hw-amount { font-size: 2.25rem; font-weight: 800; color: #fff; letter-spacing: -1px; }
     .btn-glass { background: rgba(255, 255, 255, 0.1); color: #fff; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; }

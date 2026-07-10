@@ -9,9 +9,17 @@
             <h3 class="font-weight-bold mb-1">My <span style="color:var(--po-primary)">Shipments</span></h3>
             <p class="text-white-50 small mb-0">Track and manage your logistics activity.</p>
         </div>
-        <a href="{{ route('user.logistics.book') }}" class="btn btn-po-primary px-4 shadow-sm">
-            <i class="fa fa-plus-circle mr-1"></i> New Shipment
-        </a>
+        <div class="d-flex flex-wrap justify-content-end">
+            @php $agent = auth()->user()?->deliveryAgent; @endphp
+            @if($agent)
+                <a href="{{ route('logistics.agent.dashboard') }}" class="btn btn-outline-light px-4 shadow-sm mr-2 mb-2" style="border-radius: 12px;">
+                    <i class="fa fa-motorcycle mr-1" style="color: var(--po-primary);"></i> Agent Portal
+                </a>
+            @endif
+            <a href="{{ \Illuminate\Support\Facades\Route::has('services.user.logistics.book') ? route('services.user.logistics.book') : route('logistics.book') }}" class="btn btn-po-primary px-4 shadow-sm mb-2">
+                <i class="fa fa-plus-circle mr-1"></i> New Shipment
+            </a>
+        </div>
     </div>
 </div>
 
@@ -41,7 +49,7 @@
     </div>
     <div class="col-md-4 mb-3">
         <div class="glass-card p-4 d-flex align-items-center">
-            <div class="rounded-circle mr-3 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px; background: rgba(34, 197, 94, 0.1); color: #22c55e);">
+            <div class="rounded-circle mr-3 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px; background: rgba(34, 197, 94, 0.1); color: #22c55e;">
                 <i class="fa fa-check-circle fa-lg"></i>
             </div>
             <div>
@@ -140,7 +148,7 @@
             didOpen: () => { Swal.showLoading() }
         });
 
-        $.post("{{ route('public.logistics.track') }}", {
+        $.post("{{ route('logistics.track') }}", {
             _token: "{{ csrf_token() }}",
             tracking_id: id
         }, function(res) {

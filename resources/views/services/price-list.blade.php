@@ -3,7 +3,7 @@
 @section('title', 'Service Price List | Fuwa.NG - Transparent & Competitive Pricing')
 @section('meta_description', 'View the complete price list for all Fuwa.NG services, including NIN verification, BVN validation, VTU, and more. Transparent, pay-as-you-go pricing for your business.')
 @section('meta_keywords', 'Fuwa.NG pricing, NIN verification price, BVN validation price, VTU prices Nigeria, identity verification costs')
-@section('canonical', route('services.price-list'))
+@section('canonical', route('services.price_list'))
 
 @section('content')
 <div class="dashboard-wrapper fade-in">
@@ -212,6 +212,7 @@
                     @endforeach
                 @endif
             @endforeach
+        @endforeach
         @if((!$customPrices->has('nin') && isset($legacyPrices->nin_by_nin_price)))
         @if($counter > 0),@endif
         {

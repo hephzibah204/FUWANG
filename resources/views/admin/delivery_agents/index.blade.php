@@ -1,4 +1,4 @@
-@extends('layouts.admin')
+@extends('layouts.nexus')
 
 @section('title', 'Manage Delivery Agents')
 

@@ -1,4 +1,86 @@
 document.addEventListener('DOMContentLoaded', () => {
+    const sidebar = document.getElementById('sidebar');
+    const sidebarToggleBtn = document.getElementById('sidebarToggle');
+    const minimizeSidebarBtn = document.getElementById('minimizeSidebarBtn');
+    const isMobileViewport = () => window.matchMedia('(max-width: 991.98px)').matches;
+    const getSavedMinimized = () => {
+        try {
+            return localStorage.getItem('sidebar-minimized') === 'true';
+        } catch (e) {
+            return false;
+        }
+    };
+    const setSavedMinimized = (value) => {
+        try {
+            localStorage.setItem('sidebar-minimized', value ? 'true' : 'false');
+        } catch (e) {
+            // ignore storage failure
+        }
+    };
+    const syncSidebarViewportState = () => {
+        if (!sidebar) {
+            return;
+        }
+        // On mobile, force expanded drawer behavior (no minimized rail state).
+        if (isMobileViewport()) {
+            sidebar.classList.remove('minimized');
+            return;
+        }
+        sidebar.classList.toggle('minimized', getSavedMinimized());
+    };
+
+    // Dashboard sidebar toggle (works for both user and admin layouts)
+    if (sidebarToggleBtn && sidebar) {
+        window.__NEXUS_SIDEBAR_HANDLED = true;
+        sidebarToggleBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            syncSidebarViewportState();
+            const isOpen = sidebar.classList.toggle('open');
+            sidebarToggleBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (window.innerWidth >= 992) {
+                return;
+            }
+            const target = e.target;
+            if (!(target instanceof Element)) {
+                return;
+            }
+            if (sidebar.classList.contains('open') && !sidebar.contains(target) && !sidebarToggleBtn.contains(target)) {
+                sidebar.classList.remove('open');
+                sidebarToggleBtn.setAttribute('aria-expanded', 'false');
+            }
+        });
+    }
+
+    // Desktop collapse toggle fallback in external JS
+    if (minimizeSidebarBtn && sidebar) {
+        window.__NEXUS_SIDEBAR_HANDLED = true;
+        const collapseIcon = minimizeSidebarBtn.querySelector('.collapse-icon');
+        const applyMinimizedState = (isMinimized) => {
+            if (!isMobileViewport()) {
+                sidebar.classList.toggle('minimized', isMinimized);
+            }
+            if (collapseIcon) {
+                collapseIcon.style.transform = isMinimized ? 'rotate(180deg)' : 'rotate(0)';
+            }
+        };
+
+        applyMinimizedState(getSavedMinimized());
+
+        minimizeSidebarBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const isMinimized = !sidebar.classList.contains('minimized');
+            applyMinimizedState(isMinimized);
+            setSavedMinimized(isMinimized);
+        });
+    }
+
+    if (sidebar) {
+        syncSidebarViewportState();
+        window.addEventListener('resize', syncSidebarViewportState);
+    }
     
     // 1. Intersection Observer for scroll animations (fade-up elements)
     const observerOptions = {
@@ -13,11 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 entry.target.classList.add('visible');
                 observer.unobserve(entry.target); // only animate once
             }
-            $('.submenu-toggle').on('click', function() {
-        $(this).parent('.has-submenu').toggleClass('open');
-        $(this).find('.fa-chevron-down').toggleClass('fa-chevron-up');
-    });
-});
+        });
     }, observerOptions);
 
     const fadeElements = document.querySelectorAll('.fade-up');
@@ -45,6 +123,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (mobileToggle) {
         mobileToggle.addEventListener('click', () => {
+            if (!navLinks) {
+                return;
+            }
             // Note: Currently hidden via display:none in css,
             // You can enhance this with a proper slide-out menu style in styles.css later
             if (navLinks.style.display === 'flex') {
@@ -68,6 +149,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // 4. Navbar scroll background effect
     const navbar = document.querySelector('.navbar');
     window.addEventListener('scroll', () => {
+        if (!navbar) {
+            return;
+        }
         if (window.scrollY > 50) {
             navbar.style.background = 'rgba(3, 7, 18, 0.95)';
             navbar.style.boxShadow = '0 10px 30px rgba(0, 0, 0, 0.5)';

@@ -41,8 +41,31 @@ return [
     ],
 
     'flutterwave' => [
-        'secret' => env('FLW_SECRET_KEY'),
-        'webhook_hash' => env('FLW_SECRET_HASH'),
+        'public' => env('FLUTTERWAVE_PUBLIC_KEY'),
+        'secret' => env('FLUTTERWAVE_SECRET_KEY'),
+        'encryption' => env('FLUTTERWAVE_ENCRYPTION_KEY'),
+        'webhook_hash' => env('FLUTTERWAVE_SECRET_HASH'),
+    ],
+
+    'monnify' => [
+        'api_key' => env('MONNIFY_API_KEY'),
+        'secret_key' => env('MONNIFY_SECRET_KEY'),
+        'contract_code' => env('MONNIFY_CONTRACT_CODE'),
+        // Leave null to auto-pick live vs sandbox from monnify.sandbox
+        'endpoint_auth' => env('MONNIFY_ENDPOINT_AUTH'),
+        'endpoint_reserve' => env('MONNIFY_ENDPOINT_RESERVE'),
+        'sandbox' => filter_var(env('MONNIFY_SANDBOX', false), FILTER_VALIDATE_BOOLEAN),
+    ],
+
+    'paystack' => [
+        'public' => env('PAYSTACK_PUBLIC_KEY'),
+        'secret' => env('PAYSTACK_SECRET_KEY'),
+    ],
+
+    'payvessel' => [
+        'api_key' => env('PAYVESSEL_API_KEY'),
+        'endpoint' => env('PAYVESSEL_ENDPOINT'),
+        'business_id' => env('PAYVESSEL_BUSINESS_ID'),
     ],
 
     'openai' => [
@@ -56,6 +79,24 @@ return [
 
     'email_webhooks' => [
         'secret' => env('EMAIL_WEBHOOK_SECRET'),
+    ],
+
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect' => env('GOOGLE_REDIRECT_URI'),
+    ],
+
+    'logistics' => [
+        'jwt_secret' => env('LOGISTICS_JWT_SECRET'),
+        'jwt_ttl_seconds' => (int) env('LOGISTICS_JWT_TTL_SECONDS', 3600),
+        'agent_fee_standard' => (float) env('LOGISTICS_AGENT_FEE_STANDARD', 1500),
+        'agent_fee_express' => (float) env('LOGISTICS_AGENT_FEE_EXPRESS', 2500),
+        'agent_fee_overnight' => (float) env('LOGISTICS_AGENT_FEE_OVERNIGHT', 3500),
+    ],
+
+    'google_maps' => [
+        'api_key' => env('GOOGLE_MAPS_API_KEY'),
     ],
 
 ];

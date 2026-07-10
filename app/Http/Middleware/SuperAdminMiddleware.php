@@ -27,7 +27,13 @@ class SuperAdminMiddleware
             return $next($request);
         }
 
-        return redirect()->route('admin.dashboard')->with('error', 'Unauthorized access. Only Super Admins can perform this action.');
+        $message = 'Unauthorized access. Only Super Admins can perform this action.';
+
+        if ($request->expectsJson()) {
+            return response()->json(['status' => false, 'message' => $message], 403);
+        }
+
+        return redirect()->route('admin.dashboard')->with('error', $message);
     }
 
     private function ensureUserForAdmin($admin)

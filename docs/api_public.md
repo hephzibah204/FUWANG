@@ -9,7 +9,34 @@
 
 The API uses **Bearer tokens** (no sessions).
 
-### Create token
+### Apply for API access
+
+Before you can create a token, you must apply for API access and be approved by an administrator.
+
+`POST /auth/apply-api`
+
+Request body:
+
+```json
+{
+  "email": "user@example.com",
+  "password": "Password@123",
+  "intended_use": "Building a fintech app for NIN verification",
+  "website": "https://myapp.com",
+  "company_name": "My App Ltd"
+}
+```
+
+Response:
+
+```json
+{
+  "status": true,
+  "message": "Your API application has been submitted and is pending review."
+}
+```
+
+### Create token (Only after approval)
 
 `POST /auth/token`
 

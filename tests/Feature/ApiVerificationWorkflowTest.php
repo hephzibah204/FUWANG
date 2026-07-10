@@ -189,13 +189,16 @@ class ApiVerificationWorkflowTest extends TestCase
         $balance = AccountBalance::where('user_id', $user->id)->firstOrFail();
         $this->assertSame(1000.0, (float) $balance->user_balance);
 
-        $tx = Transaction::where('user_email', $user->email)->latest('id')->firstOrFail();
-        $this->assertSame('success', $tx->status);
+        $latest = Transaction::where('user_email', $user->email)->latest('id')->firstOrFail();
+        $this->assertSame('success', $latest->status);
 
-        $failed = Transaction::where('user_email', $user->email)
-            ->where('status', 'failed')
+        $refunded = Transaction::where('user_email', $user->email)
+            ->where('status', 'refunded')
             ->first();
-        $this->assertNotNull($failed);
+        $this->assertNotNull($refunded);
+        $this->assertNotNull(
+            Transaction::where('transaction_id', $refunded->transaction_id . '-RF')->first()
+        );
     }
 }
 

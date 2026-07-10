@@ -16,6 +16,13 @@
 
     <div class="card border-0 shadow-sm" style="background:#1e293b;">
         <div class="card-body">
+            @if($providers->isEmpty())
+                <div class="alert alert-warning">
+                    No SMS providers configured yet. Add one in
+                    <a href="{{ route('admin.custom_apis.index') }}" class="alert-link">Custom APIs</a>
+                    using service type <code>sms_gateway</code>.
+                </div>
+            @endif
             <form method="POST" action="{{ route('admin.sms_campaigns.store') }}">
                 @csrf
                 <div class="row">
@@ -26,7 +33,7 @@
                     </div>
                     <div class="col-md-6 form-group">
                         <label class="text-white-50 small">Provider</label>
-                        <select name="custom_api_id" class="form-control @error('custom_api_id') is-invalid @enderror">
+                        <select name="custom_api_id" class="form-control text-white @error('custom_api_id') is-invalid @enderror" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
                             <option value="">Auto (highest priority active)</option>
                             @foreach($providers as $p)
                                 <option value="{{ $p->id }}" {{ (string) old('custom_api_id') === (string) $p->id ? 'selected' : '' }}>
@@ -54,7 +61,7 @@
                 <div class="row">
                     <div class="col-md-4 form-group">
                         <label class="text-white-50 small">Audience</label>
-                        <select name="audience_type" class="form-control @error('audience_type') is-invalid @enderror" required>
+                        <select name="audience_type" class="form-control text-white @error('audience_type') is-invalid @enderror" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);" required>
                             <option value="all" {{ old('audience_type', 'all') === 'all' ? 'selected' : '' }}>All users with phone</option>
                             <option value="phones" {{ old('audience_type') === 'phones' ? 'selected' : '' }}>Phones list</option>
                             <option value="user_ids" {{ old('audience_type') === 'user_ids' ? 'selected' : '' }}>User IDs list</option>

@@ -19,7 +19,12 @@ class PageController extends Controller
 
     public function create()
     {
-        return view('admin.pages.create');
+        $publishedPages = Page::query()
+            ->where('status', 'published')
+            ->orderBy('title')
+            ->get(['id', 'title', 'slug', 'content']);
+
+        return view('admin.pages.create', compact('publishedPages'));
     }
 
     public function store(Request $request)

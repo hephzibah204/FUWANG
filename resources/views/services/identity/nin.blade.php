@@ -30,15 +30,28 @@
                 <div class="row">
                     <div class="col-lg-8">
                         <div class="panel-card p-4 mb-4" id="searchPanel">
+                            @if(session('status'))
+                                <div class="alert alert-success mb-4">
+                                    <i class="fa-solid fa-circle-check mr-2"></i>{{ session('status') }}
+                                </div>
+                            @endif
+                            @if($errors->any())
+                                <div class="alert alert-danger mb-4">
+                                    <i class="fa-solid fa-circle-xmark mr-2"></i>{{ $errors->first() }}
+                                </div>
+                            @endif
+
                             <!-- Lookup Mode Tabs (NIN / Phone / Tracking ID / Demographic) -->
                             <div class="nin-tabs mb-4">
-                                <button class="nin-tab active" onclick="switchMode('nin', this)">Standard NIN Lookup</button>
-                                <button class="nin-tab" onclick="switchMode('selfie', this)">Face (Selfie)</button>
-                                <button class="nin-tab" onclick="switchMode('phone', this)">Phone Lookup</button>
-                                <button class="nin-tab" onclick="switchMode('tracking', this)">Tracking ID</button>
-                                <button class="nin-tab" onclick="switchMode('demographic', this)">Demographic Search</button>
-                                <button class="nin-tab" onclick="switchMode('share_code', this)">Share Code</button>
-                                <button class="nin-tab" onclick="switchMode('requery', this)">Requery</button>
+                                <button class="nin-tab {{ ($initialMode ?? 'nin') === 'nin' ? 'active' : '' }}" data-mode="nin" onclick="switchMode('nin', this)">Standard NIN Lookup</button>
+                                <button class="nin-tab {{ ($initialMode ?? 'nin') === 'selfie' ? 'active' : '' }}" data-mode="selfie" onclick="switchMode('selfie', this)">Face (Selfie)</button>
+                                <button class="nin-tab {{ ($initialMode ?? 'nin') === 'phone' ? 'active' : '' }}" data-mode="phone" onclick="switchMode('phone', this)">Phone Lookup</button>
+                                <button class="nin-tab {{ ($initialMode ?? 'nin') === 'tracking' ? 'active' : '' }}" data-mode="tracking" onclick="switchMode('tracking', this)">Tracking ID</button>
+                                <button class="nin-tab {{ ($initialMode ?? 'nin') === 'validation' ? 'active' : '' }}" data-mode="validation" onclick="switchMode('validation', this)">NIN Validation</button>
+                                <button class="nin-tab {{ ($initialMode ?? 'nin') === 'validation_status' ? 'active' : '' }}" data-mode="validation_status" onclick="switchMode('validation_status', this)">Validation Status</button>
+                                <button class="nin-tab {{ ($initialMode ?? 'nin') === 'demographic' ? 'active' : '' }}" data-mode="demographic" onclick="switchMode('demographic', this)">Demographic Search</button>
+                                <button class="nin-tab {{ ($initialMode ?? 'nin') === 'share_code' ? 'active' : '' }}" data-mode="share_code" onclick="switchMode('share_code', this)">Share Code</button>
+                                <button class="nin-tab {{ ($initialMode ?? 'nin') === 'requery' ? 'active' : '' }}" data-mode="requery" onclick="switchMode('requery', this)">Requery</button>
                             </div>
 
                             <div class="consent-box mb-4">
@@ -48,14 +61,23 @@
 
                             <form id="verifyForm" action="{{ route('services.nin.verify') }}" method="POST" enctype="multipart/form-data">
                                 @csrf
-                                <input type="hidden" id="modeInput" name="mode" value="nin">
+                                <input type="hidden" name="_nin_verify_json" value="1">
+                                <input type="hidden" id="modeInput" name="mode" value="{{ $initialMode ?? 'nin' }}">
 
                                 <!-- NIN / Phone / Tracking ID Input (hidden for Demographic) -->
                                 <div class="form-group mb-4" id="numberGroup">
-                                    <label for="number" class="font-weight-600 mb-2" id="number-label">National Identification Number (NIN)</label>
+                                    <label for="number" class="font-weight-600 mb-2" id="number-label">
+                                        @if(($initialMode ?? 'nin') === 'validation')
+                                            NIN to Validate
+                                        @elseif(($initialMode ?? 'nin') === 'validation_status')
+                                            NIN to Check Status
+                                        @else
+                                            National Identification Number (NIN)
+                                        @endif
+                                    </label>
                                     <div class="input-wrap">
                                         <i class="fa-regular fa-id-card" id="number-icon"></i>
-                                        <input type="text" id="number" name="number" class="form-control" placeholder="Enter 11-digit NIN" maxlength="25" required>
+                                        <input type="text" id="number" name="number" class="form-control" placeholder="{{ (($initialMode ?? 'nin') === 'validation') ? 'Enter 11-digit NIN (record not found case)' : ((($initialMode ?? 'nin') === 'validation_status') ? 'Enter the NIN used for validation' : 'Enter 11-digit NIN') }}" maxlength="25" required>
                                     </div>
                                     <p class="small text-muted mt-2">Verification Fee: <span class="text-white font-weight-bold" id="priceDisplay">₦{{ number_format($prices['nin'], 2) }}</span></p>
                                 </div>
@@ -76,6 +98,34 @@
                                     <div class="input-wrap">
                                         <i class="fa-solid fa-key"></i>
                                         <input type="text" id="share_code" name="share_code" class="form-control" placeholder="Enter 6-character share code" maxlength="64">
+                                    </div>
+                                </div>
+
+                                <div class="form-group mb-4" id="shareReasonGroup" style="display:none;">
+                                    <label for="share_reason" class="font-weight-600 mb-2 small text-muted">Reason for Share Code Verification</label>
+                                    <div class="input-wrap">
+                                        <i class="fa-solid fa-clipboard-check"></i>
+                                        <select id="share_reason" name="share_reason" class="form-control">
+                                            <option value="">Select a reason</option>
+                                            <option value="nyscCheck">NYSC Check</option>
+                                            <option value="bank_kyc">Bank / KYC</option>
+                                            <option value="financialProducts">Financial Products</option>
+                                            <option value="employmentRecruitment">Employment Recruitment</option>
+                                            <option value="educationAdmission">Education Admission</option>
+                                            <option value="passportImmigration">Passport / Immigration</option>
+                                            <option value="telecommunicationSimReg">SIM Registration</option>
+                                            <option value="physicalAccess">Physical Access</option>
+                                            <option value="logicalVirtualAccess">Logical Virtual Access</option>
+                                            <option value="other">Other</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="form-group mb-4" id="shareReasonOtherGroup" style="display:none;">
+                                    <label for="share_reason_other" class="font-weight-600 mb-2 small text-muted">Other Reason</label>
+                                    <div class="input-wrap">
+                                        <i class="fa-solid fa-pen"></i>
+                                        <input type="text" id="share_reason_other" name="share_reason_other" class="form-control" placeholder="Enter reason" maxlength="120">
                                     </div>
                                 </div>
 
@@ -126,7 +176,7 @@
                                 </div>
 
                                 <!-- Output Type -->
-                                <div class="form-group mb-4">
+                                <div class="form-group mb-4" id="outputTypeGroup" style="{{ in_array(($initialMode ?? 'nin'), ['validation', 'validation_status'], true) ? 'display:none;' : '' }}">
                                     <label class="font-weight-600 mb-2 small text-muted">Output Type</label>
                                     <div class="d-flex align-items-center flex-wrap" style="gap: 12px;">
                                         <div class="custom-control custom-radio">
@@ -166,6 +216,22 @@
                                     </div>
                                 </div>
 
+                                <div class="form-group mb-4" id="validationReasonGroup" style="{{ (($initialMode ?? 'nin') === 'validation') ? '' : 'display:none;' }}">
+                                    <label for="validation_reason" class="font-weight-600 mb-2 small text-muted">Reason for Validation</label>
+                                    <div class="input-wrap">
+                                        <i class="fa-solid fa-triangle-exclamation"></i>
+                                        <select id="validation_reason" name="validation_reason" class="form-control">
+                                            <option value="">Select a reason</option>
+                                            <option value="sim_registration_record_not_found">SIM Registration (Record Not Found)</option>
+                                            <option value="bank_kyc_record_not_found">Bank / KYC (Record Not Found)</option>
+                                            <option value="government_portal_record_not_found">Government Portal (Record Not Found)</option>
+                                            <option value="nin_mismatch_correction">NIN Mismatch / Correction</option>
+                                            <option value="other">Other</option>
+                                        </select>
+                                    </div>
+                                    <p class="small text-muted mt-2 mb-0"><i class="fa-solid fa-circle-info mr-1"></i> NIN Validation is not instant. It submits your NIN for processing and may take 1–3 days.</p>
+                                </div>
+
                                 <!-- Provider / Advanced Routing (shown when multiple providers available) -->
                                 @if(isset($ninProviders) && $ninProviders->count() >= 1)
                                     <div class="form-group mb-4" id="providerSelectionGroup">
@@ -175,7 +241,7 @@
                                             <select id="api_provider_id" name="api_provider_id" class="form-control" required onchange="updateVerificationTypes()">
                                                 <option value="">-- Choose a Provider --</option>
                                                 @foreach($ninProviders as $provider)
-                                                    <option value="{{ $provider->id }}" data-types="{{ json_encode($provider->verificationTypes->where('status', true)) }}">{{ $provider->name }}</option>
+                                                    <option value="{{ $provider->id }}" data-provider="{{ $provider->provider_identifier }}" data-types="{{ json_encode($provider->verificationTypes->where('status', true)) }}">{{ $provider->name }}</option>
                                                 @endforeach
                                             </select>
                                         </div>
@@ -198,6 +264,7 @@
                                     <i class="fa-solid fa-magnifying-glass mr-2"></i> Verify Identity
                                 </button>
                             </form>
+                            <div id="ninResponseNotice" class="mt-3" style="display:none;"></div>
 
                             <!-- Result Section with Skeleton Loader -->
                             <div id="resultContainer" class="mt-4" style="display: none;">
@@ -283,8 +350,18 @@
                                                 <i class="fa fa-eye"></i> View
                                             </button>
                                             @if($res->id)
+                                                @php
+                                                    $ot = $res->response_data['_requested_output_type'] ?? 'premium_slip';
+                                                    $allowed = ['standard_slip', 'regular_slip', 'premium_slip', 'vnin_slip'];
+                                                    if (!in_array($ot, $allowed, true)) $ot = 'premium_slip';
+                                                @endphp
+                                                @if(in_array($res->service_type, ['nin_verification', 'nin_face_verification'], true))
+                                                    <a href="{{ route('services.nin.slip', ['id' => $res->id, 'type' => $ot]) }}" class="btn btn-xs btn-outline-light ml-1">
+                                                        <i class="fa fa-id-card"></i> Slip
+                                                    </a>
+                                                @endif
                                                 <a href="{{ route('services.verification.report', $res->id) }}" class="btn btn-xs btn-outline-light ml-1">
-                                                    <i class="fa fa-file-pdf"></i> PDF
+                                                    <i class="fa fa-file-pdf"></i> Report PDF
                                                 </a>
                                             @endif
                                         </td>
@@ -343,6 +420,7 @@
     .rg-cell { background: rgba(255,255,255,0.03); padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.05); }
     .rg-cell span { display: block; font-size: 0.7rem; color: var(--clr-text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
     .rg-cell strong { font-size: 0.9rem; color: #fff; }
+    .nin-slip-success-banner { background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.35); border-radius: 14px; padding: 16px 18px; }
     .badge-outline-primary { border: 1px solid rgba(59, 130, 246, 0.3); color: #3b82f6; background: transparent; font-size: 0.7rem; padding: 3px 8px; border-radius: 6px; }
     .mode-info { padding: 10px 12px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 10px; }
 </style>
@@ -352,14 +430,20 @@
 <script>
     const prices = @json($prices);
     const providerModes = @json($providerModes ?? []);
-    let currentMode = 'nin';
+    let currentMode = @json($initialMode ?? 'nin');
     let currentPrice = prices.nin;
+
+    function ninSubmitLabel(mode) {
+        if (mode === 'validation') return '<i class="fa-solid fa-upload mr-2"></i> Submit Validation';
+        if (mode === 'validation_status') return '<i class="fa-solid fa-rotate mr-2"></i> Check Status';
+        return '<i class="fa fa-search mr-2"></i> Verify Now';
+    }
 
     function filterProvidersByMode(mode) {
         const providerSelect = document.getElementById('api_provider_id');
         const providerGroup = document.getElementById('providerSelectionGroup');
         const noProviderWarning = document.getElementById('noProviderWarning');
-        const submitBtn = document.getElementById('submitBtn');
+        const submitBtn = document.getElementById('verify-btn');
         
         if (!providerSelect) return;
 
@@ -382,7 +466,7 @@
             }
         });
 
-        if (availableCount === 0) {
+        if (availableCount === 0 && submitBtn) {
             providerGroup.style.display = 'none';
             noProviderWarning.style.display = 'block';
             submitBtn.disabled = true;
@@ -390,14 +474,26 @@
         } else {
             providerGroup.style.display = 'block';
             noProviderWarning.style.display = 'none';
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = '<i class="fa fa-search mr-2"></i> Verify Now';
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = ninSubmitLabel(mode);
+            }
             
             // Auto-select if only one provider is available
             if (availableCount === 1) {
                 const availableOption = Array.from(providerSelect.options).find(opt => opt.style.display !== 'none' && opt.value !== '');
                 if (availableOption) {
                     providerSelect.value = availableOption.value;
+                }
+            }
+
+            if (mode === 'validation' || mode === 'validation_status') {
+                const robost = Array.from(providerSelect.options).find(opt => {
+                    if (opt.value === '' || opt.style.display === 'none') return false;
+                    return (opt.getAttribute('data-provider') || '').toLowerCase() === 'robosttech';
+                });
+                if (robost) {
+                    providerSelect.value = robost.value;
                 }
             }
         }
@@ -421,14 +517,34 @@
         const selfieInput = document.getElementById('selfie');
         const shareCodeGroup = document.getElementById('shareCodeGroup');
         const shareCodeInput = document.getElementById('share_code');
+        const shareReasonGroup = document.getElementById('shareReasonGroup');
+        const shareReasonSelect = document.getElementById('share_reason');
+        const shareReasonOtherGroup = document.getElementById('shareReasonOtherGroup');
+        const shareReasonOtherInput = document.getElementById('share_reason_other');
         const requeryGroup = document.getElementById('requeryGroup');
         const requeryInput = document.getElementById('reference_id');
+        const outputTypeGroup = document.getElementById('outputTypeGroup');
+        const validationReasonGroup = document.getElementById('validationReasonGroup');
+        const validationReason = document.getElementById('validation_reason');
+        const updateShareReasonOtherVisibility = () => {
+            if (!shareReasonSelect || !shareReasonOtherGroup || !shareReasonOtherInput) return;
+            const isOther = shareReasonSelect.value === 'other';
+            shareReasonOtherGroup.style.display = isOther ? '' : 'none';
+            shareReasonOtherInput.required = isOther;
+        };
+        if (shareReasonSelect) {
+            shareReasonSelect.onchange = updateShareReasonOtherVisibility;
+        }
         if (mode === 'phone') {
             numberGroup.style.display = '';
             selfieGroup.style.display = 'none';
             selfieInput.required = false;
             shareCodeGroup.style.display = 'none';
             shareCodeInput.required = false;
+            if (shareReasonGroup) shareReasonGroup.style.display = 'none';
+            if (shareReasonSelect) shareReasonSelect.required = false;
+            if (shareReasonOtherGroup) shareReasonOtherGroup.style.display = 'none';
+            if (shareReasonOtherInput) shareReasonOtherInput.required = false;
             requeryGroup.style.display = 'none';
             requeryInput.required = false;
             label.textContent = 'Phone Number';
@@ -436,12 +552,19 @@
             input.maxLength = 11;
             icon.className = 'fa-solid fa-phone';
             identityFields.style.display = 'none';
+            if (outputTypeGroup) outputTypeGroup.style.display = '';
+            if (validationReasonGroup) validationReasonGroup.style.display = 'none';
+            if (validationReason) validationReason.required = false;
         } else if (mode === 'tracking') {
             numberGroup.style.display = '';
             selfieGroup.style.display = 'none';
             selfieInput.required = false;
             shareCodeGroup.style.display = 'none';
             shareCodeInput.required = false;
+            if (shareReasonGroup) shareReasonGroup.style.display = 'none';
+            if (shareReasonSelect) shareReasonSelect.required = false;
+            if (shareReasonOtherGroup) shareReasonOtherGroup.style.display = 'none';
+            if (shareReasonOtherInput) shareReasonOtherInput.required = false;
             requeryGroup.style.display = 'none';
             requeryInput.required = false;
             label.textContent = 'Tracking ID';
@@ -449,12 +572,59 @@
             input.maxLength = 25;
             icon.className = 'fa-solid fa-fingerprint';
             identityFields.style.display = 'none';
+            if (outputTypeGroup) outputTypeGroup.style.display = '';
+            if (validationReasonGroup) validationReasonGroup.style.display = 'none';
+            if (validationReason) validationReason.required = false;
+        } else if (mode === 'validation') {
+            numberGroup.style.display = '';
+            selfieGroup.style.display = 'none';
+            selfieInput.required = false;
+            shareCodeGroup.style.display = 'none';
+            shareCodeInput.required = false;
+            if (shareReasonGroup) shareReasonGroup.style.display = 'none';
+            if (shareReasonSelect) shareReasonSelect.required = false;
+            if (shareReasonOtherGroup) shareReasonOtherGroup.style.display = 'none';
+            if (shareReasonOtherInput) shareReasonOtherInput.required = false;
+            requeryGroup.style.display = 'none';
+            requeryInput.required = false;
+            label.textContent = 'NIN to Validate';
+            input.placeholder = 'Enter 11-digit NIN (record not found case)';
+            input.maxLength = 25;
+            icon.className = 'fa-solid fa-wrench';
+            identityFields.style.display = 'none';
+            if (outputTypeGroup) outputTypeGroup.style.display = 'none';
+            if (validationReasonGroup) validationReasonGroup.style.display = '';
+            if (validationReason) validationReason.required = true;
+        } else if (mode === 'validation_status') {
+            numberGroup.style.display = '';
+            selfieGroup.style.display = 'none';
+            selfieInput.required = false;
+            shareCodeGroup.style.display = 'none';
+            shareCodeInput.required = false;
+            if (shareReasonGroup) shareReasonGroup.style.display = 'none';
+            if (shareReasonSelect) shareReasonSelect.required = false;
+            if (shareReasonOtherGroup) shareReasonOtherGroup.style.display = 'none';
+            if (shareReasonOtherInput) shareReasonOtherInput.required = false;
+            requeryGroup.style.display = 'none';
+            requeryInput.required = false;
+            label.textContent = 'NIN to Check Status';
+            input.placeholder = 'Enter the NIN used for validation';
+            input.maxLength = 25;
+            icon.className = 'fa-solid fa-rotate';
+            identityFields.style.display = 'none';
+            if (outputTypeGroup) outputTypeGroup.style.display = 'none';
+            if (validationReasonGroup) validationReasonGroup.style.display = 'none';
+            if (validationReason) validationReason.required = false;
         } else if (mode === 'selfie') {
             numberGroup.style.display = '';
             selfieGroup.style.display = '';
             selfieInput.required = true;
             shareCodeGroup.style.display = 'none';
             shareCodeInput.required = false;
+            if (shareReasonGroup) shareReasonGroup.style.display = 'none';
+            if (shareReasonSelect) shareReasonSelect.required = false;
+            if (shareReasonOtherGroup) shareReasonOtherGroup.style.display = 'none';
+            if (shareReasonOtherInput) shareReasonOtherInput.required = false;
             requeryGroup.style.display = 'none';
             requeryInput.required = false;
             label.textContent = 'National Identification Number (NIN)';
@@ -462,39 +632,66 @@
             input.maxLength = 11;
             icon.className = 'fa-regular fa-id-card';
             identityFields.style.display = 'none';
+            if (outputTypeGroup) outputTypeGroup.style.display = '';
+            if (validationReasonGroup) validationReasonGroup.style.display = 'none';
+            if (validationReason) validationReason.required = false;
         } else if (mode === 'demographic') {
             numberGroup.style.display = 'none';
             selfieGroup.style.display = 'none';
             selfieInput.required = false;
             shareCodeGroup.style.display = 'none';
             shareCodeInput.required = false;
+            if (shareReasonGroup) shareReasonGroup.style.display = 'none';
+            if (shareReasonSelect) shareReasonSelect.required = false;
+            if (shareReasonOtherGroup) shareReasonOtherGroup.style.display = 'none';
+            if (shareReasonOtherInput) shareReasonOtherInput.required = false;
             requeryGroup.style.display = 'none';
             requeryInput.required = false;
             identityFields.style.display = '';
+            if (outputTypeGroup) outputTypeGroup.style.display = '';
+            if (validationReasonGroup) validationReasonGroup.style.display = 'none';
+            if (validationReason) validationReason.required = false;
         } else if (mode === 'share_code') {
             numberGroup.style.display = 'none';
             selfieGroup.style.display = 'none';
             selfieInput.required = false;
             shareCodeGroup.style.display = '';
             shareCodeInput.required = true;
+            if (shareReasonGroup) shareReasonGroup.style.display = '';
+            if (shareReasonSelect) shareReasonSelect.required = true;
+            updateShareReasonOtherVisibility();
             requeryGroup.style.display = 'none';
             requeryInput.required = false;
             identityFields.style.display = 'none';
+            if (outputTypeGroup) outputTypeGroup.style.display = '';
+            if (validationReasonGroup) validationReasonGroup.style.display = 'none';
+            if (validationReason) validationReason.required = false;
         } else if (mode === 'requery') {
             numberGroup.style.display = 'none';
             selfieGroup.style.display = 'none';
             selfieInput.required = false;
             shareCodeGroup.style.display = 'none';
             shareCodeInput.required = false;
+            if (shareReasonGroup) shareReasonGroup.style.display = 'none';
+            if (shareReasonSelect) shareReasonSelect.required = false;
+            if (shareReasonOtherGroup) shareReasonOtherGroup.style.display = 'none';
+            if (shareReasonOtherInput) shareReasonOtherInput.required = false;
             requeryGroup.style.display = '';
             requeryInput.required = true;
             identityFields.style.display = 'none';
+            if (outputTypeGroup) outputTypeGroup.style.display = '';
+            if (validationReasonGroup) validationReasonGroup.style.display = 'none';
+            if (validationReason) validationReason.required = false;
         } else {
             numberGroup.style.display = '';
             selfieGroup.style.display = 'none';
             selfieInput.required = false;
             shareCodeGroup.style.display = 'none';
             shareCodeInput.required = false;
+            if (shareReasonGroup) shareReasonGroup.style.display = 'none';
+            if (shareReasonSelect) shareReasonSelect.required = false;
+            if (shareReasonOtherGroup) shareReasonOtherGroup.style.display = 'none';
+            if (shareReasonOtherInput) shareReasonOtherInput.required = false;
             requeryGroup.style.display = 'none';
             requeryInput.required = false;
             label.textContent = 'National Identification Number (NIN)';
@@ -502,6 +699,9 @@
             input.maxLength = 11;
             icon.className = 'fa-regular fa-id-card';
             identityFields.style.display = 'none';
+            if (outputTypeGroup) outputTypeGroup.style.display = '';
+            if (validationReasonGroup) validationReasonGroup.style.display = 'none';
+            if (validationReason) validationReason.required = false;
         }
         input.required = !['demographic', 'share_code', 'requery'].includes(mode);
         document.getElementById('priceDisplay').textContent = '₦' + currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -562,7 +762,54 @@
 
     function viewVaultResult(data) {
         switchMainPanel('verify', document.querySelector('.s-tab'));
-        displayResult(data);
+        displayResultWrapper({ status: true, data: data });
+    }
+
+    function ninExtractAjaxErrorMessage(xhr) {
+        const j = xhr.responseJSON;
+        if (j) {
+            if (j.message) {
+                return j.message;
+            }
+            if (j.errors && typeof j.errors === 'object') {
+                const parts = [];
+                Object.keys(j.errors).forEach(function (k) {
+                    const v = j.errors[k];
+                    if (Array.isArray(v)) {
+                        parts.push(v.join(' '));
+                    } else if (v) {
+                        parts.push(String(v));
+                    }
+                });
+                if (parts.length) {
+                    return parts.join(' ');
+                }
+            }
+        }
+        if (xhr.status === 0) {
+            return 'Network error — check your connection and try again.';
+        }
+        return 'The request could not be completed. Please try again.';
+    }
+
+    function ninSetResponseNotice(type, message) {
+        const notice = document.getElementById('ninResponseNotice');
+        if (!notice) return;
+        const kind = (type === 'success') ? 'success' : (type === 'warning' ? 'warning' : 'danger');
+        const icon = kind === 'success'
+            ? 'fa-circle-check'
+            : (kind === 'warning' ? 'fa-triangle-exclamation' : 'fa-circle-xmark');
+        notice.className = `alert alert-${kind} mt-3`;
+        notice.innerHTML = `<i class="fa-solid ${icon} mr-2"></i>${message || ''}`;
+        notice.style.display = '';
+    }
+
+    function ninClearResponseNotice() {
+        const notice = document.getElementById('ninResponseNotice');
+        if (!notice) return;
+        notice.style.display = 'none';
+        notice.innerHTML = '';
+        notice.className = 'mt-3';
     }
 
     function displayResultWrapper(res) {
@@ -604,7 +851,19 @@
         if (res.report_url) {
             actionButtons = `<a class="btn btn-outline-light flex-grow-1" href="${res.report_url}"><i class="fa fa-file-pdf mr-2"></i> Download Report</a>` + actionButtons;
         }
+        const slipBanner = res.slip_url
+            ? `<div class="nin-slip-success-banner mb-4">
+                    <div class="d-flex align-items-start gap-3">
+                        <i class="fa-solid fa-circle-check text-success mt-1"></i>
+                        <div>
+                            <strong class="text-white d-block mb-1">Verification successful</strong>
+                            <p class="small mb-0 text-muted">Your record was verified. Use <strong class="text-white">Download Slip</strong> below to open the PDF. If nothing opens, allow pop-ups for this site or tap the button again.</p>
+                        </div>
+                    </div>
+                </div>`
+            : '';
         const html = `
+            ${slipBanner}
             <div class="result-card-nexus animate__animated animate__fadeIn">
                 <div class="d-flex align-items-center gap-4 mb-4">
                     <img src="${photoSrc}" class="result-avatar" onerror="this.src='https://ui-avatars.com/api/?name=${data.firstname || 'N'}+${data.lastname || 'A'}&background=3b82f6&color=fff'">
@@ -627,9 +886,173 @@
         document.getElementById('resultContent').style.display = 'block';
     }
 
+    function ninShowSlipReadyModal(slipUrl, thenCallback) {
+        const finish = function (r) {
+            if (typeof thenCallback === 'function') {
+                thenCallback(r || {});
+            }
+        };
+        const openSlip = function () {
+            if (slipUrl) {
+                window.open(slipUrl, '_blank');
+            }
+        };
+        if (typeof Swal !== 'undefined' && typeof Swal.fire === 'function') {
+            Swal.fire({
+                icon: 'success',
+                title: 'Verification successful',
+                html: '<p class="text-start small mb-0">Your NIN lookup completed successfully. Download the slip PDF when you are ready, or choose <strong>View details on page</strong> to see the summary first.</p>',
+                confirmButtonText: 'Download slip (PDF)',
+                showCancelButton: true,
+                cancelButtonText: 'View details on page',
+                allowOutsideClick: false,
+                heightAuto: false,
+                scrollbarPadding: true,
+                background: '#0a0a0f',
+                color: '#fff',
+                confirmButtonColor: '#3b82f6'
+            }).then(function (r) {
+                if (r.isConfirmed && slipUrl) {
+                    openSlip();
+                }
+                finish(r);
+            });
+            return;
+        }
+        if (window.confirm('Verification successful. Open slip PDF in a new tab?')) {
+            openSlip();
+        }
+        finish({ isConfirmed: false });
+    }
+
+    function ninRenderValidationSubmission(res) {
+        const nin = (res.data && (res.data.nin || res.data.NIN)) ? (res.data.nin || res.data.NIN) : '';
+        const resultId = res.result_id || '';
+        const statusUrl = res.status_url || '';
+        const html = `
+            <div class="result-card-nexus animate__animated animate__fadeIn">
+                <div class="d-flex align-items-start gap-3 mb-3">
+                    <i class="fa-solid fa-circle-check text-success mt-1"></i>
+                    <div>
+                        <div class="badge-accent bg-warning-light text-warning mb-2 border-0"><i class="fa-solid fa-hourglass-half"></i> Submitted</div>
+                        <h4 class="h5 font-weight-bold mb-1">NIN Validation Submitted</h4>
+                        <p class="text-muted small m-0">${res.message || 'Your validation request has been submitted. Please check status later.'}</p>
+                    </div>
+                </div>
+                <div class="result-grid-nexus">
+                    <div class="result-cell"><span class="cell-label">NIN</span><span class="cell-value">${nin || '—'}</span></div>
+                    <div class="result-cell"><span class="cell-label">Reference</span><span class="cell-value">${res.reference_id || '—'}</span></div>
+                </div>
+                <div class="mt-4 pt-3 border-top border-white-5 d-flex gap-3">
+                    <button class="btn btn-outline-light flex-grow-1" onclick="ninCheckValidationStatus('${statusUrl}', '${nin}', '${resultId}')">
+                        <i class="fa-solid fa-rotate mr-2"></i> Check Status
+                    </button>
+                    <button class="btn btn-outline-light flex-grow-1" onclick="switchMainPanel('vault', document.querySelectorAll('.s-tab')[1])">
+                        <i class="fa-solid fa-box-archive mr-2"></i> Open Vault
+                    </button>
+                </div>
+            </div>
+        `;
+        ninSetResponseNotice('success', res.message || 'Validation submitted successfully.');
+        document.getElementById('searchPanel').querySelector('form').style.display = 'none';
+        document.getElementById('resultContainer').style.display = 'block';
+        document.getElementById('skeletonLoader').style.display = 'none';
+        document.getElementById('resultContent').innerHTML = html;
+        document.getElementById('resultContent').style.display = 'block';
+    }
+
+    function ninCheckValidationStatus(statusUrl, nin, resultId) {
+        if (!statusUrl || !nin) return;
+        $('#resultContainer').show();
+        $('#skeletonLoader').show();
+        $('#resultContent').hide().empty();
+        $.ajax({
+            url: statusUrl,
+            method: 'POST',
+            dataType: 'json',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': document.querySelector('input[name=\"_token\"]').value
+            },
+            data: {
+                nin,
+                result_id: resultId || null
+            },
+            success: function (r) {
+                $('#skeletonLoader').hide();
+                if (!r.status) {
+                    ninSetResponseNotice('error', r.message || 'Unable to fetch validation status.');
+                    Swal.fire({
+                        title: 'Status check failed',
+                        text: r.message || 'Unable to fetch status.',
+                        icon: 'error',
+                        background: '#0a0a0f',
+                        color: '#fff'
+                    });
+                    $('#resultContainer').hide();
+                    return;
+                }
+                ninSetResponseNotice('success', r.message || 'Validation status fetched.');
+                const data = r.data || {};
+                const statusText = data.status || (data['in-progress'] ? 'in-progress' : 'pending');
+                const html = `
+                    <div class="result-card-nexus animate__animated animate__fadeIn">
+                        <div class="d-flex align-items-start gap-3 mb-3">
+                            <i class="fa-solid fa-circle-info text-primary mt-1"></i>
+                            <div>
+                                <div class="badge-accent bg-warning-light text-warning mb-2 border-0"><i class="fa-solid fa-hourglass-half"></i> ${statusText}</div>
+                                <h4 class="h5 font-weight-bold mb-1">Validation Status</h4>
+                                <p class="text-muted small m-0">${r.message || 'Status fetched.'}</p>
+                            </div>
+                        </div>
+                        <div class="result-grid-nexus">
+                            <div class="result-cell"><span class="cell-label">NIN</span><span class="cell-value">${nin}</span></div>
+                            <div class="result-cell"><span class="cell-label">Status</span><span class="cell-value">${statusText}</span></div>
+                        </div>
+                        <div class="mt-4 pt-3 border-top border-white-5 d-flex gap-3">
+                            <button class="btn btn-outline-light flex-grow-1" onclick="ninCheckValidationStatus('${statusUrl}', '${nin}', '${resultId}')">
+                                <i class="fa-solid fa-rotate mr-2"></i> Refresh
+                            </button>
+                            <button class="btn btn-outline-light flex-grow-1" onclick="switchMainPanel('vault', document.querySelectorAll('.s-tab')[1])">
+                                <i class="fa-solid fa-box-archive mr-2"></i> Open Vault
+                            </button>
+                        </div>
+                    </div>
+                `;
+                document.getElementById('resultContainer').style.display = 'block';
+                document.getElementById('resultContent').innerHTML = html;
+                document.getElementById('resultContent').style.display = 'block';
+            },
+            error: function (xhr) {
+                $('#skeletonLoader').hide();
+                const msg = ninExtractAjaxErrorMessage(xhr);
+                ninSetResponseNotice('error', msg);
+                Swal.fire({
+                    title: 'Status check failed',
+                    text: msg,
+                    icon: 'error',
+                    background: '#0a0a0f',
+                    color: '#fff'
+                });
+                $('#resultContainer').hide();
+            }
+        });
+    }
+
     $(document).ready(function() {
-        // Initialize verification types and provider filtering based on default mode
-        filterProvidersByMode(currentMode);
+        @if(session('nin_slip_download_url'))
+        window.setTimeout(function () {
+            ninShowSlipReadyModal(@json(session('nin_slip_download_url')), function () {});
+        }, 200);
+        @endif
+
+        const initialBtn = document.querySelector('.nin-tab[data-mode=\"' + currentMode + '\"]') || document.querySelector('.nin-tab[data-mode=\"nin\"]');
+        if (initialBtn) {
+            switchMode(currentMode, initialBtn);
+        } else {
+            filterProvidersByMode(currentMode);
+        }
         
         $('#selfie').on('change', function() {
             const file = this.files && this.files[0] ? this.files[0] : null;
@@ -645,6 +1068,7 @@
 
         $('#verifyForm').on('submit', function(e) {
             e.preventDefault();
+            ninClearResponseNotice();
             let btn = $('#verify-btn');
             let originalText = btn.html();
             const title = currentMode === 'selfie' ? 'Confirm In-Person Verification' : 'Confirm NIN Lookup';
@@ -669,24 +1093,74 @@
                         data: formData,
                         processData: false,
                         contentType: false,
+                        dataType: 'json',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
                         success: function(response) {
                             $('#skeletonLoader').hide();
+                            btn.prop('disabled', false).html(originalText);
                             if (response.status) {
-                                displayResultWrapper(response);
-                                Swal.fire({ title: 'Record Found!', icon: 'success', background: '#0a0a0f', color: '#fff', timer: 2000, showConfirmButton: false });
+                                ninSetResponseNotice('success', response.message || 'Request completed successfully.');
+                                if (response.ui_state === 'validation_submitted') {
+                                    if (typeof Swal !== 'undefined' && typeof Swal.close === 'function') {
+                                        Swal.close();
+                                    }
+                                    ninRenderValidationSubmission(response);
+                                    return;
+                                }
+                                const slipUrl = response.slip_url;
+
+                                if (slipUrl) {
+                                    $('#resultContainer').hide();
+                                    if (typeof Swal !== 'undefined' && typeof Swal.close === 'function') {
+                                        Swal.close();
+                                    }
+                                    window.setTimeout(function () {
+                                        ninShowSlipReadyModal(slipUrl, function () {
+                                            $('#resultContainer').show();
+                                            displayResultWrapper(response);
+                                        });
+                                    }, 150);
+                                } else {
+                                    displayResultWrapper(response);
+                                    if (typeof Swal !== 'undefined' && typeof Swal.fire === 'function') {
+                                        Swal.fire({
+                                            icon: 'success',
+                                            title: 'Verification successful',
+                                            text: response.message || 'Identity details are shown below.',
+                                            confirmButtonColor: '#3b82f6',
+                                            background: '#0a0a0f',
+                                            color: '#fff'
+                                        });
+                                    }
+                                }
                             } else {
-                                Swal.fire({ title: 'Verification Failed', text: response.message, icon: 'error', background: '#0a0a0f', color: '#fff' });
+                                ninSetResponseNotice('error', response.message || 'Verification failed.');
                                 $('#resultContainer').hide();
-                                btn.prop('disabled', false).html(originalText);
+                                Swal.fire({
+                                    title: 'Verification failed',
+                                    text: response.message || 'The provider could not complete this lookup. If your wallet was charged, a refund is processed automatically for failed verifications.',
+                                    icon: 'error',
+                                    background: '#0a0a0f',
+                                    color: '#fff'
+                                });
                             }
                         },
                         error: function(xhr) {
                             $('#skeletonLoader').hide();
-                            let msg = 'NIMC Gateway is currently busy. Please try again.';
-                            if (xhr.responseJSON && xhr.responseJSON.message) msg = xhr.responseJSON.message;
-                            Swal.fire({ title: 'Connection Error', text: msg, icon: 'error', background: '#0a0a0f', color: '#fff' });
-                            $('#resultContainer').hide();
                             btn.prop('disabled', false).html(originalText);
+                            const msg = ninExtractAjaxErrorMessage(xhr);
+                            ninSetResponseNotice('error', msg);
+                            Swal.fire({
+                                title: xhr.status === 422 ? 'Invalid request' : 'Request failed',
+                                text: msg,
+                                icon: 'error',
+                                background: '#0a0a0f',
+                                color: '#fff'
+                            });
+                            $('#resultContainer').hide();
                         }
                     });
                 }

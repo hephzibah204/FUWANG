@@ -493,8 +493,8 @@ return [
                 'secondary_label' => 'Sign in to bid',
             ],
             'links' => [
-                'primary' => '/explore/auctions',
-                'secondary' => '/login',
+                'primary' => '/auction',
+                'secondary' => '/auction/login',
             ],
             'image' => [
                 'gradient' => 'linear-gradient(135deg, rgba(236,72,153,0.16), rgba(245,158,11,0.10))',

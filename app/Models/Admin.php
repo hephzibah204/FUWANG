@@ -8,11 +8,10 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use PragmaRX\Google2FALaravel\Support\Traits\TwoFactorAuthenticatable;
 
 class Admin extends Authenticatable
 {
-    use Notifiable, HasRoles, HasFactory, TwoFactorAuthenticatable, Loggable;
+    use Notifiable, HasRoles, HasFactory, Loggable;
 
     protected $fillable = [
         'username',
@@ -27,6 +26,7 @@ class Admin extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'two_factor_secret',
         'google2fa_secret',
     ];
 

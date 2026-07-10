@@ -52,12 +52,12 @@
                         <th>Order Type</th>
                         <th>Status</th>
                         <th>Date</th>
-                        <th class="text-right pr-4">Delta</th>
+                        <th class="text-right pr-4">Amount</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($transactions as $tx)
-                        @php $delta = (float) ($tx->balance_before - $tx->balance_after); @endphp
+                        @php $amount = abs((float) ($tx->balance_before - $tx->balance_after)); @endphp
                         <tr>
                             <td class="align-middle font-weight-bold text-white"><code class="text-primary">{{ $tx->transaction_id }}</code></td>
                             <td class="align-middle">
@@ -70,7 +70,7 @@
                                 </span>
                             </td>
                             <td class="align-middle text-muted small">{{ $tx->created_at->format('M d, Y H:i') }}</td>
-                            <td class="align-middle text-right pr-4 text-white">₦{{ number_format($delta, 2) }}</td>
+                            <td class="align-middle text-right pr-4 text-white">₦{{ number_format($amount, 2) }}</td>
                         </tr>
                     @empty
                         <tr>

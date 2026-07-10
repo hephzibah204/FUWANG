@@ -48,7 +48,7 @@ class AdminSandboxController extends Controller
             }
 
             $apiKey = $apiCenter->dataverify_api_key;
-            $endpoint = 'http://dataverify.com.ng/developers/fetch_script_prices/index.php';
+            $endpoint = 'https://dataverify.com.ng/developers/nin_slips/nin_premium';
         }
 
         try {
@@ -57,7 +57,7 @@ class AdminSandboxController extends Controller
                 $http = $http->withHeaders($headers);
             }
 
-            $response = $http->post($endpoint, [
+            $response = $http->asJson()->post($endpoint, [
                 'api_key' => $apiKey,
                 'nin' => $request->nin,
             ]);
@@ -108,7 +108,7 @@ class AdminSandboxController extends Controller
                 return response()->json(['status' => false, 'message' => 'Service currently unavailable']);
             }
             $apiKey = $apiCenter->dataverify_api_key;
-            $endpoint = $apiCenter->dataverify_endpoint_bvn ?? 'http://dataverify.com.ng/api/bvn';
+            $endpoint = $apiCenter->dataverify_endpoint_bvn ?? 'https://dataverify.com.ng/developers/bvn_slip/bvn_premium.php';
         }
 
         try {
@@ -117,7 +117,7 @@ class AdminSandboxController extends Controller
                 $http = $http->withHeaders($headers);
             }
 
-            $response = $http->post($endpoint, [
+            $response = $http->asJson()->post($endpoint, [
                 'api_key' => $apiKey,
                 'bvn' => $request->bvn,
             ]);
@@ -136,4 +136,3 @@ class AdminSandboxController extends Controller
         }
     }
 }
-

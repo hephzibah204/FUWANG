@@ -34,7 +34,8 @@
 
                 <div class="form-group">
                     <label class="text-white-50 small">Content</label>
-                    <textarea id="contentInput" name="content" class="form-control @error('content') is-invalid @enderror" rows="12" required style="display:none;">{{ old('content', $post->content) }}</textarea>
+                    {{-- Same as create: sync from #contentEditor on submit; avoid required on hidden textarea. --}}
+                    <textarea id="contentInput" name="content" class="form-control @error('content') is-invalid @enderror" rows="12" style="display:none;">{{ old('content', $post->content) }}</textarea>
                     <div class="d-flex flex-wrap mb-2" style="gap: 8px;">
                         <button class="btn btn-sm btn-outline-light" type="button" onclick="fmt('bold')"><i class="fa-solid fa-bold"></i></button>
                         <button class="btn btn-sm btn-outline-light" type="button" onclick="fmt('italic')"><i class="fa-solid fa-italic"></i></button>

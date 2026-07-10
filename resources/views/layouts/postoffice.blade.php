@@ -19,6 +19,16 @@
             --bg-dark: #0f172a;
             --glass-white: rgba(255, 255, 255, 0.03);
             --border-glass: rgba(255, 255, 255, 0.08);
+            --po-select-surface: #111827;
+            --po-select-surface-hover: #172033;
+            --po-select-surface-disabled: #0b1220;
+            --po-select-border: rgba(148, 163, 184, 0.38);
+            --po-select-text: #f8fafc;
+            --po-select-muted: #94a3b8;
+            --po-option-surface: #ffffff;
+            --po-option-surface-hover: #f8fafc;
+            --po-option-selected: #fde68a;
+            --po-option-text: #111827;
         }
 
         body {
@@ -151,6 +161,74 @@
             box-shadow: none;
         }
 
+        /* Accessible logistics selects: light text on dark closed control,
+           dark text on light option list for readable native dropdown menus. */
+        select.form-control,
+        select.tracking-input {
+            background-color: var(--po-select-surface) !important;
+            color: var(--po-select-text) !important;
+            border-color: var(--po-select-border) !important;
+        }
+
+        select.form-control:hover,
+        select.tracking-input:hover {
+            background-color: var(--po-select-surface-hover) !important;
+        }
+
+        select.form-control:focus,
+        select.tracking-input:focus {
+            background-color: var(--po-select-surface-hover) !important;
+            color: var(--po-select-text) !important;
+            border-color: var(--po-primary) !important;
+            box-shadow: 0 0 0 0.2rem rgba(245, 158, 11, 0.18) !important;
+        }
+
+        select.form-control:disabled,
+        select.tracking-input:disabled {
+            background-color: var(--po-select-surface-disabled) !important;
+            color: var(--po-select-muted) !important;
+            border-color: rgba(148, 163, 184, 0.22) !important;
+            opacity: 1;
+            cursor: not-allowed;
+        }
+
+        select.form-control option,
+        select.tracking-input option {
+            background-color: var(--po-option-surface);
+            color: var(--po-option-text);
+        }
+
+        select.form-control option:hover,
+        select.form-control option:focus,
+        select.tracking-input option:hover,
+        select.tracking-input option:focus {
+            background-color: var(--po-option-surface-hover);
+            color: var(--po-option-text);
+        }
+
+        select.form-control option:checked,
+        select.form-control option[selected],
+        select.tracking-input option:checked,
+        select.tracking-input option[selected] {
+            background-color: var(--po-option-selected);
+            color: var(--po-option-text);
+        }
+
+        .dropdown-menu {
+            background: #111827;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+        }
+
+        .dropdown-item {
+            color: #e2e8f0 !important;
+        }
+
+        .dropdown-item:hover,
+        .dropdown-item:focus {
+            background: rgba(245, 158, 11, 0.16);
+            color: #ffffff !important;
+        }
+
         @media (max-width: 991px) {
             .po-sidebar { display: none; }
             .po-main-content { margin-left: 0; padding: 1.5rem; }
@@ -159,43 +237,61 @@
     @stack('styles')
 </head>
 <body>
+    @php
+        $logisticsDashboardRoute = \Illuminate\Support\Facades\Route::has('services.user.logistics.dashboard')
+            ? 'services.user.logistics.dashboard'
+            : (\Illuminate\Support\Facades\Route::has('user.logistics.dashboard') ? 'user.logistics.dashboard' : null);
+        $logisticsBookRoute = \Illuminate\Support\Facades\Route::has('services.user.logistics.book')
+            ? 'services.user.logistics.book'
+            : (\Illuminate\Support\Facades\Route::has('user.logistics.book') ? 'user.logistics.book' : null);
+
+        $logisticsDashboardUrl = $logisticsDashboardRoute
+            ? route($logisticsDashboardRoute)
+            : route('logistics.home');
+        $logisticsBookUrl = $logisticsBookRoute
+            ? route($logisticsBookRoute)
+            : route('logistics.home');
+        $helpCenterUrl = \Illuminate\Support\Facades\Route::has('tickets.index')
+            ? route('tickets.index')
+            : '#';
+    @endphp
 
     <nav class="navbar navbar-expand-lg navbar-po">
-        <a class="navbar-brand font-weight-bold d-flex align-items-center" href="{{ route('public.logistics.index') }}">
+        <a class="navbar-brand font-weight-bold d-flex align-items-center" href="{{ route('logistics.home') }}">
             <div class="rounded-lg d-flex align-items-center justify-content-center mr-2" style="width: 35px; height: 35px; background: var(--po-primary);">
                 <i class="fa fa-box-open text-dark"></i>
             </div>
             <span class="text-white">Fuwa<span style="color:var(--po-primary)">Post</span></span>
         </a>
 
-        <button class="navbar-toggler text-white" type="button" data-toggle="collapse" data-target="#poNav">
+        <button class="navbar-toggler text-white" type="button" data-toggle="collapse" data-target="#poNav" aria-controls="poNav" aria-expanded="false" aria-label="Toggle navigation">
             <i class="fa fa-bars"></i>
         </button>
 
         <div class="collapse navbar-collapse" id="poNav">
             <ul class="navbar-nav mx-auto">
-                <li class="nav-item"><a class="nav-link" href="{{ route('public.logistics.index') }}">Home</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ route('logistics.home') }}">Home</a></li>
                 <li class="nav-item"><a class="nav-link" href="#services">Services</a></li>
                 <li class="nav-item"><a class="nav-link" href="#pricing">Pricing</a></li>
             </ul>
 
             <div class="d-flex align-items-center">
                 @guest
-                    <a href="{{ route('login') }}" class="text-white-50 mr-3 text-decoration-none small">Login</a>
-                    <a href="{{ route('register') }}" class="btn btn-po-primary btn-sm px-4">Get Started</a>
+                    <a href="{{ route('logistics.login') }}" class="text-white-50 mr-3 text-decoration-none small">Login</a>
+                    <a href="{{ route('logistics.register') }}" class="btn btn-po-primary btn-sm px-4">Create Account</a>
                 @else
                     <div class="dropdown">
                         <a href="#" class="d-flex align-items-center text-white text-decoration-none dropdown-toggle" data-toggle="dropdown">
                             <div class="mr-2 text-right d-none d-md-block">
                                 <small class="d-block text-white-50">Wallet Balance</small>
-                                <span class="font-weight-bold" style="color:var(--po-primary)">₦{{ number_format(auth()->user()->balance ?? 0, 2) }}</span>
+                                <span class="font-weight-bold" style="color:var(--po-primary)">₦{{ number_format((float) (auth()->user()->balance?->user_balance ?? 0), 2) }}</span>
                             </div>
                             <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
                                 <i class="fa fa-user"></i>
                             </div>
                         </a>
                         <div class="dropdown-menu dropdown-menu-right bg-dark border-glass shadow-lg">
-                            <a class="dropdown-item text-white" href="{{ route('user.logistics.dashboard') }}"><i class="fa fa-th-large mr-2"></i> Dashboard</a>
+                            <a class="dropdown-item text-white" href="{{ $logisticsDashboardUrl }}"><i class="fa fa-th-large mr-2"></i> Dashboard</a>
                             <div class="dropdown-divider border-white-10"></div>
                             <form action="{{ route('logout') }}" method="POST">
                                 @csrf
@@ -213,10 +309,10 @@
             <div class="mb-4">
                 <small class="text-white-50 text-uppercase tracking-wider font-weight-bold" style="font-size: 0.7rem;">Main Menu</small>
             </div>
-            <a href="{{ route('user.logistics.dashboard') }}" class="po-menu-item {{ request()->routeIs('user.logistics.dashboard') ? 'active' : '' }}">
+            <a href="{{ $logisticsDashboardUrl }}" class="po-menu-item {{ request()->routeIs('services.user.logistics.dashboard') || request()->routeIs('user.logistics.dashboard') ? 'active' : '' }}">
                 <i class="fa fa-th-large"></i> Overview
             </a>
-            <a href="{{ route('user.logistics.book') }}" class="po-menu-item {{ request()->routeIs('user.logistics.book') ? 'active' : '' }}">
+            <a href="{{ $logisticsBookUrl }}" class="po-menu-item {{ request()->routeIs('services.user.logistics.book') || request()->routeIs('user.logistics.book') ? 'active' : '' }}">
                 <i class="fa fa-plus-circle"></i> Book Shipment
             </a>
             <a href="#" class="po-menu-item">
@@ -228,7 +324,7 @@
             <div class="mt-5 mb-4">
                 <small class="text-white-50 text-uppercase tracking-wider font-weight-bold" style="font-size: 0.7rem;">Support</small>
             </div>
-            <a href="{{ route('user.tickets') }}" class="po-menu-item">
+            <a href="{{ $helpCenterUrl }}" class="po-menu-item">
                 <i class="fa fa-headset"></i> Help Center
             </a>
         </aside>
@@ -242,7 +338,6 @@
             </div>
         </main>
     @endauth
-
     @stack('scripts')
 </body>
 </html>

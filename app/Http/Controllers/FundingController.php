@@ -15,6 +15,7 @@ use App\Models\BankDetail;
 use App\Models\PaymentGateway;
 use App\Services\VirtualAccounts\VirtualAccountService;
 use App\Support\DbTable;
+use App\Support\PaymentProviderCredentials;
 
 class FundingController extends Controller
 {
@@ -37,17 +38,19 @@ class FundingController extends Controller
             ->get(['name', 'display_name', 'logo_url', 'is_active', 'config']);
 
         $apiCenter = ApiCenter::first();
-        $gateways->transform(function ($gateway) use ($apiCenter) {
+        $flw = PaymentProviderCredentials::flutterwave($apiCenter);
+        $mnf = PaymentProviderCredentials::monnify($apiCenter);
+        $gateways->transform(function ($gateway) use ($apiCenter, $flw, $mnf) {
             $config = (array) ($gateway->config ?? []);
             $publicConfig = [];
 
             if ($gateway->name === 'paystack') {
                 $publicConfig['public_key'] = $apiCenter?->paystack_public_key ?? $config['public_key'] ?? null;
             } elseif ($gateway->name === 'flutterwave') {
-                $publicConfig['public_key'] = $apiCenter?->flutterwave_public_key ?? $config['public_key'] ?? null;
+                $publicConfig['public_key'] = $flw['public_key'] ?? $config['public_key'] ?? null;
             } elseif ($gateway->name === 'monnify') {
-                $publicConfig['api_key'] = $apiCenter?->monnify_api_key ?? $config['api_key'] ?? null;
-                $publicConfig['contract_code'] = $apiCenter?->monnify_contract_code ?? $config['contract_code'] ?? null;
+                $publicConfig['api_key'] = $mnf['api_key'] ?? $config['api_key'] ?? null;
+                $publicConfig['contract_code'] = $mnf['contract_code'] ?? $config['contract_code'] ?? null;
             }
 
             $gateway->config = $publicConfig;
@@ -79,9 +82,11 @@ class FundingController extends Controller
         if ($name === 'paystack') {
             $isConfigured = (bool) ($apiCenter?->paystack_public_key && $apiCenter?->paystack_secret_key);
         } elseif ($name === 'flutterwave') {
-            $isConfigured = (bool) ($apiCenter?->flutterwave_public_key && $apiCenter?->flutterwave_secret_key);
+            $flw = PaymentProviderCredentials::flutterwave($apiCenter);
+            $isConfigured = (bool) ($flw['public_key'] && $flw['secret_key']);
         } elseif ($name === 'monnify') {
-            $isConfigured = (bool) ($apiCenter?->monnify_api_key && $apiCenter?->monnify_secret_key);
+            $mnf = PaymentProviderCredentials::monnify($apiCenter);
+            $isConfigured = (bool) ($mnf['api_key'] && $mnf['secret_key']);
         } elseif ($name === 'payvessel') {
             $isConfigured = (bool) ($apiCenter?->payvessel_api_key && $apiCenter?->payvessel_secret_key);
         } elseif ($name === 'paymentpoint') {
@@ -253,7 +258,7 @@ class FundingController extends Controller
 
         return response()->json([
             'status' => false,
-            'message' => 'No auto-funding accounts available. Configure PayVessel/Monnify first.',
+            'message' => $this->autoFundingFailureMessage($result['providers'] ?? []),
             'providers' => $result['providers'] ?? [],
         ]);
     }
@@ -289,8 +294,38 @@ class FundingController extends Controller
 
         return response()->json([
             'status' => false,
-            'message' => 'No auto-funding accounts available. Configure PayVessel/Monnify first.',
+            'message' => $this->autoFundingFailureMessage($result['providers'] ?? []),
             'providers' => $result['providers'] ?? [],
         ]);
+    }
+
+    /**
+     * Human-readable reason when ensureAccounts returns no rows (for API + support).
+     */
+    private function autoFundingFailureMessage(array $providers): string
+    {
+        $lines = [];
+        foreach ($providers as $name => $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $msg = $row['message'] ?? null;
+            if (($row['skipped'] ?? false) && ($row['ok'] ?? false)) {
+                continue;
+            }
+            if (($row['ok'] ?? false) && ! ($row['skipped'] ?? false)) {
+                continue;
+            }
+            if ($msg) {
+                $lines[] = ucfirst((string) $name) . ': ' . $msg;
+            } else {
+                $lines[] = ucfirst((string) $name) . ': failed';
+            }
+        }
+
+        $summary = $lines !== [] ? implode(' ', $lines) : 'No provider returned an account.';
+
+        return 'No auto-funding accounts available. ' . $summary
+            . ' Set PayVessel (endpoint + API key), Monnify (API key + secret + contract code), and/or Flutterwave secret in Admin → API Keys or .env; then run “Load Accounts” again.';
     }
 }

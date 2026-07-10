@@ -5,6 +5,9 @@ namespace App\Services\VirtualAccounts\Providers;
 use App\Models\User;
 use App\Models\VirtualAccount;
 use App\Services\VirtualAccounts\Dto\VirtualAccountCreationResult;
+use App\Support\PaymentApiUserMessage;
+use App\Support\PaymentProviderCredentials;
+use App\Support\UserKycIdentifiers;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -17,46 +20,54 @@ class MonnifyVirtualAccountProvider extends AbstractHttpProvider
 
     public function supportsVirtualAccounts(): bool
     {
-        $cfg = $this->getGatewayConfig('monnify');
-        $apiCenter = $cfg['apiCenter'];
-        $apiKey = $apiCenter?->monnify_api_key ?: ($cfg['config']['api_key'] ?? null);
-        $secretKey = $apiCenter?->monnify_secret_key ?: ($cfg['config']['secret_key'] ?? null);
-        $contractCode = $apiCenter?->monnify_contract_code ?: ($cfg['config']['contract_code'] ?? null);
-        return (bool) ($apiKey && $secretKey && $contractCode);
+        $m = PaymentProviderCredentials::monnify($this->getGatewayConfig('monnify')['apiCenter']);
+
+        return (bool) ($m['api_key'] && $m['secret_key'] && $m['contract_code']);
     }
 
     public function create(User $user): VirtualAccountCreationResult
     {
         $cfg = $this->getGatewayConfig('monnify');
-        $apiCenter = $cfg['apiCenter'];
+        $m = PaymentProviderCredentials::monnify($cfg['apiCenter']);
+        $apiKey = $m['api_key'];
+        $secretKey = $m['secret_key'];
+        $contractCode = $m['contract_code'];
+        $authEndpoint = $m['endpoint_auth'];
+        $reserveEndpoint = $m['endpoint_reserve'];
 
-        $apiKey = $apiCenter?->monnify_api_key ?: ($cfg['config']['api_key'] ?? null);
-        $secretKey = $apiCenter?->monnify_secret_key ?: ($cfg['config']['secret_key'] ?? null);
-        $contractCode = $apiCenter?->monnify_contract_code ?: ($cfg['config']['contract_code'] ?? null);
-        $authEndpoint = $apiCenter?->monnify_endpoint_auth ?: 'https://api.monnify.com/api/v1/auth/login';
-        $reserveEndpoint = $apiCenter?->monnify_endpoint_reserve ?: 'https://api.monnify.com/api/v2/bank-transfer/reserved-accounts';
-
-        if (!$apiKey || !$secretKey || !$contractCode) {
+        if (! $apiKey || ! $secretKey || ! $contractCode) {
             return new VirtualAccountCreationResult(false, gateway: 'monnify', message: 'Monnify is not configured');
         }
 
-        $accountReference = 'FUWA-' . strtoupper(bin2hex(random_bytes(6)));
+        $identity = UserKycIdentifiers::preferredPaymentIdentity($user);
+        if ($identity === null) {
+            return new VirtualAccountCreationResult(
+                false,
+                gateway: 'monnify',
+                message: 'Monnify requires a verified BVN or NIN. Complete identity verification (BVN or NIN) and try Load Accounts again.'
+            );
+        }
+
+        $accountReference = 'FUWA-'.strtoupper(bin2hex(random_bytes(6)));
 
         try {
-            $basic = base64_encode($apiKey . ':' . $secretKey);
-            $authRes = Http::timeout(45)->withHeaders([
-                'Authorization' => 'Basic ' . $basic,
-                'Accept' => 'application/json',
+            $basic = base64_encode($apiKey.':'.$secretKey);
+            $authRes = Http::timeout(45)->acceptJson()->withHeaders([
+                'Authorization' => 'Basic '.$basic,
             ])->post($authEndpoint);
 
-            if (!$authRes->successful()) {
+            $authJson = $authRes->json();
+            if (! $authRes->successful() || (isset($authJson['requestSuccessful']) && $authJson['requestSuccessful'] === false)) {
                 Log::warning('Monnify auth failed', ['status' => $authRes->status(), 'body' => $authRes->body()]);
-                return new VirtualAccountCreationResult(false, gateway: 'monnify', message: 'Monnify auth failed');
+                $msg = PaymentApiUserMessage::monnify(is_array($authJson) ? $authJson : null, 'Monnify auth failed');
+
+                return new VirtualAccountCreationResult(false, gateway: 'monnify', message: $msg);
             }
 
-            $authJson = $authRes->json();
-            $token = $authJson['responseBody']['accessToken'] ?? $authJson['responseBody']['token'] ?? null;
-            if (!$token) {
+            $token = is_array($authJson)
+                ? ($authJson['responseBody']['accessToken'] ?? $authJson['responseBody']['token'] ?? null)
+                : null;
+            if (! $token) {
                 return new VirtualAccountCreationResult(false, gateway: 'monnify', message: 'Monnify token missing');
             }
 
@@ -67,16 +78,27 @@ class MonnifyVirtualAccountProvider extends AbstractHttpProvider
                 'contractCode' => $contractCode,
                 'customerEmail' => $user->email,
                 'customerName' => $user->fullname ?? $user->username ?? $user->email,
-                'getAllAvailableBanks' => true,
-            ];
+                'getAllAvailableBanks' => true, 
+            ]; 
+            $payload[$identity['type']] = $identity['value'];
 
-            $reserveRes = Http::timeout(60)->withToken($token)->post($reserveEndpoint, $payload);
-            if (!$reserveRes->successful()) {
-                Log::warning('Monnify reserve failed', ['status' => $reserveRes->status(), 'body' => $reserveRes->body()]);
-                return new VirtualAccountCreationResult(false, gateway: 'monnify', message: 'Monnify reserve failed');
-            }
+            $reserveRes = Http::timeout(60)
+                ->acceptJson()
+                ->asJson()
+                ->withToken($token)
+                ->post($reserveEndpoint, $payload);
 
             $reserveJson = $reserveRes->json();
+            if (! $reserveRes->successful() || (isset($reserveJson['requestSuccessful']) && $reserveJson['requestSuccessful'] === false)) {
+                Log::warning('Monnify reserve failed', ['status' => $reserveRes->status(), 'body' => $reserveRes->body()]);
+                $msg = PaymentApiUserMessage::monnify(is_array($reserveJson) ? $reserveJson : null, 'Monnify reserve failed');
+
+                return new VirtualAccountCreationResult(false, gateway: 'monnify', message: $msg);
+            }
+
+            if (! is_array($reserveJson)) {
+                return new VirtualAccountCreationResult(false, gateway: 'monnify', message: 'Monnify reserve failed');
+            }
             $body = $reserveJson['responseBody'] ?? $reserveJson['data'] ?? $reserveJson;
             $accounts = $body['accounts'] ?? $body['bankAccounts'] ?? $body['reservedAccounts'] ?? [];
             $firstAccount = null;
@@ -88,7 +110,7 @@ class MonnifyVirtualAccountProvider extends AbstractHttpProvider
                 }
             }
 
-            if (!$firstAccount) {
+            if (! $firstAccount) {
                 return new VirtualAccountCreationResult(false, gateway: 'monnify', message: 'Monnify returned no bank accounts');
             }
 
@@ -114,6 +136,7 @@ class MonnifyVirtualAccountProvider extends AbstractHttpProvider
             );
         } catch (\Throwable $e) {
             Log::error('Monnify virtual account exception', ['error' => $e->getMessage()]);
+
             return new VirtualAccountCreationResult(false, gateway: 'monnify', message: 'Monnify is currently unavailable');
         }
     }
@@ -123,4 +146,3 @@ class MonnifyVirtualAccountProvider extends AbstractHttpProvider
         return null;
     }
 }
-

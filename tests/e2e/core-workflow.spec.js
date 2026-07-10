@@ -6,7 +6,7 @@ test.describe('Core User Journeys', () => {
     await page.goto('/');
     
     // Check Title
-    await expect(page).toHaveTitle(/Fuwa|G-Soft Verify/);
+    await expect(page).toHaveTitle(/Fuwa.NG/);
     
     // Check main call to actions
     const getStartedBtn = page.getByRole('link', { name: /Get Started/i });

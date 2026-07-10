@@ -3,15 +3,19 @@
 namespace App\Http\Controllers\Service;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use App\Models\ApiCenter;
-use App\Services\VtuHubService;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use App\Models\CustomApi;
+use App\Models\Transaction;
 use App\Models\VtuTransaction;
-use App\Services\EpinCatalogService;
 use App\Services\EducationEpinConsolidationService;
+use App\Services\EpinCatalogService;
+use App\Services\VtuHubService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 class VTUController extends Controller
 {
@@ -82,7 +86,7 @@ class VTUController extends Controller
     public function providers(Request $request, string $serviceType)
     {
         $catalog = (array) config('vtu_services.service_types', []);
-        if (!isset($catalog[$serviceType])) {
+        if (! isset($catalog[$serviceType])) {
             return response()->json(['status' => false, 'message' => 'Unknown service type.'], 404);
         }
 
@@ -97,7 +101,7 @@ class VTUController extends Controller
                 $request->string('serviceID')->toString(),
                 $request->string('variation_code')->toString()
             );
-            if ($p && isset($p['provider_service_types']) && is_array($p['provider_service_types']) && !empty($p['provider_service_types'])) {
+            if ($p && isset($p['provider_service_types']) && is_array($p['provider_service_types']) && ! empty($p['provider_service_types'])) {
                 $serviceTypeCandidates = array_values(array_filter($p['provider_service_types'], fn ($v) => is_string($v) && $v !== ''));
             }
         }
@@ -108,6 +112,7 @@ class VTUController extends Controller
             ->get()
             ->map(function ($p) {
                 $cfg = is_array($p->config) ? $p->config : [];
+
                 return [
                     'id' => $p->id,
                     'name' => $p->name,
@@ -130,10 +135,12 @@ class VTUController extends Controller
 
     public function dataIndex()
     {
-        // Fetch all plans and group by network
-        $plans = DB::table('price_list')->get()->groupBy(function($item) {
-            return strtoupper($item->network);
-        });
+        $plans = collect();
+        if (Schema::hasTable('price_list')) {
+            $plans = DB::table('price_list')->get()->groupBy(function ($item) {
+                return strtoupper((string) $item->network);
+            });
+        }
 
         return view('services.vtu.data', compact('plans'));
     }
@@ -164,7 +171,7 @@ class VTUController extends Controller
         ];
 
         $res = $this->vtuHub->validateCustomer('vtu_electricity', $payload, $request->input('provider_id'));
-        if (!$res['status']) {
+        if (! $res['status']) {
             return response()->json($res, 422);
         }
 
@@ -352,31 +359,31 @@ class VTUController extends Controller
             'quantity' => ['required', 'integer', 'min:1', 'max:100'],
         ]);
 
-        $user = \Illuminate\Support\Facades\Auth::user();
-        
+        $user = Auth::user();
+
         $unitCost = $request->pin_type === 'data' ? (float) $request->data_plan_price : (float) $request->amount;
         $totalCost = $unitCost * (int) $request->quantity;
 
         // Check user balance
-        $balance = \Illuminate\Support\Facades\DB::table('account_balances')->where('user_id', $user->id)->first();
-        if (!$balance || $balance->user_balance < $totalCost) {
+        $balance = DB::table('account_balances')->where('user_id', $user->id)->first();
+        if (! $balance || $balance->user_balance < $totalCost) {
             return response()->json(['status' => false, 'message' => 'Insufficient wallet balance.']);
         }
 
         // Get API Keys from Admin Settings
-        $apiCenter = \Illuminate\Support\Facades\DB::table('api_centers')->first();
+        $apiCenter = DB::table('api_centers')->first();
         $userId = $apiCenter->clubkonnect_userid ?? null;
         $apiKey = $apiCenter->clubkonnect_apikey ?? null;
 
-        if (!$userId || !$apiKey) {
+        if (! $userId || ! $apiKey) {
             return response()->json(['status' => false, 'message' => 'Recharge Card Printing is not configured by the administrator yet.']);
         }
 
-        $requestId = 'RCP_' . time() . '_' . \Illuminate\Support\Str::random(6);
+        $requestId = 'RCP_'.time().'_'.Str::random(6);
 
         if ($request->pin_type === 'data') {
             // Data PIN API Call
-            $response = \Illuminate\Support\Facades\Http::get('https://www.nellobytesystems.com/APIDatabundleEPINV1.asp', [
+            $response = Http::get('https://www.nellobytesystems.com/APIDatabundleEPINV1.asp', [
                 'UserID' => $userId,
                 'APIKey' => $apiKey,
                 'MobileNetwork' => $request->network,
@@ -385,20 +392,20 @@ class VTUController extends Controller
                 'RequestID' => $requestId,
             ]);
             $data = $response->json();
-            
+
             // Check for errors
             if (isset($data['status']) && in_array($data['status'], ['API_ERROR', 'INVALID_CREDENTIALS', 'MISSING_CREDENTIALS', 'INVALID_DATAPLAN', 'MISSING_DATAPLAN'])) {
-                 return response()->json(['status' => false, 'message' => 'Provider error: ' . ($data['status'] ?? 'Unknown')]);
+                return response()->json(['status' => false, 'message' => 'Provider error: '.($data['status'] ?? 'Unknown')]);
             }
 
             if (isset($data['status']) && $data['status'] === 'ORDER_RECEIVED') {
                 // Deduct balance
-                \Illuminate\Support\Facades\DB::table('account_balances')->where('user_id', $user->id)->update([
-                    'user_balance' => $balance->user_balance - $totalCost
+                DB::table('account_balances')->where('user_id', $user->id)->update([
+                    'user_balance' => $balance->user_balance - $totalCost,
                 ]);
 
                 // Log Transaction
-                \App\Models\Transaction::create([
+                Transaction::create([
                     'user_id' => $user->id,
                     'reference' => $requestId,
                     'type' => 'Data PIN Printing',
@@ -412,12 +419,12 @@ class VTUController extends Controller
                     'status' => true,
                     'message' => 'Data PIN order received successfully. They are being processed.',
                     'order_id' => $data['orderid'],
-                    'async' => true
+                    'async' => true,
                 ]);
             }
         } else {
             // Airtime PIN API Call
-            $response = \Illuminate\Support\Facades\Http::get('https://www.nellobytesystems.com/APIEPINV1.asp', [
+            $response = Http::get('https://www.nellobytesystems.com/APIEPINV1.asp', [
                 'UserID' => $userId,
                 'APIKey' => $apiKey,
                 'MobileNetwork' => $request->network,
@@ -428,17 +435,17 @@ class VTUController extends Controller
             $data = $response->json();
 
             if (isset($data['status']) && $data['status'] === 'API_ERROR') {
-                 return response()->json(['status' => false, 'message' => 'Provider error: ' . ($data['msg'] ?? 'Unknown')]);
+                return response()->json(['status' => false, 'message' => 'Provider error: '.($data['msg'] ?? 'Unknown')]);
             }
 
             if (isset($data['TXN_EPIN']) && is_array($data['TXN_EPIN'])) {
                 // Deduct balance
-                \Illuminate\Support\Facades\DB::table('account_balances')->where('user_id', $user->id)->update([
-                    'user_balance' => $balance->user_balance - $totalCost
+                DB::table('account_balances')->where('user_id', $user->id)->update([
+                    'user_balance' => $balance->user_balance - $totalCost,
                 ]);
 
                 // Log Transaction
-                \App\Models\Transaction::create([
+                Transaction::create([
                     'user_id' => $user->id,
                     'reference' => $requestId,
                     'type' => 'Recharge Card Printing',
@@ -451,7 +458,7 @@ class VTUController extends Controller
                     'status' => true,
                     'message' => 'Pins generated successfully.',
                     'pins' => $data['TXN_EPIN'],
-                    'async' => false
+                    'async' => false,
                 ]);
             }
         }
@@ -462,18 +469,18 @@ class VTUController extends Controller
     public function queryRechargeOrder(Request $request)
     {
         $request->validate([
-            'order_id' => 'required|string'
+            'order_id' => 'required|string',
         ]);
 
-        $apiCenter = \Illuminate\Support\Facades\DB::table('api_centers')->first();
+        $apiCenter = DB::table('api_centers')->first();
         $userId = $apiCenter->clubkonnect_userid ?? null;
         $apiKey = $apiCenter->clubkonnect_apikey ?? null;
 
-        if (!$userId || !$apiKey) {
+        if (! $userId || ! $apiKey) {
             return response()->json(['status' => false, 'message' => 'Provider not configured']);
         }
 
-        $response = \Illuminate\Support\Facades\Http::get('https://www.nellobytesystems.com/APIQueryV1.asp', [
+        $response = Http::get('https://www.nellobytesystems.com/APIQueryV1.asp', [
             'UserID' => $userId,
             'APIKey' => $apiKey,
             'OrderID' => $request->order_id,
@@ -483,40 +490,41 @@ class VTUController extends Controller
 
         if (isset($data['TXN_EPIN_DATABUNDLE']) && is_array($data['TXN_EPIN_DATABUNDLE'])) {
             // Update transaction status
-            \App\Models\Transaction::where('provider_reference', $request->order_id)->update(['status' => 'success']);
-            
+            Transaction::where('provider_reference', $request->order_id)->update(['status' => 'success']);
+
             return response()->json([
                 'status' => true,
-                'pins' => $data['TXN_EPIN_DATABUNDLE']
+                'pins' => $data['TXN_EPIN_DATABUNDLE'],
             ]);
         }
 
         return response()->json([
             'status' => false,
-            'message' => 'Order is still processing or failed'
+            'message' => 'Order is still processing or failed',
         ]);
     }
 
     public function fetchDatabundlePlans()
     {
-        $apiCenter = \Illuminate\Support\Facades\DB::table('api_centers')->first();
+        $apiCenter = DB::table('api_centers')->first();
         $userId = $apiCenter->clubkonnect_userid ?? null;
 
-        if (!$userId) {
+        if (! $userId) {
             return response()->json(['status' => false, 'message' => 'Provider not configured']);
         }
 
         // Cache the plans for 1 hour to prevent hitting the provider too often
-        $plans = \Illuminate\Support\Facades\Cache::remember('clubkonnect_databundle_plans', 3600, function () use ($userId) {
-            $response = \Illuminate\Support\Facades\Http::get('https://www.nellobytesystems.com/APIDatabundlePlansV2.asp', [
+        $plans = Cache::remember('clubkonnect_databundle_plans', 3600, function () use ($userId) {
+            $response = Http::get('https://www.nellobytesystems.com/APIDatabundlePlansV2.asp', [
                 'UserID' => $userId,
             ]);
+
             return $response->json();
         });
 
         return response()->json([
             'status' => true,
-            'data' => $plans
+            'data' => $plans,
         ]);
     }
 
@@ -525,6 +533,7 @@ class VTUController extends Controller
     public function waecIndex()
     {
         $waecProviders = CustomApi::where('service_type', 'education_waec')->where('status', true)->get();
+
         return view('services.education.waec', compact('waecProviders'));
     }
 
@@ -551,7 +560,7 @@ class VTUController extends Controller
                 'phone' => $request->phone,
                 'quantity' => 1,
                 'amount' => $amount,
-            ]
+            ],
         ]);
 
         return response()->json($result);
@@ -560,6 +569,7 @@ class VTUController extends Controller
     public function waecRegistrationIndex()
     {
         $waecProviders = CustomApi::where('service_type', 'education_waec_registration')->where('status', true)->get();
+
         return view('services.education.waec_registration', compact('waecProviders'));
     }
 
@@ -586,7 +596,7 @@ class VTUController extends Controller
                 'phone' => $request->phone,
                 'quantity' => 1,
                 'amount' => $amount,
-            ]
+            ],
         ]);
 
         return response()->json($result);
@@ -595,6 +605,7 @@ class VTUController extends Controller
     public function necoIndex()
     {
         $providers = CustomApi::where('service_type', 'education_neco')->where('status', true)->get();
+
         return view('services.education.neco', compact('providers'));
     }
 
@@ -621,7 +632,7 @@ class VTUController extends Controller
                 'phone' => $request->phone,
                 'quantity' => 1,
                 'amount' => $amount,
-            ]
+            ],
         ]);
 
         return response()->json($result);
@@ -630,6 +641,7 @@ class VTUController extends Controller
     public function nabtebIndex()
     {
         $providers = CustomApi::where('service_type', 'education_nabteb')->where('status', true)->get();
+
         return view('services.education.nabteb', compact('providers'));
     }
 
@@ -656,7 +668,7 @@ class VTUController extends Controller
                 'phone' => $request->phone,
                 'quantity' => 1,
                 'amount' => $amount,
-            ]
+            ],
         ]);
 
         return response()->json($result);
@@ -665,6 +677,7 @@ class VTUController extends Controller
     public function jambIndex()
     {
         $providers = CustomApi::where('service_type', 'education_jamb')->where('status', true)->get();
+
         return view('services.education.jamb', compact('providers'));
     }
 
@@ -691,7 +704,7 @@ class VTUController extends Controller
                 'phone' => $request->phone,
                 'quantity' => 1,
                 'amount' => $amount,
-            ]
+            ],
         ]);
 
         return response()->json($result);
@@ -716,7 +729,7 @@ class VTUController extends Controller
                 'network' => $request->network,
                 'amount' => $request->amount,
                 'phone' => $request->phone,
-            ]
+            ],
         ]);
 
         return response()->json($result);
@@ -740,7 +753,7 @@ class VTUController extends Controller
                 'network' => $request->network,
                 'plan_id' => $request->plan_id,
                 'phone' => $request->phone,
-            ]
+            ],
         ]);
 
         return response()->json($result);
@@ -766,7 +779,7 @@ class VTUController extends Controller
                 'variation_code' => $request->variation_code,
                 'smart_card_number' => $request->smart_card_number,
                 'phone' => $request->phone,
-            ]
+            ],
         ]);
 
         return response()->json($result);
@@ -805,7 +818,7 @@ class VTUController extends Controller
                 'variation_code' => $request->variation_code,
                 'meter_number' => $request->meter_number,
                 'phone' => $request->phone,
-            ]
+            ],
         ]);
 
         if (($result['status'] ?? false) === true) {

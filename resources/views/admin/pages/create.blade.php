@@ -50,6 +50,21 @@
                     </div>
                 </div>
 
+                @if(isset($publishedPages) && $publishedPages->count() > 0)
+                    <div class="form-group">
+                        <label for="existingPageTemplate" class="text-white-50 small">Start from Existing Published Page (Optional)</label>
+                        <select id="existingPageTemplate" class="form-control">
+                            <option value="">Start from blank canvas</option>
+                            @foreach($publishedPages as $publishedPage)
+                                <option value="{{ $publishedPage->id }}">
+                                    {{ $publishedPage->title }} ({{ $publishedPage->slug }})
+                                </option>
+                            @endforeach
+                        </select>
+                        <small class="text-white-50">Selecting a page imports its current layout into the editor.</small>
+                    </div>
+                @endif
+
                 <div class="form-group">
                     <label class="text-white-50 small d-block mb-2">Page Content (Visual Editor)</label>
                     <textarea id="contentInput" name="content" style="display:none;">{{ old('content') }}</textarea>
@@ -111,47 +126,147 @@
 <script src="https://unpkg.com/grapesjs-preset-webpage"></script>
 <script src="https://unpkg.com/grapesjs-blocks-basic"></script>
 <script>
-    const editor = grapesjs.init({
-        container: '#gjs',
-        fromElement: true,
-        height: '600px',
-        width: 'auto',
-        storageManager: false,
-        plugins: ['gjs-preset-webpage', 'gjs-blocks-basic'],
-        pluginsOpts: {
-            'gjs-preset-webpage': {},
-            'gjs-blocks-basic': {}
-        },
-        assetManager: {
-            upload: '{{ route('admin.media.upload') }}',
-            uploadName: 'files',
-            headers: {
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+(function () {
+    const gjsEl = document.getElementById('gjs');
+    const input = document.getElementById('contentInput');
+    const form = document.getElementById('pageForm');
+    if (!gjsEl || !input || !form) return;
+
+    function showHtmlFallback(message) {
+        if (message) {
+            const note = document.createElement('p');
+            note.className = 'text-warning small mb-2';
+            note.textContent = message;
+            gjsEl.parentNode.insertBefore(note, gjsEl);
+        }
+        gjsEl.style.display = 'none';
+        input.style.display = 'block';
+        input.classList.add('form-control');
+        input.rows = Math.max(16, Number(input.rows) || 16);
+    }
+
+    if (typeof grapesjs === 'undefined') {
+        showHtmlFallback('Visual editor scripts were blocked or failed to load. Edit raw HTML below, or ask your host to allow scripts from unpkg.com (Content-Security-Policy).');
+        return;
+    }
+
+    let editor;
+    try {
+        editor = grapesjs.init({
+            container: '#gjs',
+            fromElement: false,
+            height: '600px',
+            width: 'auto',
+            storageManager: false,
+            plugins: ['gjs-preset-webpage', 'gjs-blocks-basic'],
+            pluginsOpts: {
+                'gjs-preset-webpage': {},
+                'gjs-blocks-basic': {}
+            },
+            assetManager: {
+                upload: @json(route('admin.media.upload')),
+                uploadName: 'files',
+                headers: {
+                    'X-CSRF-TOKEN': @json(csrf_token())
+                }
+            },
+            canvas: {
+                styles: [
+                    'https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css',
+                    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'
+                ]
             }
-        },
-        canvas: {
-            styles: [
-                'https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css',
-                'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'
-            ]
+        });
+    } catch (err) {
+        console.error(err);
+        showHtmlFallback('Visual editor failed to start: ' + (err && err.message ? err.message : 'unknown error'));
+        return;
+    }
+
+    const initialContent = input.value;
+    if (initialContent) {
+        try {
+            editor.setComponents(initialContent);
+        } catch (e) {
+            console.warn(e);
+        }
+    }
+
+    const templates = @json(($publishedPages ?? collect())->mapWithKeys(function($page) {
+        return [$page->id => $page->content];
+    }));
+    const templateSelect = document.getElementById('existingPageTemplate');
+    if (templateSelect) {
+        templateSelect.addEventListener('change', function () {
+            const selected = this.value;
+            if (!selected || !templates[selected]) return;
+            if (!window.confirm('Replace current editor content with selected page content?')) {
+                this.value = '';
+                return;
+            }
+            try {
+                editor.setComponents(templates[selected]);
+            } catch (e) {
+                console.warn('Failed to load selected page template', e);
+            }
+        });
+    }
+
+    editor.RichTextEditor.add('bold', {
+        icon: '<b>B</b>',
+        attributes: { title: 'Bold' },
+        result: (rte) => rte.exec('bold')
+    });
+    editor.RichTextEditor.add('italic', {
+        icon: '<i>I</i>',
+        attributes: { title: 'Italic' },
+        result: (rte) => rte.exec('italic')
+    });
+    editor.RichTextEditor.add('underline', {
+        icon: '<u>U</u>',
+        attributes: { title: 'Underline' },
+        result: (rte) => rte.exec('underline')
+    });
+    editor.RichTextEditor.add('link', {
+        icon: '<i class="fa fa-link"></i>',
+        attributes: { title: 'Link' },
+        result: (rte) => rte.exec('createLink')
+    });
+
+    editor.AssetManager.setConfig({
+        uploadFile: async function (event) {
+            const files = event?.dataTransfer ? event.dataTransfer.files : event?.target?.files;
+            if (!files || !files.length) return;
+
+            const body = new FormData();
+            Array.from(files).forEach((file) => body.append('files[]', file));
+
+            const response = await fetch(@json(route('admin.media.upload')), {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': @json(csrf_token()),
+                    'Accept': 'application/json'
+                },
+                body
+            });
+
+            if (!response.ok) {
+                throw new Error('Image upload failed');
+            }
+
+            const payload = await response.json();
+            const assets = Array.isArray(payload?.data) ? payload.data : [];
+            if (assets.length) {
+                editor.AssetManager.add(assets);
+            }
         }
     });
 
-    // Load initial content
-    const initialContent = document.getElementById('contentInput').value;
-    if (initialContent) {
-        editor.setComponents(initialContent);
-    }
-
-    // Sync content on form submit
-    document.getElementById('pageForm').addEventListener('submit', function(e) {
-        // Get HTML and CSS from GrapeJS and combine them
+    form.addEventListener('submit', function () {
         const html = editor.getHtml();
         const css = editor.getCss();
-        
-        // Wrap in a container to isolate styles if needed, or just append inline style block
-        const fullContent = `<style>${css}</style>\n<div class="gjs-content-wrapper">${html}</div>`;
-        document.getElementById('contentInput').value = fullContent;
+        input.value = '<style>' + css + '</style>\n<div class="gjs-content-wrapper">' + html + '</div>';
     });
+})();
 </script>
 @endpush

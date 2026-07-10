@@ -27,7 +27,7 @@
                     <span class="ml-auto badge badge-primary py-2 px-3">₦1,000.00</span>
                 </div>
 
-                <form id="bioForm" action="{{ route('services.biometric.verify') }}" method="POST" enctype="multipart/form-data">
+                <form id="bioForm" action="{{ route('services.biometric_verify.verify') }}" method="POST" enctype="multipart/form-data">
                     @csrf
                     
                     <div class="row">

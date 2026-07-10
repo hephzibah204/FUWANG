@@ -10,6 +10,28 @@ Route::prefix('whatsapp-widget')->group(function () {
 
 Route::prefix('v1')->group(function () {
     Route::post('/auth/token', [\App\Http\Controllers\Api\AuthController::class, 'createToken'])->middleware('throttle:5,1');
+    Route::post('/auth/apply-api', [\App\Http\Controllers\Api\AuthController::class, 'applyForApi'])->middleware(['auth:sanctum', 'throttle:5,1']);
+
+    Route::prefix('logistics')->group(function () {
+        Route::post('/auth/login', [\App\Http\Controllers\Api\Logistics\LogisticsApiController::class, 'authenticate'])
+            ->middleware('throttle:5,1');
+        Route::post('/auth/register', [\App\Http\Controllers\Api\Logistics\LogisticsApiController::class, 'register'])
+            ->middleware('throttle:5,1');
+        Route::post('/auth/validate', [\App\Http\Controllers\Api\Logistics\LogisticsApiController::class, 'validateToken']);
+        Route::post('/auth/revoke', [\App\Http\Controllers\Api\Logistics\LogisticsApiController::class, 'revokeToken']);
+
+        Route::prefix('ops')->middleware('feature:logistics_ops')->group(function () {
+            Route::post('/auth/login', [\App\Http\Controllers\Api\LogisticsOps\StaffAuthApiController::class, 'login'])->middleware('throttle:5,1');
+            Route::post('/auth/logout', [\App\Http\Controllers\Api\LogisticsOps\StaffAuthApiController::class, 'logout'])->middleware(['logistics.jwt', 'throttle:20,1']);
+
+            Route::middleware(['logistics.jwt', 'throttle:60,1'])->group(function () {
+                Route::get('/orders', [\App\Http\Controllers\Api\LogisticsOps\OrdersApiController::class, 'index'])
+                    ->middleware('logistics.permission.api:logistics.shipments.monitor');
+                Route::post('/orders/{order}/status', [\App\Http\Controllers\Api\LogisticsOps\OrdersApiController::class, 'updateStatus'])
+                    ->middleware('logistics.permission.api:logistics.orders.update_status');
+            });
+        });
+    });
 
     // Chatbot API Endpoints
     Route::prefix('chatbot')->middleware('throttle:60,1')->group(function () {
@@ -24,7 +46,7 @@ Route::prefix('v1')->group(function () {
         Route::post('/click', [\App\Http\Controllers\Api\WhatsAppWidgetController::class, 'trackClick'])->middleware('throttle:10,1');
     });
 
-    Route::middleware(['api.token', 'api.ratelimit'])->group(function () {
+    Route::middleware(['api.token', 'api.endpoint', 'api.ratelimit'])->group(function () {
         Route::get('/me', [\App\Http\Controllers\Api\AuthController::class, 'me']);
         Route::delete('/auth/token', [\App\Http\Controllers\Api\AuthController::class, 'revokeCurrent']);
 

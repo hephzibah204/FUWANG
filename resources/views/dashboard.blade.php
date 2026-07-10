@@ -138,11 +138,21 @@
             <x-nexus.service-card title="Tickets" :href="route('services.ticketing')" icon="fa-ticket" iconVariant="solid" />
             
             @if(\App\Models\SystemSetting::get('auction_service_enabled', 'true') === 'true')
-                @php $aucHref = \Illuminate\Support\Facades\Route::has('auctions.dashboard') ? route('auctions.dashboard') : route('public.auctions.index'); @endphp
+                @php
+                    $auctionRoute = \Illuminate\Support\Facades\Route::has('services.auctions.dashboard')
+                        ? 'services.auctions.dashboard'
+                        : (\Illuminate\Support\Facades\Route::has('auctions.dashboard') ? 'auctions.dashboard' : null);
+                    $aucHref = $auctionRoute ? route($auctionRoute) : route('public.auctions.index');
+                @endphp
                 <x-nexus.service-card title="Auctions" :href="$aucHref" icon="fa-gavel" iconVariant="solid" />
             @endif
 
-            @php $logHref = \Illuminate\Support\Facades\Route::has('user.logistics.dashboard') ? route('user.logistics.dashboard') : route('public.logistics.index'); @endphp
+            @php
+                $logisticsRoute = \Illuminate\Support\Facades\Route::has('services.user.logistics.dashboard')
+                    ? 'services.user.logistics.dashboard'
+                    : (\Illuminate\Support\Facades\Route::has('user.logistics.dashboard') ? 'user.logistics.dashboard' : null);
+                $logHref = $logisticsRoute ? route($logisticsRoute) : route('logistics.home');
+            @endphp
             <x-nexus.service-card title="Logistics" :href="$logHref" icon="fa-truck-fast" iconVariant="solid" />
         </div>
     </div>
@@ -216,7 +226,7 @@
                         <div class="small text-muted mb-2">Invite and Earn</div>
                         <div class="d-flex align-items-center justify-content-between mb-2">
                             <code class="text-primary font-weight-bold" style="font-size: 1.1rem;">{{ Auth::user()->referral_id }}</code>
-                            <button class="btn btn-sm btn-primary py-1 px-3 ref-copy" style="border-radius: 8px;">Copy Code</button>
+                            <button class="btn btn-sm btn-primary py-1 px-3 ref-copy" data-referral-url="{{ url('/register?ref=' . urlencode((string) Auth::user()->referral_id)) }}" style="border-radius: 8px;">Copy Link</button>
                         </div>
                         <a href="{{ route('referrals.index') }}" class="btn btn-sm btn-block btn-glass py-2" style="border-radius: 8px; font-size: 0.75rem; letter-spacing: 0.5px; border: 1px solid rgba(255,255,255,0.05);">
                             <i class="fa-solid fa-chart-line mr-1"></i> VIEW ANALYTICS
@@ -282,6 +292,29 @@
                         <div class="small">Transfer to any of the accounts below. Wallet credits automatically after confirmation.</div>
                     </div>
 
+                    @php
+                        $hasTier2IdentityForFunding = \App\Support\UserKycIdentifiers::preferredPaymentIdentity(auth()->user()) !== null;
+                    @endphp
+                    @if (! $hasTier2IdentityForFunding)
+                        <div class="alert py-2 px-3 small mb-3" role="note" style="background: rgba(234, 179, 8, 0.08); border: 1px solid rgba(234, 179, 8, 0.28); color: #fde68a;">
+                            <i class="fa-solid fa-id-card mr-1"></i>
+                            <strong>Monnify and Flutterwave</strong> require a <strong>successful account KYC BVN or NIN verification</strong> before dedicated accounts are created.
+                            @if (\Illuminate\Support\Facades\Route::has('account.kyc.nin') || \Illuminate\Support\Facades\Route::has('account.kyc.bvn'))
+                                <span class="d-block mt-2">
+                                    @if (\Illuminate\Support\Facades\Route::has('account.kyc.nin'))
+                                        <a href="{{ route('account.kyc.nin') }}" class="text-white font-weight-bold" style="text-decoration: underline;">Account KYC NIN</a>
+                                    @endif
+                                    @if (\Illuminate\Support\Facades\Route::has('account.kyc.nin') && \Illuminate\Support\Facades\Route::has('account.kyc.bvn'))
+                                        <span class="text-white-50 mx-2">·</span>
+                                    @endif
+                                    @if (\Illuminate\Support\Facades\Route::has('account.kyc.bvn'))
+                                        <a href="{{ route('account.kyc.bvn') }}" class="text-white font-weight-bold" style="text-decoration: underline;">Account KYC BVN</a>
+                                    @endif
+                                </span>
+                            @endif
+                        </div>
+                    @endif
+
                     @php $canRegen = (Auth::user()->role ?? 'user') === 'admin'; @endphp
                     @if($canRegen)
                         <button type="button" class="btn btn-outline-light w-100 py-2 mb-3" onclick="regenerateAutoFundingAccounts()">
@@ -332,6 +365,10 @@
 @if(session('start_tour'))
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        if (typeof window.introJs !== 'function') {
+            console.warn('introJs is not available; skipping dashboard tour.');
+            return;
+        }
         var intro = introJs();
         intro.setOptions({
             steps: [
@@ -376,7 +413,13 @@
 <script>
     window.authUserEmail = "{{ Auth::user()->email }}";
 
-    $(document).ready(function() {
+    (function bootDashboardScripts() {
+        if (typeof window.jQuery === 'undefined') {
+            window.setTimeout(bootDashboardScripts, 50);
+            return;
+        }
+        var $ = window.jQuery;
+        $(document).ready(function() {
         // Load recent transactions via JSON API
         $.getJSON("{{ route('history.json') }}", function(data) {
             const txns = data.transactions;
@@ -408,10 +451,11 @@
 
         // Copy Referral
         $('.ref-copy').click(function() {
-            let code = $(this).prev().text();
-            copyToClipboard(code);
+            let url = $(this).data('referral-url') || '';
+            if (!url) return;
+            copyToClipboard(url);
             $(this).text('Copied!');
-            setTimeout(() => $(this).text('Copy Code'), 2000);
+            setTimeout(() => $(this).text('Copy Link'), 2000);
         });
 
         $.get("{{ route('payment.virtual_accounts.list') }}")
@@ -432,6 +476,7 @@
                 $('#dashboardVirtualAccounts').html('<div class="text-center p-3 text-muted small">Could not load virtual accounts.</div>');
             });
     });
+    })();
 
     let dashboardVaPollTimer = null;
     function startDashboardVaPoll() {
@@ -536,7 +581,7 @@
 
         $.post("{{ route('payment.auto_funding.ensure') }}", {_token: "{{ csrf_token() }}"})
             .done(function(res) {
-                if(res..status && res.accounts && res.accounts.length > 0) {
+                if(res.status && res.accounts && res.accounts.length > 0) {
                     $('#autoFundingAccounts').html(renderGroupedAutoFundingAccounts(res.accounts));
 
                     const pending = res.accounts.some(a => (a.status || '') === 'pending');

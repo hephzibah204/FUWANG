@@ -23,6 +23,14 @@ class AuthController extends Controller
             return response()->json(['status' => false, 'message' => 'Invalid credentials.'], 401);
         }
 
+        if ($user->api_access_status !== 'approved') {
+            return response()->json([
+                'status' => false,
+                'message' => 'Your API access is ' . ($user->api_access_status ?: 'none') . '. Please apply for API access and wait for approval.',
+                'access_status' => $user->api_access_status ?: 'none',
+            ], 403);
+        }
+
         $plain = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
         $hash = hash('sha256', $plain);
         $lastFour = substr($plain, -4);
@@ -40,6 +48,44 @@ class AuthController extends Controller
             'status' => true,
             'token' => 'nx_' . $plain,
             'token_type' => 'Bearer',
+        ]);
+    }
+
+    public function applyForApi(Request $request)
+    {
+        $request->validate([
+            'email' => ['required', 'email'],
+            'password' => ['required', 'string'],
+            'intended_use' => ['required', 'string', 'max:500'],
+            'website' => ['nullable', 'url'],
+            'company_name' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        $user = User::where('email', $request->email)->first();
+        if (!$user || !Hash::check($request->password, $user->password)) {
+            return response()->json(['status' => false, 'message' => 'Invalid credentials.'], 401);
+        }
+
+        if ($user->api_access_status === 'approved') {
+            return response()->json(['status' => false, 'message' => 'Your API access is already approved.'], 400);
+        }
+
+        if ($user->api_access_status === 'pending') {
+            return response()->json(['status' => false, 'message' => 'Your API application is still pending review.'], 400);
+        }
+
+        $user->api_access_status = 'pending';
+        $user->api_application_details = [
+            'intended_use' => $request->intended_use,
+            'website' => $request->website,
+            'company_name' => $request->company_name,
+            'applied_at' => now()->toIso8601String(),
+        ];
+        $user->save();
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Your API application has been submitted and is pending review.',
         ]);
     }
 

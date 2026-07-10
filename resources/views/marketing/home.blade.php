@@ -1,12 +1,12 @@
 @extends('layouts.nexus')
 
 @section('title', 'Instant KYC & All-In-One Business Tools for Nigeria | Fuwa.NG')
-@section('meta_description', 'Onboard users seamlessly with Nigeria's most reliable NIN and BVN verification. Grow your business with integrated VTU, logistics, auctions, and notary services. Get started for free.')
+@section('meta_description', "Onboard users seamlessly with Nigeria's most reliable NIN and BVN verification. Grow your business with integrated VTU, logistics, auctions, and notary services. Get started for free.")
 @section('meta_keywords', 'NIN verification Nigeria, BVN validation, KYC Nigeria, identity verification API, VTU services, logistics platform Nigeria, online auctions Nigeria, notary services Nigeria')
 @section('canonical', route('home'))
 
 @section('og_title', 'Fuwa.NG: Instant KYC & All-In-One Business Tools for Nigeria')
-@section('og_description', 'Onboard users with reliable NIN/BVN checks. Expand with VTU, logistics, auctions, and legal services on a single platform. Built for growth in Nigeria.')
+@section('og_description', "Onboard users with reliable NIN/BVN checks. Expand with VTU, logistics, auctions, and legal services on a single platform. Built for growth in Nigeria.")
 @section('og_image', url('/images/og/home.jpg'))
 @section('og_type', 'website')
 
@@ -84,9 +84,12 @@
                     <h3 class="home-sales__h3">Logistics</h3>
                     <p class="home-sales__p">Track shipments, reduce delivery disputes, and give customers real-time updates that build trust.</p>
                     @php
-                        $logisticsHref = auth()->check() && \Illuminate\Support\Facades\Route::has('user.logistics.dashboard')
-                            ? route('user.logistics.dashboard')
-                            : route('public.logistics.index');
+                        $logisticsRoute = \Illuminate\Support\Facades\Route::has('services.user.logistics.dashboard')
+                            ? 'services.user.logistics.dashboard'
+                            : (\Illuminate\Support\Facades\Route::has('user.logistics.dashboard') ? 'user.logistics.dashboard' : null);
+                        $logisticsHref = auth()->check() && $logisticsRoute
+                            ? route($logisticsRoute)
+                            : route('logistics.home');
                     @endphp
                     <a class="home-sales__link" href="{{ $logisticsHref }}">Explore logistics →</a>
                 </article>
@@ -96,8 +99,11 @@
                     <h3 class="home-sales__h3">Auctions</h3>
                     <p class="home-sales__p">Run transparent bidding with verified listings, clear history, and higher buyer confidence.</p>
                     @php
-                        $auctionsHref = auth()->check() && \Illuminate\Support\Facades\Route::has('auctions.dashboard')
-                            ? route('auctions.dashboard')
+                        $auctionRoute = \Illuminate\Support\Facades\Route::has('services.auctions.dashboard')
+                            ? 'services.auctions.dashboard'
+                            : (\Illuminate\Support\Facades\Route::has('auctions.dashboard') ? 'auctions.dashboard' : null);
+                        $auctionsHref = auth()->check() && $auctionRoute
+                            ? route($auctionRoute)
                             : route('public.auctions.index');
                     @endphp
                     <a class="home-sales__link" href="{{ $auctionsHref }}">View auctions →</a>
@@ -200,17 +206,17 @@
 
             <div class="home-sales__quotes">
                 <figure class="home-sales__quote">
-                    <img src="{{ $assetPrefix }}/images/people/customer-1.jpg" alt="Customer portrait" width="56" height="56" loading="lazy" decoding="async" style="object-fit: cover; border-radius: 50%;">
+                    <img src="{{ $assetPrefix . \App\Support\TestimonialAvatars::webPath('Chioma|Operations|Fintech') }}" alt="Customer portrait" width="56" height="56" loading="lazy" decoding="async" style="object-fit: cover; border-radius: 50%;">
                     <blockquote>“We reduced failed onboarding and support tickets immediately. Customers finish verification faster.”</blockquote>
                     <figcaption>Chioma, Operations — Fintech</figcaption>
                 </figure>
                 <figure class="home-sales__quote">
-                    <img src="{{ $assetPrefix }}/images/people/customer-2.jpg" alt="Customer portrait" width="56" height="56" loading="lazy" decoding="async" style="object-fit: cover; border-radius: 50%;">
+                    <img src="{{ $assetPrefix . \App\Support\TestimonialAvatars::webPath('Yusuf|Compliance|Lending') }}" alt="Customer portrait" width="56" height="56" loading="lazy" decoding="async" style="object-fit: cover; border-radius: 50%;">
                     <blockquote>“The verification vault saves us hours every week. Everything is traceable and clean.”</blockquote>
                     <figcaption>Yusuf, Compliance — Lending</figcaption>
                 </figure>
                 <figure class="home-sales__quote">
-                    <img src="{{ $assetPrefix }}/images/people/customer-3.jpg" alt="Customer portrait" width="56" height="56" loading="lazy" decoding="async" style="object-fit: cover; border-radius: 50%;">
+                    <img src="{{ $assetPrefix . \App\Support\TestimonialAvatars::webPath('Amaka|Product|Agency') }}" alt="Customer portrait" width="56" height="56" loading="lazy" decoding="async" style="object-fit: cover; border-radius: 50%;">
                     <blockquote>“Our agents can do NIN checks on-site, and we can top up VTU without switching apps.”</blockquote>
                     <figcaption>Amaka, Product — Agency Network</figcaption>
                 </figure>
