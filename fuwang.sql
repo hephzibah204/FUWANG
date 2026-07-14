@@ -19,7 +19,7 @@
 -- Table structure for table `account_balances`
 --
 
-DROP TABLE IF EXISTS `account_balances`;
+-- DROP TABLE IF EXISTS `account_balances`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `account_balances` (
@@ -50,7 +50,7 @@ UNLOCK TABLES;
 -- Table structure for table `activity_log`
 --
 
-DROP TABLE IF EXISTS `activity_log`;
+-- DROP TABLE IF EXISTS `activity_log`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `activity_log` (
@@ -86,7 +86,7 @@ UNLOCK TABLES;
 -- Table structure for table `activity_logs`
 --
 
-DROP TABLE IF EXISTS `activity_logs`;
+-- DROP TABLE IF EXISTS `activity_logs`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `activity_logs` (
@@ -117,7 +117,7 @@ UNLOCK TABLES;
 -- Table structure for table `admin_audit_logs`
 --
 
-DROP TABLE IF EXISTS `admin_audit_logs`;
+-- DROP TABLE IF EXISTS `admin_audit_logs`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `admin_audit_logs` (
@@ -148,7 +148,7 @@ UNLOCK TABLES;
 -- Table structure for table `admins`
 --
 
-DROP TABLE IF EXISTS `admins`;
+-- DROP TABLE IF EXISTS `admins`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `admins` (
@@ -186,7 +186,7 @@ UNLOCK TABLES;
 -- Table structure for table `api_centers`
 --
 
-DROP TABLE IF EXISTS `api_centers`;
+-- DROP TABLE IF EXISTS `api_centers`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `api_centers` (
@@ -257,7 +257,7 @@ UNLOCK TABLES;
 -- Table structure for table `api_tokens`
 --
 
-DROP TABLE IF EXISTS `api_tokens`;
+-- DROP TABLE IF EXISTS `api_tokens`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `api_tokens` (
@@ -292,7 +292,7 @@ UNLOCK TABLES;
 -- Table structure for table `auction_admin_audit_logs`
 --
 
-DROP TABLE IF EXISTS `auction_admin_audit_logs`;
+-- DROP TABLE IF EXISTS `auction_admin_audit_logs`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `auction_admin_audit_logs` (
@@ -323,7 +323,7 @@ UNLOCK TABLES;
 -- Table structure for table `auction_admins`
 --
 
-DROP TABLE IF EXISTS `auction_admins`;
+-- DROP TABLE IF EXISTS `auction_admins`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `auction_admins` (
@@ -357,7 +357,7 @@ UNLOCK TABLES;
 -- Table structure for table `auction_bids`
 --
 
-DROP TABLE IF EXISTS `auction_bids`;
+-- DROP TABLE IF EXISTS `auction_bids`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `auction_bids` (
@@ -392,7 +392,7 @@ UNLOCK TABLES;
 -- Table structure for table `auction_lot_images`
 --
 
-DROP TABLE IF EXISTS `auction_lot_images`;
+-- DROP TABLE IF EXISTS `auction_lot_images`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `auction_lot_images` (
@@ -422,7 +422,7 @@ UNLOCK TABLES;
 -- Table structure for table `auction_lots`
 --
 
-DROP TABLE IF EXISTS `auction_lots`;
+-- DROP TABLE IF EXISTS `auction_lots`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `auction_lots` (
@@ -466,7 +466,7 @@ UNLOCK TABLES;
 -- Table structure for table `auction_sellers`
 --
 
-DROP TABLE IF EXISTS `auction_sellers`;
+-- DROP TABLE IF EXISTS `auction_sellers`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `auction_sellers` (
@@ -498,7 +498,7 @@ UNLOCK TABLES;
 -- Table structure for table `auction_watchlists`
 --
 
-DROP TABLE IF EXISTS `auction_watchlists`;
+-- DROP TABLE IF EXISTS `auction_watchlists`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `auction_watchlists` (
@@ -527,7 +527,7 @@ UNLOCK TABLES;
 -- Table structure for table `cache`
 --
 
-DROP TABLE IF EXISTS `cache`;
+-- DROP TABLE IF EXISTS `cache`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `cache` (
@@ -551,7 +551,7 @@ UNLOCK TABLES;
 -- Table structure for table `cache_locks`
 --
 
-DROP TABLE IF EXISTS `cache_locks`;
+-- DROP TABLE IF EXISTS `cache_locks`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `cache_locks` (
@@ -575,7 +575,7 @@ UNLOCK TABLES;
 -- Table structure for table `custom_apis`
 --
 
-DROP TABLE IF EXISTS `custom_apis`;
+-- DROP TABLE IF EXISTS `custom_apis`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `custom_apis` (
@@ -617,7 +617,7 @@ UNLOCK TABLES;
 -- Table structure for table `delivery_agents`
 --
 
-DROP TABLE IF EXISTS `delivery_agents`;
+-- DROP TABLE IF EXISTS `delivery_agents`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `delivery_agents` (
@@ -658,7 +658,7 @@ UNLOCK TABLES;
 -- Table structure for table `developer_api_endpoints`
 --
 
-DROP TABLE IF EXISTS `developer_api_endpoints`;
+-- DROP TABLE IF EXISTS `developer_api_endpoints`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `developer_api_endpoints` (
@@ -695,7 +695,7 @@ UNLOCK TABLES;
 -- Table structure for table `developer_api_request_logs`
 --
 
-DROP TABLE IF EXISTS `developer_api_request_logs`;
+-- DROP TABLE IF EXISTS `developer_api_request_logs`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `developer_api_request_logs` (
@@ -738,7 +738,7 @@ UNLOCK TABLES;
 -- Table structure for table `email_logs`
 --
 
-DROP TABLE IF EXISTS `email_logs`;
+-- DROP TABLE IF EXISTS `email_logs`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `email_logs` (
@@ -777,7 +777,7 @@ UNLOCK TABLES;
 -- Table structure for table `feature_toggles`
 --
 
-DROP TABLE IF EXISTS `feature_toggles`;
+-- DROP TABLE IF EXISTS `feature_toggles`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `feature_toggles` (
@@ -806,7 +806,7 @@ UNLOCK TABLES;
 -- Table structure for table `login_attempts`
 --
 
-DROP TABLE IF EXISTS `login_attempts`;
+-- DROP TABLE IF EXISTS `login_attempts`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `login_attempts` (
@@ -834,7 +834,7 @@ UNLOCK TABLES;
 -- Table structure for table `logistics_ai_pricing_models`
 --
 
-DROP TABLE IF EXISTS `logistics_ai_pricing_models`;
+-- DROP TABLE IF EXISTS `logistics_ai_pricing_models`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `logistics_ai_pricing_models` (
@@ -868,7 +868,7 @@ UNLOCK TABLES;
 -- Table structure for table `logistics_centers`
 --
 
-DROP TABLE IF EXISTS `logistics_centers`;
+-- DROP TABLE IF EXISTS `logistics_centers`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `logistics_centers` (
@@ -912,7 +912,7 @@ UNLOCK TABLES;
 -- Table structure for table `logistics_inventory_items`
 --
 
-DROP TABLE IF EXISTS `logistics_inventory_items`;
+-- DROP TABLE IF EXISTS `logistics_inventory_items`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `logistics_inventory_items` (
@@ -944,7 +944,7 @@ UNLOCK TABLES;
 -- Table structure for table `logistics_profiles`
 --
 
-DROP TABLE IF EXISTS `logistics_profiles`;
+-- DROP TABLE IF EXISTS `logistics_profiles`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `logistics_profiles` (
@@ -984,7 +984,7 @@ UNLOCK TABLES;
 -- Table structure for table `logistics_requests`
 --
 
-DROP TABLE IF EXISTS `logistics_requests`;
+-- DROP TABLE IF EXISTS `logistics_requests`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `logistics_requests` (
@@ -1070,7 +1070,7 @@ UNLOCK TABLES;
 -- Table structure for table `logistics_staff`
 --
 
-DROP TABLE IF EXISTS `logistics_staff`;
+-- DROP TABLE IF EXISTS `logistics_staff`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `logistics_staff` (
@@ -1105,7 +1105,7 @@ UNLOCK TABLES;
 -- Table structure for table `logistics_staff_jwt_sessions`
 --
 
-DROP TABLE IF EXISTS `logistics_staff_jwt_sessions`;
+-- DROP TABLE IF EXISTS `logistics_staff_jwt_sessions`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `logistics_staff_jwt_sessions` (
@@ -1140,7 +1140,7 @@ UNLOCK TABLES;
 -- Table structure for table `migrations`
 --
 
-DROP TABLE IF EXISTS `migrations`;
+-- DROP TABLE IF EXISTS `migrations`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `migrations` (
@@ -1165,7 +1165,7 @@ UNLOCK TABLES;
 -- Table structure for table `model_has_permissions`
 --
 
-DROP TABLE IF EXISTS `model_has_permissions`;
+-- DROP TABLE IF EXISTS `model_has_permissions`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `model_has_permissions` (
@@ -1191,7 +1191,7 @@ UNLOCK TABLES;
 -- Table structure for table `model_has_roles`
 --
 
-DROP TABLE IF EXISTS `model_has_roles`;
+-- DROP TABLE IF EXISTS `model_has_roles`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `model_has_roles` (
@@ -1217,7 +1217,7 @@ UNLOCK TABLES;
 -- Table structure for table `notifications`
 --
 
-DROP TABLE IF EXISTS `notifications`;
+-- DROP TABLE IF EXISTS `notifications`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `notifications` (
@@ -1247,7 +1247,7 @@ UNLOCK TABLES;
 -- Table structure for table `password_reset_tokens`
 --
 
-DROP TABLE IF EXISTS `password_reset_tokens`;
+-- DROP TABLE IF EXISTS `password_reset_tokens`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `password_reset_tokens` (
@@ -1271,7 +1271,7 @@ UNLOCK TABLES;
 -- Table structure for table `permissions`
 --
 
-DROP TABLE IF EXISTS `permissions`;
+-- DROP TABLE IF EXISTS `permissions`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `permissions` (
@@ -1299,7 +1299,7 @@ UNLOCK TABLES;
 -- Table structure for table `price_list`
 --
 
-DROP TABLE IF EXISTS `price_list`;
+-- DROP TABLE IF EXISTS `price_list`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `price_list` (
@@ -1327,7 +1327,7 @@ UNLOCK TABLES;
 -- Table structure for table `referral_audit_logs`
 --
 
-DROP TABLE IF EXISTS `referral_audit_logs`;
+-- DROP TABLE IF EXISTS `referral_audit_logs`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `referral_audit_logs` (
@@ -1361,7 +1361,7 @@ UNLOCK TABLES;
 -- Table structure for table `referral_tiers`
 --
 
-DROP TABLE IF EXISTS `referral_tiers`;
+-- DROP TABLE IF EXISTS `referral_tiers`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `referral_tiers` (
@@ -1390,7 +1390,7 @@ UNLOCK TABLES;
 -- Table structure for table `referrals`
 --
 
-DROP TABLE IF EXISTS `referrals`;
+-- DROP TABLE IF EXISTS `referrals`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `referrals` (
@@ -1434,7 +1434,7 @@ UNLOCK TABLES;
 -- Table structure for table `role_has_permissions`
 --
 
-DROP TABLE IF EXISTS `role_has_permissions`;
+-- DROP TABLE IF EXISTS `role_has_permissions`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `role_has_permissions` (
@@ -1461,7 +1461,7 @@ UNLOCK TABLES;
 -- Table structure for table `roles`
 --
 
-DROP TABLE IF EXISTS `roles`;
+-- DROP TABLE IF EXISTS `roles`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `roles` (
@@ -1489,7 +1489,7 @@ UNLOCK TABLES;
 -- Table structure for table `service_sessions`
 --
 
-DROP TABLE IF EXISTS `service_sessions`;
+-- DROP TABLE IF EXISTS `service_sessions`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `service_sessions` (
@@ -1524,7 +1524,7 @@ UNLOCK TABLES;
 -- Table structure for table `sessions`
 --
 
-DROP TABLE IF EXISTS `sessions`;
+-- DROP TABLE IF EXISTS `sessions`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `sessions` (
@@ -1553,7 +1553,7 @@ UNLOCK TABLES;
 -- Table structure for table `shipping_providers`
 --
 
-DROP TABLE IF EXISTS `shipping_providers`;
+-- DROP TABLE IF EXISTS `shipping_providers`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `shipping_providers` (
@@ -1585,7 +1585,7 @@ UNLOCK TABLES;
 -- Table structure for table `system_settings`
 --
 
-DROP TABLE IF EXISTS `system_settings`;
+-- DROP TABLE IF EXISTS `system_settings`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `system_settings` (
@@ -1616,7 +1616,7 @@ UNLOCK TABLES;
 -- Table structure for table `transactions`
 --
 
-DROP TABLE IF EXISTS `transactions`;
+-- DROP TABLE IF EXISTS `transactions`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `transactions` (
@@ -1656,7 +1656,7 @@ UNLOCK TABLES;
 -- Table structure for table `users`
 --
 
-DROP TABLE IF EXISTS `users`;
+-- DROP TABLE IF EXISTS `users`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `users` (
@@ -1716,7 +1716,7 @@ UNLOCK TABLES;
 -- Table structure for table `verification_results`
 --
 
-DROP TABLE IF EXISTS `verification_results`;
+-- DROP TABLE IF EXISTS `verification_results`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE IF NOT EXISTS `verification_results` (
