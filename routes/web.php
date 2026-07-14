@@ -70,18 +70,18 @@ Route::post('/ab/event', [\App\Http\Controllers\AbEventController::class, 'store
 Route::get('/explore', [\App\Http\Controllers\PublicServiceController::class, 'index'])->middleware('track.view:explore_index')->name('public.services.index');
 Route::get('/explore/auctions', function () {
     return redirect('/auction', 301);
-})->name('public.auctions.index_legacy');
+})->middleware('feature:auctions')->name('public.auctions.index_legacy');
 Route::get('/explore/auctions/{lotCode}', function (string $lotCode) {
     return redirect('/auction/' . $lotCode, 301);
-})->name('public.auctions.show_legacy');
+})->middleware('feature:auctions')->name('public.auctions.show_legacy');
 
 // Logistics
 Route::get('/explore/logistics', function () {
     return redirect('/logistics', 301);
-})->name('public.logistics.index_legacy');
+})->middleware('feature:logistics')->name('public.logistics.index_legacy');
 Route::post('/explore/logistics/track', function () {
     return redirect('/logistics/track', 307);
-})->name('public.logistics.track_legacy');
+})->middleware('feature:logistics')->name('public.logistics.track_legacy');
 
 require __DIR__ . '/logistics.php';
 require __DIR__ . '/auctions.php';

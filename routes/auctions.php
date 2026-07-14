@@ -5,7 +5,7 @@ use App\Http\Controllers\PublicAuctionController;
 use App\Http\Controllers\UserAuctionController;
 use App\Http\Controllers\Auth\Auctions\AuctionsAuthController;
 
-Route::prefix('auction')->group(function () {
+Route::prefix('auction')->middleware('feature:auctions')->group(function () {
     Route::get('/', [PublicAuctionController::class, 'index'])
         ->middleware('track.view:public_auctions_index')
         ->name('public.auctions.index');

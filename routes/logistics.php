@@ -5,7 +5,7 @@ use App\Http\Controllers\Auth\Logistics\LogisticsAuthController;
 use App\Http\Controllers\PublicLogisticsController;
 use App\Http\Controllers\UserLogisticsController;
 
-Route::prefix('logistics')->name('logistics.')->group(function () {
+Route::prefix('logistics')->name('logistics.')->middleware('feature:logistics')->group(function () {
     Route::get('/', [PublicLogisticsController::class, 'index'])->name('home');
     Route::post('/track', [PublicLogisticsController::class, 'track'])->name('track');
     Route::get('/states', [\App\Http\Controllers\LogisticsCentersController::class, 'states'])->name('states');
