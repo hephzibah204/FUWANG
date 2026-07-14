@@ -18,7 +18,6 @@
 /public/hot
 /public/storage
 /storage/app/public
-/storage/framework
 /storage/logs
 /storage/*.key
 /storage/pail
