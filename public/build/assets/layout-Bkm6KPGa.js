@@ -1,0 +1,1 @@
+document.addEventListener("DOMContentLoaded",()=>{const e=document.getElementById("sidebarToggle");if(!e)return;const s=e.getAttribute("aria-controls")||"sidebar",t=document.getElementById(s);t&&e.addEventListener("click",()=>{const n=!t.classList.contains("open");t.classList.toggle("open",n),e.setAttribute("aria-expanded",n?"true":"false")})});
