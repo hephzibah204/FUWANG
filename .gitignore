@@ -22,7 +22,6 @@
 /storage/logs
 /storage/*.key
 /storage/pail
-/vendor
 *.sqlite
 *.sql
 *.dump
