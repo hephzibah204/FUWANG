@@ -14,6 +14,7 @@ use App\Services\VerificationResultService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
 class NINController extends Controller
@@ -34,7 +35,9 @@ class NINController extends Controller
     public function index()
     {
         // Legacy pricing from verification_price table
-        $legacyPricing = VerificationPrice::first();
+        $legacyPricing = Schema::hasTable((new VerificationPrice)->getTable())
+            ? VerificationPrice::first()
+            : null;
 
         // Laravel providers from custom_apis
         $ninProviders = CustomApi::whereIn('service_type', ['nin_verification', 'nin'])
@@ -50,8 +53,13 @@ class NINController extends Controller
         // Combine providers, remove duplicates by ID, and load their verification types
         $ninProviders = $ninProviders->concat($faceProviders)
                                      ->unique('id')
-                                     ->values()
-                                     ->load('verificationTypes');
+                                     ->values();
+
+        if (Schema::hasTable('custom_api_verification_types')) {
+            $ninProviders->load('verificationTypes');
+        } else {
+            $ninProviders->each->setRelation('verificationTypes', collect());
+        }
 
         // Extract supported modes into a frontend-friendly map
         $providerModes = $ninProviders->mapWithKeys(function ($provider) {
