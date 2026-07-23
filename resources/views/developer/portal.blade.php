@@ -254,14 +254,12 @@ $('#createTokenForm').on('submit', function(e) {
     $.ajax({
         url: '{{ route("developer.tokens.create") }}',
         method: 'POST',
-        data: new FormData(form),
-        processData: false,
-        contentType: false,
+        data: $(form).serialize(),
         success(res) {
             document.getElementById('createdToken').value = res.token;
             document.getElementById('createdTokenWrap').style.display = 'block';
             Swal.fire({ icon: 'success', title: 'Created', text: res.message, background: '#141826', color: '#fff' });
-            setTimeout(() => location.reload(), 1400);
+            setTimeout(() => location.reload(), 2000);
         },
         error(xhr) {
             const errs = xhr.responseJSON?.errors;
