@@ -37,7 +37,7 @@ class NINController extends Controller
         $legacyPricing = VerificationPrice::first();
 
         // Laravel providers from custom_apis
-        $ninProviders = CustomApi::where('service_type', 'nin_verification')
+        $ninProviders = CustomApi::whereIn('service_type', ['nin_verification', 'nin'])
                             ->where('status', true)
                             ->orderBy('priority', 'asc')
                             ->get();
@@ -61,7 +61,7 @@ class NINController extends Controller
                 if ($provider->service_type === 'nin_face_verification') {
                     $modes = ['selfie'];
                 } else {
-                    $modes = ['nin', 'phone', 'demographic', 'tracking', 'vnin'];
+                    $modes = ['nin', 'phone', 'demographic', 'tracking', 'share_code', 'requery', 'vnin'];
                 }
             }
             return [$provider->id => $modes];
@@ -137,7 +137,27 @@ class NINController extends Controller
         $type = null;
 
         if ($request->filled('api_provider_id')) {
-            $provider = CustomApi::find($request->api_provider_id);
+            $allowedServiceTypes = $mode === 'selfie'
+                ? ['nin_face_verification']
+                : ['nin_verification', 'nin'];
+            $provider = CustomApi::whereKey($request->integer('api_provider_id'))
+                ->whereIn('service_type', $allowedServiceTypes)
+                ->where('status', true)
+                ->first();
+            if (!$provider) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'The selected API provider is unavailable for this verification mode.',
+                ]);
+            }
+
+            $supportedModes = is_array($provider->supported_modes) ? $provider->supported_modes : [];
+            if ($supportedModes && !in_array($mode, $supportedModes, true)) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'The selected API provider does not support this verification mode.',
+                ]);
+            }
         } else {
             $provider = $this->pickProviderForMode($mode);
         }
@@ -548,9 +568,11 @@ class NINController extends Controller
 
     private function pickProviderForMode(string $mode): ?CustomApi
     {
-        $serviceType = $mode === 'selfie' ? 'nin_face_verification' : 'nin_verification';
+        $serviceTypes = $mode === 'selfie'
+            ? ['nin_face_verification']
+            : ['nin_verification', 'nin'];
 
-        $providers = CustomApi::where('service_type', $serviceType)
+        $providers = CustomApi::whereIn('service_type', $serviceTypes)
             ->where('status', true)
             ->orderBy('priority', 'asc')
             ->get();

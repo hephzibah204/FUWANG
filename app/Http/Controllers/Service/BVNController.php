@@ -72,7 +72,13 @@ class BVNController extends Controller
         $paid = app(PaidActionService::class)->run($user, (float) $price, (string) $orderType, (string) $txReference, function () use ($request, $mode, $serviceType, $user) {
             $provider = null;
             if ($request->filled('api_provider_id')) {
-                $provider = CustomApi::find($request->api_provider_id);
+                $provider = CustomApi::whereKey($request->integer('api_provider_id'))
+                    ->where('service_type', $serviceType)
+                    ->where('status', true)
+                    ->first();
+                if (!$provider) {
+                    throw new \Exception('The selected API provider is unavailable for this BVN service.');
+                }
             } else {
                 $provider = CustomApi::where('service_type', $serviceType)->where('status', true)->first();
             }

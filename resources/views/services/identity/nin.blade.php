@@ -359,7 +359,7 @@
         const providerSelect = document.getElementById('api_provider_id');
         const providerGroup = document.getElementById('providerSelectionGroup');
         const noProviderWarning = document.getElementById('noProviderWarning');
-        const submitBtn = document.getElementById('submitBtn');
+        const submitBtn = document.getElementById('verify-btn');
         
         if (!providerSelect) return;
 

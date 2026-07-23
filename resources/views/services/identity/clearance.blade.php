@@ -39,12 +39,25 @@
                                     <option value="status">Check Request Status</option>
                                 </select>
                             </div>
-                            <div class="col-md-5 mb-4">
+                            <div class="col-md-3 mb-4">
                                 <label for="number" class="font-weight-600 mb-2 small text-muted">Tracking ID</label>
                                 <div class="input-wrap">
                                     <i class="fa-solid fa-hashtag"></i>
                                     <input type="text" id="number" name="number" class="form-control" placeholder="Enter Tracking ID" required>
                                 </div>
+                            </div>
+                            <div class="col-md-2 mb-4">
+                                <label for="api_provider_id" class="font-weight-600 mb-2 small text-muted">API Provider</label>
+                                <select id="api_provider_id" name="api_provider_id" class="form-control" @if($providers->isNotEmpty()) required @endif>
+                                    @if($providers->isEmpty())
+                                        <option value="">Legacy Gateway</option>
+                                    @else
+                                        <option value="">Choose provider</option>
+                                        @foreach($providers as $provider)
+                                            <option value="{{ $provider->id }}">{{ $provider->name }}</option>
+                                        @endforeach
+                                    @endif
+                                </select>
                             </div>
                             <div class="col-md-3 text-right mt-2 d-flex align-items-end justify-content-end">
                                 <button type="submit" class="btn btn-primary btn-lg px-5 w-100" id="submit-btn" style="height: 50px;">

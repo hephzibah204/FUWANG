@@ -967,6 +967,7 @@ class VerificationController extends Controller
      */
     public function validationIndex()
     {
+        $providers = $this->activeProvidersFor('validation');
         $history = VerificationResult::where('user_id', Auth::id())
                         ->where('service_type', 'validation')
                         ->latest()
@@ -974,7 +975,7 @@ class VerificationController extends Controller
 
         $price = VerificationPrice::first()->validation_price ?? 700;
 
-        return view('services.identity.validation', compact('history', 'price'));
+        return view('services.identity.validation', compact('history', 'price', 'providers'));
     }
 
     /**
@@ -984,13 +985,18 @@ class VerificationController extends Controller
     {
         $request->validate([
             'number' => ['required', 'string'],
+            'api_provider_id' => ['nullable', 'integer', 'exists:custom_apis,id'],
         ]);
 
         $user = Auth::user();
         $price = VerificationPrice::first()->validation_price ?? 700;
+        $provider = $this->selectedProvider($request, 'validation');
+        if ($provider) {
+            $price = (float) ($provider->price ?? $price);
+        }
         $apiCenter = ApiCenter::first();
 
-        if (!$apiCenter || !$apiCenter->robosttech_api_key) {
+        if (!$provider && (!$apiCenter || !$apiCenter->robosttech_api_key)) {
             throw new \App\Exceptions\ServiceNotConfiguredException('Robosttech API credentials not configured');
         }
 
@@ -1001,19 +1007,19 @@ class VerificationController extends Controller
         }
 
         try {
-            $endpoint = ($apiCenter->robosttech_endpoint_validation ?: 'https://robosttech.com/api') . '/validation';
-            $response = Http::timeout(45)
-                ->withHeaders([
+            if ($provider) {
+                $response = $this->postToProvider($provider, ['number' => $request->number]);
+            } else {
+                $endpoint = ($apiCenter->robosttech_endpoint_validation ?: 'https://robosttech.com/api') . '/validation';
+                $response = Http::timeout(45)->withHeaders([
                     'api-key' => $apiCenter->robosttech_api_key,
                     'Content-Type' => 'application/json'
-                ])
-                ->post($endpoint, [
-                    'number' => $request->number,
-                ]);
+                ])->post($endpoint, ['number' => $request->number]);
+            }
 
             if ($response->successful()) {
                 $data = $response->json();
-                $result = $this->storeResult($user, 'validation', $request->number, 'Robosttech', $data);
+                $result = $this->storeResult($user, 'validation', $request->number, $provider?->name ?? 'Robosttech', $data);
                 $wallet->markTransactionSuccess($debit['txId']);
 
                 return response()->json([
@@ -1036,6 +1042,7 @@ class VerificationController extends Controller
      */
     public function clearanceIndex()
     {
+        $providers = $this->activeProvidersFor('clearance');
         $history = VerificationResult::where('user_id', Auth::id())
                         ->where('service_type', 'clearance')
                         ->latest()
@@ -1043,7 +1050,7 @@ class VerificationController extends Controller
 
         $price = VerificationPrice::first()->ipe_clearance_price ?? 400;
 
-        return view('services.identity.clearance', compact('history', 'price'));
+        return view('services.identity.clearance', compact('history', 'price', 'providers'));
     }
 
     /**
@@ -1053,15 +1060,20 @@ class VerificationController extends Controller
     {
         $request->validate([
             'number' => ['required', 'string'],
-            'mode' => ['nullable', 'string', 'in:submit,status']
+            'mode' => ['nullable', 'string', 'in:submit,status'],
+            'api_provider_id' => ['nullable', 'integer', 'exists:custom_apis,id'],
         ]);
 
         $mode = $request->input('mode', 'submit');
         $user = Auth::user();
         $price = VerificationPrice::first()->ipe_clearance_price ?? 400;
+        $provider = $this->selectedProvider($request, 'clearance');
+        if ($provider) {
+            $price = (float) ($provider->price ?? $price);
+        }
         $apiCenter = ApiCenter::first();
 
-        if (!$apiCenter || !$apiCenter->robosttech_api_key) {
+        if (!$provider && (!$apiCenter || !$apiCenter->robosttech_api_key)) {
             throw new \App\Exceptions\ServiceNotConfiguredException('Robosttech API credentials not configured');
         }
 
@@ -1076,18 +1088,19 @@ class VerificationController extends Controller
         }
 
         try {
-            $endpoint = ($mode === 'status') 
-                ? ($apiCenter->robosttech_endpoint_clearance_status ?: 'https://robosttech.com/api/clearance_status')
-                : ($apiCenter->robosttech_endpoint_clearance ?: 'https://robosttech.com/api/clearance');
-
-            $response = Http::timeout(45)
-                ->withHeaders([
+            if ($provider) {
+                $config = is_array($provider->config) ? $provider->config : [];
+                $endpoint = $mode === 'status' ? ($config['status_endpoint'] ?? $provider->endpoint) : $provider->endpoint;
+                $response = $this->postToProvider($provider, ['tracking_id' => $request->number], $endpoint);
+            } else {
+                $endpoint = ($mode === 'status')
+                    ? ($apiCenter->robosttech_endpoint_clearance_status ?: 'https://robosttech.com/api/clearance_status')
+                    : ($apiCenter->robosttech_endpoint_clearance ?: 'https://robosttech.com/api/clearance');
+                $response = Http::timeout(45)->withHeaders([
                     'api-key' => $apiCenter->robosttech_api_key,
                     'Content-Type' => 'application/json'
-                ])
-                ->post($endpoint, [
-                    'tracking_id' => $request->number,
-                ]);
+                ])->post($endpoint, ['tracking_id' => $request->number]);
+            }
 
             // Robosttech API might return 200 even for failed lookups or empty responses as per documentation sample
             // The documentation says "This request doesn't return any response body" for some cases? 
@@ -1099,7 +1112,7 @@ class VerificationController extends Controller
                 $data = $response->json();
                 
                 if ($mode === 'submit') {
-                    $result = $this->storeResult($user, 'clearance_request', $request->number, 'Robosttech', $data);
+                    $result = $this->storeResult($user, 'clearance_request', $request->number, $provider?->name ?? 'Robosttech', $data);
                     $wallet->markTransactionSuccess($debit['txId']);
                     return response()->json([
                         'status' => true,
@@ -1109,7 +1122,7 @@ class VerificationController extends Controller
                     ]);
                 } else {
                     // Status check
-                    $result = $this->storeResult($user, 'clearance_status', $request->number, 'Robosttech', $data);
+                    $result = $this->storeResult($user, 'clearance_status', $request->number, $provider?->name ?? 'Robosttech', $data);
                     return response()->json([
                         'status' => true,
                         'message' => 'Status retrieved successfully.',
@@ -1133,6 +1146,7 @@ class VerificationController extends Controller
      */
     public function personalizationIndex()
     {
+        $providers = $this->activeProvidersFor('personalization');
         $history = VerificationResult::where('user_id', Auth::id())
                         ->where('service_type', 'personalization')
                         ->latest()
@@ -1140,7 +1154,7 @@ class VerificationController extends Controller
 
         $price = VerificationPrice::first()->personalization_price ?? 100;
 
-        return view('services.identity.personalization', compact('history', 'price'));
+        return view('services.identity.personalization', compact('history', 'price', 'providers'));
     }
 
     /**
@@ -1150,13 +1164,18 @@ class VerificationController extends Controller
     {
         $request->validate([
             'number' => ['required', 'string'],
+            'api_provider_id' => ['nullable', 'integer', 'exists:custom_apis,id'],
         ]);
 
         $user = Auth::user();
         $price = VerificationPrice::first()->personalization_price ?? 100;
+        $provider = $this->selectedProvider($request, 'personalization');
+        if ($provider) {
+            $price = (float) ($provider->price ?? $price);
+        }
         $apiCenter = ApiCenter::first();
 
-        if (!$apiCenter || !$apiCenter->robosttech_api_key) {
+        if (!$provider && (!$apiCenter || !$apiCenter->robosttech_api_key)) {
             throw new \App\Exceptions\ServiceNotConfiguredException('Robosttech API credentials not configured');
         }
 
@@ -1167,19 +1186,19 @@ class VerificationController extends Controller
         }
 
         try {
-            $endpoint = ($apiCenter->robosttech_endpoint_personalization ?: 'https://robosttech.com/api') . '/personalization';
-            $response = Http::timeout(45)
-                ->withHeaders([
+            if ($provider) {
+                $response = $this->postToProvider($provider, ['number' => $request->number]);
+            } else {
+                $endpoint = ($apiCenter->robosttech_endpoint_personalization ?: 'https://robosttech.com/api') . '/personalization';
+                $response = Http::timeout(45)->withHeaders([
                     'api-key' => $apiCenter->robosttech_api_key,
                     'Content-Type' => 'application/json'
-                ])
-                ->post($endpoint, [
-                    'number' => $request->number,
-                ]);
+                ])->post($endpoint, ['number' => $request->number]);
+            }
 
             if ($response->successful()) {
                 $data = $response->json();
-                $result = $this->storeResult($user, 'personalization', $request->number, 'Robosttech', $data);
+                $result = $this->storeResult($user, 'personalization', $request->number, $provider?->name ?? 'Robosttech', $data);
                 $wallet->markTransactionSuccess($debit['txId']);
 
                 return response()->json([
@@ -1609,6 +1628,46 @@ class VerificationController extends Controller
     /**
      * Handle Address Verification Webhook
      */
+    private function activeProvidersFor(string $serviceType)
+    {
+        return CustomApi::where('service_type', $serviceType)
+            ->where('status', true)
+            ->orderBy('priority')
+            ->orderBy('name')
+            ->get();
+    }
+
+    private function selectedProvider(Request $request, string $serviceType): ?CustomApi
+    {
+        if (!$request->filled('api_provider_id')) {
+            return null;
+        }
+
+        $provider = CustomApi::whereKey($request->integer('api_provider_id'))
+            ->where('service_type', $serviceType)
+            ->where('status', true)
+            ->first();
+
+        if (!$provider) {
+            abort(422, 'The selected API provider is unavailable for this service.');
+        }
+
+        return $provider;
+    }
+
+    private function postToProvider(CustomApi $provider, array $payload, ?string $endpoint = null)
+    {
+        $headers = is_array($provider->headers) ? $provider->headers : [];
+        if ($provider->api_key && !isset($headers['api-key']) && !isset($headers['Authorization'])) {
+            $headers['api-key'] = $provider->api_key;
+        }
+        $headers['Content-Type'] = $headers['Content-Type'] ?? 'application/json';
+
+        return Http::timeout((int) ($provider->timeout_seconds ?: 45))
+            ->withHeaders($headers)
+            ->post($endpoint ?: $provider->endpoint, $payload);
+    }
+
     public function handleAddressWebhook(Request $request)
     {
         $raw = (string) $request->getContent();
