@@ -30,7 +30,7 @@ class NINController extends Controller
     {
         $legacyPricing = VerificationPrice::first();
 
-        $ninProviders = CustomApi::whereIn('service_type', ['nin_verification', 'nin_face_verification'])
+        $ninProviders = CustomApi::whereIn('service_type', ['nin', 'nin_verification', 'nin_face_verification'])
                             ->where('status', true)
                             ->orderBy('priority', 'asc')
                             ->get();
@@ -360,7 +360,7 @@ class NINController extends Controller
         if ($providerId) {
             $provider = CustomApi::find($providerId);
             
-            if ($provider && $provider->service_type !== $serviceType) {
+            if ($provider && !in_array($provider->service_type, [$serviceType, 'nin'], true)) {
                 throw new \RuntimeException(
                     "Provider {$providerId} does not support service type '{$serviceType}'. " .
                     "It is configured for '{$provider->service_type}'."
@@ -371,14 +371,14 @@ class NINController extends Controller
         }
 
         if (in_array($mode, ['validation', 'validation_status'], true)) {
-            return CustomApi::where('service_type', $serviceType)
+            return CustomApi::whereIn('service_type', [$serviceType, 'nin'])
                 ->where('status', true)
                 ->where('provider_identifier', 'robosttech')
                 ->orderBy('priority', 'asc')
                 ->first();
         }
 
-        return CustomApi::where('service_type', $serviceType)
+        return CustomApi::whereIn('service_type', [$serviceType, 'nin'])
             ->where('status', true)
             ->orderBy('priority', 'asc')
             ->first();

@@ -37,7 +37,7 @@ class VerificationController extends Controller
             }
         } else {
             $activeProviders = CustomApi::query()
-                ->where('service_type', 'nin_verification')
+                ->whereIn('service_type', ['nin', 'nin_verification'])
                 ->where('status', true)
                 ->orderBy('priority', 'asc')
                 ->get();

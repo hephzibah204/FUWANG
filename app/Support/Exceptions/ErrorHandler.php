@@ -121,7 +121,7 @@ class ErrorHandler
         $statusCode = 500;
 
         // Handle JSON Parsing errors (malformed JSON)
-        if ($e instanceof \Symfony\Component\HttpKernel\Exception\BadRequestHttpException && str_contains($e->getMessage(), 'JSON')) {
+        if (($e instanceof \Symfony\Component\HttpKernel\Exception\BadRequestHttpException || $e instanceof \Symfony\Component\HttpFoundation\Exception\JsonException || $e instanceof \JsonException) && (str_contains(strtolower($e->getMessage()), 'json') || $e instanceof \JsonException || $e instanceof \Symfony\Component\HttpFoundation\Exception\JsonException)) {
             $statusCode = 400;
             $response['error']['type'] = 'invalid_json';
             $response['error']['message'] = __('errors.invalid_json');
