@@ -26,7 +26,7 @@ class ErrorHandlingTest extends TestCase
             throw new \Exception('Unexpected runtime exception');
         });
 
-        Route::post('/_test_error/malformed_json', function (\Illuminate\Http\Request $request) {
+        Route::post('/api/_test_error/malformed_json', function (\Illuminate\Http\Request $request) {
             if ($request->isJson() && json_decode($request->getContent()) === null && json_last_error() !== JSON_ERROR_NONE) {
                 throw new \Symfony\Component\HttpKernel\Exception\BadRequestHttpException('Invalid JSON payload');
             }
@@ -91,7 +91,7 @@ class ErrorHandlingTest extends TestCase
 
     public function test_malformed_json_request()
     {
-        $response = $this->call('POST', '/_test_error/malformed_json', [], [], [], ['CONTENT_TYPE' => 'application/json'], '{invalid_json:');
+        $response = $this->call('POST', '/api/_test_error/malformed_json', [], [], [], ['CONTENT_TYPE' => 'application/json', 'HTTP_ACCEPT' => 'application/json'], '{invalid_json:');
 
         $response->assertStatus(400)
                  ->assertJsonStructure([

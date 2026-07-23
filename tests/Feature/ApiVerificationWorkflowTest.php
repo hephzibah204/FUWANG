@@ -86,6 +86,15 @@ class ApiVerificationWorkflowTest extends TestCase
             });
         }
 
+        if (!Schema::hasTable('system_settings')) {
+            Schema::create('system_settings', function (Blueprint $table) {
+                $table->id();
+                $table->string('key')->unique();
+                $table->text('value')->nullable();
+                $table->timestamps();
+            });
+        }
+
         if (!Schema::hasTable('activity_log')) {
             Schema::create('activity_log', function (Blueprint $table) {
                 $table->id();
@@ -116,6 +125,9 @@ class ApiVerificationWorkflowTest extends TestCase
             'user_balance' => 1000,
             'api_key' => 'user',
         ]);
+
+        \App\Models\SystemSetting::clearLocalCache();
+        \App\Models\SystemSetting::set('developer_api_nin_price', 200);
 
         CustomApi::create([
             'name' => 'ProviderX',
@@ -173,6 +185,9 @@ class ApiVerificationWorkflowTest extends TestCase
             'user_balance' => 1000,
             'api_key' => 'user',
         ]);
+
+        \App\Models\SystemSetting::clearLocalCache();
+        \App\Models\SystemSetting::set('developer_api_nin_price', 200);
 
         CustomApi::create([
             'name' => 'ProviderX',

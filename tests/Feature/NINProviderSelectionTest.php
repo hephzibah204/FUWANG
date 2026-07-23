@@ -56,4 +56,29 @@ class NINProviderSelectionTest extends TestCase
         $this->assertEquals(['nin', 'phone'], $modes[$dataverify->id]);
         $this->assertEquals(['selfie', 'share_code'], $modes[$vuvaa->id]);
     }
+
+    public function test_nin_service_type_provider_is_included()
+    {
+        $this->withoutMiddleware(\App\Http\Middleware\CheckInstallation::class);
+
+        $user = User::factory()->create();
+
+        $legacyProvider = CustomApi::create([
+            'name' => 'Legacy NIN Provider',
+            'service_type' => 'nin',
+            'endpoint' => 'https://test-legacy.com',
+            'price' => 150,
+            'priority' => 3,
+            'status' => true,
+            'supported_modes' => null
+        ]);
+
+        $response = $this->actingAs($user)->get(route('services.nin'));
+        $response->assertStatus(200);
+        
+        $modes = $response->viewData('providerModes');
+        $this->assertArrayHasKey($legacyProvider->id, $modes);
+        
+        $this->assertEquals(['nin', 'phone', 'demographic', 'tracking', 'vnin'], $modes[$legacyProvider->id]);
+    }
 }
