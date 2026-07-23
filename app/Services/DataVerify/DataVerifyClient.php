@@ -2,6 +2,7 @@
 
 namespace App\Services\DataVerify;
 
+use App\Models\ApiCenter;
 use App\Models\CustomApi;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -42,7 +43,7 @@ class DataVerifyClient
         $path = $this->resolvePath($mode, $requestedType);
         $url = $this->resolveEndpoint($configuredEndpoint, $path);
 
-        $apiKey = trim((string) ($this->provider->api_key ?? ''));
+        $apiKey = $this->apiKey();
         if ($apiKey === '') {
             return ['ok' => false, 'message' => 'DataVerify API key is missing.', 'data' => []];
         }
@@ -113,7 +114,7 @@ class DataVerifyClient
     {
         $path = $this->resolveBvnPath($requestedType);
         $url = $this->resolveBvnEndpoint((string) $this->provider->endpoint, $path);
-        $apiKey = trim((string) ($this->provider->api_key ?? ''));
+        $apiKey = $this->apiKey();
         if ($apiKey === '') {
             return ['ok' => false, 'message' => 'DataVerify API key is missing.', 'data' => []];
         }
@@ -191,6 +192,20 @@ class DataVerifyClient
         }
 
         return $path;
+    }
+
+    /**
+     * Prefer the selected provider's credential, while retaining compatibility
+     * with installations that still store DataVerify credentials in api_centers.
+     */
+    private function apiKey(): string
+    {
+        $apiKey = trim((string) ($this->provider->api_key ?? ''));
+        if ($apiKey !== '') {
+            return $apiKey;
+        }
+
+        return trim((string) (ApiCenter::query()->value('dataverify_api_key') ?? ''));
     }
 
     private function resolveBvnPath(?string $requestedType): string

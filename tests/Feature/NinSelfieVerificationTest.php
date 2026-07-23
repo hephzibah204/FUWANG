@@ -36,7 +36,7 @@ class NinSelfieVerificationTest extends TestCase
         CustomApi::create([
             'name' => 'VUVAA (In-Person)',
             'provider_identifier' => 'vuvaa',
-            'service_type' => 'nin_face_verification',
+            'service_type' => 'nin_verification',
             'endpoint' => 'https://premiere.vuvaa.com/demo/NIN_Validation_LIVE',
             'headers' => [],
             'config' => [

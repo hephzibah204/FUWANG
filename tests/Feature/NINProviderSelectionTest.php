@@ -29,7 +29,8 @@ class NINProviderSelectionTest extends TestCase
 
         CustomApi::create([
             'name' => 'Vuvaa Test',
-            'service_type' => 'nin_face_verification',
+            'provider_identifier' => 'vuvaa',
+            'service_type' => 'nin_verification',
             'endpoint' => 'https://test2.com',
             'price' => 500,
             'priority' => 2,
@@ -54,7 +55,7 @@ class NINProviderSelectionTest extends TestCase
         $vuvaa = CustomApi::where('name', 'Vuvaa Test')->first();
 
         $this->assertEquals(['nin', 'phone'], $modes[$dataverify->id]);
-        $this->assertEquals(['selfie', 'share_code'], $modes[$vuvaa->id]);
+        $this->assertEquals(['nin', 'selfie', 'share_code', 'requery'], $modes[$vuvaa->id]);
     }
 
     public function test_nin_service_type_provider_is_included()

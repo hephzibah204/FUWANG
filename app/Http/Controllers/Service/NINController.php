@@ -21,6 +21,8 @@ use Illuminate\Support\Facades\Storage;
 
 class NINController extends Controller
 {
+    private const VUVAA_MODES = ['nin', 'selfie', 'share_code', 'requery'];
+
     public function suiteIndex()
     {
         return view('services.identity.nin_suite');
@@ -45,13 +47,12 @@ class NINController extends Controller
 
         $providerModes = $ninProviders->mapWithKeys(function ($provider) {
             $modes = is_array($provider->supported_modes) ? $provider->supported_modes : [];
-            if (empty($modes)) {
+            if (VuvaaClient::isVuvaaProvider($provider)) {
+                $modes = self::VUVAA_MODES;
+            } elseif (empty($modes)) {
                 $modes = $provider->service_type === 'nin_face_verification'
                     ? ['selfie']
                     : ['nin', 'phone', 'demographic', 'tracking', 'vnin'];
-            }
-            if (VuvaaClient::isVuvaaProvider($provider) && $provider->service_type === 'nin_verification') {
-                $modes = array_values(array_unique(array_merge($modes, ['share_code', 'requery'])));
             }
             if ((string) $provider->provider_identifier === 'robosttech') {
                 $modes = array_values(array_unique(array_merge($modes, ['validation', 'validation_status'])));
@@ -157,7 +158,7 @@ class NINController extends Controller
             }
         }
 
-        if ($mode === 'selfie' && (!$provider || $provider->service_type !== 'nin_face_verification')) {
+        if ($mode === 'selfie' && (!$provider || !$this->providerSupportsMode($provider, 'selfie'))) {
             return response()->json(['status' => false, 'message' => 'A provider supporting selfie verification is required.'], 422);
         }
 
@@ -192,8 +193,7 @@ class NINController extends Controller
                 $activeProviders = [$provider];
             } else {
                 // Otherwise, get all active providers for this mode
-                $serviceType = $mode === 'selfie' ? 'nin_face_verification' : 'nin_verification';
-                $query = CustomApi::where('service_type', $serviceType)
+                $query = CustomApi::whereIn('service_type', ['nin', 'nin_verification', 'nin_face_verification'])
                     ->where('status', true)
                     ->orderBy('priority', 'asc');
 
@@ -201,7 +201,9 @@ class NINController extends Controller
                     $query->where('provider_identifier', 'robosttech');
                 }
 
-                $activeProviders = $query->get();
+                $activeProviders = $query->get()
+                    ->filter(fn (CustomApi $candidate) => $this->providerSupportsMode($candidate, $mode))
+                    ->values();
             }
 
             $response = ['status' => false, 'message' => 'No active verification provider is configured.'];
@@ -363,15 +365,16 @@ class NINController extends Controller
 
     private function pickProviderForMode(string $mode, ?int $providerId = null): ?CustomApi
     {
-        $serviceType = $mode === 'selfie' ? 'nin_face_verification' : 'nin_verification';
-        
         if ($providerId) {
             $provider = CustomApi::find($providerId);
-            
-            if ($provider && !in_array($provider->service_type, [$serviceType, 'nin'], true)) {
+
+            if ($provider && (
+                !$provider->status
+                || !in_array($provider->service_type, ['nin', 'nin_verification', 'nin_face_verification'], true)
+                || !$this->providerSupportsMode($provider, $mode)
+            )) {
                 throw new \RuntimeException(
-                    "Provider {$providerId} does not support service type '{$serviceType}'. " .
-                    "It is configured for '{$provider->service_type}'."
+                    "Provider {$providerId} does not support the '{$mode}' verification mode."
                 );
             }
             
@@ -379,17 +382,34 @@ class NINController extends Controller
         }
 
         if (in_array($mode, ['validation', 'validation_status'], true)) {
-            return CustomApi::whereIn('service_type', [$serviceType, 'nin'])
+            return CustomApi::whereIn('service_type', ['nin_verification', 'nin'])
                 ->where('status', true)
                 ->where('provider_identifier', 'robosttech')
                 ->orderBy('priority', 'asc')
                 ->first();
         }
 
-        return CustomApi::whereIn('service_type', [$serviceType, 'nin'])
+        return CustomApi::whereIn('service_type', ['nin', 'nin_verification', 'nin_face_verification'])
             ->where('status', true)
             ->orderBy('priority', 'asc')
-            ->first();
+            ->get()
+            ->first(fn (CustomApi $candidate) => $this->providerSupportsMode($candidate, $mode));
+    }
+
+    private function providerSupportsMode(CustomApi $provider, string $mode): bool
+    {
+        if (VuvaaClient::isVuvaaProvider($provider)) {
+            return in_array($mode, self::VUVAA_MODES, true);
+        }
+
+        $modes = is_array($provider->supported_modes) ? $provider->supported_modes : [];
+        if ($modes) {
+            return in_array($mode, $modes, true);
+        }
+
+        return $provider->service_type === 'nin_face_verification'
+            ? $mode === 'selfie'
+            : in_array($mode, ['nin', 'phone', 'demographic', 'tracking', 'vnin'], true);
     }
 
     private function callCustomProvider(CustomApi $provider, Request $request, string $mode, ?array $selfieMeta): array
