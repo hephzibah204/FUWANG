@@ -238,6 +238,11 @@ class DataVerifyClient
             return 'https://dataverify.com.ng/developers/nin_slips/' . $suffix;
         }
 
+        $configuredHost = strtolower((string) parse_url($configured, PHP_URL_HOST));
+        if (in_array($configuredHost, ['api.dataverify.com.ng', 'api.dataverify.ng'], true)) {
+            return 'https://dataverify.com.ng/developers/nin_slips/' . $suffix;
+        }
+
         $trimmed = rtrim($configured, '/');
         $lowerTrimmed = strtolower($trimmed);
         if (str_ends_with(strtolower($trimmed), '.php')) {

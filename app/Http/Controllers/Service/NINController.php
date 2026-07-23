@@ -746,7 +746,7 @@ class NINController extends Controller
                 'name' => 'Dataverify API',
                 'service_type' => 'nin_verification',
                 'provider_identifier' => 'dataverify',
-                'endpoint' => 'https://api.dataverify.com.ng/nin',
+                'endpoint' => 'https://dataverify.com.ng/developers/nin_slips/nin_premium',
                 'status' => true,
                 'priority' => 10,
                 'supported_modes' => ['nin', 'phone', 'demographic', 'tracking'],
