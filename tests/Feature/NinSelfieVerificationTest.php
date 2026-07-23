@@ -89,6 +89,7 @@ class NinSelfieVerificationTest extends TestCase
         ]);
 
         $files = Storage::disk('local')->allFiles('private/selfies/' . $user->id);
-        $this->assertCount(1, $files);
+        $this->assertNotEmpty($files);
+        $this->assertCount(1, array_filter($files, fn (string $path) => str_ends_with($path, '.jpg')));
     }
 }

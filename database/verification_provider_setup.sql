@@ -1,5 +1,10 @@
 USE `fuwaagri_fuwang`;
 
+-- Repair legacy imports where custom_apis.id lost its AUTO_INCREMENT attribute.
+-- The table already has id as its primary key in the Fuwa schema.
+ALTER TABLE `custom_apis`
+    MODIFY `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT;
+
 CREATE TABLE IF NOT EXISTS `verification_prices` (
     `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     `nin_by_nin_price` DECIMAL(10,2) NOT NULL DEFAULT 200.00,
@@ -106,9 +111,7 @@ SET
     `service_type` = 'nin_verification',
     `supported_modes` = JSON_ARRAY(
         'nin',
-        'phone',
-        'tracking',
-        'demographic',
+        'selfie',
         'share_code',
         'requery'
     ),

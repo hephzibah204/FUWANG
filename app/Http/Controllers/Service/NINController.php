@@ -20,6 +20,11 @@ use Illuminate\Support\Facades\Storage;
 class NINController extends Controller
 {
     /**
+     * User-facing verification modes implemented by VUVAA's NIN integration.
+     */
+    private const VUVAA_MODES = ['nin', 'selfie', 'share_code', 'requery'];
+
+    /**
      * Consolidated NIN Suite Subpage
      * Displays options for Validation, Personalize, IPE clearance, Print NIN Slip, and NIN verify.
      */
@@ -64,8 +69,12 @@ class NINController extends Controller
         // Extract supported modes into a frontend-friendly map
         $providerModes = $ninProviders->mapWithKeys(function ($provider) {
             $modes = is_array($provider->supported_modes) ? $provider->supported_modes : [];
-            // Fallback: If no modes are defined, assume legacy defaults based on service_type
-            if (empty($modes)) {
+            if (VuvaaClient::isVuvaaProvider($provider)) {
+                // Keep this authoritative so a stale database value cannot hide a
+                // VUVAA feature or advertise modes its client does not implement.
+                $modes = self::VUVAA_MODES;
+            } elseif (empty($modes)) {
+                // Fallback: If no modes are defined, assume legacy defaults based on service_type
                 if ($provider->service_type === 'nin_face_verification') {
                     $modes = ['selfie'];
                 } else {
@@ -145,9 +154,7 @@ class NINController extends Controller
         $type = null;
 
         if ($request->filled('api_provider_id')) {
-            $allowedServiceTypes = $mode === 'selfie'
-                ? ['nin_face_verification']
-                : ['nin_verification', 'nin'];
+            $allowedServiceTypes = ['nin_verification', 'nin_face_verification', 'nin'];
             $provider = CustomApi::whereKey($request->integer('api_provider_id'))
                 ->whereIn('service_type', $allowedServiceTypes)
                 ->where('status', true)
@@ -159,7 +166,9 @@ class NINController extends Controller
                 ]);
             }
 
-            $supportedModes = is_array($provider->supported_modes) ? $provider->supported_modes : [];
+            $supportedModes = VuvaaClient::isVuvaaProvider($provider)
+                ? self::VUVAA_MODES
+                : (is_array($provider->supported_modes) ? $provider->supported_modes : []);
             if ($supportedModes && !in_array($mode, $supportedModes, true)) {
                 return response()->json([
                     'status' => false,
@@ -576,9 +585,7 @@ class NINController extends Controller
 
     private function pickProviderForMode(string $mode): ?CustomApi
     {
-        $serviceTypes = $mode === 'selfie'
-            ? ['nin_face_verification']
-            : ['nin_verification', 'nin'];
+        $serviceTypes = ['nin_verification', 'nin_face_verification', 'nin'];
 
         $providers = CustomApi::whereIn('service_type', $serviceTypes)
             ->where('status', true)
@@ -599,7 +606,11 @@ class NINController extends Controller
         })->values();
 
         foreach ($ordered as $p) {
-            if (VuvaaClient::isVuvaaProvider($p) && !in_array($mode, ['nin', 'selfie', 'share_code', 'requery'], true)) {
+            $supportedModes = VuvaaClient::isVuvaaProvider($p)
+                ? self::VUVAA_MODES
+                : (is_array($p->supported_modes) ? $p->supported_modes : []);
+
+            if ($supportedModes && !in_array($mode, $supportedModes, true)) {
                 continue;
             }
             return $p;
