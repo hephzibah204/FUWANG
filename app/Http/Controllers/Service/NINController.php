@@ -208,6 +208,7 @@ class NINController extends Controller
 
             $response = ['status' => false, 'message' => 'No active verification provider is configured.'];
             $errors = [];
+            $terminalFailure = false;
 
             // Try each custom provider in order
             foreach ($activeProviders as $p) {
@@ -217,6 +218,10 @@ class NINController extends Controller
                         break; // Success!
                     }
                     $errors[] = $p->name . ': ' . ($response['message'] ?? 'Unknown error');
+                    if (!empty($response['terminal'])) {
+                        $terminalFailure = true;
+                        break;
+                    }
                 } catch (\Throwable $e) {
                     $errors[] = $p->name . ': ' . $e->getMessage();
                     Log::warning("Provider failover: {$p->name} failed.", ['error' => $e->getMessage()]);
@@ -224,7 +229,7 @@ class NINController extends Controller
             }
 
             // Fallback to Legacy API if all custom providers failed and no specific provider was requested
-            if (!$response['status'] && !$request->filled('api_provider_id') && !in_array($mode, ['validation', 'validation_status'], true)) {
+            if (!$response['status'] && !$terminalFailure && !$request->filled('api_provider_id') && !in_array($mode, ['validation', 'validation_status'], true)) {
                 $apiCenter = ApiCenter::first();
                 if ($apiCenter) {
                     try {
@@ -456,6 +461,7 @@ class NINController extends Controller
                 'message' => $result['message'],
                 'data' => $result['data'],
                 'provider' => $provider->name,
+                'terminal' => $result['terminal'] ?? false,
             ];
         }
         if (!empty($provider->endpoint)) {

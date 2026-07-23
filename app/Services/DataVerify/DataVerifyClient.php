@@ -70,6 +70,9 @@ class DataVerifyClient
         $json = $res->json();
 
         if (!$res->successful()) {
+            $message = (is_array($json) ? ($json['message'] ?? $json['detail'] ?? null) : null)
+                ?: 'DataVerify verification failed.';
+
             Log::warning('DataVerify NIN call failed', [
                 'provider_id' => $this->provider->id,
                 'status' => $res->status(),
@@ -80,8 +83,9 @@ class DataVerifyClient
 
             return [
                 'ok' => false,
-                'message' => (is_array($json) ? ($json['message'] ?? $json['detail'] ?? null) : null) ?: 'DataVerify verification failed.',
+                'message' => $message,
                 'data' => is_array($json) ? $json : [],
+                'terminal' => $this->isTerminalProviderError($message),
             ];
         }
 
@@ -93,10 +97,13 @@ class DataVerifyClient
         $responseCode = (string) ($json['response_code'] ?? '');
         $looksSuccessful = $statusVal === 'success' || $statusVal === 'true' || $responseCode === '00' || $responseCode === '0';
         if (!$looksSuccessful) {
+            $message = (string) ($json['message'] ?? 'DataVerify verification was not successful.');
+
             return [
                 'ok' => false,
-                'message' => (string) ($json['message'] ?? 'DataVerify verification was not successful.'),
+                'message' => $message,
                 'data' => $json,
+                'terminal' => $this->isTerminalProviderError($message),
             ];
         }
 
@@ -206,6 +213,16 @@ class DataVerifyClient
         }
 
         return trim((string) (ApiCenter::query()->value('dataverify_api_key') ?? ''));
+    }
+
+    private function isTerminalProviderError(string $message): bool
+    {
+        $message = strtolower($message);
+
+        return str_contains($message, 'insufficient balance')
+            || str_contains($message, 'insufficient fund')
+            || str_contains($message, 'invalid api key')
+            || str_contains($message, 'ip address blocked');
     }
 
     private function resolveBvnPath(?string $requestedType): string
