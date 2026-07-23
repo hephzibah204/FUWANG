@@ -72,9 +72,11 @@ class DeveloperApiAdminController extends Controller
         ];
 
         $pricing = [
-            'developer_api_nin_price' => (float) SystemSetting::get('developer_api_nin_price', 200),
+            'developer_api_nin_price' => (float) SystemSetting::get('developer_api_nin_price', 100),
             'developer_api_bvn_basic_price' => (float) SystemSetting::get('developer_api_bvn_basic_price', 100),
             'developer_api_bvn_premium_price' => (float) SystemSetting::get('developer_api_bvn_premium_price', 500),
+            'developer_api_cac_price' => (float) SystemSetting::get('developer_api_cac_price', 300),
+            'developer_api_drivers_license_price' => (float) SystemSetting::get('developer_api_drivers_license_price', 200),
         ];
 
         $docs = [
@@ -105,6 +107,8 @@ class DeveloperApiAdminController extends Controller
             'developer_api_nin_price' => ['required', 'numeric', 'min:0'],
             'developer_api_bvn_basic_price' => ['required', 'numeric', 'min:0'],
             'developer_api_bvn_premium_price' => ['required', 'numeric', 'min:0'],
+            'developer_api_cac_price' => ['nullable', 'numeric', 'min:0'],
+            'developer_api_drivers_license_price' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         foreach ($data as $key => $value) {

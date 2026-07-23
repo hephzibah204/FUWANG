@@ -12,7 +12,7 @@ class UserFactory extends Factory
 
     public function definition(): array
     {
-        $username = Str::lower(Str::substr(preg_replace('/[^a-zA-Z0-9_]/', '', $this->faker->userName()), 0, 20));
+        $username = Str::lower(Str::substr(preg_replace('/[^a-zA-Z0-9_]/', '', $this->faker->unique()->userName() . rand(1000, 99999)), 0, 20));
         if ($username === '') {
             $username = 'user' . $this->faker->randomNumber(6, true);
         }

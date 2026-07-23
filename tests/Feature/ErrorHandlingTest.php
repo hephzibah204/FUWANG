@@ -88,7 +88,7 @@ class ErrorHandlingTest extends TestCase
 
     public function test_malformed_json_request()
     {
-        $response = $this->call('POST', '/api/auth/token', [], [], [], ['CONTENT_TYPE' => 'application/json'], '{invalid_json:');
+        $response = $this->call('POST', '/api/v1/auth/token', [], [], [], ['CONTENT_TYPE' => 'application/json'], '{invalid_json:');
 
         $response->assertStatus(400)
                  ->assertJsonStructure([

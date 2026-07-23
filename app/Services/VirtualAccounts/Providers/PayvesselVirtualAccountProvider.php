@@ -75,6 +75,12 @@ class PayvesselVirtualAccountProvider extends AbstractHttpProvider
                 return new VirtualAccountCreationResult(false, gateway: 'payvessel', message: $json['message'] ?? 'PayVessel response not recognized');
             }
 
+            $detail = \App\Models\BankDetail::firstOrCreate(['email' => $user->email], [
+                'account_name' => $acctName ? (string) $acctName : ($user->fullname ?? $user->email),
+            ]);
+            $detail->psb9 = (string) $acct;
+            $detail->save();
+
             return new VirtualAccountCreationResult(
                 true,
                 gateway: 'payvessel',

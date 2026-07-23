@@ -42,7 +42,7 @@ class EmailAutomationTest extends TestCase
         $this->withServerVariables([
             'REMOTE_ADDR' => '203.0.113.10',
             'HTTP_USER_AGENT' => 'PHPUnit',
-        ]);
+        ])->get('/');
 
         event(new \Illuminate\Auth\Events\Login('web', $user, false));
 

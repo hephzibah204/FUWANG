@@ -21,7 +21,7 @@ class DeveloperPortalController extends Controller
         $baseUrl = $request->getSchemeAndHttpHost() . '/api/v1';
         $endpoints = $catalog->enabled();
         $developerPricing = [
-            'developer_api_nin_price' => (float) SystemSetting::get('developer_api_nin_price', 200),
+            'developer_api_nin_price' => (float) SystemSetting::get('developer_api_nin_price', 100),
             'developer_api_bvn_basic_price' => (float) SystemSetting::get('developer_api_bvn_basic_price', 100),
             'developer_api_bvn_premium_price' => (float) SystemSetting::get('developer_api_bvn_premium_price', 500),
         ];
@@ -220,7 +220,7 @@ class DeveloperPortalController extends Controller
         $endpoints = $catalog->enabled()->groupBy(fn ($endpoint) => $endpoint->group_name ?: 'Other');
         $baseUrl = url('/api/v1');
         $developerPricing = [
-            'developer_api_nin_price' => (float) SystemSetting::get('developer_api_nin_price', 200),
+            'developer_api_nin_price' => (float) SystemSetting::get('developer_api_nin_price', 100),
             'developer_api_bvn_basic_price' => (float) SystemSetting::get('developer_api_bvn_basic_price', 100),
             'developer_api_bvn_premium_price' => (float) SystemSetting::get('developer_api_bvn_premium_price', 500),
         ];

@@ -75,9 +75,17 @@
                     <label class="text-white-50 small mb-2">BVN Basic Price (₦)</label>
                     <input type="number" step="0.01" min="0" name="developer_api_bvn_basic_price" value="{{ $pricing['developer_api_bvn_basic_price'] }}" class="form-control text-white rounded-3" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
                 </div>
-                <div class="form-group mb-4">
+                <div class="form-group mb-3">
                     <label class="text-white-50 small mb-2">BVN Premium Price (₦)</label>
                     <input type="number" step="0.01" min="0" name="developer_api_bvn_premium_price" value="{{ $pricing['developer_api_bvn_premium_price'] }}" class="form-control text-white rounded-3" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                </div>
+                <div class="form-group mb-3">
+                    <label class="text-white-50 small mb-2">CAC Verification Price (₦)</label>
+                    <input type="number" step="0.01" min="0" name="developer_api_cac_price" value="{{ $pricing['developer_api_cac_price'] ?? 300 }}" class="form-control text-white rounded-3" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                </div>
+                <div class="form-group mb-4">
+                    <label class="text-white-50 small mb-2">Driver's License Price (₦)</label>
+                    <input type="number" step="0.01" min="0" name="developer_api_drivers_license_price" value="{{ $pricing['developer_api_drivers_license_price'] ?? 200 }}" class="form-control text-white rounded-3" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
                 </div>
                 <button type="submit" class="btn btn-primary rounded-pill px-4">Save Developer Pricing</button>
             </form>

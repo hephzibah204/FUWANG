@@ -102,11 +102,49 @@ class MonnifyVirtualAccountProvider extends AbstractHttpProvider
             $body = $reserveJson['responseBody'] ?? $reserveJson['data'] ?? $reserveJson;
             $accounts = $body['accounts'] ?? $body['bankAccounts'] ?? $body['reservedAccounts'] ?? [];
             $firstAccount = null;
+            
             foreach ((array) $accounts as $acc) {
-                $acct = (string) ($acc['accountNumber'] ?? $acc['account_number'] ?? '');
-                if ($acct !== '') {
-                    $firstAccount = $acc;
-                    break;
+                $acctNumber = (string) ($acc['accountNumber'] ?? $acc['account_number'] ?? '');
+                $bankName = (string) ($acc['bankName'] ?? $acc['bank'] ?? 'Monnify');
+                $acctName = (string) ($body['accountName'] ?? $payload['accountName']);
+                if ($acctNumber !== '') {
+                    if (!$firstAccount) {
+                        $firstAccount = $acc;
+                    }
+
+                    VirtualAccount::updateOrCreate(
+                        [
+                            'user_id' => $user->id,
+                            'gateway' => 'monnify',
+                            'account_number' => $acctNumber,
+                        ],
+                        [
+                            'bank_name' => $bankName,
+                            'account_name' => $acctName,
+                            'currency' => 'NGN',
+                            'status' => 'active',
+                            'reference' => $accountReference,
+                            'provider_account_reference' => $body['accountReference'] ?? $accountReference,
+                            'activated_at' => now(),
+                            'last_synced_at' => now(),
+                        ]
+                    );
+
+                    $detail = \App\Models\BankDetail::firstOrCreate(['email' => $user->email], [
+                        'account_name' => $acctName,
+                        'account_reference' => $accountReference,
+                    ]);
+                    if (str_contains(strtolower($bankName), 'wema')) {
+                        $detail->Wema_account = $acctNumber;
+                    } elseif (str_contains(strtolower($bankName), 'gtb') || str_contains(strtolower($bankName), 'guaranty')) {
+                        $detail->GTBank_account = $acctNumber;
+                    } elseif (str_contains(strtolower($bankName), 'monie')) {
+                        $detail->Moniepoint_account = $acctNumber;
+                    } elseif (str_contains(strtolower($bankName), 'sterl')) {
+                        $detail->Sterling_account = $acctNumber;
+                    }
+                    $detail->account_reference = $accountReference;
+                    $detail->save();
                 }
             }
 

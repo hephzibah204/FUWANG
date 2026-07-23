@@ -51,7 +51,7 @@ class VerificationController extends Controller
         $firstProvider = $activeProviders[0];
         $price = (float) \App\Models\SystemSetting::get(
             'developer_api_nin_price',
-            (float) ($firstProvider->price ?? \App\Models\SystemSetting::get('nin_verification_price', 200))
+            100.0
         );
 
         $paid = app(PaidActionService::class)->run($user, $price, 'API: NIN Verification', 'NINAPI', function () use ($activeProviders, $request, $user) {

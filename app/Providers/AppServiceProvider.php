@@ -49,7 +49,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Event::listen(Registered::class, function (Registered $event) {
-            if (app()->runningInConsole()) {
+            if (app()->runningInConsole() && !app()->environment('testing')) {
                 return;
             }
 
@@ -62,7 +62,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Event::listen(Login::class, function (Login $event) {
-            if (app()->runningInConsole()) {
+            if (app()->runningInConsole() && !app()->environment('testing')) {
                 return;
             }
 
