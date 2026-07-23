@@ -17,7 +17,7 @@ class ExchangeRateTest extends TestCase
     {
         $this->withoutMiddleware(\App\Http\Middleware\CheckInstallation::class);
         $user = User::factory()->create();
-        AccountBalance::create(['email' => $user->email, 'user_balance' => 0, 'api_key' => 'test']);
+        AccountBalance::create(['user_id' => $user->id, 'email' => $user->email, 'user_balance' => 0, 'api_key' => 'test']);
         
         SystemSetting::set('app_installed', true);
         SystemSetting::set('services_fx', true);
@@ -38,8 +38,6 @@ class ExchangeRateTest extends TestCase
             'amount' => 100
         ]);
 
-        $response->dump();
-
         $response->assertStatus(200)
                  ->assertJsonPath('status', true)
                  ->assertJsonPath('rate', 1600);
@@ -57,7 +55,7 @@ class ExchangeRateTest extends TestCase
     {
         $this->withoutMiddleware(\App\Http\Middleware\CheckInstallation::class);
         $user = User::factory()->create();
-        AccountBalance::create(['email' => $user->email, 'user_balance' => 0, 'api_key' => 'test']);
+        AccountBalance::create(['user_id' => $user->id, 'email' => $user->email, 'user_balance' => 0, 'api_key' => 'test']);
         
         SystemSetting::set('app_installed', true);
         SystemSetting::set('services_fx', true);

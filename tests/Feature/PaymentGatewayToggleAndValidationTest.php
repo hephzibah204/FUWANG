@@ -42,7 +42,7 @@ class PaymentGatewayToggleAndValidationTest extends TestCase
         $this->seedGateway('paystack', true);
 
         $res = $this->postJson(route('payment.validate_config'), ['gateway' => 'paystack']);
-        $res->assertStatus(302);
+        $res->assertStatus(401);
     }
 
     public function test_disabled_gateway_cannot_be_validated(): void

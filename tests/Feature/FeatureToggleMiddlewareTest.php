@@ -17,6 +17,7 @@ class FeatureToggleMiddlewareTest extends TestCase
             'fullname' => 'Test User',
             'username' => 'testuser',
             'email' => 'test@example.com',
+            'email_verified_at' => now(),
             'password' => 'Password123!',
         ]);
 
@@ -37,6 +38,7 @@ class FeatureToggleMiddlewareTest extends TestCase
             'fullname' => 'Test User',
             'username' => 'testuser',
             'email' => 'test@example.com',
+            'email_verified_at' => now(),
             'password' => 'Password123!',
         ]);
 

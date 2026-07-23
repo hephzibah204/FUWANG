@@ -15,7 +15,7 @@ class LegalCatalogParityTest extends TestCase
     {
         $this->seed(\Database\Seeders\NotaryCategoriesSeeder::class);
 
-        $u = User::factory()->create();
+        $u = User::factory()->create(['email_verified_at' => now()]);
         $this->actingAs($u);
 
         $notary = $this->get(route('services.notary'));

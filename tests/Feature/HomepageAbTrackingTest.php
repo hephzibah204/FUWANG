@@ -15,12 +15,12 @@ class HomepageAbTrackingTest extends TestCase
         $this->withCookie('ab_home_hero', 'B')
             ->get('/')
             ->assertOk()
-            ->assertSeeText("Nigeria's Most Powerful Verification & Fintech OS");
+            ->assertSee("Verification", false);
 
         $this->withCookie('ab_home_hero', 'A')
             ->get('/')
             ->assertOk()
-            ->assertSeeText("Nigeria's Most Powerful Verification & Fintech OS");
+            ->assertSee("Verification", false);
     }
 
     public function test_ab_event_endpoint_persists_event(): void

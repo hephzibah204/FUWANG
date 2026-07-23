@@ -30,10 +30,18 @@ class NINController extends Controller
     {
         $legacyPricing = VerificationPrice::first();
 
-        $ninProviders = CustomApi::whereIn('service_type', ['nin', 'nin_verification', 'nin_face_verification'])
+        $ninProviders = CustomApi::whereIn('service_type', ['nin', 'nin_verification', 'nin_face_verification', 'nin_validation', 'validation', 'identity'])
                             ->where('status', true)
                             ->orderBy('priority', 'asc')
                             ->get();
+
+        if ($ninProviders->isEmpty()) {
+            $this->ensureDefaultNinProviders();
+            $ninProviders = CustomApi::whereIn('service_type', ['nin', 'nin_verification', 'nin_face_verification', 'nin_validation', 'validation', 'identity'])
+                                ->where('status', true)
+                                ->orderBy('priority', 'asc')
+                                ->get();
+        }
 
         $providerModes = $ninProviders->mapWithKeys(function ($provider) {
             $modes = is_array($provider->supported_modes) ? $provider->supported_modes : [];
@@ -709,5 +717,54 @@ class NINController extends Controller
             'size' => $file->getSize(),
             'sha256' => hash_file('sha256', Storage::disk('local')->path($path)),
         ];
+    }
+
+    private function ensureDefaultNinProviders(): void
+    {
+        $defaults = [
+            [
+                'name' => 'Dataverify API',
+                'service_type' => 'nin_verification',
+                'provider_identifier' => 'dataverify',
+                'endpoint' => 'https://api.dataverify.com.ng/nin',
+                'status' => true,
+                'priority' => 10,
+                'supported_modes' => ['nin', 'phone', 'demographic', 'tracking'],
+            ],
+            [
+                'name' => 'RobostTech API',
+                'service_type' => 'nin_verification',
+                'provider_identifier' => 'robosttech',
+                'endpoint' => 'https://robosttech.com/api/nin_verify',
+                'status' => true,
+                'priority' => 20,
+                'supported_modes' => ['nin', 'phone', 'validation', 'validation_status', 'clearance'],
+            ],
+            [
+                'name' => 'VUVAA Identity API',
+                'service_type' => 'nin_verification',
+                'provider_identifier' => 'vuvaa',
+                'endpoint' => 'https://api.vuvaa.com/v1',
+                'status' => true,
+                'priority' => 30,
+                'supported_modes' => ['nin', 'selfie', 'share_code', 'requery'],
+            ],
+            [
+                'name' => 'VerifyMe NG',
+                'service_type' => 'nin_verification',
+                'provider_identifier' => 'verifyme',
+                'endpoint' => 'https://v2.verifyme.ng/api/v1/verifications/identities/nin',
+                'status' => true,
+                'priority' => 40,
+                'supported_modes' => ['nin', 'phone', 'demographic'],
+            ],
+        ];
+
+        foreach ($defaults as $data) {
+            CustomApi::updateOrCreate(
+                ['provider_identifier' => $data['provider_identifier']],
+                $data
+            );
+        }
     }
 }

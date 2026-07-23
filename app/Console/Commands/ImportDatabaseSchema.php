@@ -10,7 +10,7 @@ use Exception;
 
 class ImportDatabaseSchema extends Command
 {
-    protected $signature = 'db:import-schema {--file= : Specific path to the SQL file} {--silent : Do not prompt for confirmation}';
+    protected $signature = 'db:import-schema {--file= : Specific path to the SQL file} {--silent : Do not prompt for confirmation} {--yes : Skip confirmation prompt (non-interactive)}';
 
     protected $description = 'Detects, locates, and imports a .sql schema file into the database';
 
@@ -39,10 +39,10 @@ class ImportDatabaseSchema extends Command
         if (!$sqlFile || !File::exists($sqlFile)) {
             $this->error("No valid .sql files found or specified file does not exist.");
             Log::error("Schema Import Failed: No .sql file found.");
-            return 2;
+            return 1;
         }
 
-        $this->info("Found SQL file: <comment>{$sqlFile}</comment>");
+        $this->line("Found SQL file: {$sqlFile}");
 
         if (!$this->validateSqlFile($sqlFile, $connection)) {
             $this->error("SQL file validation failed. Ensure it contains valid SQL and matches your database engine.");
@@ -50,7 +50,7 @@ class ImportDatabaseSchema extends Command
             return 1;
         }
 
-        if (!$this->option('silent')) {
+        if (!$this->option('silent') && !$this->option('yes')) {
             if (!$this->confirm("Are you sure you want to import this schema? This may overwrite existing data.", false)) {
                 $this->info("Import cancelled by user.");
                 return 0;

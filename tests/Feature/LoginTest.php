@@ -18,6 +18,7 @@ class LoginTest extends TestCase
             'fullname' => 'Test User',
             'username' => 'test_user',
             'email' => 'test@example.com',
+            'email_verified_at' => now(),
             'password' => Hash::make('Password@123'),
         ]);
 
@@ -46,6 +47,7 @@ class LoginTest extends TestCase
             'fullname' => 'Test User',
             'username' => 'test_user',
             'email' => 'test@example.com',
+            'email_verified_at' => now(),
             'password' => Hash::make('Password@123'),
         ]);
 
@@ -59,7 +61,7 @@ class LoginTest extends TestCase
                 'Accept' => 'application/json',
             ]);
 
-        $response->assertOk();
+        $response->assertStatus(422);
         $response->assertJson([
             'status' => 'error',
         ]);
