@@ -8,6 +8,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class VirtualCardFxRateSettingsTest extends TestCase
@@ -22,6 +23,8 @@ class VirtualCardFxRateSettingsTest extends TestCase
             'email' => 'test@example.com',
             'password' => Hash::make('password'),
             'user_status' => 'active',
+            'kyc_tier' => 2,
+            'email_verified_at' => now(),
         ]);
 
         AccountBalance::create([
@@ -36,8 +39,27 @@ class VirtualCardFxRateSettingsTest extends TestCase
 
     public function test_virtual_card_creation_uses_virtual_card_fx_rate_when_set(): void
     {
+        \App\Models\FeatureToggle::create(['feature_name' => 'virtual_cards', 'is_active' => true]);
         SystemSetting::set('virtual_card_creation_fee_ngn', 500, 'pricing');
         SystemSetting::set('virtual_card_fx_rate_usd', 2000, 'pricing');
+
+        config(['services.flutterwave.secret' => 'FLWSECK_TEST-fake-key']);
+
+        Http::fake([
+            'api.flutterwave.com/v3/virtual-cards' => Http::response([
+                'status' => 'success',
+                'message' => 'Virtual card created successfully',
+                'data' => [
+                    'id' => 'card_fxtest_001',
+                    'card_pan' => '4111222233334444',
+                    'cvv' => '456',
+                    'expiration' => '06/27',
+                    'amount' => 10,
+                    'currency' => 'USD',
+                    'is_active' => true,
+                ],
+            ], 200),
+        ]);
 
         $user = $this->createUserWithBalance(100000);
 
@@ -60,4 +82,3 @@ class VirtualCardFxRateSettingsTest extends TestCase
         $this->assertSame(79500.00, (float) $tx->balance_after);
     }
 }
-

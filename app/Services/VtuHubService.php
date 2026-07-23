@@ -159,7 +159,7 @@ class VtuHubService
      */
     public function processRequest(array $params)
     {
-        $user = Auth::user();
+        $user = $params['user'] ?? Auth::user();
         $serviceType = (string) ($params['service_type'] ?? '');
         $payload = (array) ($params['payload'] ?? []);
         $requestedAmount = isset($params['amount']) ? (float) $params['amount'] : (float) ($payload['amount'] ?? 0);
@@ -296,6 +296,12 @@ class VtuHubService
         ]);
 
         if ($direction === 'debit') {
+            if (!$user) {
+                $vtuTx->status = 'failed';
+                $vtuTx->error_message = 'Unauthenticated user.';
+                $vtuTx->save();
+                return ['status' => false, 'message' => 'Unauthenticated user.'];
+            }
             $debit = $this->wallet->debit($user, $total, $orderType, $txPrefix, $txId);
             if (!$debit['ok']) {
                 $vtuTx->status = 'failed';

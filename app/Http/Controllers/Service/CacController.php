@@ -34,7 +34,22 @@ class CacController extends Controller
             'rc_number' => 'required|string',
             'company_name' => 'nullable|string',
             'company_type' => 'required|in:BN,RC,IT',
+            'api_provider_id' => 'nullable|integer',
+            'verification_type' => 'nullable|string',
         ]);
+
+        if ($request->filled('api_provider_id') && $request->filled('verification_type')) {
+            $type = \App\Models\CustomApiVerificationType::where('custom_api_id', $request->api_provider_id)
+                ->where('type_key', $request->verification_type)
+                ->where('status', true)
+                ->first();
+
+            if (!$type) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'verification_type' => ['The selected verification type is inactive or invalid.'],
+                ]);
+            }
+        }
 
         $user = Auth::user();
         $price = SystemSetting::get('cac_price', 1000);

@@ -22,6 +22,17 @@ class User extends Authenticatable implements CanResetPasswordContract, MustVeri
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use LogsActivity, HasFactory, Notifiable, CanResetPassword;
 
+    protected static function booted(): void
+    {
+        static::creating(function (User $user) {
+            if (empty($user->username)) {
+                $base = !empty($user->email) ? explode('@', $user->email)[0] : 'user';
+                $clean = \Illuminate\Support\Str::lower(preg_replace('/[^a-zA-Z0-9_]/', '', $base));
+                $user->username = \Illuminate\Support\Str::limit($clean, 12, '') . '_' . rand(1000, 9999);
+            }
+        });
+    }
+
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
@@ -33,6 +44,15 @@ class User extends Authenticatable implements CanResetPasswordContract, MustVeri
     public function tapActivity(Activity $activity, string $eventName)
     {
         $activity->description = "{$eventName}d";
+    }
+
+    public function shouldLogEvent(string $eventName): bool
+    {
+        if (app()->environment('testing')) {
+            return false;
+        }
+
+        return true;
     }
 
     public function sendPasswordResetNotification($token)
@@ -88,6 +108,7 @@ class User extends Authenticatable implements CanResetPasswordContract, MustVeri
         'kyc_rejection_reason',
         'completed_tours',
         'api_access_status',
+        'email_verified_at',
         'api_application_details',
     ];
 

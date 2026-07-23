@@ -525,6 +525,9 @@ class AdminController extends Controller
 
     public function updateUserStatus($id, Request $request)
     {
+        $status = $request->input('status') ?: $request->input('user_status');
+        $request->merge(['status' => $status]);
+
         $request->validate([
             'status' => 'required|string|in:active,suspended,pending',
         ]);
@@ -554,12 +557,20 @@ class AdminController extends Controller
 
     public function resetUserPassword($id, Request $request)
     {
+        if (!$request->filled('password')) {
+            $newPassword = \Illuminate\Support\Str::random(12) . '!Aa1';
+            $request->merge([
+                'password' => $newPassword,
+                'password_confirmation' => $newPassword,
+            ]);
+        }
+
         $request->validate([
             'password' => 'required|string|min:8|confirmed',
         ]);
 
         $user = User::findOrFail($id);
-        $user->password = Hash::make($request->password);
+        $user->password = $request->password;
         $user->save();
 
         // Audit
@@ -574,7 +585,8 @@ class AdminController extends Controller
 
         return response()->json([
             'status' => true,
-            'message' => "User password has been reset successfully.",
+            'message' => "User password reset successfully.",
+            'temporary_password' => $request->password,
         ]);
     }
 

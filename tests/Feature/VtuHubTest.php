@@ -51,6 +51,7 @@ class VtuHubTest extends TestCase
         ]);
 
         $response = $this->vtuHub->processRequest([
+            'user' => $this->user,
             'service_type' => 'vtu_airtime',
             'amount' => 100.00,
             'order_type' => 'Airtime Purchase',

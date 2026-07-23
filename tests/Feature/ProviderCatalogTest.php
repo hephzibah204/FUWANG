@@ -17,10 +17,17 @@ class ProviderCatalogTest extends TestCase
 
     public function test_inactive_or_unknown_verification_type_is_rejected(): void
     {
+        \App\Models\FeatureToggle::create(['feature_name' => 'cac_verification', 'is_active' => true]);
+        \App\Models\FeatureToggle::create(['feature_name' => 'nin_verification', 'is_active' => true]);
+
         $user = User::create([
             'fullname' => 'U',
             'email' => 'u@example.com',
             'password' => Hash::make('Password@123'),
+            'user_status' => 'active',
+            'kyc_tier' => 2,
+            'api_access_status' => 'approved',
+            'email_verified_at' => now(),
         ]);
 
         AccountBalance::create([
@@ -67,6 +74,10 @@ class ProviderCatalogTest extends TestCase
             'fullname' => 'U',
             'email' => 'u@example.com',
             'password' => Hash::make('Password@123'),
+            'user_status' => 'active',
+            'kyc_tier' => 2,
+            'api_access_status' => 'approved',
+            'email_verified_at' => now(),
         ]);
 
         $provider = CustomApi::create([
@@ -118,6 +129,10 @@ class ProviderCatalogTest extends TestCase
             'fullname' => 'U',
             'email' => 'u@example.com',
             'password' => Hash::make('Password@123'),
+            'user_status' => 'active',
+            'kyc_tier' => 2,
+            'api_access_status' => 'approved',
+            'email_verified_at' => now(),
         ]);
 
         AccountBalance::create([
@@ -158,6 +173,10 @@ class ProviderCatalogTest extends TestCase
             'fullname' => 'U',
             'email' => 'u@example.com',
             'password' => Hash::make('Password@123'),
+            'user_status' => 'active',
+            'kyc_tier' => 2,
+            'api_access_status' => 'approved',
+            'email_verified_at' => now(),
         ]);
 
         AccountBalance::create([

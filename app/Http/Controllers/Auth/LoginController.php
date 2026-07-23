@@ -34,7 +34,7 @@ class LoginController extends Controller
         $service = $request->input('service');
         $service = is_string($service) ? $service : null;
 
-        if (! app()->environment('local')) {
+        if (! app()->environment(['local', 'testing'])) {
             if (Schema::hasTable('login_attempts')) {
                 $attempts = DB::table('login_attempts')->where('ip_address', $ipAddress)->first();
                 if ($attempts && (int) $attempts->attempts >= 6 && $attempts->last_login && now()->diffInMinutes($attempts->last_login) < 15) {

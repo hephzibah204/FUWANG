@@ -25,6 +25,7 @@ class AuctionRealtimeSseTest extends TestCase
             'fullname' => 'U',
             'email' => 'u@example.com',
             'password' => Hash::make('Password@123'),
+            'email_verified_at' => now(),
         ]);
 
         $seller = AuctionSeller::create(['name' => 'Seller']);

@@ -29,6 +29,7 @@ class AutoFundingAccountsTest extends TestCase
             'email' => 'test@fuwa.ng',
             'password' => Hash::make('Password@123'),
             'number' => '08112233445',
+            'email_verified_at' => now(),
         ]);
 
         if (! Schema::hasTable('verification_results')) {

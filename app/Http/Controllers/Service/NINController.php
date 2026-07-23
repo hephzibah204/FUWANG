@@ -113,7 +113,7 @@ class NINController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => $e->getMessage(),
-            ], 422);
+            ], 200);
         }
 
         if ($provider && VuvaaClient::isVuvaaProvider($provider)) {
@@ -288,6 +288,9 @@ class NINController extends Controller
             }
 
             $finalMessage = !empty($errors) ? implode(' | ', $errors) : ($response['message'] ?? 'Verification failed.');
+            if ($request->filled('api_provider_id') && count($errors) === 1 && str_contains($errors[0], ': ')) {
+                $finalMessage = explode(': ', $errors[0], 2)[1];
+            }
             throw new \Exception($finalMessage);
         });
 
@@ -427,7 +430,30 @@ class NINController extends Controller
                 'provider' => $provider->name,
             ];
         }
-        // ... other provider logic can go here ...
+        if (!empty($provider->endpoint)) {
+            try {
+                $headers = is_array($provider->headers) ? $provider->headers : [];
+                $response = Http::timeout((int)($provider->timeout_seconds ?: 30))
+                    ->withHeaders($headers)
+                    ->post($provider->endpoint, $request->all());
+
+                $resData = $response->json();
+                $msg = $resData['message'] ?? $resData['error'] ?? 'Verification Failed';
+                if (!str_starts_with($msg, 'Verification Failed:')) {
+                    $msg = 'Verification Failed: ' . $msg;
+                }
+
+                return [
+                    'status' => $response->successful() && (($resData['status'] ?? false) === true || ($resData['status'] ?? '') === 'success'),
+                    'message' => $msg,
+                    'data' => $resData['data'] ?? null,
+                    'provider' => $provider->name,
+                ];
+            } catch (\Throwable $e) {
+                return ['status' => false, 'message' => 'Verification Failed: ' . $e->getMessage()];
+            }
+        }
+
         return ['status' => false, 'message' => 'Provider not supported'];
     }
 

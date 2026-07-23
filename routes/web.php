@@ -184,6 +184,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/developer/tokens', [App\Http\Controllers\DeveloperPortalController::class, 'createToken'])->name('developer.tokens.create');
     Route::post('/developer/tokens/{id}/revoke', [App\Http\Controllers\DeveloperPortalController::class, 'revokeToken'])->name('developer.tokens.revoke');
     Route::get('/developer/openapi/v1', [App\Http\Controllers\DeveloperPortalController::class, 'openapiV1'])->name('developer.openapi.v1');
+    Route::get('/developer/postman/v1', [App\Http\Controllers\DeveloperPortalController::class, 'postmanV1'])->name('developer.postman.v1');
 
     // Provider Catalog (dynamic UI)
     Route::get('/services/providers/{providerId}/types', [App\Http\Controllers\Service\ProviderCatalogController::class, 'types'])
@@ -214,6 +215,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/services/nin-suite', [App\Http\Controllers\Service\NINController::class, 'suiteIndex'])->name('services.nin.suite');
         Route::get('/services/nin',    [App\Http\Controllers\Service\NINController::class, 'index'])->name('services.nin');
         Route::post('/services/nin/verify', [App\Http\Controllers\Service\NINController::class, 'verify'])->middleware('kyc.enforce')->name('services.nin.verify');
+        Route::post('/services/nin-verify/verify', [App\Http\Controllers\Service\NINController::class, 'verify'])->middleware('kyc.enforce')->name('services.nin_verify.verify');
         Route::post('/services/nin/validation/status', [App\Http\Controllers\Service\NINController::class, 'validationStatus'])->middleware('kyc.enforce')->name('services.nin.validation.status');
         
         // NIN Modification
@@ -407,6 +409,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         });
 
     });
+
+    // Top-level Virtual Card aliases
+    Route::middleware('feature:virtual_cards')->group(function () {
+        Route::get('/virtual-card',          [App\Http\Controllers\NexusServiceController::class, 'virtualCard'])->name('virtual_card');
+        Route::post('/virtual-card/create',  [App\Http\Controllers\NexusServiceController::class, 'createVirtualCard'])->middleware('kyc.enforce')->name('virtual_card.create');
+        Route::post('/virtual-card/fund',    [App\Http\Controllers\NexusServiceController::class, 'fundVirtualCard'])->middleware('kyc.enforce')->name('virtual_card.fund');
+    });
+
     Route::post('/tour/complete', [TourController::class, 'complete'])->name('tour.complete');
 
 }); // ── End of user auth middleware group ──────────────────

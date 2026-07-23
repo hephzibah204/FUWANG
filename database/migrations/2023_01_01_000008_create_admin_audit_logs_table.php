@@ -14,7 +14,7 @@ return new class extends Migration
 
         Schema::create('admin_audit_logs', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('admin_id')->constrained('admins')->cascadeOnDelete();
+            $table->foreignId('admin_id')->nullable()->constrained('admins')->nullOnDelete();
             $table->string('action');
             $table->json('meta')->nullable();
             $table->string('ip', 45)->nullable();

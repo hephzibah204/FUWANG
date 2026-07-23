@@ -15,7 +15,10 @@
         <div class="card border-0 rounded-4 p-4 h-100" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.07) !important;">
             <div class="d-flex align-items-center justify-content-between mb-3">
                 <h5 class="text-white mb-0 fw-bold">API Tokens</h5>
-                <button class="btn btn-primary rounded-pill px-4" onclick="openCreateTokenModal()"><i class="fa fa-plus mr-2"></i>Create</button>
+                <div class="d-flex" style="gap: 8px;">
+                    <button class="btn btn-primary rounded-pill px-3" onclick="instantGenerateToken()" id="instantGenBtn"><i class="fa fa-bolt mr-1"></i>Generate API Key</button>
+                    <button class="btn btn-outline-light rounded-pill px-3" onclick="openCreateTokenModal()"><i class="fa fa-plus mr-1"></i>Custom Name</button>
+                </div>
             </div>
 
             <div class="text-white-50 small mb-3">
@@ -67,12 +70,15 @@
         <div class="card border-0 rounded-4 p-4 h-100" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.07) !important;">
             <div class="d-flex align-items-center justify-content-between mb-3">
                 <h5 class="text-white mb-0 fw-bold">Integration</h5>
-                <div class="d-flex gap-2">
-                    <a class="btn btn-outline-light rounded-pill px-4" href="{{ route('developer.docs') }}">
-                        <i class="fa fa-book mr-2"></i>Tutorials
+                <div class="d-flex" style="gap: 8px;">
+                    <a class="btn btn-outline-light rounded-pill px-3" href="{{ route('developer.docs') }}">
+                        <i class="fa fa-book mr-1"></i>Tutorials
                     </a>
-                    <a class="btn btn-outline-light rounded-pill px-4" href="{{ route('developer.openapi.v1') }}" target="_blank">
-                        <i class="fa fa-file-code mr-2"></i>OpenAPI
+                    <a class="btn btn-outline-light rounded-pill px-3" href="{{ route('developer.openapi.v1') }}" target="_blank">
+                        <i class="fa fa-file-code mr-1"></i>OpenAPI
+                    </a>
+                    <a class="btn btn-outline-light rounded-pill px-3" href="{{ route('developer.postman.v1') }}" target="_blank">
+                        <i class="fa-solid fa-rocket mr-1"></i>Postman
                     </a>
                 </div>
             </div>
@@ -190,8 +196,8 @@ const data = await res.json();</pre>
                 @csrf
                 <div class="modal-body">
                     <div class="form-group mb-3">
-                        <label class="text-white-50 small mb-2">Token Name</label>
-                        <input type="text" name="name" class="form-control text-white rounded-3" placeholder="e.g. My Web App" required style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                        <label class="text-white-50 small mb-2">Token Name (Optional)</label>
+                        <input type="text" name="name" class="form-control text-white rounded-3" placeholder="e.g. My Web App (Optional)" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
                     </div>
                     <div id="createdTokenWrap" style="display:none;">
                         <label class="text-white-50 small mb-2">Your new token (copy now)</label>
@@ -217,6 +223,52 @@ function openCreateTokenModal() {
     document.getElementById('createdTokenWrap').style.display = 'none';
     document.getElementById('createdToken').value = '';
     $('#createTokenModal').modal('show');
+}
+
+async function instantGenerateToken() {
+    const btn = document.getElementById('instantGenBtn');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa fa-spinner fa-spin mr-1"></i>Generating…';
+    
+    try {
+        const res = await $.ajax({
+            url: '{{ route("developer.tokens.create") }}',
+            method: 'POST',
+            data: {
+                _token: document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        });
+        
+        Swal.fire({
+            icon: 'success',
+            title: 'API Key Generated!',
+            html: `
+                <p class="text-white-50 small mb-3">Copy your key now. For security, it won't be shown again:</p>
+                <div class="d-flex mb-3" style="gap: 10px;">
+                    <input id="swalTokenVal" class="form-control text-white rounded-3 font-monospace text-center" value="${res.token}" readonly style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);">
+                    <button type="button" class="btn btn-outline-primary rounded-pill px-3" onclick="copyText('swalTokenVal')">Copy</button>
+                </div>
+            `,
+            confirmButtonText: 'Done',
+            confirmButtonColor: '#3b82f6',
+            background: '#141826',
+            color: '#fff'
+        }).then(() => {
+            location.reload();
+        });
+    } catch (xhr) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: xhr.responseJSON?.message || 'Generation failed.',
+            background: '#141826',
+            color: '#fff'
+        });
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
 }
 
 async function copyText(inputId) {

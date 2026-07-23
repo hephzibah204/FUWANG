@@ -36,8 +36,10 @@ class LoginController extends Controller
 
         if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
             $seconds = RateLimiter::availableIn($throttleKey);
-            
+            $admin = Admin::where('email', $request->email)->first();
+
             AdminAuditLog::create([
+                'admin_id' => $admin?->id,
                 'action' => 'admin.login.throttled',
                 'meta' => ['email' => $request->email, 'seconds' => $seconds],
                 'ip' => $request->ip(),
@@ -75,7 +77,10 @@ class LoginController extends Controller
 
         RateLimiter::hit($throttleKey, 600); // 10 minutes lock if exceeded
 
+        $admin = Admin::where('email', $request->email)->first();
+
         AdminAuditLog::create([
+            'admin_id' => $admin?->id,
             'action' => 'admin.login.failed',
             'meta' => ['email' => $request->email],
             'ip' => $request->ip(),

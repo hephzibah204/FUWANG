@@ -76,15 +76,15 @@ class PasswordResetFlowTest extends TestCase
         $res = $this->post('/reset-password', [
             'token' => $token,
             'email' => 'reset2@example.com',
-            'password' => 'new-password-123',
-            'password_confirmation' => 'new-password-123',
+            'password' => 'New-password-123',
+            'password_confirmation' => 'New-password-123',
         ]);
 
         $res->assertRedirect(route('login'));
         $res->assertSessionHas('status');
 
         $user->refresh();
-        $this->assertTrue(Hash::check('new-password-123', $user->password));
+        $this->assertTrue(Hash::check('New-password-123', $user->password));
     }
 
     public function test_reset_password_rejects_invalid_token(): void
@@ -96,8 +96,8 @@ class PasswordResetFlowTest extends TestCase
         $res = $this->from('/reset-password/bad-token?email=reset3@example.com')->post('/reset-password', [
             'token' => 'bad-token',
             'email' => 'reset3@example.com',
-            'password' => 'new-password-123',
-            'password_confirmation' => 'new-password-123',
+            'password' => 'New-password-123',
+            'password_confirmation' => 'New-password-123',
         ]);
 
         $res->assertRedirect('/reset-password/bad-token?email=reset3@example.com');

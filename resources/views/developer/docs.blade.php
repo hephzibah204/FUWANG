@@ -44,7 +44,7 @@
                         <pre id="curlAuth" class="p-3 rounded-3 small text-white font-monospace" style="background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.08); overflow:auto;">curl -X POST "{{ $baseUrl }}/verifications/nin" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer nx_&lt;YOUR_TOKEN&gt;" \
-  -d '{"number":"12345678901","firstname":"John","lastname":"Doe","dob":"1990-01-01","mode":"nin"}'</pre>
+  -d '{"number":"12345678901","firstname":"John","lastname":"Doe","dob":"1990-01-01","mode":"nin","api_provider_id":1}'</pre>
                     </div>
                 </section>
 
@@ -88,7 +88,19 @@
                     @endforelse
 
                     <div class="alert mt-4" style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2);">
-                        <i class="fa fa-info-circle text-primary mr-2"></i> OpenAPI is still available at <a href="{{ route('developer.openapi.v1') }}" target="_blank" class="text-primary font-weight-bold">OpenAPI 3.0 specification</a>.
+                        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center">
+                            <div>
+                                <i class="fa fa-info-circle text-primary mr-2"></i> Access raw specification formats for testing.
+                            </div>
+                            <div class="mt-2 mt-sm-0">
+                                <a href="{{ route('developer.openapi.v1') }}" target="_blank" class="btn btn-sm btn-outline-info rounded-pill px-3 mr-2">
+                                    <i class="fa-solid fa-file-code mr-1"></i> OpenAPI Spec
+                                </a>
+                                <a href="{{ route('developer.postman.v1') }}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                                    <i class="fa-solid fa-rocket mr-1"></i> Postman Collection
+                                </a>
+                            </div>
+                        </div>
                     </div>
                 </section>
 

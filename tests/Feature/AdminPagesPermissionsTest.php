@@ -13,14 +13,19 @@ class AdminPagesPermissionsTest extends TestCase
 
     protected function makeAdmin(array $perms = [], bool $super = false): Admin
     {
-        return Admin::create([
-            'username' => 'admin2',
-            'email' => 'admin2@example.com',
+        $admin = Admin::create([
+            'username' => 'admin_' . uniqid(),
+            'email' => 'admin_' . uniqid() . '@example.com',
             'password' => 'password1234',
-            'role' => 'admin',
-            'permissions' => $perms,
             'is_super_admin' => $super,
         ]);
+
+        foreach ($perms as $permName) {
+            $permission = \Spatie\Permission\Models\Permission::findOrCreate($permName, 'admin');
+            $admin->givePermissionTo($permission);
+        }
+
+        return $admin;
     }
 
     public function test_admin_without_permission_cannot_access_pages(): void

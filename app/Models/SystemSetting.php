@@ -23,19 +23,19 @@ class SystemSetting extends Model
         'value' => 'string', // Handle based on type if needed
     ];
 
+    public static function clearLocalCache(): void
+    {
+        static::$hasTableCache = null;
+        static::$localCache = null;
+    }
+
     protected static function loadAll(): void
     {
-        if (static::$localCache !== null) {
+        if (static::$localCache !== null && !empty(static::$localCache)) {
             return;
         }
 
-        if (static::$hasTableCache === null) {
-            try {
-                static::$hasTableCache = Schema::hasTable((new static())->getTable());
-            } catch (\Throwable) {
-                static::$hasTableCache = false;
-            }
-        }
+        static::$hasTableCache = Schema::hasTable((new static())->getTable());
 
         if (!static::$hasTableCache) {
             static::$localCache = [];
@@ -88,7 +88,9 @@ class SystemSetting extends Model
 
         Cache::forget('system_setting:' . $key);
         Cache::forget('system_settings_all');
+        Cache::forget('whatsapp_widget_config');
         static::$localCache = null;
+        static::$hasTableCache = null;
 
         $payload = [
             'value' => is_scalar($value) ? (string) $value : json_encode($value),

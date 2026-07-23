@@ -10,7 +10,7 @@ Route::prefix('whatsapp-widget')->group(function () {
 
 Route::prefix('v1')->group(function () {
     Route::post('/auth/token', [\App\Http\Controllers\Api\AuthController::class, 'createToken'])->middleware('throttle:5,1');
-    Route::post('/auth/apply-api', [\App\Http\Controllers\Api\AuthController::class, 'applyForApi'])->middleware(['auth:sanctum', 'throttle:5,1']);
+    Route::post('/auth/apply-api', [\App\Http\Controllers\Api\AuthController::class, 'applyForApi'])->middleware(['auth', 'throttle:5,1']);
 
     Route::prefix('logistics')->group(function () {
         Route::post('/auth/login', [\App\Http\Controllers\Api\Logistics\LogisticsApiController::class, 'authenticate'])

@@ -26,8 +26,17 @@ class AddressVerificationTest extends TestCase
             'is_active' => true,
         ]);
 
-        $this->user = User::factory()->create(['email' => 'test@example.com']);
-        AccountBalance::create(['email' => $this->user->email, 'user_balance' => 5000]);
+        $this->user = User::factory()->create([
+            'email' => 'test@example.com',
+            'kyc_tier' => 2,
+            'email_verified_at' => now(),
+        ]);
+
+        AccountBalance::create([
+            'user_id' => $this->user->id,
+            'email' => $this->user->email,
+            'user_balance' => 5000,
+        ]);
 
         $this->provider = CustomApi::create([
             'name' => 'VerifyMe',

@@ -20,6 +20,17 @@ class VtuHubServiceTest extends TestCase
     {
         parent::setUp();
 
+        if (!Schema::hasTable('sessions')) {
+            Schema::create('sessions', function (Blueprint $table) {
+                $table->string('id')->primary();
+                $table->foreignId('user_id')->nullable()->index();
+                $table->string('ip_address', 45)->nullable();
+                $table->text('user_agent')->nullable();
+                $table->text('payload');
+                $table->integer('last_activity')->index();
+            });
+        }
+
         if (!Schema::hasTable('users')) {
             Schema::create('users', function (Blueprint $table) {
                 $table->id();
@@ -114,11 +125,11 @@ class VtuHubServiceTest extends TestCase
             'service_type' => 'vtu_internet',
             'endpoint' => 'https://example.com/vtu/internet',
             'api_key' => 'k',
-            'headers' => json_encode([]),
-            'config' => json_encode(['fee_type' => 'percent', 'fee_value' => 10]),
+            'headers' => [],
+            'config' => ['fee_type' => 'percent', 'fee_value' => 10],
             'status' => true,
             'priority' => 1,
-            'price' => 0,
+            'price' => 20,
         ]);
 
         Http::fake([
@@ -243,12 +254,12 @@ class VtuHubServiceTest extends TestCase
             'service_type' => 'vtu_electricity',
             'endpoint' => 'https://example.com/vtu/electricity/pay',
             'api_key' => 'k',
-            'headers' => json_encode([]),
-            'config' => json_encode([
+            'headers' => [],
+            'config' => [
                 'validate_endpoint' => 'https://example.com/vtu/electricity/validate',
                 'validate_customer_name_path' => 'data.customer.name',
                 'validate_customer_address_path' => 'data.customer.address',
-            ]),
+            ],
             'status' => true,
             'priority' => 1,
             'price' => 0,

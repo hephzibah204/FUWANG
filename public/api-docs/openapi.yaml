@@ -112,10 +112,28 @@ paths:
             schema:
               type: object
               required:
-                - nin
+                - number
+                - firstname
+                - lastname
+                - dob
+                - mode
               properties:
-                nin:
+                number:
                   type: string
+                  description: The NIN number or associated phone number.
+                firstname:
+                  type: string
+                lastname:
+                  type: string
+                dob:
+                  type: string
+                  description: Date of birth (YYYY-MM-DD).
+                mode:
+                  type: string
+                  enum: [nin, phone]
+                api_provider_id:
+                  type: integer
+                  description: Optional specific API Provider ID to route this request.
       responses:
         '200':
           description: NIN Details

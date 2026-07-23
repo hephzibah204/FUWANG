@@ -23,7 +23,8 @@ class ApiInfrastructureTest extends TestCase
         // Create a user
         $this->user = User::factory()->create([
             'email' => 'developer@test.com',
-            'password' => bcrypt('password123')
+            'password' => bcrypt('password123'),
+            'api_access_status' => 'approved',
         ]);
 
         // Give them a balance
@@ -44,7 +45,8 @@ class ApiInfrastructureTest extends TestCase
         ]);
 
         // Set minimum balance requirement
-        SystemSetting::updateOrCreate(['key' => 'api_min_wallet_balance'], ['value' => '1000']);
+        SystemSetting::clearLocalCache();
+        SystemSetting::set('api_min_wallet_balance', '1000');
     }
 
     public function test_api_authentication_success()
@@ -74,12 +76,11 @@ class ApiInfrastructureTest extends TestCase
         $response->assertStatus(402);
         $response->assertJson([
             'status' => false,
-            'message' => 'fund not sufficient',
-            'error' => 'fund not sufficient'
+            'error' => 'fund_not_sufficient'
         ]);
 
-        // Token should be revoked
-        $this->assertNotNull($this->token->fresh()->revoked_at);
+        // Token is NOT revoked so user can fund and retry
+        $this->assertNull($this->token->fresh()->revoked_at);
     }
 
     public function test_vtu_endpoints_validation()

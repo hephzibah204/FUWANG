@@ -15,11 +15,11 @@ class AdminUserDirectoryActionsTest extends TestCase
     private function makeAdmin(): Admin
     {
         return Admin::create([
+            'username' => 'superadmin',
             'fullname' => 'Super Admin',
             'email' => 'admin@example.com',
-            'password' => Hash::make('password'),
-            'role' => 'superadmin',
-            'permissions' => [],
+            'password' => 'password',
+            'is_super_admin' => true,
         ]);
     }
 
@@ -27,9 +27,9 @@ class AdminUserDirectoryActionsTest extends TestCase
     {
         return User::create([
             'fullname' => 'Test User',
-            'username' => 'testuser',
-            'email' => 'user@example.com',
-            'password' => Hash::make($password),
+            'username' => 'user_' . uniqid(),
+            'email' => 'user_' . uniqid() . '@example.com',
+            'password' => $password,
             'user_status' => 'active',
         ]);
     }
@@ -43,6 +43,12 @@ class AdminUserDirectoryActionsTest extends TestCase
             ->postJson(route('admin.users.status', ['id' => $user->id]), ['user_status' => 'suspended'])
             ->assertOk()
             ->assertJson(['status' => true]);
+
+        \Illuminate\Support\Facades\Auth::guard('admin')->logout();
+        config(['auth.defaults.guard' => 'web']);
+        \Illuminate\Support\Facades\Auth::shouldUse('web');
+        $this->app['auth']->forgetGuards();
+        $this->flushSession();
 
         $this->postJson('/login', ['email' => $user->email, 'password' => 'userpass123'])
             ->assertStatus(403)
@@ -63,6 +69,12 @@ class AdminUserDirectoryActionsTest extends TestCase
         $temp = $res->json('temporary_password');
         $this->assertIsString($temp);
         $this->assertNotEmpty($temp);
+
+        \Illuminate\Support\Facades\Auth::guard('admin')->logout();
+        config(['auth.defaults.guard' => 'web']);
+        \Illuminate\Support\Facades\Auth::shouldUse('web');
+        $this->app['auth']->forgetGuards();
+        $this->flushSession();
 
         $this->postJson('/login', ['email' => $user->email, 'password' => $temp])
             ->assertStatus(200)

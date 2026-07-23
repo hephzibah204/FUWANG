@@ -57,6 +57,8 @@ class WhatsAppWidgetTest extends TestCase
         SystemSetting::put('whatsapp_number', '12345', 'whatsapp_widget');
         SystemSetting::put('whatsapp_color', '#123456', 'whatsapp_widget');
 
+        \Illuminate\Support\Facades\Cache::forget('whatsapp_widget_config');
+
         $response = $this->getJson('/api/whatsapp-widget/config');
         
         $response->assertStatus(200)

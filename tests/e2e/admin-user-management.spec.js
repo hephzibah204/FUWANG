@@ -162,7 +162,7 @@ test.describe('Admin User Wallet Management', () => {
 
     test('Modal prevents submission on invalid amount', async ({ page }) => {
         // Re-simulate page for negative testing
-        await page.setContent(\`
+        await page.setContent(`
              <html>
                 <head>
                     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
@@ -188,7 +188,7 @@ test.describe('Admin User Wallet Management', () => {
                     </script>
                 </body>
             </html>
-        \`);
+        `);
 
         await page.click('.fund-btn');
         await page.click('.swal2-confirm');

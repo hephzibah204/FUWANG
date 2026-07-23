@@ -18,8 +18,8 @@ class WhatsAppWidgetController extends Controller
     {
         $settings = Cache::remember('whatsapp_widget_config', 30, function () {
             return [
-                'enabled' => SystemSetting::get('whatsapp_enabled', '1') === '1',
-                'number' => SystemSetting::get('whatsapp_number', ''),
+                'enabled' => (string) SystemSetting::get('whatsapp_enabled', '1') === '1',
+                'number' => (string) SystemSetting::get('whatsapp_number', ''),
                 'position' => SystemSetting::get('whatsapp_position', 'bottom-right'),
                 'x_offset' => (int) SystemSetting::get('whatsapp_x_offset', '30'),
                 'y_offset' => (int) SystemSetting::get('whatsapp_y_offset', '30'),
@@ -55,7 +55,7 @@ class WhatsAppWidgetController extends Controller
         ]);
 
         WhatsAppClickLog::create([
-            'user_id' => auth('sanctum')->id() ?? auth()->id(),
+            'user_id' => auth()->id(),
             'page_url' => $request->page_url,
             'ip_address' => $request->ip(),
             'user_agent' => substr($request->userAgent(), 0, 255),

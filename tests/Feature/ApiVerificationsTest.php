@@ -25,6 +25,13 @@ class ApiVerificationsTest extends TestCase
             'fullname' => 'Api User',
             'email' => 'api@example.com',
             'password' => Hash::make('Password@123'),
+            'kyc_tier' => 2,
+            'api_access_status' => 'approved',
+        ]);
+
+        \App\Models\AccountBalance::create([
+            'user_id' => $user->id,
+            'user_balance' => 5000,
         ]);
 
         $plain = 'plain-token-nin';

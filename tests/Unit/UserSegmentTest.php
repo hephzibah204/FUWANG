@@ -81,9 +81,9 @@ class UserSegmentTest extends TestCase
         $u3 = User::factory()->create(['email' => 'c@example.com']);
 
         DB::table('account_balances')->insert([
-            ['email' => 'a@example.com', 'user_balance' => 50, 'api_key' => 'user', 'created_at' => now(), 'updated_at' => now()],
-            ['email' => 'b@example.com', 'user_balance' => 5000, 'api_key' => 'user', 'created_at' => now(), 'updated_at' => now()],
-            ['email' => 'c@example.com', 'user_balance' => 150, 'api_key' => 'user', 'created_at' => now(), 'updated_at' => now()],
+            ['user_id' => $u1->id, 'email' => 'a@example.com', 'user_balance' => 50, 'api_key' => 'user', 'created_at' => now(), 'updated_at' => now()],
+            ['user_id' => $u2->id, 'email' => 'b@example.com', 'user_balance' => 5000, 'api_key' => 'user', 'created_at' => now(), 'updated_at' => now()],
+            ['user_id' => $u3->id, 'email' => 'c@example.com', 'user_balance' => 150, 'api_key' => 'user', 'created_at' => now(), 'updated_at' => now()],
         ]);
 
         $segmentGt = [

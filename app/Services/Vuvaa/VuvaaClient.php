@@ -186,7 +186,10 @@ class VuvaaClient
             return null;
         }
 
-        $token = Arr::get($decoded, 'data.data.access_token') ?? Arr::get($decoded, 'data.access_token');
+        $token = Arr::get($decoded, 'data.data.access_token') 
+            ?? Arr::get($decoded, 'data.access_token')
+            ?? Arr::get($decoded, 'data.data.accessToken') 
+            ?? Arr::get($decoded, 'data.accessToken');
         if (!is_string($token) || $token === '') {
             return null;
         }
@@ -243,7 +246,7 @@ class VuvaaClient
             return ['ok' => false, 'message' => 'Decryption failed: ' . $e->getMessage(), 'data' => []];
         }
 
-        $statusCode = $decrypted['statusCode'] ?? $decrypted['status_code'] ?? $decrypted['status'] ?? null;
+        $statusCode = $decrypted['statusCode'] ?? $decrypted['status_code'] ?? $decrypted['status'] ?? $decrypted['code'] ?? null;
         $statusText = strtolower((string) $statusCode);
         $ok = in_array($statusText, ['00', '200', 'success', 'ok', 'true'], true);
 

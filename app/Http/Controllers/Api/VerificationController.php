@@ -163,7 +163,9 @@ class VerificationController extends Controller
             'dob' => $request->dob,
         ]);
 
-        if ($response->successful() && ($response['status'] ?? null) === 'success') {
+        $resJson = $response->json() ?? [];
+        $resStatus = $resJson['status'] ?? null;
+        if ($response->successful() && ($resStatus === 'success' || $resStatus === true || strtolower((string)$resStatus) === 'success')) {
             $data = $response->json()['data'] ?? $response->json();
             $vr = app(VerificationResultService::class)->create($user, 'nin_verification', (string) $request->number, (string) $provider->name, $data, 'success');
             return [

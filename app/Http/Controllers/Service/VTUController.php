@@ -176,7 +176,7 @@ class VTUController extends Controller
         }
 
         $token = bin2hex(random_bytes(16));
-        $request->session()->put('vtu_electricity_validation', [
+        $valData = [
             'token' => $token,
             'serviceID' => $request->serviceID,
             'variation_code' => $request->variation_code,
@@ -184,7 +184,11 @@ class VTUController extends Controller
             'provider_id' => $request->input('provider_id'),
             'customer' => $res['customer'] ?? null,
             'at' => now()->timestamp,
-        ]);
+        ];
+        if ($request->hasSession()) {
+            $request->session()->put('vtu_electricity_validation', $valData);
+        }
+        \Illuminate\Support\Facades\Cache::put('vtu_elec_val_' . $token, $valData, 900);
 
         return response()->json([
             'status' => true,
@@ -797,7 +801,13 @@ class VTUController extends Controller
             'validation_token' => ['required', 'string'],
         ]);
 
-        $v = (array) $request->session()->get('vtu_electricity_validation', []);
+        $v = $request->hasSession()
+            ? (array) $request->session()->get('vtu_electricity_validation', [])
+            : [];
+        if (empty($v) && $request->filled('validation_token')) {
+            $v = (array) \Illuminate\Support\Facades\Cache::get('vtu_elec_val_' . $request->validation_token, []);
+        }
+
         if (
             ($v['token'] ?? null) !== $request->validation_token ||
             ($v['serviceID'] ?? null) !== $request->serviceID ||
@@ -818,11 +828,15 @@ class VTUController extends Controller
                 'variation_code' => $request->variation_code,
                 'meter_number' => $request->meter_number,
                 'phone' => $request->phone,
+                'amount' => $request->amount,
             ],
         ]);
 
         if (($result['status'] ?? false) === true) {
-            $request->session()->forget('vtu_electricity_validation');
+            if ($request->hasSession()) {
+                $request->session()->forget('vtu_electricity_validation');
+            }
+            \Illuminate\Support\Facades\Cache::forget('vtu_elec_val_' . $request->validation_token);
         }
 
         return response()->json($result);

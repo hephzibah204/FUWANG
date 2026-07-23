@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AccountBalance;
 use App\Models\ApiToken;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -18,6 +19,7 @@ class ApiTokenAuthTest extends TestCase
             'fullname' => 'Api User',
             'email' => 'api@example.com',
             'password' => Hash::make('Password@123'),
+            'api_access_status' => 'approved',
         ]);
 
         $res = $this->postJson('/api/v1/auth/token', [
@@ -45,6 +47,13 @@ class ApiTokenAuthTest extends TestCase
             'fullname' => 'Api User',
             'email' => 'api@example.com',
             'password' => Hash::make('Password@123'),
+            'api_access_status' => 'approved',
+        ]);
+
+        AccountBalance::create([
+            'user_id' => $user->id,
+            'email' => $user->email,
+            'user_balance' => 500.00,
         ]);
 
         $plain = 'plain-token-123';
@@ -70,6 +79,13 @@ class ApiTokenAuthTest extends TestCase
             'fullname' => 'Api User',
             'email' => 'api@example.com',
             'password' => Hash::make('Password@123'),
+            'api_access_status' => 'approved',
+        ]);
+
+        AccountBalance::create([
+            'user_id' => $user->id,
+            'email' => $user->email,
+            'user_balance' => 500.00,
         ]);
 
         $plain = 'plain-token-rl';

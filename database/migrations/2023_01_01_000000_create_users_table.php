@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('fullname')->nullable();
             $table->string('number')->nullable();
             $table->string('role')->default('user')->index();
-            $table->string('username', 20)->unique();
+            $table->string('username', 60)->nullable()->unique();
             $table->string('email')->unique();
             $table->string('google_id')->nullable()->unique();
             $table->text('google_avatar')->nullable();

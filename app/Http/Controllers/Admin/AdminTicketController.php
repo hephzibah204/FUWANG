@@ -17,7 +17,7 @@ class AdminTicketController extends Controller
     public function index()
     {
         $tickets = Ticket::with('user')
-            ->orderByRaw("FIELD(status, 'open', 'answered', 'closed')")
+            ->orderByRaw("CASE status WHEN 'open' THEN 1 WHEN 'answered' THEN 2 WHEN 'closed' THEN 3 ELSE 4 END")
             ->orderBy('updated_at', 'desc')
             ->paginate(15);
             

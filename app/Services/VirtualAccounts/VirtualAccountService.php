@@ -96,7 +96,7 @@ class VirtualAccountService
     {
         return VirtualAccount::query()
             ->where('user_id', $user->id)
-            ->orderByRaw("FIELD(status, 'active', 'pending', 'failed')")
+            ->orderByRaw("CASE status WHEN 'active' THEN 1 WHEN 'pending' THEN 2 WHEN 'failed' THEN 3 ELSE 4 END")
             ->orderBy('created_at', 'desc')
             ->get();
     }

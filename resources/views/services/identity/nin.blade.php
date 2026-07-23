@@ -238,8 +238,8 @@
                                         <label for="api_provider_id" class="font-weight-600 mb-2" id="provider-label">Select API Provider</label>
                                         <div class="input-wrap">
                                             <i class="fa-solid fa-server"></i>
-                                            <select id="api_provider_id" name="api_provider_id" class="form-control" required onchange="updateVerificationTypes()">
-                                                <option value="">-- Choose a Provider --</option>
+                                            <select id="api_provider_id" name="api_provider_id" class="form-control" onchange="updateVerificationTypes()">
+                                                <option value="">-- Auto-select (Default) --</option>
                                                 @foreach($ninProviders as $provider)
                                                     <option value="{{ $provider->id }}" data-provider="{{ $provider->provider_identifier }}" data-types="{{ json_encode($provider->verificationTypes->where('status', true)) }}">{{ $provider->name }}</option>
                                                 @endforeach

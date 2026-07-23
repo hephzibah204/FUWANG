@@ -16,8 +16,9 @@ class VirtualCardServiceTest extends TestCase
     public function test_virtual_card_creation_via_flutterwave()
     {
         $this->withoutMiddleware(\App\Http\Middleware\CheckInstallation::class);
-        $user = User::factory()->create();
-        AccountBalance::create(['email' => $user->email, 'user_balance' => 50000, 'api_key' => 'test']);
+        \App\Models\FeatureToggle::create(['feature_name' => 'virtual_cards', 'is_active' => true]);
+        $user = User::factory()->create(['kyc_tier' => 2]);
+        AccountBalance::create(['user_id' => $user->id, 'email' => $user->email, 'user_balance' => 50000, 'api_key' => 'test']);
         
         config(['services.flutterwave.secret' => 'FLWSECK_TEST-123']);
 

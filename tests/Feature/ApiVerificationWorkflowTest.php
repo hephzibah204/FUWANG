@@ -24,6 +24,7 @@ class ApiVerificationWorkflowTest extends TestCase
                 $table->string('username')->nullable();
                 $table->string('email')->unique();
                 $table->string('password')->nullable();
+                $table->integer('kyc_tier')->default(1);
                 $table->timestamps();
             });
         }
@@ -84,6 +85,20 @@ class ApiVerificationWorkflowTest extends TestCase
                 $table->timestamps();
             });
         }
+
+        if (!Schema::hasTable('activity_log')) {
+            Schema::create('activity_log', function (Blueprint $table) {
+                $table->id();
+                $table->string('log_name')->nullable();
+                $table->text('description');
+                $table->nullableMorphs('subject', 'subject');
+                $table->string('event')->nullable();
+                $table->nullableMorphs('causer', 'causer');
+                $table->json('properties')->nullable();
+                $table->uuid('batch_uuid')->nullable();
+                $table->timestamps();
+            });
+        }
     }
 
     public function test_api_nin_verification_debits_and_persists_on_success(): void
@@ -112,7 +127,7 @@ class ApiVerificationWorkflowTest extends TestCase
         ]);
 
         Http::fake([
-            'https://example.com/nin/*' => Http::response([
+            'https://example.com/nin*' => Http::response([
                 'status' => 'success',
                 'data' => ['nin' => '123', 'photo' => 'x'],
             ], 200),
