@@ -20,6 +20,7 @@ class PaymentGatewayToggleAndValidationTest extends TestCase
             'fullname' => 'Test User',
             'username' => 'testuser',
             'email' => 'test@example.com',
+            'email_verified_at' => now(),
             'password' => Hash::make('password'),
             'user_status' => 'active',
         ]);

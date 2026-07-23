@@ -19,7 +19,7 @@
     <div class="row">
         <!-- Validation -->
         <div class="col-xl-3 col-lg-4 col-md-6 mb-4">
-            <a href="{{ route('services.nin', ['mode' => 'validation']) }}" class="card shadow-sm h-100 border-0 hover-lift text-decoration-none">
+            <a href="{{ route('services.validation') }}" class="card shadow-sm h-100 border-0 hover-lift text-decoration-none">
                 <div class="card-body text-center d-flex flex-column justify-content-center p-4">
                     <div class="mb-3 d-flex justify-content-center">
                         <div class="rounded-circle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px; background: rgba(var(--clr-primary-rgb, 59, 130, 246), 0.1);">

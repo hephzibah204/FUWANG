@@ -51,11 +51,15 @@ class NinShareCodeAndRequeryTest extends TestCase
         $crypto = new VuvaaCrypto('FD!-F=15B46BAD21', '0123456789012345');
         $loginB64 = $crypto->encryptToBase64(['code' => '00', 'accessToken' => 'abc123']);
         $shareB64 = $crypto->encryptToBase64(['code' => '00', 'reference_id' => 'REFS1', 'fname' => 'Ada', 'nin' => '74756011111']);
+        $walletB64 = $crypto->encryptToBase64(['code' => '00', 'wallet_units' => 100]);
 
-        Http::fake(function ($request) use ($loginB64, $shareB64) {
+        Http::fake(function ($request) use ($loginB64, $shareB64, $walletB64) {
             $url = (string) $request->url();
             if (str_ends_with($url, '/login')) {
                 return Http::response(['payload' => $loginB64], 200);
+            }
+            if (str_ends_with($url, '/get_wallet_details')) {
+                return Http::response(['payload' => $walletB64], 200);
             }
             if (str_ends_with($url, '/share_code')) {
                 return Http::response(['payload' => $shareB64], 200);
@@ -66,6 +70,7 @@ class NinShareCodeAndRequeryTest extends TestCase
         $res = $this->actingAs($user)->post(route('services.nin.verify'), [
             'mode' => 'share_code',
             'share_code' => 'ABC123',
+            'share_reason' => 'Verification purpose',
         ], ['Accept' => 'application/json']);
 
         $res->assertOk()->assertJson(['status' => true])->assertJsonStructure(['result_id', 'data']);
@@ -113,11 +118,15 @@ class NinShareCodeAndRequeryTest extends TestCase
         $crypto = new VuvaaCrypto('FD!-F=15B46BAD21', '0123456789012345');
         $loginB64 = $crypto->encryptToBase64(['code' => '00', 'accessToken' => 'abc123']);
         $requeryB64 = $crypto->encryptToBase64(['code' => '00', 'reference_id' => 'REFX', 'session_complete' => '1']);
+        $walletB64 = $crypto->encryptToBase64(['code' => '00', 'wallet_units' => 100]);
 
-        Http::fake(function ($request) use ($loginB64, $requeryB64) {
+        Http::fake(function ($request) use ($loginB64, $requeryB64, $walletB64) {
             $url = (string) $request->url();
             if (str_ends_with($url, '/login')) {
                 return Http::response(['payload' => $loginB64], 200);
+            }
+            if (str_ends_with($url, '/get_wallet_details')) {
+                return Http::response(['payload' => $walletB64], 200);
             }
             if (str_ends_with($url, '/requery')) {
                 return Http::response(['payload' => $requeryB64], 200);

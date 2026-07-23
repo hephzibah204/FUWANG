@@ -16,12 +16,14 @@ class PdfReportAuthorizationTest extends TestCase
         $userA = User::create([
             'fullname' => 'User A',
             'email' => 'a@example.com',
+            'email_verified_at' => now(),
             'password' => 'Password@123',
         ]);
 
         $userB = User::create([
             'fullname' => 'User B',
             'email' => 'b@example.com',
+            'email_verified_at' => now(),
             'password' => 'Password@123',
         ]);
 

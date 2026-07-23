@@ -117,35 +117,48 @@ class VirtualAccountService
             return ['ok' => false, 'message' => $result->message];
         }
 
-        try {
-            $account = VirtualAccount::create([
-                'user_id' => $user->id,
-                'gateway' => $provider->name(),
-                'account_number' => $result->accountNumber,
-                'bank_name' => $result->bankName,
-                'account_name' => $result->accountName,
-                'currency' => $result->currency ?: 'NGN',
-                'status' => $result->status ?: 'pending',
-                'reference' => $result->reference,
-                'provider_customer_reference' => $result->providerCustomerReference,
-                'provider_account_reference' => $result->providerAccountReference,
-                'meta' => $result->meta,
-                'activated_at' => ($result->status === 'active') ? now() : null,
-                'last_synced_at' => now(),
-            ]);
-        } catch (\Throwable $e) {
-            $existing = VirtualAccount::query()
-                ->where('user_id', $user->id)
-                ->where('gateway', $provider->name())
-                ->where('account_number', $result->accountNumber)
-                ->first();
+        $existing = VirtualAccount::query()
+            ->where('user_id', $user->id)
+            ->where('gateway', $provider->name())
+            ->where('account_number', $result->accountNumber)
+            ->first();
 
-            if ($existing) {
-                $account = $existing;
-            } else {
-                $audit->log(null, $user->id, $provider->name(), 'create_failed', 'failed', 'Unable to persist virtual account');
-                return ['ok' => false, 'message' => 'Unable to store virtual account'];
+        if ($existing) {
+            $account = $existing;
+        } else {
+            try {
+                $account = VirtualAccount::create([
+                    'user_id' => $user->id,
+                    'gateway' => $provider->name(),
+                    'account_number' => $result->accountNumber,
+                    'bank_name' => $result->bankName,
+                    'account_name' => $result->accountName,
+                    'currency' => $result->currency ?: 'NGN',
+                    'status' => $result->status ?: 'pending',
+                    'reference' => $result->reference,
+                    'provider_customer_reference' => $result->providerCustomerReference,
+                    'provider_account_reference' => $result->providerAccountReference,
+                    'meta' => $result->meta,
+                    'activated_at' => ($result->status === 'active') ? now() : null,
+                    'last_synced_at' => now(),
+                ]);
+            } catch (\Throwable $e) {
+                $existing = VirtualAccount::query()
+                    ->where('user_id', $user->id)
+                    ->where('gateway', $provider->name())
+                    ->where('account_number', $result->accountNumber)
+                    ->first();
+                if ($existing) {
+                    $account = $existing;
+                } else {
+                    throw $e;
+                }
             }
+        }
+
+        if (!isset($account)) {
+            $audit->log(null, $user->id, $provider->name(), 'create_failed', 'failed', 'Unable to persist virtual account');
+            return ['ok' => false, 'message' => 'Unable to store virtual account'];
         }
 
         $audit->log($account, $user->id, $provider->name(), 'create_success', 'succeeded', null, [

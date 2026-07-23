@@ -19,6 +19,7 @@ class NinPremiumDemoSlipTest extends TestCase
         $user = User::create([
             'fullname' => 'Test User',
             'email' => 'demo-slip@example.com',
+            'email_verified_at' => now(),
             'password' => Hash::make('Password@123'),
         ]);
 

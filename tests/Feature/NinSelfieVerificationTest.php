@@ -59,11 +59,15 @@ class NinSelfieVerificationTest extends TestCase
         $crypto = new VuvaaCrypto('FD!-F=15B46BAD21', '0123456789012345');
         $loginB64 = $crypto->encryptToBase64(['code' => '00', 'accessToken' => 'abc123']);
         $verifyB64 = $crypto->encryptToBase64(['code' => '00', 'reference_id' => 'REF2', 'fname' => 'Ada', 'lname' => 'Lovelace', 'nin' => '74756011111']);
+        $walletB64 = $crypto->encryptToBase64(['code' => '00', 'wallet_units' => 100]);
 
-        Http::fake(function ($request) use ($loginB64, $verifyB64) {
+        Http::fake(function ($request) use ($loginB64, $verifyB64, $walletB64) {
             $url = (string) $request->url();
             if (str_ends_with($url, '/login')) {
                 return Http::response(['payload' => $loginB64], 200);
+            }
+            if (str_ends_with($url, '/get_wallet_details')) {
+                return Http::response(['payload' => $walletB64], 200);
             }
             if (str_ends_with($url, '/in_person_verification')) {
                 return Http::response(['payload' => $verifyB64], 200);
