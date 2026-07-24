@@ -203,6 +203,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/payment/verify/flutterwave', [App\Http\Controllers\PaymentVerificationController::class, 'verifyFlutterwave'])->name('payment.verify.flutterwave');
     Route::post('/payment/verify/monnify', [App\Http\Controllers\PaymentVerificationController::class, 'verifyMonnify'])->name('payment.verify.monnify');
     Route::post('/payment/intents', [App\Http\Controllers\PaymentIntentController::class, 'create'])->middleware('kyc.enforce')->name('payment.intents.create');
+    Route::get('/payment/intents', function () {
+        return redirect()->route('wallet.fund');
+    });
     Route::get('/payment/intents/{reference}', [App\Http\Controllers\PaymentIntentController::class, 'show'])->name('payment.intents.show');
     Route::post('/payment/palmpay/reserve', [App\Http\Controllers\FundingController::class, 'reservePalmpay'])->name('payment.palmpay.reserve');
     Route::post('/payment/auto-funding/ensure', [App\Http\Controllers\FundingController::class, 'ensureAutoFundingAccounts'])->name('payment.auto_funding.ensure');
