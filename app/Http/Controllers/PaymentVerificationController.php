@@ -118,7 +118,13 @@ class PaymentVerificationController extends Controller
                 ]);
             });
         } catch (\Throwable $e) {
-            return response()->json(['status' => false, 'message' => 'Unable to apply wallet credit.'], 500);
+            \Illuminate\Support\Facades\Log::error('Paystack funding verification failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'reference' => $reference,
+                'user_id' => $user->id
+            ]);
+            return response()->json(['status' => false, 'message' => 'Unable to apply wallet credit: ' . $e->getMessage()], 500);
         }
 
         return response()->json(['status' => true, 'message' => 'Wallet funded successfully', 'reference' => $reference, 'amount' => $amount]);
