@@ -22,6 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
         }
         $middleware->trustProxies(at: $trustedProxies);
 
+        $middleware->append(\App\Http\Middleware\BlockPrototypePollution::class);
         $middleware->append(\App\Http\Middleware\ErrorHandlingMiddleware::class);
         $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
         $middleware->append(\App\Http\Middleware\EnforceHttps::class);
