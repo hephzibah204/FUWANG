@@ -60,9 +60,24 @@
     </div>
 </div>
 
-<div class="row">
     <div class="col-lg-5 mb-4">
-        <div class="card border-0 rounded-4 p-4 h-100" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.07) !important;">
+        <div class="card border-0 rounded-4 p-4 mb-4" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.07) !important;">
+            <h5 class="text-white fw-bold mb-1">Developer API Settings</h5>
+            <p class="text-white-50 small mb-4">Manage global rules for developer onboarding.</p>
+            <form method="POST" action="{{ route('admin.developer_api.settings') }}">
+                @csrf
+                <div class="form-group mb-4">
+                    <div class="custom-control custom-switch">
+                        <input type="checkbox" class="custom-control-input" id="api_approve_by_default" name="api_approve_by_default" value="1" @checked($approveByDefault)>
+                        <label class="custom-control-label text-white" for="api_approve_by_default">Approve Developers by Default</label>
+                    </div>
+                    <span class="text-white-50 small d-block mt-1">If enabled, new accounts can generate tokens and verify instantly without pending review.</span>
+                </div>
+                <button type="submit" class="btn btn-outline-light btn-sm rounded-pill px-4">Save Settings</button>
+            </form>
+        </div>
+
+        <div class="card border-0 rounded-4 p-4" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.07) !important;">
             <h5 class="text-white fw-bold mb-1">Developer Pricing</h5>
             <p class="text-white-50 small mb-4">Separate API pricing from general web pricing for billable verification endpoints.</p>
             <form method="POST" action="{{ route('admin.developer_api.pricing') }}">
@@ -171,10 +186,10 @@
 </div>
 
 <div class="row">
-    <div class="col-lg-6 mb-4">
+    <div class="col-lg-12 mb-4">
         <div class="card border-0 rounded-4 p-4 h-100" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.07) !important;">
-            <h5 class="text-white fw-bold mb-1">API Applications</h5>
-            <p class="text-white-50 small mb-4">Approve, reject, and monitor developer accounts and declared websites.</p>
+            <h5 class="text-white fw-bold mb-1">API Applications / Developers</h5>
+            <p class="text-white-50 small mb-4">Approve, reject, or revoke API access permissions for developer accounts.</p>
             <div class="table-responsive">
                 <table class="table table-borderless text-white small mb-0">
                     <thead>
@@ -183,6 +198,7 @@
                             <th>Website</th>
                             <th>Status</th>
                             <th>Tokens</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -194,12 +210,29 @@
                             </td>
                             <td class="py-3 text-white-50">{{ data_get($app->api_application_details, 'website', '—') }}</td>
                             <td class="py-3">
-                                <span class="badge badge-{{ $app->api_access_status === 'approved' ? 'success' : ($app->api_access_status === 'pending' ? 'warning' : 'secondary') }}">{{ ucfirst($app->api_access_status) }}</span>
+                                <span class="badge badge-{{ $app->api_access_status === 'approved' ? 'success' : (in_array($app->api_access_status, ['rejected', 'revoked', 'suspended']) ? 'danger' : 'warning') }}">{{ ucfirst($app->api_access_status) }}</span>
                             </td>
                             <td class="py-3">{{ $app->active_api_tokens_count }}</td>
+                            <td class="py-3">
+                                <form method="POST" action="{{ route('admin.api_applications.update_status', $app->id) }}" class="form-inline d-inline-block">
+                                    @csrf
+                                    <div class="input-group input-group-sm">
+                                        <select name="status" class="custom-select custom-select-sm text-white rounded-left-3" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); width: auto;">
+                                            <option value="approved" @selected($app->api_access_status === 'approved')>Approve</option>
+                                            <option value="rejected" @selected($app->api_access_status === 'rejected')>Reject</option>
+                                            <option value="revoked" @selected($app->api_access_status === 'revoked')>Revoke</option>
+                                            <option value="suspended" @selected($app->api_access_status === 'suspended')>Suspend</option>
+                                            <option value="none" @selected($app->api_access_status === 'none')>Reset (None)</option>
+                                        </select>
+                                        <div class="input-group-append">
+                                            <button type="submit" class="btn btn-primary btn-sm px-3 rounded-right-3">Update</button>
+                                        </div>
+                                    </div>
+                                </form>
+                            </td>
                         </tr>
                     @empty
-                        <tr><td colspan="4" class="text-center py-4 text-white-50">No API applications yet.</td></tr>
+                        <tr><td colspan="5" class="text-center py-4 text-white-50">No API applications yet.</td></tr>
                     @endforelse
                     </tbody>
                 </table>
@@ -209,6 +242,7 @@
             </div>
         </div>
     </div>
+</div>
 
     <div class="col-lg-6 mb-4">
         <div class="card border-0 rounded-4 p-4 h-100" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.07) !important;">

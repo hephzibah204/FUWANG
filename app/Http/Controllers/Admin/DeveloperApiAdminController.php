@@ -88,6 +88,7 @@ class DeveloperApiAdminController extends Controller
         ];
 
         $endpoints = $catalog->all()->groupBy(fn ($endpoint) => $endpoint->group_name ?: 'Other');
+        $approveByDefault = filter_var(SystemSetting::get('api_approve_by_default', true), FILTER_VALIDATE_BOOL);
 
         return view('admin.developer_api.index', compact(
             'applications',
@@ -97,8 +98,21 @@ class DeveloperApiAdminController extends Controller
             'pricing',
             'docs',
             'endpoints',
-            'days'
+            'days',
+            'approveByDefault'
         ));
+    }
+
+    public function updateSettings(Request $request)
+    {
+        $request->validate([
+            'api_approve_by_default' => ['nullable', 'boolean'],
+        ]);
+
+        $val = $request->has('api_approve_by_default') ? '1' : '0';
+        SystemSetting::set('api_approve_by_default', $val, 'developer_api', 'boolean', 'Approve API Access By Default');
+
+        return back()->with('success', 'Developer API settings updated successfully.');
     }
 
     public function updatePricing(Request $request)

@@ -344,7 +344,7 @@ class AdminController extends Controller
     public function updateApiStatus(Request $request, $id)
     {
         $request->validate([
-            'status' => 'required|in:approved,rejected,none',
+            'status' => 'required|in:approved,rejected,none,revoked,suspended',
             'reason' => 'nullable|string|max:255',
         ]);
 

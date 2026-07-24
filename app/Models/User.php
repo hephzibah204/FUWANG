@@ -213,6 +213,16 @@ class User extends Authenticatable implements CanResetPasswordContract, MustVeri
         if (in_array(strtolower((string) $value), $deniedStatuses, true)) {
             return $value;
         }
-        return 'approved';
+        if (strtolower((string) $value) === 'approved') {
+            return 'approved';
+        }
+
+        // Query the settings value dynamically (defaults to true)
+        $approveByDefault = filter_var(\App\Models\SystemSetting::get('api_approve_by_default', true), FILTER_VALIDATE_BOOL);
+        if ($approveByDefault) {
+            return 'approved';
+        }
+
+        return $value ?: 'none';
     }
 }

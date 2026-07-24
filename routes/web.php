@@ -573,6 +573,7 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
             Route::middleware('admin.security')->group(function () {
                 Route::get('/developer-api', [App\Http\Controllers\Admin\DeveloperApiAdminController::class, 'index'])->name('developer_api.index');
                 Route::post('/developer-api/pricing', [App\Http\Controllers\Admin\DeveloperApiAdminController::class, 'updatePricing'])->name('developer_api.pricing');
+                Route::post('/developer-api/settings', [App\Http\Controllers\Admin\DeveloperApiAdminController::class, 'updateSettings'])->name('developer_api.settings');
                 Route::post('/developer-api/docs', [App\Http\Controllers\Admin\DeveloperApiAdminController::class, 'updateDocs'])->name('developer_api.docs');
                 Route::post('/developer-api/endpoints', [App\Http\Controllers\Admin\DeveloperApiAdminController::class, 'updateEndpoints'])->name('developer_api.endpoints');
             });
