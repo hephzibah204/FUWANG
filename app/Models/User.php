@@ -202,4 +202,17 @@ class User extends Authenticatable implements CanResetPasswordContract, MustVeri
     {
         return $this->hasOne(DeliveryAgent::class);
     }
+
+    /**
+     * Automatically approve all developers by default.
+     * Deny only if explicitly set to 'rejected', 'revoked', or 'suspended'.
+     */
+    public function getApiAccessStatusAttribute($value)
+    {
+        $deniedStatuses = ['rejected', 'revoked', 'suspended'];
+        if (in_array(strtolower((string) $value), $deniedStatuses, true)) {
+            return $value;
+        }
+        return 'approved';
+    }
 }

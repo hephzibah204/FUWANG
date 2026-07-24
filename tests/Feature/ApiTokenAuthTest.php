@@ -108,5 +108,45 @@ class ApiTokenAuthTest extends TestCase
             ->getJson('/api/v1/me')
             ->assertStatus(429);
     }
+
+    public function test_developers_are_approved_by_default_without_explicit_approval(): void
+    {
+        $user = User::create([
+            'fullname' => 'Api Default User',
+            'email' => 'default_api@example.com',
+            'password' => Hash::make('Password@123'),
+            // 'api_access_status' is not specified or set to default 'none'
+        ]);
+
+        $this->assertEquals('approved', $user->api_access_status);
+
+        $res = $this->postJson('/api/v1/auth/token', [
+            'email' => 'default_api@example.com',
+            'password' => 'Password@123',
+            'name' => 'default-app',
+        ]);
+
+        $res->assertOk();
+    }
+
+    public function test_developers_can_be_explicitly_revoked(): void
+    {
+        $user = User::create([
+            'fullname' => 'Revoked User',
+            'email' => 'revoked@example.com',
+            'password' => Hash::make('Password@123'),
+            'api_access_status' => 'revoked',
+        ]);
+
+        $this->assertEquals('revoked', $user->api_access_status);
+
+        $res = $this->postJson('/api/v1/auth/token', [
+            'email' => 'revoked@example.com',
+            'password' => 'Password@123',
+            'name' => 'revoked-app',
+        ]);
+
+        $res->assertStatus(403);
+    }
 }
 
