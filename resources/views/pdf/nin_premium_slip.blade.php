@@ -10,123 +10,109 @@
 
         .card {
             width: 500px;
-            height: 300px;
+            height: 318px;
             position: relative;
             overflow: hidden;
-        }
-
-        .front {
-            background: #e6f4ea;
-            border: 1px solid #008751;
-        }
-
-        .front::before {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-image: radial-gradient(#008751 0.5px, transparent 0.5px);
-            background-size: 10px 10px;
-            opacity: 0.12;
-            z-index: 0;
-        }
-
-        .watermark {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            opacity: 0.07;
-            width: 360px;
-            text-align: center;
-            font-size: 42px;
-            font-weight: 900;
-            letter-spacing: 6px;
-            color: #008751;
-            z-index: 0;
-        }
-
-        .header {
-            text-align: left;
-            padding: 12px 16px 0 16px;
-            z-index: 2;
-            position: relative;
-        }
-
-        .brand-row { display: table; width: 100%; }
-        .brand-left { display: table-cell; vertical-align: top; }
-        .brand-right { display: table-cell; vertical-align: top; text-align: right; }
-        .badge { display: inline-block; padding: 4px 8px; background: #008751; color: #ffffff; font-size: 10px; font-weight: 900; letter-spacing: 0.4px; text-transform: uppercase; border-radius: 10px; }
-        .ref { margin-top: 6px; font-size: 9px; font-weight: 900; color: rgba(17, 24, 39, 0.75); letter-spacing: 0.2px; }
-
-        .country {
-            color: #008751;
-            font-size: 16px;
-            font-weight: 900;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            line-height: 1.05;
-        }
-
-        .slip-type {
-            color: #111827;
-            font-size: 12px;
-            font-weight: 900;
-            text-transform: uppercase;
-            margin-top: 2px;
-        }
-
-        .main-content { padding: 10px 16px; z-index: 2; position: relative; }
-
-        .photo-container {
-            float: left;
-            width: 92px;
-            height: 112px;
-            background: #ffffff;
-            overflow: hidden;
-            border: 1px solid rgba(0, 0, 0, 0.25);
-        }
-
-        .photo-container img { width: 100%; height: 100%; object-fit: cover; }
-
-        .details { margin-left: 108px; }
-
-        .field { margin-bottom: 10px; }
-
-        .label { font-size: 9px; color: rgba(17, 24, 39, 0.55); text-transform: uppercase; font-weight: 800; letter-spacing: 0.2px; }
-
-        .value { font-size: 13px; font-weight: 900; color: #111827; }
-
-        .mini-grid { display: table; width: 100%; }
-        .mini-col { display: table-cell; width: 50%; }
-
-        .qr-container {
-            position: absolute;
-            top: 18px;
-            right: 16px;
-            text-align: center;
-            z-index: 3;
-        }
-
-        .qr-code {
-            width: 92px;
-            height: 92px;
-            background: #ffffff;
-            border: 1px solid rgba(0, 0, 0, 0.35);
-            padding: 4px;
             box-sizing: border-box;
         }
 
-        .nga { font-size: 26px; font-weight: 900; color: #111827; line-height: 1; margin-top: 6px; }
-        .issue-date { font-size: 10px; font-weight: 900; color: #111827; margin-top: 2px; }
+        .front {
+            background-size: 500px 318px;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
 
-        .nin-container { position: absolute; bottom: 16px; left: 0; width: 100%; text-align: center; z-index: 3; }
-        .nin-label { font-size: 11px; font-weight: 900; color: #111827; margin-bottom: 4px; }
-        .nin-value { font-size: 30px; font-weight: 900; letter-spacing: 6px; color: #111827; }
+        .photo-container {
+            position: absolute;
+            top: 84px;
+            left: 22px;
+            width: 110px;
+            height: 136px;
+            overflow: hidden;
+            border-radius: 4px;
+        }
 
-        .divider { width: 500px; height: 2px; background: #111827; }
+        .photo-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .value-surname {
+            position: absolute;
+            top: 108px;
+            left: 154px;
+            font-size: 13px;
+            font-weight: bold;
+            text-transform: uppercase;
+            color: #000000;
+        }
+
+        .value-given-names {
+            position: absolute;
+            top: 148px;
+            left: 154px;
+            font-size: 13px;
+            font-weight: bold;
+            text-transform: uppercase;
+            color: #000000;
+        }
+
+        .value-dob {
+            position: absolute;
+            top: 188px;
+            left: 154px;
+            font-size: 13px;
+            font-weight: bold;
+            color: #000000;
+        }
+
+        .value-sex {
+            position: absolute;
+            top: 188px;
+            left: 282px;
+            font-size: 13px;
+            font-weight: bold;
+            color: #000000;
+        }
+
+        .qr-container {
+            position: absolute;
+            top: 22px;
+            right: 22px;
+            width: 90px;
+            height: 90px;
+        }
+
+        .qr-container img {
+            width: 100%;
+            height: 100%;
+        }
+
+        .value-issue-date {
+            position: absolute;
+            top: 202px;
+            right: 22px;
+            font-size: 10px;
+            font-weight: bold;
+            color: #000000;
+            text-align: right;
+            width: 100px;
+        }
+
+        .value-nin {
+            position: absolute;
+            bottom: 12px;
+            left: 0;
+            width: 500px;
+            text-align: center;
+            font-size: 32px;
+            font-weight: bold;
+            letter-spacing: 5px;
+            color: #000000;
+        }
+
+        .divider { width: 500px; height: 2px; background: #ffffff; }
 
         .back { background: #ffffff; border: 1px solid #111827; }
 
@@ -135,103 +121,90 @@
             top: 0;
             left: 0;
             width: 500px;
-            height: 300px;
+            height: 318px;
             transform: rotate(180deg);
             transform-origin: 50% 50%;
             padding: 18px 22px;
             box-sizing: border-box;
         }
 
-        .back-title { text-align: center; font-size: 30px; font-weight: 900; margin-top: 18px; margin-bottom: 2px; color: #111827; }
-        .back-subtitle { text-align: center; font-size: 14px; font-weight: 700; margin-bottom: 16px; color: #111827; }
-        .back-text { font-size: 12px; line-height: 1.45; text-align: center; color: #111827; }
-        .back-text p { margin: 12px 0; }
-        .meta { margin-top: 14px; border-top: 1px solid rgba(17, 24, 39, 0.15); padding-top: 12px; }
-        .meta-title { text-align: center; font-size: 11px; font-weight: 900; letter-spacing: 0.4px; text-transform: uppercase; color: #111827; margin-bottom: 8px; }
-        .meta-table { width: 100%; border-collapse: collapse; font-size: 9px; color: #111827; }
-        .meta-table td { padding: 4px 0; vertical-align: top; }
-        .meta-k { width: 36%; font-weight: 900; color: rgba(17, 24, 39, 0.75); text-transform: uppercase; letter-spacing: 0.25px; }
-        .meta-v { width: 64%; font-weight: 800; }
-        .back-sign { text-align: center; font-size: 14px; font-weight: 900; margin-top: 20px; color: #111827; }
-
-        .clearfix::after { content: ""; clear: both; display: table; }
+        .back-title { text-align: center; font-size: 15px; font-weight: bold; margin-top: 12px; margin-bottom: 2px; color: #111827; }
+        .back-subtitle { text-align: center; font-size: 10px; font-weight: bold; margin-bottom: 12px; color: #111827; }
+        .back-text { font-size: 10px; line-height: 1.4; text-align: center; color: #111827; }
+        .back-text p { margin: 8px 0; }
+        .meta { margin-top: 20px; border-top: 1px solid rgba(17, 24, 39, 0.1); padding-top: 10px; text-align: center; font-size: 9px; font-weight: bold; color: rgba(17, 24, 39, 0.6); }
     </style>
 </head>
 <body>
+    @php
+        $bgPath = public_path('assets/images/nin_premium_bg.png');
+        $bgData = '';
+        if (file_exists($bgPath)) {
+            $bgData = 'data:image/png;base64,' . base64_encode(file_get_contents($bgPath));
+        }
+    @endphp
     <div class="sheet">
-        <div class="card front">
-            <div class="watermark">NIGERIA</div>
-
-            <div class="header">
-                <div class="brand-row">
-                    <div class="brand-left">
-                        <div class="country">FEDERAL REPUBLIC OF NIGERIA</div>
-                        <div class="slip-type">DIGITAL NIN SLIP</div>
-                        <div class="ref">{{ \App\Models\SystemSetting::get('site_name', 'Fuwa.NG') }} • {{ $result->reference_id }}</div>
-                    </div>
-                    <div class="brand-right">
-                        <div class="badge">Premium</div>
-                    </div>
-                </div>
+        <div class="card front" style="background-image: url('{{ $bgData }}');">
+            <!-- Photo -->
+            <div class="photo-container">
+                @php $photo = $result->response_data['photo'] ?? $result->response_data['image'] ?? null; @endphp
+                @if($photo)
+                    <img src="{{ str_starts_with($photo, 'http') || str_starts_with($photo, 'data:') ? $photo : 'data:image/jpeg;base64,' . $photo }}">
+                @endif
             </div>
 
-            <div class="main-content clearfix">
-                <div class="photo-container">
-                    @php $photo = $result->response_data['photo'] ?? $result->response_data['image'] ?? null; @endphp
-                    @if($photo)
-                        <img src="{{ str_starts_with($photo, 'http') || str_starts_with($photo, 'data:') ? $photo : 'data:image/jpeg;base64,' . $photo }}">
-                    @endif
-                </div>
-
-                <div class="details">
-                    <div class="field">
-                        <div class="label">Surname/Nom</div>
-                        <div class="value">{{ strtoupper($result->response_data['lastname'] ?? $result->response_data['surname'] ?? '') }}</div>
-                    </div>
-                    <div class="field">
-                        <div class="label">Given Names/Prénoms</div>
-                        <div class="value">{{ strtoupper($result->response_data['firstname'] ?? '') }} {{ strtoupper($result->response_data['middlename'] ?? '') }}</div>
-                    </div>
-                    <div class="mini-grid">
-                        <div class="mini-col">
-                            <div class="field">
-                                <div class="label">Date of Birth</div>
-                                <div class="value">{{ $result->response_data['birthdate'] ?? $result->response_data['dob'] ?? '' }}</div>
-                            </div>
-                        </div>
-                        <div class="mini-col">
-                            <div class="field">
-                                <div class="label">Sex/Sexe</div>
-                                <div class="value">{{ strtoupper(substr($result->response_data['gender'] ?? '—', 0, 1)) }}</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <!-- Surname -->
+            <div class="value-surname">
+                {{ strtoupper($result->response_data['lastname'] ?? $result->response_data['surname'] ?? '') }}
             </div>
 
+            <!-- Given Names -->
+            <div class="value-given-names">
+                {{ strtoupper($result->response_data['firstname'] ?? '') }} {{ strtoupper($result->response_data['middlename'] ?? '') }}
+            </div>
+
+            <!-- Date of Birth -->
+            <div class="value-dob">
+                @php
+                    $dob = $result->response_data['birthdate'] ?? $result->response_data['dob'] ?? '';
+                    // Try to format to dd MMM yyyy or similar if match standard pattern
+                    try {
+                        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $dob)) {
+                            $dob = date('d M Y', strtotime($dob));
+                        }
+                    } catch (\Exception $e) {}
+                @endphp
+                {{ strtoupper($dob) }}
+            </div>
+
+            <!-- Sex -->
+            <div class="value-sex">
+                {{ strtoupper(substr($result->response_data['gender'] ?? '—', 0, 1)) }}
+            </div>
+
+            <!-- QR Code -->
             <div class="qr-container">
-                <div class="qr-code">
-                    @php
-                        $qrData = "NIN:" . ($result->response_data['nin'] ?? '') . "\nName:" . ($result->response_data['firstname'] ?? '') . " " . ($result->response_data['lastname'] ?? '');
-                        $qrCode = \App\Support\QrCodeDataUri::make($qrData, 92);
-                    @endphp
-                    @if($qrCode)
-                        <img src="{{ $qrCode }}" style="width: 100%; height: 100%;">
-                    @endif
-                </div>
-                <div class="nga">NGA</div>
-                <div class="issue-date">ISSUE DATE<br><strong>{{ $result->created_at->format('d M Y') }}</strong></div>
+                @php
+                    $qrData = "NIN:" . ($result->response_data['nin'] ?? '') . "\nName:" . ($result->response_data['firstname'] ?? '') . " " . ($result->response_data['lastname'] ?? '');
+                    $qrCode = \App\Support\QrCodeDataUri::make($qrData, 90);
+                @endphp
+                @if($qrCode)
+                    <img src="{{ $qrCode }}">
+                @endif
             </div>
 
-            <div class="nin-container">
-                <div class="nin-label">National Identification Number (NIN)</div>
-                <div class="nin-value">
-                    @php
-                        $nin = preg_replace('/\D+/', '', (string) ($result->response_data['nin'] ?? '00000000000')) ?: '00000000000';
-                        $formattedNin = substr($nin, 0, 4) . ' ' . substr($nin, 4, 3) . ' ' . substr($nin, 7);
-                    @endphp
-                    {{ $formattedNin }}
-                </div>
+            <!-- Issue Date -->
+            <div class="value-issue-date">
+                {{ strtoupper($result->created_at->format('d M Y')) }}
+            </div>
+
+            <!-- NIN -->
+            <div class="value-nin">
+                @php
+                    $nin = preg_replace('/\D+/', '', (string) ($result->response_data['nin'] ?? '00000000000')) ?: '00000000000';
+                    $formattedNin = substr($nin, 0, 4) . ' ' . substr($nin, 4, 3) . ' ' . substr($nin, 7);
+                @endphp
+                {{ $formattedNin }}
             </div>
         </div>
 
@@ -239,30 +212,16 @@
 
         <div class="card back">
             <div class="back-inner">
-                <div class="back-title">DISCLAIMER</div>
-                <div class="back-subtitle">Trust but verify</div>
+                <div class="back-title">PROPERTY OF THE FEDERAL REPUBLIC OF NIGERIA</div>
+                <div class="back-subtitle">National Identity Management Commission (NIMC)</div>
                 <div class="back-text">
-                    <p>Kindly ensure each time this slip is presented, that you verify the credentials using a Government approved verification resource.</p>
-                    <p>The details on the front of this NIN slip must exactly match the verification result.</p>
-                    <p>If this NIN was not issued to the permitted bearer on the front of this document, please do not accept any receipt.</p>
+                    <p>This card is the property of the Federal Government of Nigeria. It must be produced on demand by authorized persons.</p>
+                    <p>If found, please return to the nearest National Identity Management Commission (NIMC) office or the nearest Police Station.</p>
+                    <p style="margin-top: 24px; font-weight: bold; font-size: 8px;">NIMC Head Office: 11 Sokode Crescent, Wuse Zone 5, Abuja.<br>Website: www.nimc.gov.ng | Email: info@nimc.gov.ng</p>
                 </div>
                 <div class="meta">
-                    <div class="meta-title">Verification Details</div>
-                    @php
-                        $phone = $result->response_data['telephoneno'] ?? $result->response_data['phone'] ?? null;
-                        $address = $result->response_data['address'] ?? $result->response_data['residence'] ?? null;
-                        $mode = $result->response_data['_verification_mode'] ?? null;
-                    @endphp
-                    <table class="meta-table">
-                        <tr><td class="meta-k">Reference</td><td class="meta-v">{{ $result->reference_id }}</td></tr>
-                        <tr><td class="meta-k">Generated</td><td class="meta-v">{{ $result->created_at->format('d M Y, H:i') }}</td></tr>
-                        <tr><td class="meta-k">Provider</td><td class="meta-v">{{ $result->provider_name ?? '—' }}</td></tr>
-                        <tr><td class="meta-k">Mode</td><td class="meta-v">{{ $mode ?: '—' }}</td></tr>
-                        <tr><td class="meta-k">Phone</td><td class="meta-v">{{ $phone ?: '—' }}</td></tr>
-                        <tr><td class="meta-k">Address</td><td class="meta-v">{{ $address ?: '—' }}</td></tr>
-                    </table>
+                    Card ID: {{ $result->reference_id }} | Generated: {{ $result->created_at->format('d/m/Y') }}
                 </div>
-                <div class="back-sign">{{ \App\Models\SystemSetting::get('site_name', 'Fuwa.NG') }}</div>
             </div>
         </div>
     </div>
