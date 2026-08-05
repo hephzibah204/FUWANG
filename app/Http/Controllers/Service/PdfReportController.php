@@ -37,7 +37,7 @@ class PdfReportController extends Controller
         }
 
         $providerName = strtolower((string) ($result->provider_name ?? ''));
-        $isRobostTech = str_contains($providerName, 'robost');
+        $isDataVerify = str_contains($providerName, 'dataverify');
         $fallbackReason = 'unknown';
 
         $result->response_data = $this->normalizeNinSlipPayload($result->response_data, (string) $result->identifier);
@@ -49,16 +49,16 @@ class PdfReportController extends Controller
 
         // Prefer official DataVerify slip endpoints if configured
         try {
-            if ($isRobostTech) {
-                $fallbackReason = 'provider_is_robosttech';
-                Log::info('NIN slip remote generation skipped', [
+            if (!$isDataVerify) {
+                $fallbackReason = 'provider_is_not_dataverify';
+                Log::info('NIN slip remote generation skipped (not dataverify)', [
                     'result_id' => $result->id,
                     'reference_id' => $result->reference_id,
                     'type' => $type,
                     'provider_name' => $result->provider_name,
                     'reason' => $fallbackReason,
                 ]);
-                throw new \RuntimeException('Skip remote slip generation for RobostTech results.');
+                throw new \RuntimeException('Skip remote slip generation for non-DataVerify results.');
             }
             $apiCenter = ApiCenter::first();
             $mode = $result->response_data['_verification_mode'] ?? null;
