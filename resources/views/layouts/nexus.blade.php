@@ -430,6 +430,21 @@
             <div class="nav-item {{ Request::routeIs('dashboard') ? 'active' : '' }}">
                 <a href="{{ route('dashboard') }}"><i class="fa-solid fa-house"></i> <span class="nav-text">Overview</span></a>
             </div>
+            <div class="nav-item {{ Request::routeIs('agent.*') ? 'active' : '' }}">
+                @if($webUser->isApprovedEnrollmentAgent())
+                    <a href="{{ route('agent.dashboard') }}" class="text-warning font-weight-bold">
+                        <i class="fa-solid fa-id-card-clip text-warning"></i> <span class="nav-text">Enrollment Agent</span>
+                    </a>
+                @elseif($webUser->enrollmentAgent)
+                    <a href="{{ route('agent.onboarding.index') }}">
+                        <i class="fa-solid fa-user-shield text-info"></i> <span class="nav-text">Enrollment Agent</span>
+                    </a>
+                @else
+                    <a href="{{ route('agent.landing') }}">
+                        <i class="fa-solid fa-user-shield text-info"></i> <span class="nav-text">Enrollment Agent</span>
+                    </a>
+                @endif
+            </div>
             <div class="nav-item {{ Request::routeIs('notifications.*') ? 'active' : '' }}">
                 <a href="{{ route('notifications.index') }}"><i class="fa-solid fa-bell"></i> <span class="nav-text">Notifications
                     @if($webUnreadCount > 0)
@@ -649,6 +664,7 @@
                 <div class="collapse navbar-collapse" id="navbarNav">
                     <ul class="navbar-nav mx-auto d-flex flex-row">
                         <li class="nav-item mx-2"><a class="nav-link text-white small font-weight-bold" href="{{ url('/') }}#services">Services</a></li>
+                        <li class="nav-item mx-2"><a class="nav-link text-white small font-weight-bold {{ Request::routeIs('agent.*') ? 'text-primary' : '' }}" href="{{ route('agent.landing') }}">Enrollment Agent</a></li>
                         <li class="nav-item mx-2"><a class="nav-link text-white small font-weight-bold" href="{{ route('public.auctions.index') }}">Auctions</a></li>
                         <li class="nav-item mx-2"><a class="nav-link text-white small font-weight-bold" href="{{ route('logistics.home') }}">Logistics</a></li>
                         <li class="nav-item mx-2"><a class="nav-link text-white small font-weight-bold" href="{{ url('/explore/notary-services') }}">Notary</a></li>
@@ -975,6 +991,7 @@
             const services = [
                 { title: 'NIN Suite', cat: 'Identity', url: '{{ route("services.nin.suite") }}', icon: 'fa-id-card-clip' },
                 { title: 'BVN Suite', cat: 'Identity', url: '{{ route("services.bvn") }}', icon: 'fa-building-columns' },
+                { title: 'Enrollment Agent', cat: 'Agency', url: '{{ route("agent.landing") }}', icon: 'fa-user-shield' },
                 { title: 'VTU Hub', cat: 'Ecosystem', url: '{{ route("services.vtu.hub") }}', icon: 'fa-mobile-screen-button' },
                 { title: 'Legal Hub', cat: 'Ecosystem', url: '{{ route("services.legal-hub") }}', icon: 'fa-gavel' },
                 { title: 'Notary', cat: 'Ecosystem', url: '{{ route("services.notary") }}', icon: 'fa-file-signature' },

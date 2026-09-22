@@ -143,9 +143,13 @@
                 <div class="nav-item {{ Request::routeIs('agent.dashboard') ? 'active' : '' }}">
                     <a href="{{ route('agent.dashboard') }}" class="text-warning fw-bold"><i class="fa-solid fa-id-card-clip text-warning"></i> Agency Dashboard</a>
                 </div>
+            @elseif(Auth::user()->enrollmentAgent)
+                <div class="nav-item {{ Request::routeIs('agent.onboarding.*') ? 'active' : '' }}">
+                    <a href="{{ route('agent.onboarding.index') }}"><i class="fa-solid fa-user-shield text-info"></i> Enrollment Agent</a>
+                </div>
             @else
-                <div class="nav-item {{ Request::routeIs('agent.register') ? 'active' : '' }}">
-                    <a href="{{ route('agent.register') }}"><i class="fa-solid fa-user-shield text-info"></i> NIN Agent Portal</a>
+                <div class="nav-item {{ Request::routeIs('agent.*') ? 'active' : '' }}">
+                    <a href="{{ route('agent.landing') }}"><i class="fa-solid fa-user-shield text-info"></i> Enrollment Agent</a>
                 </div>
             @endif
             <div class="nav-item {{ Request::routeIs('dashboard') ? 'active' : '' }}">
