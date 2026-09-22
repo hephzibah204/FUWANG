@@ -675,51 +675,34 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
             Route::post('/settings/security/verifyme/secret', [App\Http\Controllers\Admin\SettingsController::class, 'updateVerifymeWebhookSecret'])
                 ->middleware('admin.security')
                 ->name('settings.security.verifyme_secret');
+
+            // NIN Enrollment Agents Management
+            Route::prefix('agents')->name('agents.')->group(function () {
+                Route::get('/', [App\Http\Controllers\Admin\AdminAgentController::class, 'index'])->name('index');
+                Route::get('/leaderboard', [App\Http\Controllers\Admin\AdminAgentController::class, 'leaderboard'])->name('leaderboard');
+                Route::post('/leaderboard/publish', [App\Http\Controllers\Admin\AdminAgentController::class, 'publishLeaderboard'])->name('leaderboard.publish');
+                Route::get('/upload-preapproved', [App\Http\Controllers\Admin\AdminAgentController::class, 'showUploadPreApproved'])->name('upload_preapproved');
+                Route::post('/upload-preapproved', [App\Http\Controllers\Admin\AdminAgentController::class, 'processUploadPreApproved'])->name('upload_preapproved.process');
+                Route::get('/{id}', [App\Http\Controllers\Admin\AdminAgentController::class, 'show'])->name('show');
+                Route::post('/{id}/approve', [App\Http\Controllers\Admin\AdminAgentController::class, 'approve'])->name('approve');
+                Route::post('/{id}/reject', [App\Http\Controllers\Admin\AdminAgentController::class, 'reject'])->name('reject');
+                Route::post('/{id}/suspend', [App\Http\Controllers\Admin\AdminAgentController::class, 'suspend'])->name('suspend');
+                Route::post('/{id}/reactivate', [App\Http\Controllers\Admin\AdminAgentController::class, 'reactivate'])->name('reactivate');
+
+                // Agent Issues Management
+                Route::prefix('issues')->name('issues.')->group(function () {
+                    Route::get('/', [App\Http\Controllers\Admin\AdminAgentIssueController::class, 'index'])->name('index');
+                    Route::get('/{id}', [App\Http\Controllers\Admin\AdminAgentIssueController::class, 'show'])->name('show');
+                    Route::post('/{id}/reply', [App\Http\Controllers\Admin\AdminAgentIssueController::class, 'reply'])->name('reply');
+                    Route::post('/{id}/status', [App\Http\Controllers\Admin\AdminAgentIssueController::class, 'updateStatus'])->name('status');
+                });
+            });
+
+            // Parcel Agents Admin
+            Route::get('/parcels/agents', [\App\Http\Controllers\Admin\ParcelAgentAdminController::class, 'index'])->name('parcels.agents.index');
+            Route::put('/parcels/agents/{agent}/status', [\App\Http\Controllers\Admin\ParcelAgentAdminController::class, 'updateStatus'])->name('parcels.agents.status');
         });
     });
-// â”€â”€ End of admin group â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-// â”€â”€ Webhooks (no auth guard) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-Route::post('/webhooks/verifyme/address', [App\Http\Controllers\Service\VerificationController::class, 'handleAddressWebhook'])->name('webhooks.verifyme.address');
-
-// â”€â”€ Payment Webhooks (no auth guard) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-Route::post('/webhooks/payvessel', [App\Http\Controllers\WebhookController::class, 'handlePayvessel']);
-Route::post('/webhooks/palmpay',   [App\Http\Controllers\WebhookController::class, 'handlePalmpay']);
-Route::post('/webhooks/paymentpoint',   [App\Http\Controllers\WebhookController::class, 'handlePaymentpoint']);
-Route::post('/webhooks/monnify',  [App\Http\Controllers\WebhookController::class, 'handleMonnify']);
-Route::post('/webhooks/paystack',  [App\Http\Controllers\WebhookController::class, 'handlePaystack']);
-Route::post('/webhooks/flutterwave',  [App\Http\Controllers\WebhookController::class, 'handleFlutterwave']);
-Route::post('/payvessel_webhook.php', [App\Http\Controllers\WebhookController::class, 'handlePayvessel']);
-Route::post('/palmpay_webhook.php',   [App\Http\Controllers\WebhookController::class, 'handlePalmpay']);
-
-require __DIR__.'/parcels.php';
-
-use App\Http\Controllers\Admin\ParcelAgentAdminController;
-Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->middleware(['web', 'auth', 'admin'])->group(function () {
-    Route::get('/parcels/agents', [ParcelAgentAdminController::class, 'index'])->name('parcels.agents.index');
-    Route::put('/parcels/agents/{agent}/status', [ParcelAgentAdminController::class, 'updateStatus'])->name('parcels.agents.status');
-
-    // NIN Enrollment Agents Management
-    Route::prefix('agents')->name('agents.')->group(function () {
-        Route::get('/', [App\Http\Controllers\Admin\AdminAgentController::class, 'index'])->name('index');
-        Route::get('/leaderboard', [App\Http\Controllers\Admin\AdminAgentController::class, 'leaderboard'])->name('leaderboard');
-        Route::post('/leaderboard/publish', [App\Http\Controllers\Admin\AdminAgentController::class, 'publishLeaderboard'])->name('leaderboard.publish');
-        Route::get('/upload-preapproved', [App\Http\Controllers\Admin\AdminAgentController::class, 'showUploadPreApproved'])->name('upload_preapproved');
-        Route::post('/upload-preapproved', [App\Http\Controllers\Admin\AdminAgentController::class, 'processUploadPreApproved'])->name('upload_preapproved.process');
-        Route::get('/{id}', [App\Http\Controllers\Admin\AdminAgentController::class, 'show'])->name('show');
-        Route::post('/{id}/approve', [App\Http\Controllers\Admin\AdminAgentController::class, 'approve'])->name('approve');
-        Route::post('/{id}/reject', [App\Http\Controllers\Admin\AdminAgentController::class, 'reject'])->name('reject');
-        Route::post('/{id}/suspend', [App\Http\Controllers\Admin\AdminAgentController::class, 'suspend'])->name('suspend');
-        Route::post('/{id}/reactivate', [App\Http\Controllers\Admin\AdminAgentController::class, 'reactivate'])->name('reactivate');
-
-        // Agent Issues Management
-        Route::prefix('issues')->name('issues.')->group(function () {
-            Route::get('/', [App\Http\Controllers\Admin\AdminAgentIssueController::class, 'index'])->name('index');
-            Route::get('/{id}', [App\Http\Controllers\Admin\AdminAgentIssueController::class, 'show'])->name('show');
-            Route::post('/{id}/reply', [App\Http\Controllers\Admin\AdminAgentIssueController::class, 'reply'])->name('reply');
-            Route::post('/{id}/status', [App\Http\Controllers\Admin\AdminAgentIssueController::class, 'updateStatus'])->name('status');
-        });
-    });
-});
+// ── End of admin group ───────────────────────────────────
 
 

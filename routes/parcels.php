@@ -14,16 +14,18 @@ Route::prefix('parcels-agent')->name('parcels.')->middleware(['web', 'auth', 'pa
 
     Route::get('/dashboard', [AgentDashboardController::class, 'index'])->name('dashboard');
 
-    Route::get('/dropoff/customer', [DropOffController::class, 'showCustomerDropOff'])->name('dropoff.customer');
-    Route::post('/dropoff/customer', [DropOffController::class, 'processCustomerDropOff'])->name('dropoff.customer.process');
+    Route::middleware(['throttle:30,1'])->group(function() {
+        Route::get('/dropoff/customer', [DropOffController::class, 'showCustomerDropOff'])->name('dropoff.customer');
+        Route::post('/dropoff/customer', [DropOffController::class, 'processCustomerDropOff'])->name('dropoff.customer.process');
 
-    Route::get('/dropoff/driver', [DropOffController::class, 'showDriverDropOff'])->name('dropoff.driver');
-    Route::post('/dropoff/driver', [DropOffController::class, 'processDriverDropOff'])->name('dropoff.driver.process');
+        Route::get('/dropoff/driver', [DropOffController::class, 'showDriverDropOff'])->name('dropoff.driver');
+        Route::post('/dropoff/driver', [DropOffController::class, 'processDriverDropOff'])->name('dropoff.driver.process');
 
-    Route::get('/pickup/customer', [PickupController::class, 'showCustomerPickup'])->name('pickup.customer');
-    Route::post('/pickup/customer', [PickupController::class, 'processCustomerPickup'])->name('pickup.customer.process');
+        Route::get('/pickup/customer', [PickupController::class, 'showCustomerPickup'])->name('pickup.customer');
+        Route::post('/pickup/customer', [PickupController::class, 'processCustomerPickup'])->name('pickup.customer.process');
 
-    Route::get('/pickup/driver', [PickupController::class, 'showDriverPickup'])->name('pickup.driver');
-    Route::post('/pickup/driver', [PickupController::class, 'processDriverPickup'])->name('pickup.driver.process');
+        Route::get('/pickup/driver', [PickupController::class, 'showDriverPickup'])->name('pickup.driver');
+        Route::post('/pickup/driver', [PickupController::class, 'processDriverPickup'])->name('pickup.driver.process');
+    });
 
 });

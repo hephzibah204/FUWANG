@@ -114,10 +114,12 @@ class DropOffController extends Controller
 
         $parcelInfo = $adapter->fetchParcelDetails($trackingNumber);
 
+        $courierId = \App\Models\ParcelCourier::where('name', 'FuwaPost')->value('id') ?? 1;
+
         $parcel = Parcel::updateOrCreate(
             ['tracking_number' => $trackingNumber],
             [
-                'courier_id' => 1,
+                'courier_id' => $courierId,
                 'shop_id' => $agent->shop_id,
                 'status' => 'driver_dropped_off', // Ready for customer pickup
                 'condition' => $request->input('condition'),

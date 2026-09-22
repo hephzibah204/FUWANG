@@ -188,33 +188,36 @@ class AgentRegistrationController extends Controller
             ]
         );
 
-        // Mark pre-approved record as claimed if agent code or full name matches
+        // Mark pre-approved record as claimed using atomic lock inside transaction
         if ($validated['agent_type'] === 'existing') {
             $code = $validated['company_agent_code'] ?? null;
             $name = $finalFullName ?: ($validated['full_name'] ?? null);
 
-            $preApproved = PreApprovedAgent::where('is_claimed', false)
-                ->where(function ($q) use ($code, $name) {
-                    if (!empty($code)) {
-                        $q->where('agent_code', $code);
-                    }
-                    if (!empty($name)) {
-                        $q->orWhere('full_name', $name);
-                    }
-                })
-                ->first();
+            DB::transaction(function () use ($code, $name, $user, $agent) {
+                $preApproved = PreApprovedAgent::where('is_claimed', false)
+                    ->where(function ($q) use ($code, $name) {
+                        if (!empty($code)) {
+                            $q->where('agent_code', $code);
+                        }
+                        if (!empty($name)) {
+                            $q->orWhere('full_name', $name);
+                        }
+                    })
+                    ->lockForUpdate()
+                    ->first();
 
-            if ($preApproved) {
-                $preApproved->update([
-                    'is_claimed' => true,
-                    'claimed_at' => now(),
-                    'claimed_by_user_id' => $user->id,
-                ]);
+                if ($preApproved) {
+                    $preApproved->update([
+                        'is_claimed' => true,
+                        'claimed_at' => now(),
+                        'claimed_by_user_id' => $user->id,
+                    ]);
 
-                if (empty($agent->company_agent_code)) {
-                    $agent->update(['company_agent_code' => $preApproved->agent_code]);
+                    if (empty($agent->company_agent_code)) {
+                        $agent->update(['company_agent_code' => $preApproved->agent_code]);
+                    }
                 }
-            }
+            });
         }
 
         $msg = $ninServerStatus === 'verified'

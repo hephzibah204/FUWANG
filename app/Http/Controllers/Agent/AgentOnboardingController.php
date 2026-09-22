@@ -45,14 +45,23 @@ class AgentOnboardingController extends Controller
         $updates = [];
 
         if ($request->hasFile('utility_bill')) {
+            if (!empty($agent->utility_bill_path)) {
+                Storage::disk('public')->delete($agent->utility_bill_path);
+            }
             $updates['utility_bill_path'] = $request->file('utility_bill')->store('agent_kyc', 'public');
         }
 
         if ($request->hasFile('picture')) {
+            if (!empty($agent->picture_path)) {
+                Storage::disk('public')->delete($agent->picture_path);
+            }
             $updates['picture_path'] = $request->file('picture')->store('agent_kyc', 'public');
         }
 
         if ($request->hasFile('business_doc')) {
+            if (!empty($agent->business_registration_doc_path)) {
+                Storage::disk('public')->delete($agent->business_registration_doc_path);
+            }
             $updates['business_registration_doc_path'] = $request->file('business_doc')->store('agent_kyc', 'public');
         }
 
