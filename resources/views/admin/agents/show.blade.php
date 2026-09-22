@@ -183,7 +183,7 @@
                 @endif
 
                 @if(!$agent->isRejected())
-                    <button class="btn btn-outline-danger rounded-pill w-100 py-2 fw-bold mb-3" data-bs-toggle="collapse" data-bs-target="#rejectForm">
+                    <button class="btn btn-outline-danger rounded-pill w-100 py-2 fw-bold mb-3" data-toggle="collapse" data-bs-toggle="collapse" data-target="#rejectForm" data-bs-target="#rejectForm">
                         <i class="fa-solid fa-times-circle me-2"></i>Reject Application
                     </button>
 

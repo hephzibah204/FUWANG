@@ -64,14 +64,28 @@ class AgentRegistrationController extends Controller
             ->get(['id', 'agent_code', 'first_name', 'last_name', 'full_name', 'email', 'phone_number'])
             ->map(function ($agent) {
                 $name = $agent->full_name ?: trim($agent->first_name . ' ' . $agent->last_name);
+
+                // Mask email: j***@domain.com
+                $maskedEmail = $agent->email;
+                if ($agent->email && str_contains($agent->email, '@')) {
+                    [$emailUser, $domain] = explode('@', $agent->email, 2);
+                    $maskedEmail = (strlen($emailUser) > 1 ? substr($emailUser, 0, 1) : 'a') . '***@' . $domain;
+                }
+
+                // Mask phone: 080****5678
+                $maskedPhone = $agent->phone_number;
+                if ($agent->phone_number && strlen($agent->phone_number) >= 7) {
+                    $maskedPhone = substr($agent->phone_number, 0, 3) . '****' . substr($agent->phone_number, -4);
+                }
+
                 return [
                     'id' => $agent->id,
                     'agent_code' => $agent->agent_code,
                     'first_name' => $agent->first_name,
                     'last_name' => $agent->last_name,
                     'full_name' => $name,
-                    'email' => $agent->email,
-                    'phone_number' => $agent->phone_number,
+                    'email' => $maskedEmail,
+                    'phone_number' => $maskedPhone,
                     'fast_track_eligible' => true,
                 ];
             });
@@ -99,18 +113,22 @@ class AgentRegistrationController extends Controller
         // Find or create User record
         $user = Auth::user();
         if (!$user) {
-            $user = User::where('email', $validated['email'])->first();
-            if (!$user) {
-                $user = User::create([
-                    'fullname' => $validated['full_name'],
-                    'number' => $validated['phone_number'],
-                    'email' => $validated['email'],
-                    'username' => Str::slug(explode('@', $validated['email'])[0]) . '_' . rand(1000, 9999),
-                    'password' => Hash::make(Str::random(16)),
-                    'user_status' => 'active',
-                    'email_verified_at' => now(),
-                ]);
+            $existingUser = User::where('email', $validated['email'])->first();
+            if ($existingUser) {
+                return back()
+                    ->withInput()
+                    ->withErrors(['email' => 'An account with this email address already exists. Please log in first to link your enrollment agent profile.']);
             }
+
+            $user = User::create([
+                'fullname' => $validated['full_name'],
+                'number' => $validated['phone_number'],
+                'email' => $validated['email'],
+                'username' => Str::slug(explode('@', $validated['email'])[0]) . '_' . rand(1000, 9999),
+                'password' => Hash::make(Str::random(16)),
+                'user_status' => 'active',
+                'email_verified_at' => now(),
+            ]);
             Auth::login($user);
         }
 
@@ -195,17 +213,15 @@ class AgentRegistrationController extends Controller
             $name = $finalFullName ?: ($validated['full_name'] ?? null);
 
             DB::transaction(function () use ($code, $name, $user, $agent) {
-                $preApproved = PreApprovedAgent::where('is_claimed', false)
-                    ->where(function ($q) use ($code, $name) {
-                        if (!empty($code)) {
-                            $q->where('agent_code', $code);
-                        }
-                        if (!empty($name)) {
-                            $q->orWhere('full_name', $name);
-                        }
-                    })
-                    ->lockForUpdate()
-                    ->first();
+                $preApprovedQuery = PreApprovedAgent::where('is_claimed', false);
+
+                if (!empty($code)) {
+                    $preApproved = $preApprovedQuery->where('agent_code', $code)->lockForUpdate()->first();
+                } elseif (!empty($name)) {
+                    $preApproved = $preApprovedQuery->where('full_name', $name)->lockForUpdate()->first();
+                } else {
+                    $preApproved = null;
+                }
 
                 if ($preApproved) {
                     $preApproved->update([

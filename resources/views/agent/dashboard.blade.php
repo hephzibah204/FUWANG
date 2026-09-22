@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.nexus')
 
 @section('title', 'Agency Dashboard | ' . config('app.name'))
 
@@ -11,14 +11,14 @@
                 <div class="position-relative">
                     @if($agent->picture_path)
                         <img src="{{ asset('storage/' . $agent->picture_path) }}" alt="{{ $agent->full_name }}" class="rounded-circle border border-primary border-3" style="width: 70px; height: 70px; object-fit: cover;">
-                        <button type="button" class="btn btn-sm btn-primary rounded-circle position-absolute bottom-0 end-0 p-1" style="width: 26px; height: 26px; line-height: 1;" data-bs-toggle="modal" data-bs-target="#uploadPhotoModal" title="Update Profile Picture">
+                        <button type="button" class="btn btn-sm btn-primary rounded-circle position-absolute bottom-0 end-0 p-1" style="width: 26px; height: 26px; line-height: 1;" data-toggle="modal" data-bs-toggle="modal" data-target="#uploadPhotoModal" data-bs-target="#uploadPhotoModal" title="Update Profile Picture">
                             <i class="fa-solid fa-camera fa-xs"></i>
                         </button>
                     @else
-                        <div class="rounded-circle bg-warning text-dark d-flex align-items-center justify-content-center fw-bold fs-4 border border-warning border-3" style="width: 70px; height: 70px;">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center fw-bold fs-4 border border-warning border-3" style="width: 70px; height: 70px; background: rgba(245, 158, 11, 0.2); color: #fbbf24;">
                             <i class="fa-solid fa-user-xmark"></i>
                         </div>
-                        <button type="button" class="btn btn-sm btn-danger rounded-circle position-absolute bottom-0 end-0 p-1" style="width: 26px; height: 26px; line-height: 1;" data-bs-toggle="modal" data-bs-target="#uploadPhotoModal" title="Upload Profile Picture Required">
+                        <button type="button" class="btn btn-sm btn-danger rounded-circle position-absolute bottom-0 end-0 p-1" style="width: 26px; height: 26px; line-height: 1;" data-toggle="modal" data-bs-toggle="modal" data-target="#uploadPhotoModal" data-bs-target="#uploadPhotoModal" title="Upload Profile Picture Required">
                             <i class="fa-solid fa-upload fa-xs"></i>
                         </button>
                     @endif
@@ -55,7 +55,7 @@
                     <p class="text-white-50 mb-0">NIMC regulations require all active enrollment agents to maintain a clear profile picture on their agency account.</p>
                 </div>
             </div>
-            <button type="button" class="btn btn-danger rounded-pill px-4 py-2 fw-bold" data-bs-toggle="modal" data-bs-target="#uploadPhotoModal">
+            <button type="button" class="btn btn-danger rounded-pill px-4 py-2 fw-bold" data-toggle="modal" data-bs-toggle="modal" data-target="#uploadPhotoModal" data-bs-target="#uploadPhotoModal">
                 <i class="fa-solid fa-upload me-2"></i>Upload Profile Picture Now
             </button>
         </div>
@@ -67,7 +67,7 @@
             <div class="modal-content bg-dark text-white rounded-4 border border-secondary">
                 <div class="modal-header border-secondary">
                     <h5 class="modal-header-title fw-bold text-white mb-0" id="uploadPhotoModalLabel"><i class="fa-solid fa-id-badge text-primary me-2"></i>Upload Agent Profile Photo</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="close text-white" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close" style="background: transparent; border: 0; font-size: 1.5rem; opacity: 0.8;"><span aria-hidden="true">&times;</span></button>
                 </div>
                 <form action="{{ route('agent.onboarding.upload_docs') }}" method="POST" enctype="multipart/form-data">
                     @csrf
@@ -79,7 +79,7 @@
                         </div>
                     </div>
                     <div class="modal-footer border-secondary">
-                        <button type="button" class="btn btn-outline-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-outline-light rounded-pill px-4" data-dismiss="modal" data-bs-dismiss="modal">Cancel</button>
                         <button type="submit" class="btn btn-primary rounded-pill px-4"><i class="fa-solid fa-cloud-arrow-up me-2"></i>Save & Activate Photo</button>
                     </div>
                 </form>

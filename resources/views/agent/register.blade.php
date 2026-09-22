@@ -144,7 +144,7 @@
                             </div>
 
                             <!-- Autocomplete Dropdown -->
-                            <div id="searchResults" class="autocomplete-dropdown d-none" role="listbox"></div>
+                            <div id="searchResults" class="autocomplete-dropdown d-none" role="listbox" aria-live="polite" aria-atomic="true"></div>
                         </div>
 
                         <!-- Instant Real-Time Validation Box: Verified -->
@@ -496,6 +496,34 @@
         flex-shrink: 0;
     }
 
+    .badge-gold {
+        background: rgba(245, 158, 11, 0.15);
+        color: #fbbf24;
+        border: 1px solid rgba(245, 158, 11, 0.3);
+        border-radius: 9999px;
+        padding: 2px 10px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .badge-select-pill {
+        background: rgba(59, 130, 246, 0.15);
+        color: #60a5fa;
+        border: 1px solid rgba(59, 130, 246, 0.3);
+        border-radius: 9999px;
+        padding: 3px 10px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+
+    .autocomplete-item:hover .badge-select-pill {
+        background: #3b82f6;
+        color: #ffffff;
+    }
+
     /* Verified Banner - Soft dark emerald card */
     .verified-agent-banner {
         background: rgba(16, 185, 129, 0.08);
@@ -600,8 +628,8 @@ document.addEventListener('DOMContentLoaded', function () {
     function selectAgent(agent) {
         if (codeInput) codeInput.value = agent.agent_code;
         if (nameInput) nameInput.value = agent.full_name;
-        if (emailInput) emailInput.value = agent.email;
-        if (phoneInput) phoneInput.value = agent.phone_number;
+        if (emailInput && !agent.email.includes('***')) emailInput.value = agent.email;
+        if (phoneInput && !agent.phone_number.includes('****')) phoneInput.value = agent.phone_number;
 
         // Display Verified Banner
         if (verifiedName) verifiedName.textContent = agent.full_name;
@@ -691,7 +719,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                         <div class="text-muted small">${agent.phone_number} • ${agent.email}</div>
                                     </div>
                                 </div>
-                                <span class="badge bg-primary bg-opacity-25 text-primary small">Select</span>
+                                <span class="badge-select-pill">Select</span>
                             `;
 
                             item.addEventListener('click', function () {

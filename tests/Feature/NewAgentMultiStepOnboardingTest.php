@@ -127,4 +127,28 @@ class NewAgentMultiStepOnboardingTest extends TestCase
         $this->assertEquals('submitted', $agent->onboarding_step);
         $this->assertEquals('pending', $agent->status);
     }
+
+    public function test_unauthenticated_registration_with_existing_email_is_rejected_and_does_not_login(): void
+    {
+        $existingUser = User::factory()->create([
+            'email' => 'victim@example.com',
+            'user_status' => 'active',
+        ]);
+
+        $response = $this->post(route('agent.register.submit'), [
+            'agent_type' => 'new',
+            'full_name' => 'Attacker Trying Takeover',
+            'email' => 'victim@example.com',
+            'phone_number' => '08099881122',
+            'bvn' => '11111111111',
+            'nin' => '22222222222',
+            'state' => 'Abuja',
+            'residential_address' => 'Attacker Res',
+            'office_address' => 'Attacker Off',
+            'has_machine' => '0',
+        ]);
+
+        $response->assertSessionHasErrors(['email']);
+        $this->assertGuest();
+    }
 }

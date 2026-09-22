@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.nexus')
 
 @section('title', 'Agency KYC Onboarding Portal | ' . config('app.name'))
 
@@ -10,13 +10,13 @@
             <div class="card border-0 rounded-4 p-4 mb-4" style="background: linear-gradient(135deg, rgba(30, 58, 138, 0.6), rgba(15, 23, 42, 0.8)); border: 1px solid rgba(59, 130, 246, 0.3) !important;">
                 <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
                     <div>
-                        <span class="badge bg-warning text-dark font-monospace mb-2">Phase 2: Agency Onboarding</span>
+                        <span class="badge mb-2 font-monospace" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3);">Phase 2: Agency Onboarding</span>
                         <h3 class="text-white fw-bold mb-1"><i class="fa-solid fa-clipboard-check text-primary me-2"></i>Complete Your Agency KYC & Legal Compliance</h3>
                         <p class="text-white-50 mb-0">Upload required verification documents and accept NIMC operational guidelines to submit your application for Admin approval.</p>
                     </div>
                     <div>
                         @if($agent->isOnboardingSubmitted() && $agent->isPending())
-                            <span class="badge bg-warning text-dark px-3 py-2 rounded-pill fs-6"><i class="fa-solid fa-clock me-1"></i>Submitted — Awaiting Admin Review</span>
+                            <span class="badge px-3 py-2 rounded-pill fs-6" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3);"><i class="fa-solid fa-clock me-1"></i>Submitted — Awaiting Admin Review</span>
                         @endif
                     </div>
                 </div>
@@ -37,19 +37,19 @@
             <!-- Progress Tracker -->
             <div class="row g-3 mb-4">
                 <div class="col-md-4">
-                    <div class="card border-0 rounded-3 p-3 bg-success bg-opacity-25 border-success text-center">
+                    <div class="card border-0 rounded-3 p-3 text-center" style="background: rgba(34, 197, 94, 0.12); border: 1px solid rgba(34, 197, 94, 0.3) !important;">
                         <small class="text-success fw-bold text-uppercase d-block mb-1">Step 1</small>
                         <strong class="text-white"><i class="fa-solid fa-circle-check text-success me-1"></i>Basic Info & NIN</strong>
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <div class="card border-0 rounded-3 p-3 {{ $agent->utility_bill_path && $agent->picture_path ? 'bg-success bg-opacity-25 border-success' : 'bg-primary bg-opacity-25 border-primary' }} text-center">
+                    <div class="card border-0 rounded-3 p-3 text-center" style="{{ $agent->utility_bill_path && $agent->picture_path ? 'background: rgba(34, 197, 94, 0.12); border: 1px solid rgba(34, 197, 94, 0.3) !important;' : 'background: rgba(59, 130, 246, 0.12); border: 1px solid rgba(59, 130, 246, 0.3) !important;' }}">
                         <small class="{{ $agent->utility_bill_path && $agent->picture_path ? 'text-success' : 'text-info' }} fw-bold text-uppercase d-block mb-1">Step 2</small>
                         <strong class="text-white">KYC Documents & CAC</strong>
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <div class="card border-0 rounded-3 p-3 {{ $agent->accepted_terms ? 'bg-success bg-opacity-25 border-success' : 'bg-dark' }} text-center">
+                    <div class="card border-0 rounded-3 p-3 text-center" style="{{ $agent->accepted_terms ? 'background: rgba(34, 197, 94, 0.12); border: 1px solid rgba(34, 197, 94, 0.3) !important;' : 'background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08) !important;' }}">
                         <small class="{{ $agent->accepted_terms ? 'text-success' : 'text-white-50' }} fw-bold text-uppercase d-block mb-1">Step 3</small>
                         <strong class="text-white">NIMC Code of Conduct</strong>
                     </div>

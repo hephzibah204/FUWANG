@@ -278,40 +278,43 @@
                     <h3 class="text-white fw-bold h4 mt-5 mb-3">Frequently Asked Questions (FAQ)</h3>
 
                     <div class="accordion accordion-flush" id="agentFaqAccordion">
-                        <div class="accordion-item bg-transparent border-secondary border-opacity-25">
-                            <h2 class="accordion-header">
-                                <button class="accordion-button collapsed bg-transparent text-white fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">
-                                    How long does the agent approval process take?
+                        <div class="accordion-item bg-transparent border-secondary border-opacity-25 mb-2 rounded-3" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08) !important;">
+                            <h2 class="accordion-header mb-0">
+                                <button class="accordion-button collapsed bg-transparent text-white fw-bold w-100 text-start p-3 d-flex justify-content-between align-items-center" type="button" data-toggle="collapse" data-bs-toggle="collapse" data-target="#faq1" data-bs-target="#faq1" style="border: 0; outline: none; box-shadow: none;">
+                                    <span>How long does the agent approval process take?</span>
+                                    <i class="fa-solid fa-chevron-down ms-2 small opacity-75"></i>
                                 </button>
                             </h2>
-                            <div id="faq1" class="accordion-collapse collapse" data-bs-parent="#agentFaqAccordion">
-                                <div class="accordion-body text-white-50">
+                            <div id="faq1" class="accordion-collapse collapse" data-parent="#agentFaqAccordion" data-bs-parent="#agentFaqAccordion">
+                                <div class="accordion-body text-white-50 px-3 pb-3">
                                     Agent applications are reviewed within 24 to 48 hours. If you are an existing agent with a registered company agent code, your account is fast-tracked for instant access!
                                 </div>
                             </div>
                         </div>
 
-                        <div class="accordion-item bg-transparent border-secondary border-opacity-25">
-                            <h2 class="accordion-header">
-                                <button class="accordion-button collapsed bg-transparent text-white fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">
-                                    Can I use my existing biometric laptop or machine?
+                        <div class="accordion-item bg-transparent border-secondary border-opacity-25 mb-2 rounded-3" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08) !important;">
+                            <h2 class="accordion-header mb-0">
+                                <button class="accordion-button collapsed bg-transparent text-white fw-bold w-100 text-start p-3 d-flex justify-content-between align-items-center" type="button" data-toggle="collapse" data-bs-toggle="collapse" data-target="#faq2" data-bs-target="#faq2" style="border: 0; outline: none; box-shadow: none;">
+                                    <span>Can I use my existing biometric laptop or machine?</span>
+                                    <i class="fa-solid fa-chevron-down ms-2 small opacity-75"></i>
                                 </button>
                             </h2>
-                            <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#agentFaqAccordion">
-                                <div class="accordion-body text-white-50">
+                            <div id="faq2" class="accordion-collapse collapse" data-parent="#agentFaqAccordion" data-bs-parent="#agentFaqAccordion">
+                                <div class="accordion-body text-white-50 px-3 pb-3">
                                     Yes! You can connect your existing NIMC-compliant biometric scanner and laptop. Simply input your machine IMEI or serial number during registration.
                                 </div>
                             </div>
                         </div>
 
-                        <div class="accordion-item bg-transparent border-secondary border-opacity-25">
-                            <h2 class="accordion-header">
-                                <button class="accordion-button collapsed bg-transparent text-white fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">
-                                    Is there a fee to register as a Fuwa.NG Enrollment Agent?
+                        <div class="accordion-item bg-transparent border-secondary border-opacity-25 mb-2 rounded-3" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08) !important;">
+                            <h2 class="accordion-header mb-0">
+                                <button class="accordion-button collapsed bg-transparent text-white fw-bold w-100 text-start p-3 d-flex justify-content-between align-items-center" type="button" data-toggle="collapse" data-bs-toggle="collapse" data-target="#faq3" data-bs-target="#faq3" style="border: 0; outline: none; box-shadow: none;">
+                                    <span>Is there a fee to register as a Fuwa.NG Enrollment Agent?</span>
+                                    <i class="fa-solid fa-chevron-down ms-2 small opacity-75"></i>
                                 </button>
                             </h2>
-                            <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#agentFaqAccordion">
-                                <div class="accordion-body text-white-50">
+                            <div id="faq3" class="accordion-collapse collapse" data-parent="#agentFaqAccordion" data-bs-parent="#agentFaqAccordion">
+                                <div class="accordion-body text-white-50 px-3 pb-3">
                                     Registration is free to get started. You only top up your wallet balance to cover processing fees per enrollment or modification request.
                                 </div>
                             </div>

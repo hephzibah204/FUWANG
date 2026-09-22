@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Admin;
 use App\Models\EnrollmentAgent;
 use App\Models\Ticket;
 use App\Models\User;
@@ -38,6 +39,7 @@ class AgentIssueResolutionTest extends TestCase
 
         $file = UploadedFile::fake()->image('error_proof.png');
 
+        $user->refresh();
         $response = $this->actingAs($user)->post(route('agent.issues.store'), [
             'category' => 'terminal_hardware',
             'subject' => 'Biometric Scanner Read Error',
@@ -66,7 +68,11 @@ class AgentIssueResolutionTest extends TestCase
     {
         Storage::fake('public');
 
-        $admin = User::factory()->create(['role' => 'admin']);
+        $admin = Admin::create([
+            'username' => 'admin_resolver',
+            'email' => 'admin_resolver@example.com',
+            'password' => 'Admin@12345',
+        ]);
         $user = User::factory()->create();
 
         $agent = EnrollmentAgent::create([

@@ -349,6 +349,8 @@
                 <button type="button" class="submenu-toggle" aria-expanded="false"><i class="fa-solid fa-users"></i> <span class="nav-text">Users & Access</span> <i class="fa-solid fa-chevron-down ml-auto small submenu-arrow"></i></button>
                 <div class="submenu" role="region">
                     <a href="<?php echo e(route('admin.users.index')); ?>" class="<?php echo e(Request::routeIs('admin.users.*') ? 'active' : ''); ?>">Users</a>
+                    <a href="<?php echo e(route('admin.agents.index')); ?>" class="<?php echo e(Request::routeIs('admin.agents.*') ? 'active' : ''); ?>">Enrollment Agents</a>
+                    <a href="<?php echo e(route('admin.agents.upload_preapproved')); ?>" class="<?php echo e(Request::routeIs('admin.agents.upload_preapproved') ? 'active' : ''); ?>">Agent Master Roster</a>
                     <?php if(Auth::guard('admin')->user()?->hasPermission('manage_admins')): ?>
                     <a href="<?php echo e(route('admin.admins.index')); ?>" class="<?php echo e(Request::routeIs('admin.admins.*') ? 'active' : ''); ?>">System Admins</a>
                     <?php endif; ?>
@@ -427,6 +429,21 @@
             <div class="nav-section">Main Menu</div>
             <div class="nav-item <?php echo e(Request::routeIs('dashboard') ? 'active' : ''); ?>">
                 <a href="<?php echo e(route('dashboard')); ?>"><i class="fa-solid fa-house"></i> <span class="nav-text">Overview</span></a>
+            </div>
+            <div class="nav-item <?php echo e(Request::routeIs('agent.*') ? 'active' : ''); ?>">
+                <?php if($webUser->isApprovedEnrollmentAgent()): ?>
+                    <a href="<?php echo e(route('agent.dashboard')); ?>" class="text-warning font-weight-bold">
+                        <i class="fa-solid fa-id-card-clip text-warning"></i> <span class="nav-text">Enrollment Agent</span>
+                    </a>
+                <?php elseif($webUser->enrollmentAgent): ?>
+                    <a href="<?php echo e(route('agent.onboarding.index')); ?>">
+                        <i class="fa-solid fa-user-shield text-info"></i> <span class="nav-text">Enrollment Agent</span>
+                    </a>
+                <?php else: ?>
+                    <a href="<?php echo e(route('agent.landing')); ?>">
+                        <i class="fa-solid fa-user-shield text-info"></i> <span class="nav-text">Enrollment Agent</span>
+                    </a>
+                <?php endif; ?>
             </div>
             <div class="nav-item <?php echo e(Request::routeIs('notifications.*') ? 'active' : ''); ?>">
                 <a href="<?php echo e(route('notifications.index')); ?>"><i class="fa-solid fa-bell"></i> <span class="nav-text">Notifications
@@ -647,6 +664,7 @@
                 <div class="collapse navbar-collapse" id="navbarNav">
                     <ul class="navbar-nav mx-auto d-flex flex-row">
                         <li class="nav-item mx-2"><a class="nav-link text-white small font-weight-bold" href="<?php echo e(url('/')); ?>#services">Services</a></li>
+                        <li class="nav-item mx-2"><a class="nav-link text-white small font-weight-bold <?php echo e(Request::routeIs('agent.*') ? 'text-primary' : ''); ?>" href="<?php echo e(route('agent.landing')); ?>">Enrollment Agent</a></li>
                         <li class="nav-item mx-2"><a class="nav-link text-white small font-weight-bold" href="<?php echo e(route('public.auctions.index')); ?>">Auctions</a></li>
                         <li class="nav-item mx-2"><a class="nav-link text-white small font-weight-bold" href="<?php echo e(route('logistics.home')); ?>">Logistics</a></li>
                         <li class="nav-item mx-2"><a class="nav-link text-white small font-weight-bold" href="<?php echo e(url('/explore/notary-services')); ?>">Notary</a></li>
@@ -979,6 +997,7 @@
             const services = [
                 { title: 'NIN Suite', cat: 'Identity', url: '<?php echo e(route("services.nin.suite")); ?>', icon: 'fa-id-card-clip' },
                 { title: 'BVN Suite', cat: 'Identity', url: '<?php echo e(route("services.bvn")); ?>', icon: 'fa-building-columns' },
+                { title: 'Enrollment Agent', cat: 'Agency', url: '<?php echo e(route("agent.landing")); ?>', icon: 'fa-user-shield' },
                 { title: 'VTU Hub', cat: 'Ecosystem', url: '<?php echo e(route("services.vtu.hub")); ?>', icon: 'fa-mobile-screen-button' },
                 { title: 'Legal Hub', cat: 'Ecosystem', url: '<?php echo e(route("services.legal-hub")); ?>', icon: 'fa-gavel' },
                 { title: 'Notary', cat: 'Ecosystem', url: '<?php echo e(route("services.notary")); ?>', icon: 'fa-file-signature' },

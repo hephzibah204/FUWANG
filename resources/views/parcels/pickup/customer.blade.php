@@ -125,6 +125,28 @@
         });
     });
 
+    window.addEventListener('resize', function() {
+        const canvas = document.getElementById('signatureCanvas');
+        const temp = canvas.toDataURL(); // Save existing drawing
+        canvas.width = canvas.parentElement.clientWidth;
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+        img.onload = function() {
+            ctx.drawImage(img, 0, 0);
+        };
+        img.src = temp;
+    });
+
+    // Global Keydown listener for barcode scanners
+    document.addEventListener('keydown', function(e) {
+        const trackingInput = document.getElementById('tracking_number');
+        if (document.activeElement !== trackingInput && document.activeElement.tagName !== 'SELECT' && document.activeElement.tagName !== 'CANVAS') {
+            if (e.key.length === 1 && e.key.match(/[a-zA-Z0-9-]/)) {
+                trackingInput.focus();
+            }
+        }
+    });
+
     function submitPickupForm() {
         const form = document.getElementById('pickupForm');
         
@@ -144,6 +166,13 @@
         }
 
         document.getElementById('signature_data').value = dataUrl;
+        
+        const btn = document.querySelector('button[onclick="submitPickupForm()"]');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = 'Processing...';
+        }
+        
         form.submit();
     }
 </script>

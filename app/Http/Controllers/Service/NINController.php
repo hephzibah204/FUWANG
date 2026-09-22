@@ -119,10 +119,13 @@ class NINController extends Controller
         try {
             $provider = $this->pickProviderForMode($mode, (int) $request->input('api_provider_id'));
         } catch (\Throwable $e) {
-            return response()->json([
-                'status' => false,
-                'message' => $e->getMessage(),
-            ], 200);
+            if ($wantsJsonResponse) {
+                return response()->json([
+                    'status' => false,
+                    'message' => $e->getMessage(),
+                ], 200);
+            }
+            return back()->withErrors(['nin' => $e->getMessage()])->withInput();
         }
 
         if ($provider && VuvaaClient::isVuvaaProvider($provider)) {
@@ -131,10 +134,14 @@ class NINController extends Controller
                 $walletResp = $client->getWalletDetails();
                 
                 if (!$walletResp['ok']) {
-                    return response()->json([
-                        'status' => false,
-                        'message' => 'Failed to check wallet balance. ' . $walletResp['message'],
-                    ], 402);
+                    $msg = 'Failed to check wallet balance. ' . $walletResp['message'];
+                    if ($wantsJsonResponse) {
+                        return response()->json([
+                            'status' => false,
+                            'message' => $msg,
+                        ], 402);
+                    }
+                    return back()->withErrors(['nin' => $msg])->withInput();
                 }
                 
                 $unitsAvailable = (int) (
@@ -143,27 +150,51 @@ class NINController extends Controller
                     ?? $walletResp['data']['data']['validation_units']
                     ?? 0
                 );
-                if ($unitsAvailable < 1) {  // ← Adjust threshold as needed
-                    return response()->json([
-                        'status' => false,
-                        'message' => 'Insufficient units — please top up wallet',
-                        'units_available' => $unitsAvailable,
-                    ], 402);
+                if ($unitsAvailable < 1) {
+                    $msg = 'Insufficient units — please top up wallet';
+                    if ($wantsJsonResponse) {
+                        return response()->json([
+                            'status' => false,
+                            'message' => $msg,
+                            'units_available' => $unitsAvailable,
+                        ], 402);
+                    }
+                    return back()->withErrors(['nin' => $msg])->withInput();
                 }
             } catch (\Throwable $e) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Wallet check failed: ' . $e->getMessage(),
-                ], 500);
+                $msg = 'Wallet check failed: ' . $e->getMessage();
+                if ($wantsJsonResponse) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => $msg,
+                    ], 500);
+                }
+                return back()->withErrors(['nin' => $msg])->withInput();
             }
         }
 
         if ($mode === 'selfie' && (!$provider || !$this->providerSupportsMode($provider, 'selfie'))) {
-            return response()->json(['status' => false, 'message' => 'A provider supporting selfie verification is required.'], 422);
+            $msg = 'A provider supporting selfie verification is required.';
+            if ($wantsJsonResponse) {
+                return response()->json(['status' => false, 'message' => $msg], 422);
+            }
+            return back()->withErrors(['nin' => $msg])->withInput();
+        }
+
+        if ($provider && !$this->providerSupportsMode($provider, $mode)) {
+            $msg = "Selected provider ({$provider->name}) does not support the '{$mode}' verification mode.";
+            if ($wantsJsonResponse) {
+                return response()->json(['status' => false, 'message' => $msg], 422);
+            }
+            return back()->withErrors(['nin' => $msg])->withInput();
         }
 
         if (!$provider && $mode !== 'nin' && $mode !== 'phone' && $mode !== 'tracking') {
-             return response()->json(['status' => false, 'message' => 'No active verification provider configured for this mode. Contact admin.'], 503);
+             $msg = 'No active verification provider configured for this mode. Contact admin.';
+             if ($wantsJsonResponse) {
+                 return response()->json(['status' => false, 'message' => $msg], 503);
+             }
+             return back()->withErrors(['nin' => $msg])->withInput();
         }
 
         $price = $this->determinePrice($mode, $provider, $request->input('verification_type'));
@@ -375,7 +406,7 @@ class NINController extends Controller
 
             if ($provider && (
                 !$provider->status
-                || !in_array($provider->service_type, ['nin', 'nin_verification', 'nin_face_verification'], true)
+                || !in_array($provider->service_type, ['nin', 'nin_verification', 'nin_face_verification', 'nin_validation', 'validation', 'identity'], true)
                 || !$this->providerSupportsMode($provider, $mode)
             )) {
                 throw new \RuntimeException(
@@ -387,14 +418,18 @@ class NINController extends Controller
         }
 
         if (in_array($mode, ['validation', 'validation_status'], true)) {
-            return CustomApi::whereIn('service_type', ['nin_verification', 'nin'])
+            return CustomApi::whereIn('service_type', ['nin_verification', 'nin', 'nin_validation', 'validation', 'identity'])
                 ->where('status', true)
                 ->where('provider_identifier', 'robosttech')
+                ->orderBy('priority', 'asc')
+                ->first()
+                ?? CustomApi::whereIn('service_type', ['nin_verification', 'nin', 'nin_validation', 'validation', 'identity'])
+                ->where('status', true)
                 ->orderBy('priority', 'asc')
                 ->first();
         }
 
-        return CustomApi::whereIn('service_type', ['nin', 'nin_verification', 'nin_face_verification'])
+        return CustomApi::whereIn('service_type', ['nin', 'nin_verification', 'nin_face_verification', 'nin_validation', 'validation', 'identity'])
             ->where('status', true)
             ->orderBy('priority', 'asc')
             ->get()
@@ -408,13 +443,17 @@ class NINController extends Controller
         }
 
         $modes = is_array($provider->supported_modes) ? $provider->supported_modes : [];
-        if ($modes) {
+        if (!empty($modes)) {
             return in_array($mode, $modes, true);
+        }
+
+        if ((string) $provider->provider_identifier === 'robosttech') {
+            return in_array($mode, ['nin', 'phone', 'demographic', 'tracking', 'vnin', 'validation', 'validation_status', 'clearance'], true);
         }
 
         return $provider->service_type === 'nin_face_verification'
             ? $mode === 'selfie'
-            : in_array($mode, ['nin', 'phone', 'demographic', 'tracking', 'vnin'], true);
+            : in_array($mode, ['nin', 'phone', 'demographic', 'tracking', 'vnin', 'validation', 'validation_status'], true);
     }
 
     private function callCustomProvider(CustomApi $provider, Request $request, string $mode, ?array $selfieMeta): array

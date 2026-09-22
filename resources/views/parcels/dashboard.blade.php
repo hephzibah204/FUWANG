@@ -18,14 +18,18 @@
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show">
             {{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            <button type="button" class="close" data-dismiss="alert" data-bs-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
         </div>
     @endif
     
     @if(session('error'))
         <div class="alert alert-danger alert-dismissible fade show">
             {{ session('error') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            <button type="button" class="close" data-dismiss="alert" data-bs-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
         </div>
     @endif
 
@@ -48,7 +52,7 @@
             </div>
         </div>
         <div class="col-md-3 mb-3">
-            <div class="card text-white bg-warning h-100">
+            <div class="card text-dark bg-warning h-100">
                 <div class="card-body">
                     <h6 class="card-title text-uppercase">Driver to Collect</h6>
                     <h2 class="display-5 fw-bold">{{ $driverToCollect }}</h2>

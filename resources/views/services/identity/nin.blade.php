@@ -894,7 +894,10 @@
         };
         const openSlip = function () {
             if (slipUrl) {
-                window.open(slipUrl, '_blank');
+                const win = window.open(slipUrl, '_blank');
+                if (!win || win.closed || typeof win.closed === 'undefined') {
+                    window.location.href = slipUrl;
+                }
             }
         };
         if (typeof Swal !== 'undefined' && typeof Swal.fire === 'function') {

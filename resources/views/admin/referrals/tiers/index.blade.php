@@ -17,7 +17,9 @@
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show text-white bg-success border-0 mb-4" role="alert">
             <i class="fa-solid fa-circle-check mr-2"></i>{{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            <button type="button" class="close text-white" data-dismiss="alert" data-bs-dismiss="alert" aria-label="Close" style="background: transparent; border: 0; font-size: 1.5rem; opacity: 0.8;">
+                <span aria-hidden="true">&times;</span>
+            </button>
         </div>
     @endif
 
