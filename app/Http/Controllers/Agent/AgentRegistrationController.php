@@ -28,23 +28,52 @@ class AgentRegistrationController extends Controller
     {
         $q = trim((string) $request->query('q', ''));
 
-        if (strlen($q) < 2) {
+        if (strlen($q) < 1) {
             return response()->json(['agents' => []]);
         }
 
-        $agents = PreApprovedAgent::query()
-            ->where('is_claimed', false)
-            ->where(function ($query) use ($q) {
-                $query->where('full_name', 'LIKE', "%{$q}%")
-                    ->orWhere('first_name', 'LIKE', "%{$q}%")
-                    ->orWhere('last_name', 'LIKE', "%{$q}%")
-                    ->orWhere('agent_code', 'LIKE', "%{$q}%")
-                    ->orWhere('email', 'LIKE', "%{$q}%")
-                    ->orWhere('phone_number', 'LIKE', "%{$q}%");
-            })
+        $tokens = array_filter(preg_split('/\s+/', $q));
+
+        $query = PreApprovedAgent::query()->where('is_claimed', false);
+
+        $query->where(function ($subQuery) use ($tokens, $q) {
+            $subQuery->where('full_name', 'LIKE', "%{$q}%")
+                ->orWhere('agent_code', 'LIKE', "%{$q}%")
+                ->orWhere('email', 'LIKE', "%{$q}%")
+                ->orWhere('phone_number', 'LIKE', "%{$q}%");
+
+            if (count($tokens) > 1) {
+                $subQuery->orWhere(function ($multiWordQuery) use ($tokens) {
+                    foreach ($tokens as $token) {
+                        $multiWordQuery->where(function ($tokenQuery) use ($token) {
+                            $tokenQuery->where('full_name', 'LIKE', "%{$token}%")
+                                ->orWhere('first_name', 'LIKE', "%{$token}%")
+                                ->orWhere('last_name', 'LIKE', "%{$token}%")
+                                ->orWhere('agent_code', 'LIKE', "%{$token}%")
+                                ->orWhere('phone_number', 'LIKE', "%{$token}%");
+                        });
+                    }
+                });
+            }
+        });
+
+        $agents = $query
             ->orderBy('full_name', 'asc')
-            ->limit(20)
-            ->get(['id', 'agent_code', 'first_name', 'last_name', 'full_name', 'email', 'phone_number']);
+            ->limit(15)
+            ->get(['id', 'agent_code', 'first_name', 'last_name', 'full_name', 'email', 'phone_number'])
+            ->map(function ($agent) {
+                $name = $agent->full_name ?: trim($agent->first_name . ' ' . $agent->last_name);
+                return [
+                    'id' => $agent->id,
+                    'agent_code' => $agent->agent_code,
+                    'first_name' => $agent->first_name,
+                    'last_name' => $agent->last_name,
+                    'full_name' => $name,
+                    'email' => $agent->email,
+                    'phone_number' => $agent->phone_number,
+                    'fast_track_eligible' => true,
+                ];
+            });
 
         return response()->json(['agents' => $agents]);
     }
@@ -159,13 +188,33 @@ class AgentRegistrationController extends Controller
             ]
         );
 
-        // Mark pre-approved record as claimed if agent code matches
-        if ($validated['agent_type'] === 'existing' && !empty($validated['company_agent_code'])) {
-            PreApprovedAgent::where('agent_code', $validated['company_agent_code'])->update([
-                'is_claimed' => true,
-                'claimed_at' => now(),
-                'claimed_by_user_id' => $user->id,
-            ]);
+        // Mark pre-approved record as claimed if agent code or full name matches
+        if ($validated['agent_type'] === 'existing') {
+            $code = $validated['company_agent_code'] ?? null;
+            $name = $finalFullName ?: ($validated['full_name'] ?? null);
+
+            $preApproved = PreApprovedAgent::where('is_claimed', false)
+                ->where(function ($q) use ($code, $name) {
+                    if (!empty($code)) {
+                        $q->where('agent_code', $code);
+                    }
+                    if (!empty($name)) {
+                        $q->orWhere('full_name', $name);
+                    }
+                })
+                ->first();
+
+            if ($preApproved) {
+                $preApproved->update([
+                    'is_claimed' => true,
+                    'claimed_at' => now(),
+                    'claimed_by_user_id' => $user->id,
+                ]);
+
+                if (empty($agent->company_agent_code)) {
+                    $agent->update(['company_agent_code' => $preApproved->agent_code]);
+                }
+            }
         }
 
         $msg = $ninServerStatus === 'verified'

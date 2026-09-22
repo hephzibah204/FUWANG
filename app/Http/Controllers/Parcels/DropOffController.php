@@ -49,11 +49,14 @@ class DropOffController extends Controller
         // 3. Fetch extra details
         $parcelInfo = $adapter->fetchParcelDetails($trackingNumber);
 
+        // 3.5. Get Courier ID dynamically
+        $courierId = \App\Models\ParcelCourier::where('name', 'FuwaPost')->value('id') ?? 1;
+
         // 4. Create or update Parcel record in Shop Inventory
         $parcel = Parcel::updateOrCreate(
             ['tracking_number' => $trackingNumber],
             [
-                'courier_id' => 1, // Hardcoded to 1 for MVP FuwaPost Courier
+                'courier_id' => $courierId,
                 'shop_id' => $agent->shop_id,
                 'status' => 'customer_dropped_off',
                 'condition' => $request->input('condition'),

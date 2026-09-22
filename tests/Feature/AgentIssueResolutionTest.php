@@ -32,6 +32,7 @@ class AgentIssueResolutionTest extends TestCase
             'bvn' => '12345678901',
             'nin' => '10987654321',
             'machine_imei' => '864201049999999',
+            'picture_path' => 'agent_kyc/profile.jpg',
             'status' => 'approved',
         ]);
 

@@ -54,8 +54,8 @@ class PickupController extends Controller
         }
 
         $imageName = 'signature_' . time() . '_' . uniqid() . '.png';
-        \Illuminate\Support\Facades\Storage::disk('public')->put('signatures/' . $imageName, $decoded);
-        $signaturePath = 'signatures/' . $imageName;
+        \Illuminate\Support\Facades\Storage::disk('local')->put('parcels/signatures/' . $imageName, $decoded);
+        $signaturePath = 'parcels/signatures/' . $imageName;
 
         // 2. Update internal Parcel status
         $parcel->status = 'customer_collected';
