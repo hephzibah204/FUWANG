@@ -14,7 +14,7 @@ class ServerException extends AppException
         int $code = 500,
         string $severity = 'critical',
         array $contextData = [],
-        Throwable $previous = null
+        ?Throwable $previous = null
     ) {
         parent::__construct($message, $userMessage, $code, $severity, $contextData, $previous);
     }

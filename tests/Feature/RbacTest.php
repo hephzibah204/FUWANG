@@ -111,10 +111,10 @@ class RbacTest extends TestCase
         ]);
 
         if ($response->status() === 302 && session()->has('error')) {
-            dump(session('error'));
+            // dump(session('error'));
         }
         if ($response->status() === 302 && session()->has('errors')) {
-            dump(session('errors')->all());
+            // dump(session('errors')->all());
         }
 
         $response->assertStatus(302);

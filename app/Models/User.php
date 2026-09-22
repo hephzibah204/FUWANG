@@ -198,11 +198,6 @@ class User extends Authenticatable implements CanResetPasswordContract, MustVeri
         return $this->hasOne(LogisticsProfile::class);
     }
 
-    public function deliveryAgent()
-    {
-        return $this->hasOne(DeliveryAgent::class);
-    }
-
     /**
      * Automatically approve all developers by default.
      * Deny only if explicitly set to 'rejected', 'revoked', or 'suspended'.
@@ -224,5 +219,29 @@ class User extends Authenticatable implements CanResetPasswordContract, MustVeri
         }
 
         return $value ?: 'none';
+    }
+
+    public function parcelAgent()
+    {
+        return $this->hasOne(\App\Models\ParcelAgent::class);
+    }
+
+    public function enrollmentAgent()
+    {
+        return $this->hasOne(\App\Models\EnrollmentAgent::class, 'user_id', 'id');
+    }
+
+    public function isApprovedEnrollmentAgent(): bool
+    {
+        return $this->enrollmentAgent && $this->enrollmentAgent->isFullyActivated();
+    }
+
+    public function activeDashboardMode(): string
+    {
+        if (!$this->isApprovedEnrollmentAgent()) {
+            return 'user';
+        }
+
+        return session('active_dashboard_mode', 'agency');
     }
 }

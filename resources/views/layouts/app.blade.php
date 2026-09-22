@@ -139,11 +139,24 @@
 
         <nav class="sidebar-nav">
             <div class="nav-section">Main Menu</div>
+            @if(Auth::user()->isApprovedEnrollmentAgent())
+                <div class="nav-item {{ Request::routeIs('agent.dashboard') ? 'active' : '' }}">
+                    <a href="{{ route('agent.dashboard') }}" class="text-warning fw-bold"><i class="fa-solid fa-id-card-clip text-warning"></i> Agency Dashboard</a>
+                </div>
+            @else
+                <div class="nav-item {{ Request::routeIs('agent.register') ? 'active' : '' }}">
+                    <a href="{{ route('agent.register') }}"><i class="fa-solid fa-user-shield text-info"></i> NIN Agent Portal</a>
+                </div>
+            @endif
             <div class="nav-item {{ Request::routeIs('dashboard') ? 'active' : '' }}">
                 <a href="{{ route('dashboard') }}"><i class="fa-solid fa-house"></i> Overview</a>
             </div>
             <div class="nav-item {{ Request::routeIs('history') ? 'active' : '' }}">
                 <a href="{{ route('history') }}"><i class="fa-solid fa-clock-rotate-left"></i> History</a>
+            </div>
+            
+            <div class="nav-item {{ Request::is('parcels-agent*') ? 'active' : '' }}">
+                <a href="{{ route('parcels.dashboard') }}"><i class="fa-solid fa-box-open"></i> Parcels Agent</a>
             </div>
 
             <div class="nav-section">Identity & Trust</div>

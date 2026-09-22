@@ -87,11 +87,6 @@ class LogisticsRequest extends Model
         return $this->belongsTo(LogisticsStaff::class, 'assigned_manager_id');
     }
 
-    public function assignedDeliveryAgent()
-    {
-        return $this->belongsTo(DeliveryAgent::class, 'assigned_delivery_agent_id');
-    }
-
     public function pickupCenter()
     {
         return $this->belongsTo(LogisticsCenter::class, 'pickup_center_id');

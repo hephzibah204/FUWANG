@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\LogisticsOps;
 
 use App\Http\Controllers\Controller;
-use App\Models\DeliveryAgent;
 use App\Models\LogisticsRequest;
 use App\Models\LogisticsStaff;
 use Illuminate\Http\Request;
@@ -27,9 +26,8 @@ class ShipmentsController extends Controller
         }
 
         $shipments = $query->paginate(20)->withQueryString();
-        $agents = DeliveryAgent::query()->with('user')->where('approval_status', 'approved')->orderByDesc('rating')->get();
 
-        return view('logistics.ops.shipments.index', compact('staff', 'shipments', 'agents'));
+        return view('logistics.ops.shipments.index', compact('staff', 'shipments'));
     }
 
     public function update(Request $request, LogisticsRequest $shipment)
@@ -42,28 +40,17 @@ class ShipmentsController extends Controller
         $request->validate([
             'scheduled_pickup_at' => ['nullable', 'date'],
             'route_code' => ['nullable', 'string', 'max:50'],
-            'assigned_delivery_agent_id' => ['nullable', 'integer', 'exists:delivery_agents,id'],
             'status' => ['nullable', 'string', Rule::in(['processing', 'in_transit', 'out_for_delivery', 'delivered', 'cancelled'])],
         ]);
 
         $canSchedule = $staff instanceof LogisticsStaff && $staff->hasPermission('logistics.shipments.schedule');
         $canAssignRoute = $staff instanceof LogisticsStaff && $staff->hasPermission('logistics.shipments.assign_routes');
-        $canAssignAgent = $staff instanceof LogisticsStaff && $staff->hasPermission('logistics.agents.manage_assignments');
 
         if (($canSchedule || $canAssignRoute) && $request->has('scheduled_pickup_at')) {
             $shipment->scheduled_pickup_at = $request->input('scheduled_pickup_at');
         }
         if (($canSchedule || $canAssignRoute) && $request->has('route_code')) {
             $shipment->route_code = $request->input('route_code');
-        }
-        if ($canAssignAgent && $request->has('assigned_delivery_agent_id')) {
-            $previousAgentId = $shipment->assigned_delivery_agent_id;
-            $shipment->assigned_delivery_agent_id = $request->input('assigned_delivery_agent_id');
-            if ((string) $previousAgentId !== (string) $shipment->assigned_delivery_agent_id) {
-                $shipment->agent_assignment_status = $shipment->assigned_delivery_agent_id ? 'pending' : 'pending';
-                $shipment->agent_assignment_responded_at = null;
-                $shipment->agent_commission_amount = null;
-            }
         }
         if ($request->filled('status')) {
             $shipment->status = $request->input('status');

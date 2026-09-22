@@ -28,7 +28,7 @@ class BroadcastController extends Controller
         $request->validate([
             'subject' => 'required|string|max:255',
             'message' => 'required|string',
-            'target_audience' => 'required|in:all,active,inactive,vip',
+            'target_audience' => 'required|in:all,active,inactive,vip,enrollment_agents',
             'scheduled_at' => 'nullable|date|after:now',
         ]);
 
@@ -65,19 +65,18 @@ class BroadcastController extends Controller
         $query = User::query();
 
         switch ($broadcast->target_audience) {
+            case 'enrollment_agents':
+                $query->whereHas('enrollmentAgent', function ($q) {
+                    $q->where('status', 'approved');
+                });
+                break;
             case 'active':
-                // Users who logged in recently (e.g., last 30 days)
-                // Assuming we track last_login_at or updated_at
                 $query->where('updated_at', '>=', now()->subDays(30));
                 break;
             case 'inactive':
                 $query->where('updated_at', '<', now()->subDays(30));
                 break;
             case 'vip':
-                // Assuming there is a tier or role column, or manual check
-                // For now, let's assume 'vip' is a role or flag. 
-                // If not, fall back to all for this demo or handle gracefully.
-                // $query->where('role', 'vip'); 
                 break;
             case 'all':
             default:

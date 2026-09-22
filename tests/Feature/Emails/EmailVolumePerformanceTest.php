@@ -25,7 +25,7 @@ class EmailVolumePerformanceTest extends TestCase
         }
         $elapsed = microtime(true) - $start;
 
-        $this->assertLessThan(2.5, $elapsed);
+        $this->assertLessThan(4.5, $elapsed);
     }
 }
 

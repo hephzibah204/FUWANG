@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Models\DeliveryAgent;
 use App\Support\NigeriaLocations;
 use App\Services\Referrals\ReferralService;
 use Illuminate\Http\Request;
@@ -32,53 +31,12 @@ class RegisterController extends Controller
             $service = $request->input('service');
             $service = is_string($service) ? $service : null;
 
-            if (! $request->boolean('apply_as_agent')) {
-                $request->merge([
-                    'state' => null,
-                    'city' => null,
-                    'address' => null,
-                    'phone_number' => null,
-                    'means_of_identification' => null,
-                    'identification_number' => null,
-                    'proof_of_address' => null,
-                    'next_of_kin_name' => null,
-                    'next_of_kin_phone' => null,
-                ]);
-            }
-
-            $locations = NigeriaLocations::stateToCityMap();
-
             $request->validate([
                 'fullname' => ['required', 'string', 'max:255'],
                 'username' => ['required', 'string', 'max:20', 'unique:users'],
                 'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
                 'password' => ['required', 'string', Password::min(8)->mixedCase()->numbers()->symbols()],
                 'transaction_pin' => ['required', 'string', 'min:4', 'max:4'],
-                'apply_as_agent' => ['sometimes', 'boolean'],
-                'state' => [
-                    'nullable',
-                    'string',
-                    'max:255',
-                    'required_if:apply_as_agent,1',
-                    Rule::in(array_keys($locations)),
-                ],
-                'city' => [
-                    'nullable',
-                    'string',
-                    'max:255',
-                    'required_if:apply_as_agent,1',
-                    function (string $attribute, mixed $value, \Closure $fail) use ($request, $locations): void {
-                        if (! $request->boolean('apply_as_agent')) {
-                            return;
-                        }
-                        $state = $request->input('state');
-                        if (! is_string($state) || ! isset($locations[$state]) || ! in_array($value, $locations[$state], true)) {
-                            $fail('Choose a valid city or town for the selected state.');
-                        }
-                    },
-                ],
-                'address' => ['nullable', 'required_if:apply_as_agent,1', 'string', 'max:255'],
-                'phone_number' => ['nullable', 'required_if:apply_as_agent,1', 'string', 'max:20'],
             ]);
 
             $referralService = app(ReferralService::class);
@@ -94,23 +52,6 @@ class RegisterController extends Controller
                 'referral_id' => $referralService->generateReferralCode(),
                 'reseller_id' => $request->reseller_id ?? 'default',
             ]);
-
-            if ($request->boolean('apply_as_agent')) {
-                DeliveryAgent::create([
-                    'user_id' => $user->id,
-                    'state' => $request->state,
-                    'city' => $request->city,
-                    'address' => $request->address,
-                    'phone_number' => $request->phone_number,
-                    'means_of_identification' => null,
-                    'identification_number' => null,
-                    'proof_of_address' => null,
-                    'next_of_kin_name' => null,
-                    'next_of_kin_phone' => null,
-                    'approval_status' => 'pending',
-                ]);
-                session(['agent_profile_prompt' => true]);
-            }
 
             if ($referrer && $referralCode) {
                 $referralService->recordRegistration($referrer, $user, $referralCode);

@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\DeliveryAgent;
 use App\Models\LogisticsRequest;
 use App\Models\SystemSetting;
 use App\Notifications\NewLogisticsOrderAlert;
@@ -145,18 +144,6 @@ class UserLogisticsController extends Controller
         // Generate Waybill PDF
         $waybillPath = $this->generateWaybillPdf($shipment);
         $shipment->update(['waybill_path' => $waybillPath]);
-
-        // Alert approved delivery agents about new delivery requests.
-        $approvedAgents = DeliveryAgent::query()
-            ->where('approval_status', 'approved')
-            ->with('user')
-            ->get()
-            ->pluck('user')
-            ->filter();
-
-        foreach ($approvedAgents as $agentUser) {
-            $agentUser->notify(new NewLogisticsOrderAlert($shipment));
-        }
 
         return response()->json([
             'status'      => true,

@@ -14,7 +14,7 @@ class AuthenticationException extends AppException
         int $code = 401,
         string $severity = 'info',
         array $contextData = [],
-        Throwable $previous = null
+        ?Throwable $previous = null
     ) {
         parent::__construct($message, $userMessage, $code, $severity, $contextData, $previous);
     }

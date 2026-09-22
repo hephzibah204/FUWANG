@@ -37,24 +37,6 @@ Route::prefix('logistics')->name('logistics.')->middleware('feature:logistics')-
         Route::post('/book', [UserLogisticsController::class, 'store'])->middleware('kyc.enforce')->name('store');
     });
 
-    Route::prefix('agent')->name('agent.')->middleware(['feature:logistics', 'auth', 'verified', 'delivery_agent'])->group(function () {
-        Route::get('/', function () {
-            return redirect()->route('logistics.agent.dashboard');
-        })->name('home');
-
-        Route::get('/dashboard', [\App\Http\Controllers\LogisticsAgent\AgentDashboardController::class, 'index'])->name('dashboard');
-
-        Route::get('/orders', [\App\Http\Controllers\LogisticsAgent\AgentOrdersController::class, 'index'])->name('orders.index');
-        Route::get('/orders/{order}', [\App\Http\Controllers\LogisticsAgent\AgentOrdersController::class, 'show'])->name('orders.show');
-        Route::post('/orders/{order}/accept', [\App\Http\Controllers\LogisticsAgent\AgentOrdersController::class, 'accept'])->name('orders.accept');
-        Route::post('/orders/{order}/decline', [\App\Http\Controllers\LogisticsAgent\AgentOrdersController::class, 'decline'])->name('orders.decline');
-        Route::post('/orders/{order}/status', [\App\Http\Controllers\LogisticsAgent\AgentOrdersController::class, 'updateStatus'])->name('orders.status');
-
-        Route::get('/earnings', [\App\Http\Controllers\LogisticsAgent\AgentEarningsController::class, 'index'])->name('earnings.index');
-
-        Route::post('/availability', [\App\Http\Controllers\LogisticsAgent\AgentOrdersController::class, 'updateAvailability'])->name('availability');
-    });
-
     Route::prefix('ops')->name('ops.')->group(function () {
         Route::get('/login', [\App\Http\Controllers\LogisticsOps\StaffAuthController::class, 'showLogin'])->middleware('guest:logistics_staff')->name('login');
         Route::post('/login', [\App\Http\Controllers\LogisticsOps\StaffAuthController::class, 'login'])->middleware('throttle:5,1')->name('login.post');

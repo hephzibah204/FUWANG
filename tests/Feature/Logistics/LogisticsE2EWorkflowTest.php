@@ -3,7 +3,6 @@
 namespace Tests\Feature\Logistics;
 
 use App\Models\AccountBalance;
-use App\Models\DeliveryAgent;
 use App\Models\LogisticsCenter;
 use App\Models\LogisticsRequest;
 use App\Models\LogisticsStaff;
@@ -96,15 +95,6 @@ class LogisticsE2EWorkflowTest extends TestCase
         assert($staff instanceof LogisticsStaff);
         $staff->assignRole('logistics_manager');
 
-        $agentUser = User::factory()->createOne();
-        assert($agentUser instanceof User);
-        $agentUser->markEmailAsVerified();
-
-        $agent = DeliveryAgent::factory()->approved()->createOne([
-            'user_id' => $agentUser->id,
-        ]);
-        assert($agent instanceof DeliveryAgent);
-
         $this->actingAs($staff, 'logistics_staff')->put('/logistics/ops/orders/' . $order->id, [
             'sender_name' => $order->sender_name,
             'sender_address' => $order->sender_address,
@@ -113,16 +103,15 @@ class LogisticsE2EWorkflowTest extends TestCase
             'delivery_type' => $order->delivery_type,
             'weight' => $order->weight,
             'amount' => $order->amount,
-            'assigned_delivery_agent_id' => $agent->id,
         ])->assertRedirect();
 
-        $this->actingAs($agentUser)->post('/logistics/agent/orders/' . $order->id . '/accept')->assertRedirect();
-        $this->actingAs($agentUser)->post('/logistics/agent/orders/' . $order->id . '/status', ['status' => 'delivered'])->assertRedirect();
+        $this->actingAs($staff, 'logistics_staff')->post('/logistics/ops/orders/' . $order->id . '/status', [
+            'status' => 'delivered',
+        ])->assertRedirect();
 
         $this->assertDatabaseHas('logistics_requests', [
             'id' => $order->id,
             'status' => 'delivered',
-            'agent_assignment_status' => 'accepted',
         ]);
     }
 }

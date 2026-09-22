@@ -43,7 +43,7 @@ abstract class AppException extends Exception
         int $code = 500,
         string $severity = 'error',
         array $contextData = [],
-        Throwable $previous = null
+        ?Throwable $previous = null
     ) {
         parent::__construct($message, $code, $previous);
         $this->userMessage = $userMessage;

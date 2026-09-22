@@ -355,7 +355,6 @@
                     <?php if(Auth::guard('admin')->user()?->hasPermission('manage_roles')): ?>
                     <a href="<?php echo e(route('admin.roles.index')); ?>" class="<?php echo e(Request::routeIs('admin.roles.*') ? 'active' : ''); ?>">Roles & Permissions</a>
                     <?php endif; ?>
-                    <a href="<?php echo e(route('admin.delivery-agents.index')); ?>" class="<?php echo e(Request::routeIs('admin.delivery-agents.*') ? 'active' : ''); ?>">Delivery Agents</a>
                 </div>
             </div>
 
@@ -1037,6 +1036,30 @@
             });
         });
     </script>
+    <?php if(auth()->guard()->check()): ?>
+        <?php if (isset($component)) { $__componentOriginal3079f4cb9e7b6003d81be312bbd9940e = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal3079f4cb9e7b6003d81be312bbd9940e = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.nexus.mobile-nav','data' => []] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('nexus.mobile-nav'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes([]); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal3079f4cb9e7b6003d81be312bbd9940e)): ?>
+<?php $attributes = $__attributesOriginal3079f4cb9e7b6003d81be312bbd9940e; ?>
+<?php unset($__attributesOriginal3079f4cb9e7b6003d81be312bbd9940e); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal3079f4cb9e7b6003d81be312bbd9940e)): ?>
+<?php $component = $__componentOriginal3079f4cb9e7b6003d81be312bbd9940e; ?>
+<?php unset($__componentOriginal3079f4cb9e7b6003d81be312bbd9940e); ?>
+<?php endif; ?>
+    <?php endif; ?>
+
+    <?php echo $__env->yieldPushContent('scripts'); ?>
 </body>
 </html>
 <?php /**PATH C:\Users\hephz\Documents\CODEBASE\Fuwa.NG\resources\views/layouts/nexus.blade.php ENDPATH**/ ?>

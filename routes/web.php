@@ -9,7 +9,6 @@ use App\Http\Controllers\BlogController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\FeedController;
 use App\Http\Controllers\Admin\AdminManagementController;
-use App\Http\Controllers\Admin\DeliveryAgentController;
 use App\Http\Controllers\ReferralController;
 use App\Http\Controllers\TourController;
 
@@ -58,6 +57,12 @@ Route::post('/login',   [LoginController::class, 'login'])->middleware('throttle
 
 Route::get('/register', [App\Http\Controllers\Auth\RegisterController::class, 'showRegistrationForm'])->name('register');
 Route::post('/register',[App\Http\Controllers\Auth\RegisterController::class, 'register']);
+
+// Pre-login public Enrollment Agent Landing & Registration routes
+Route::get('/agents', [App\Http\Controllers\AgentLandingController::class, 'index'])->middleware('track.view:agent_landing')->name('agent.landing');
+Route::get('/agent/register', [App\Http\Controllers\Agent\AgentRegistrationController::class, 'showForm'])->name('agent.register');
+Route::get('/agent/search-preapproved', [App\Http\Controllers\Agent\AgentRegistrationController::class, 'searchPreApproved'])->name('agent.search_preapproved');
+Route::post('/agent/register', [App\Http\Controllers\Agent\AgentRegistrationController::class, 'store'])->name('agent.register.submit');
 Route::get('/auth/google/redirect', [GoogleAuthController::class, 'redirect'])->name('auth.google.redirect');
 Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])->name('auth.google.callback');
 Route::get('/2fa/challenge', [TwoFactorChallengeController::class, 'show'])->name('2fa.challenge');
@@ -131,6 +136,30 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Dashboard
     Route::get('/dashboard', [App\Http\Controllers\DashboardController::class, 'index'])->middleware('onboarding:dashboard')->name('dashboard');
 
+    // NIN Enrollment Agent Routes
+    Route::prefix('agent')->name('agent.')->group(function () {
+        // Post-Login Agency KYC Onboarding Portal
+        Route::prefix('onboarding')->name('onboarding.')->group(function () {
+            Route::get('/', [App\Http\Controllers\Agent\AgentOnboardingController::class, 'showPortal'])->name('index');
+            Route::post('/upload-docs', [App\Http\Controllers\Agent\AgentOnboardingController::class, 'uploadDocs'])->name('upload_docs');
+            Route::post('/accept-compliance', [App\Http\Controllers\Agent\AgentOnboardingController::class, 'acceptCompliance'])->name('accept_compliance');
+        });
+
+        Route::middleware([App\Http\Middleware\EnsureApprovedAgent::class])->group(function () {
+            Route::get('/dashboard', [App\Http\Controllers\Agent\AgentDashboardController::class, 'index'])->name('dashboard');
+            Route::post('/switch-mode', [App\Http\Controllers\Agent\AgentDashboardController::class, 'switchMode'])->name('switch_mode');
+
+            // Agent Issue Resolution Hub
+            Route::prefix('issues')->name('issues.')->group(function () {
+                Route::get('/', [App\Http\Controllers\Agent\AgentIssueController::class, 'index'])->name('index');
+                Route::get('/create', [App\Http\Controllers\Agent\AgentIssueController::class, 'create'])->name('create');
+                Route::post('/', [App\Http\Controllers\Agent\AgentIssueController::class, 'store'])->name('store');
+                Route::get('/{id}', [App\Http\Controllers\Agent\AgentIssueController::class, 'show'])->name('show');
+                Route::post('/{id}/reply', [App\Http\Controllers\Agent\AgentIssueController::class, 'reply'])->name('reply');
+            });
+        });
+    });
+
     // Referrals
     Route::get('/referrals', [ReferralController::class, 'index'])->name('referrals.index');
 
@@ -142,7 +171,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Profile & Security
     Route::get('/profile',  [App\Http\Controllers\ProfileController::class, 'index'])->name('profile');
     Route::post('/profile', [App\Http\Controllers\ProfileController::class, 'update'])->name('profile.update');
-    Route::post('/profile/delivery-agent', [App\Http\Controllers\ProfileController::class, 'updateDeliveryAgentDetails'])->name('profile.delivery_agent.update');
     Route::get('/profile/security', [App\Http\Controllers\ProfileController::class, 'security'])->name('profile.security');
     Route::post('/profile/2fa/enable', [App\Http\Controllers\ProfileController::class, 'enableTwoFactor'])->name('profile.2fa.enable');
     Route::post('/profile/2fa/disable', [App\Http\Controllers\ProfileController::class, 'disableTwoFactor'])->name('profile.2fa.disable');
@@ -213,7 +241,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/payment/virtual-accounts', [App\Http\Controllers\FundingController::class, 'listVirtualAccounts'])->name('payment.virtual_accounts.list');
     Route::match(['GET', 'POST'], '/palmpay.php', [App\Http\Controllers\FundingController::class, 'reservePalmpay'])->name('legacy.palmpay.reserve');
 
-    // ── NIN Verification ───────────────────────────────────
+    // â”€â”€ NIN Verification â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     Route::middleware('feature:nin_verification')->group(function () {
         Route::get('/services/nin-suite', [App\Http\Controllers\Service\NINController::class, 'suiteIndex'])->name('services.nin.suite');
         Route::get('/services/nin',    [App\Http\Controllers\Service\NINController::class, 'index'])->name('services.nin');
@@ -227,7 +255,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/services/nin/modification/submit', [App\Http\Controllers\Service\NINModificationController::class, 'submit'])->middleware('kyc.enforce')->name('services.nin.modification.submit');
     });
 
-    // ── Identity & Verification Hub ─────────────────────────
+    // â”€â”€ Identity & Verification Hub â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     Route::middleware('feature:identity_verification')->group(function () {
         Route::get('/services/drivers-license', [App\Http\Controllers\Service\DriversLicenseController::class, 'index'])->name('services.drivers_license');
         Route::post('/services/drivers-license/verify', [App\Http\Controllers\Service\DriversLicenseController::class, 'verify'])->middleware('kyc.enforce')->name('services.drivers_license.verify');
@@ -279,7 +307,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/services/verification/report/{id}', [App\Http\Controllers\Service\PdfReportController::class, 'verificationReport'])->name('services.verification.report');
     });
 
-    // ── Legal Hub ─────────────────────────────────────────
+    // â”€â”€ Legal Hub â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     Route::middleware('feature:legal_services')->group(function () {
             Route::get('/services/legal', [App\Http\Controllers\Service\LegalPlatformController::class, 'index'])->name('services.legal');
         Route::get('/services/legal-hub', [App\Http\Controllers\Service\LegalHubController::class, 'index'])->name('services.legal-hub');
@@ -287,13 +315,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/services/legal-hub/finalize', [App\Http\Controllers\Service\LegalHubController::class, 'finalize'])->middleware('kyc.enforce')->name('services.legal-hub.finalize');
     });
 
-    // ── BVN Verification ───────────────────────────────────
+    // â”€â”€ BVN Verification â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     Route::middleware('feature:bvn_verification')->group(function () {
         Route::get('/services/bvn',    [App\Http\Controllers\Service\BVNController::class, 'index'])->name('services.bvn');
         Route::post('/services/bvn/verify', [App\Http\Controllers\Service\BVNController::class, 'verify'])->middleware('kyc.enforce')->name('services.bvn.verify');
     });
 
-    // ── VTU Services (Airtime, Data, Cable, Electricity, Education) ───────
+    // â”€â”€ VTU Services (Airtime, Data, Cable, Electricity, Education) â”€â”€â”€â”€â”€â”€â”€
     Route::middleware('feature:vtu_services')->group(function () {
         Route::get('/services/vtu',            [App\Http\Controllers\Service\VTUController::class, 'hubIndex'])->name('services.vtu.hub');
         Route::get('/services/vtu/providers/{serviceType}', [App\Http\Controllers\Service\VTUController::class, 'providers'])->name('services.vtu.providers');
@@ -344,17 +372,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/services/vtu/education/jamb',       [App\Http\Controllers\Service\VTUController::class, 'jambIndex'])->name('services.education.jamb');
         Route::post('/services/vtu/education/jamb/buy',  [App\Http\Controllers\Service\VTUController::class, 'buyJambPin'])->middleware('kyc.enforce')->name('services.education.jamb.buy');
 
-        // (M-9) Duplicate airtime/data routes removed — canonical routes are inside `feature:vtu_services` group above
+        // (M-9) Duplicate airtime/data routes removed â€” canonical routes are inside `feature:vtu_services` group above
     });
 
-    // ── Insurance ──────────────────────────────────────────
+    // â”€â”€ Insurance â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     Route::middleware('feature:insurance_services')->group(function () {
         Route::get('/services/insurance/motor',        [App\Http\Controllers\Service\InsuranceController::class, 'motorIndex'])->name('services.insurance.motor');
         Route::get('/services/insurance/motor/options', [App\Http\Controllers\Service\InsuranceController::class, 'getMotorOptions'])->name('services.insurance.motor.options');
         Route::post('/services/insurance/motor/buy',   [App\Http\Controllers\Service\InsuranceController::class, 'buyMotorInsurance'])->middleware('kyc.enforce')->name('services.insurance.motor.buy');
     });
 
-    // ── Fuwa.NG Extended Services ─────────────────────────────
+    // â”€â”€ Fuwa.NG Extended Services â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     Route::prefix('services')->name('services.')->group(function () {
 
         // Agency Banking
@@ -422,9 +450,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::post('/tour/complete', [TourController::class, 'complete'])->name('tour.complete');
 
-}); // ── End of user auth middleware group ──────────────────
+}); // â”€â”€ End of user auth middleware group â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-// ── Admin ─────────────────────────────────────────────────
+// â”€â”€ Admin â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // IMPORTANT (C-3): Admin prefix is OUTSIDE the user auth middleware.
 // Admin login must be reachable by unauthenticated visitors.
 Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function () {
@@ -463,9 +491,6 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
             Route::middleware('permission:manage_pages')->group(function () {
                 Route::resource('pages', \App\Http\Controllers\Admin\PageController::class)->except(['show']);
             });
-
-            // Delivery Agent Management
-            Route::resource('delivery-agents', DeliveryAgentController::class)->only(['index', 'update']);
 
             // Logistics RBAC Management
             Route::middleware('super_admin')->group(function () {
@@ -507,12 +532,12 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
             Route::post('/tickets/{id}/reply',         [App\Http\Controllers\Admin\AdminTicketController::class, 'reply'])->name('tickets.reply');
             Route::post('/tickets/{id}/close',         [App\Http\Controllers\Admin\AdminTicketController::class, 'close'])->name('tickets.close');
 
-            // ── NIN Modification Management ────────────────────────
+            // â”€â”€ NIN Modification Management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             Route::get('/verifications/nin-modifications', [App\Http\Controllers\Admin\NINModificationAdminController::class, 'index'])->name('verifications.nin_modifications.index');
             Route::get('/verifications/nin-modifications/{id}', [App\Http\Controllers\Admin\NINModificationAdminController::class, 'show'])->name('verifications.nin_modifications.show');
             Route::post('/verifications/nin-modifications/{id}/update', [App\Http\Controllers\Admin\NINModificationAdminController::class, 'updateStatus'])->name('verifications.nin_modifications.update');
 
-            // ── Broadcast Messaging ──────────────────────────────────
+            // â”€â”€ Broadcast Messaging â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             Route::get('/broadcasts',                  [App\Http\Controllers\Admin\BroadcastController::class, 'index'])->name('broadcasts.index');
             Route::get('/broadcasts/create',           [App\Http\Controllers\Admin\BroadcastController::class, 'create'])->name('broadcasts.create');
             Route::post('/broadcasts',                 [App\Http\Controllers\Admin\BroadcastController::class, 'store'])->name('broadcasts.store');
@@ -540,7 +565,7 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
             Route::get('/sms-campaigns/{smsCampaign}/recipients/export', [App\Http\Controllers\Admin\CampaignRecipientsController::class, 'smsRecipientsExport'])->name('sms_campaigns.recipients.export');
             Route::post('/sms-campaigns/{smsCampaign}/retry-failed', [App\Http\Controllers\Admin\CampaignRecipientsController::class, 'retrySmsFailed'])->name('sms_campaigns.retry_failed');
 
-            // ── Verification Vault ───────────────────────────────────
+            // â”€â”€ Verification Vault â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             Route::get('/transactions',                [App\Http\Controllers\Admin\AdminTransactionController::class, 'index'])->name('transactions.index');
             Route::get('/verifications',               [App\Http\Controllers\Admin\AdminVerificationController::class, 'index'])->name('verifications.index');
             Route::get('/verifications/{id}',          [App\Http\Controllers\Admin\AdminVerificationController::class, 'show'])->name('verifications.show');
@@ -652,12 +677,12 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
                 ->name('settings.security.verifyme_secret');
         });
     });
-// ── End of admin group ────────────────────────────────────
+// â”€â”€ End of admin group â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-// ── Webhooks (no auth guard) ─────────────────────────────
+// â”€â”€ Webhooks (no auth guard) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 Route::post('/webhooks/verifyme/address', [App\Http\Controllers\Service\VerificationController::class, 'handleAddressWebhook'])->name('webhooks.verifyme.address');
 
-// ── Payment Webhooks (no auth guard) ─────────────────────
+// â”€â”€ Payment Webhooks (no auth guard) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 Route::post('/webhooks/payvessel', [App\Http\Controllers\WebhookController::class, 'handlePayvessel']);
 Route::post('/webhooks/palmpay',   [App\Http\Controllers\WebhookController::class, 'handlePalmpay']);
 Route::post('/webhooks/paymentpoint',   [App\Http\Controllers\WebhookController::class, 'handlePaymentpoint']);
@@ -666,3 +691,35 @@ Route::post('/webhooks/paystack',  [App\Http\Controllers\WebhookController::clas
 Route::post('/webhooks/flutterwave',  [App\Http\Controllers\WebhookController::class, 'handleFlutterwave']);
 Route::post('/payvessel_webhook.php', [App\Http\Controllers\WebhookController::class, 'handlePayvessel']);
 Route::post('/palmpay_webhook.php',   [App\Http\Controllers\WebhookController::class, 'handlePalmpay']);
+
+require __DIR__.'/parcels.php';
+
+use App\Http\Controllers\Admin\ParcelAgentAdminController;
+Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->middleware(['web', 'auth', 'admin'])->group(function () {
+    Route::get('/parcels/agents', [ParcelAgentAdminController::class, 'index'])->name('parcels.agents.index');
+    Route::put('/parcels/agents/{agent}/status', [ParcelAgentAdminController::class, 'updateStatus'])->name('parcels.agents.status');
+
+    // NIN Enrollment Agents Management
+    Route::prefix('agents')->name('agents.')->group(function () {
+        Route::get('/', [App\Http\Controllers\Admin\AdminAgentController::class, 'index'])->name('index');
+        Route::get('/leaderboard', [App\Http\Controllers\Admin\AdminAgentController::class, 'leaderboard'])->name('leaderboard');
+        Route::post('/leaderboard/publish', [App\Http\Controllers\Admin\AdminAgentController::class, 'publishLeaderboard'])->name('leaderboard.publish');
+        Route::get('/upload-preapproved', [App\Http\Controllers\Admin\AdminAgentController::class, 'showUploadPreApproved'])->name('upload_preapproved');
+        Route::post('/upload-preapproved', [App\Http\Controllers\Admin\AdminAgentController::class, 'processUploadPreApproved'])->name('upload_preapproved.process');
+        Route::get('/{id}', [App\Http\Controllers\Admin\AdminAgentController::class, 'show'])->name('show');
+        Route::post('/{id}/approve', [App\Http\Controllers\Admin\AdminAgentController::class, 'approve'])->name('approve');
+        Route::post('/{id}/reject', [App\Http\Controllers\Admin\AdminAgentController::class, 'reject'])->name('reject');
+        Route::post('/{id}/suspend', [App\Http\Controllers\Admin\AdminAgentController::class, 'suspend'])->name('suspend');
+        Route::post('/{id}/reactivate', [App\Http\Controllers\Admin\AdminAgentController::class, 'reactivate'])->name('reactivate');
+
+        // Agent Issues Management
+        Route::prefix('issues')->name('issues.')->group(function () {
+            Route::get('/', [App\Http\Controllers\Admin\AdminAgentIssueController::class, 'index'])->name('index');
+            Route::get('/{id}', [App\Http\Controllers\Admin\AdminAgentIssueController::class, 'show'])->name('show');
+            Route::post('/{id}/reply', [App\Http\Controllers\Admin\AdminAgentIssueController::class, 'reply'])->name('reply');
+            Route::post('/{id}/status', [App\Http\Controllers\Admin\AdminAgentIssueController::class, 'updateStatus'])->name('status');
+        });
+    });
+});
+
+

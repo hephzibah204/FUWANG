@@ -41,7 +41,7 @@ class NINProviderSelectionTest extends TestCase
         $response = $this->actingAs($user)->get(route('services.nin'));
 
         if ($response->status() === 302) {
-            dump($response->headers->get('Location'));
+            // dump($response->headers->get('Location'));
         }
 
         $response->assertStatus(200);

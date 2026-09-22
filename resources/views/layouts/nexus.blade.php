@@ -349,13 +349,14 @@
                 <button type="button" class="submenu-toggle" aria-expanded="false"><i class="fa-solid fa-users"></i> <span class="nav-text">Users & Access</span> <i class="fa-solid fa-chevron-down ml-auto small submenu-arrow"></i></button>
                 <div class="submenu" role="region">
                     <a href="{{ route('admin.users.index') }}" class="{{ Request::routeIs('admin.users.*') ? 'active' : '' }}">Users</a>
+                    <a href="{{ route('admin.agents.index') }}" class="{{ Request::routeIs('admin.agents.*') ? 'active' : '' }}">Enrollment Agents</a>
+                    <a href="{{ route('admin.agents.upload_preapproved') }}" class="{{ Request::routeIs('admin.agents.upload_preapproved') ? 'active' : '' }}">Agent Master Roster</a>
                     @if(Auth::guard('admin')->user()?->hasPermission('manage_admins'))
                     <a href="{{ route('admin.admins.index') }}" class="{{ Request::routeIs('admin.admins.*') ? 'active' : '' }}">System Admins</a>
                     @endif
                     @if(Auth::guard('admin')->user()?->hasPermission('manage_roles'))
                     <a href="{{ route('admin.roles.index') }}" class="{{ Request::routeIs('admin.roles.*') ? 'active' : '' }}">Roles & Permissions</a>
                     @endif
-                    <a href="{{ route('admin.delivery-agents.index') }}" class="{{ Request::routeIs('admin.delivery-agents.*') ? 'active' : '' }}">Delivery Agents</a>
                 </div>
             </div>
 
@@ -1031,5 +1032,10 @@
             });
         });
     </script>
+    @auth
+        <x-nexus.mobile-nav />
+    @endauth
+
+    @stack('scripts')
 </body>
 </html>

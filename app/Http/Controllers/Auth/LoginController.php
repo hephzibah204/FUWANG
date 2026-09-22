@@ -123,11 +123,19 @@ class LoginController extends Controller
                 session(['url.intended' => route('auction.dashboard')]);
             }
 
+            if (!$service && $user instanceof User && $user->isApprovedEnrollmentAgent()) {
+                session(['active_dashboard_mode' => 'agency']);
+            }
+
+            $defaultDashboard = ($user instanceof User && $user->isApprovedEnrollmentAgent())
+                ? route('agent.dashboard')
+                : route('dashboard');
+
             $redirect = ($user instanceof \Illuminate\Contracts\Auth\MustVerifyEmail && ! $user->hasVerifiedEmail())
                 ? route('verification.notice')
                 : ($service === 'logistics'
                     ? route('logistics.dashboard')
-                    : ($service === 'auctions' ? route('auction.dashboard') : route('dashboard')));
+                    : ($service === 'auctions' ? route('auction.dashboard') : $defaultDashboard));
             if ($wantsJson) {
                 return response()->json([
                     'status' => 'success',

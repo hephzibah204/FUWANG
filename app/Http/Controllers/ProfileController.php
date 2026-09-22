@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\DeliveryAgent;
 use App\Models\User;
 use App\Services\KycService;
 use Illuminate\Http\Request;
@@ -24,15 +23,6 @@ class ProfileController extends Controller
         $kycService->refreshUserTier($user);
         $user->refresh();
         $kycSummary = $kycService->tierUpgradeSummary($user);
-        $deliveryAgent = DeliveryAgent::query()->where('user_id', $user->id)->first();
-        $hasMissingAgentDetails = false;
-        if ($deliveryAgent) {
-            $hasMissingAgentDetails = blank($deliveryAgent->means_of_identification)
-                || blank($deliveryAgent->identification_number)
-                || blank($deliveryAgent->proof_of_address)
-                || blank($deliveryAgent->next_of_kin_name)
-                || blank($deliveryAgent->next_of_kin_phone);
-        }
 
         $google2fa_secret = '';
         if (! $user->google2fa_secret) {
@@ -55,8 +45,6 @@ class ProfileController extends Controller
             'google2fa_secret' => $google2fa_secret,
             'google2fa_qr_url' => $google2fa_qr_url,
             'kycSummary' => $kycSummary,
-            'deliveryAgent' => $deliveryAgent,
-            'showAgentDetailsPrompt' => (bool) session('agent_profile_prompt', false) || $hasMissingAgentDetails,
         ]);
     }
 
@@ -156,43 +144,6 @@ class ProfileController extends Controller
         }
 
         return response()->json(['status' => true, 'message' => 'Profile updated successfully.']);
-    }
-
-    public function updateDeliveryAgentDetails(Request $request)
-    {
-        $user = Auth::user();
-        $deliveryAgent = DeliveryAgent::query()->where('user_id', $user->id)->first();
-
-        if (! $deliveryAgent) {
-            return redirect()->route('profile')->with('error', 'Delivery agent profile was not found.');
-        }
-
-        $proofRules = $deliveryAgent->proof_of_address
-            ? ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048']
-            : ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'];
-
-        $validated = $request->validate([
-            'means_of_identification' => ['required', 'string', Rule::in(['nin', 'drivers_license', 'voters_card', 'passport'])],
-            'identification_number' => ['required', 'string', 'max:255'],
-            'proof_of_address' => $proofRules,
-            'next_of_kin_name' => ['required', 'string', 'max:255'],
-            'next_of_kin_phone' => ['required', 'string', 'max:20'],
-        ]);
-
-        if ($request->hasFile('proof_of_address')) {
-            $validated['proof_of_address'] = $request->file('proof_of_address')->store('proof_of_address', 'public');
-        } else {
-            unset($validated['proof_of_address']);
-        }
-
-        if ($deliveryAgent->approval_status !== 'approved') {
-            $validated['approval_status'] = 'pending';
-        }
-
-        $deliveryAgent->update($validated);
-        session()->forget('agent_profile_prompt');
-
-        return redirect()->route('profile')->with('success', 'Agent verification details saved successfully.');
     }
 
     /**

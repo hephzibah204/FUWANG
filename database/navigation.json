@@ -34,5 +34,15 @@
                 "icon": "fas fa-cog"
             }
         ]
+    },
+    {
+        "title": "Parcel Agents",
+        "route": "admin.parcels.agents.index",
+        "icon": "fas fa-box-open"
+    },
+    {
+        "title": "Enrollment Agents",
+        "route": "admin.agents.index",
+        "icon": "fas fa-id-card"
     }
 ]

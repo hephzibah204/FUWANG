@@ -20,4 +20,9 @@ class Ticket extends Model
     {
         return $this->belongsTo(User::class, 'user_email', 'email');
     }
+
+    public function agent()
+    {
+        return $this->belongsTo(EnrollmentAgent::class, 'agent_id');
+    }
 }

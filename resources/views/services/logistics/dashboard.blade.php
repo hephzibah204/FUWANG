@@ -10,12 +10,6 @@
             <p class="text-white-50 small mb-0">Track and manage your logistics activity.</p>
         </div>
         <div class="d-flex flex-wrap justify-content-end">
-            @php $agent = auth()->user()?->deliveryAgent; @endphp
-            @if($agent)
-                <a href="{{ route('logistics.agent.dashboard') }}" class="btn btn-outline-light px-4 shadow-sm mr-2 mb-2" style="border-radius: 12px;">
-                    <i class="fa fa-motorcycle mr-1" style="color: var(--po-primary);"></i> Agent Portal
-                </a>
-            @endif
             <a href="{{ \Illuminate\Support\Facades\Route::has('services.user.logistics.book') ? route('services.user.logistics.book') : route('logistics.book') }}" class="btn btn-po-primary px-4 shadow-sm mb-2">
                 <i class="fa fa-plus-circle mr-1"></i> New Shipment
             </a>

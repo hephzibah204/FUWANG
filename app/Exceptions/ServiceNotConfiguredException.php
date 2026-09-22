@@ -14,7 +14,7 @@ class ServiceNotConfiguredException extends AppException
         int $code = 503,
         string $severity = 'warning',
         array $contextData = [],
-        Throwable $previous = null
+        ?Throwable $previous = null
     ) {
         parent::__construct($message, $userMessage, $code, $severity, $contextData, $previous);
     }

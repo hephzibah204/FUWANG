@@ -14,7 +14,7 @@ class ValidationException extends AppException
         string $userMessage = 'Please check your input and try again.',
         array $validationErrors = [],
         string $severity = 'info',
-        Throwable $previous = null
+        ?Throwable $previous = null
     ) {
         parent::__construct($message, $userMessage, 422, $severity, [], $previous);
         $this->validationErrors = $validationErrors;

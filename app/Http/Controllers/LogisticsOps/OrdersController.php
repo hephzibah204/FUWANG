@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\LogisticsOps;
 
 use App\Http\Controllers\Controller;
-use App\Models\DeliveryAgent;
 use App\Models\LogisticsRequest;
 use App\Models\LogisticsStaff;
 use Illuminate\Http\Request;
@@ -96,9 +95,8 @@ class OrdersController extends Controller
             ->where('is_active', true)
             ->orderBy('fullname')
             ->get();
-        $agents = DeliveryAgent::query()->with('user')->where('approval_status', 'approved')->orderByDesc('rating')->get();
 
-        return view('logistics.ops.orders.edit', compact('order', 'officers', 'agents'));
+        return view('logistics.ops.orders.edit', compact('order', 'officers'));
     }
 
     public function update(Request $request, LogisticsRequest $order)
@@ -120,7 +118,6 @@ class OrdersController extends Controller
             'scheduled_pickup_at' => ['nullable', 'date'],
             'route_code' => ['nullable', 'string', 'max:50'],
             'assigned_officer_id' => ['nullable', 'integer', 'exists:logistics_staff,id'],
-            'assigned_delivery_agent_id' => ['nullable', 'integer', 'exists:delivery_agents,id'],
             'agent_fee_amount' => ['nullable', 'numeric', 'min:0'],
         ]);
 
@@ -137,21 +134,12 @@ class OrdersController extends Controller
 
         $canAssign = $staff instanceof LogisticsStaff && $staff->hasPermission('logistics.orders.assign');
         if ($canAssign) {
-            $previousAgentId = $order->assigned_delivery_agent_id;
-
             $order->fill($request->only([
                 'scheduled_pickup_at',
                 'route_code',
                 'assigned_officer_id',
-                'assigned_delivery_agent_id',
                 'agent_fee_amount',
             ]));
-
-            if ((string) $previousAgentId !== (string) $order->assigned_delivery_agent_id) {
-                $order->agent_assignment_status = $order->assigned_delivery_agent_id ? 'pending' : 'pending';
-                $order->agent_assignment_responded_at = null;
-                $order->agent_commission_amount = null;
-            }
         }
         $order->save();
 

@@ -59,9 +59,7 @@
             <a href="{{ route('wallet.fund') }}" class="small text-primary font-weight-bold">View all</a>
         </div>
         <div id="dashboardVirtualAccounts">
-            <div class="text-center p-3 opacity-75">
-                <i class="fa fa-spinner fa-spin"></i> Loading accounts...
-            </div>
+            <x-nexus.skeleton-loader count="2" type="card" />
         </div>
     </div>
 

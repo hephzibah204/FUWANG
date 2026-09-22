@@ -56,7 +56,6 @@ return Application::configure(basePath: dirname(__DIR__))
             'logistics.permission.api' => \App\Http\Middleware\CheckLogisticsPermissionApi::class,
             'logistics.role' => \App\Http\Middleware\RequireLogisticsRole::class,
             'logistics.jwt' => \App\Http\Middleware\LogisticsStaffJwtAuth::class,
-            'delivery_agent' => \App\Http\Middleware\EnsureDeliveryAgent::class,
             'feature' => \App\Http\Middleware\CheckFeatureToggle::class,
             'admin.security' => \App\Http\Middleware\AdminSecurityMiddleware::class,
             'admin.audit' => \App\Http\Middleware\AdminAuditMiddleware::class,
@@ -70,6 +69,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'track.view' => \App\Http\Middleware\LogPageView::class,
             'onboarding' => \App\Http\Middleware\OnboardingMiddleware::class,
             'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
+            'parcel.agent' => \App\Http\Middleware\EnsureApprovedParcelAgent::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

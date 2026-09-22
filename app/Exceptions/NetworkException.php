@@ -14,7 +14,7 @@ class NetworkException extends AppException
         int $code = 502,
         string $severity = 'error',
         array $contextData = [],
-        Throwable $previous = null
+        ?Throwable $previous = null
     ) {
         parent::__construct($message, $userMessage, $code, $severity, $contextData, $previous);
     }

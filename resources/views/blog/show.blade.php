@@ -34,9 +34,6 @@
         </div>
     </div>
 </div>
-@endsection
-
-@push('scripts')
 @php
     $site_name = \App\Models\SystemSetting::get('site_name', config('app.name'));
     $logo_url = \App\Models\SystemSetting::get('site_logo_url');
@@ -67,7 +64,7 @@
     },
     "datePublished": "{{ optional($post->created_at)->toIso8601String() }}",
     "dateModified": "{{ optional($post->updated_at)->toIso8601String() }}",
-    "articleBody": "{{ json_encode(strip_tags($post->content)) }}"
+    "articleBody": {!! json_encode(strip_tags($post->content)) !!}
 }
 </script>
-@endpush
+@endsection

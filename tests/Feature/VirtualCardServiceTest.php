@@ -43,8 +43,6 @@ class VirtualCardServiceTest extends TestCase
             'initial_load' => 10
         ]);
 
-        $response->dump();
-
         $response->assertStatus(200)
                  ->assertJsonPath('status', true)
                  ->assertJsonPath('card.number', '4123456789012345');

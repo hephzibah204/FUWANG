@@ -56,9 +56,6 @@
 <div class="d-flex justify-content-center mt-4">
     {{ $posts->links() }}
 </div>
-@endsection
-
-@push('scripts')
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -93,4 +90,4 @@
   ]
 }
 </script>
-@endpush
+@endsection
