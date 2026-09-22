@@ -91,7 +91,7 @@ class AgentIssueResolutionTest extends TestCase
             'status' => 'open',
         ]);
 
-        $response = $this->actingAs($admin)->post(route('admin.agents.issues.reply', $ticket->id), [
+        $response = $this->actingAs($admin, 'admin')->post(route('admin.agents.issues.reply', $ticket->id), [
             'message' => 'Gateway endpoint updated. Please reboot your terminal.',
             'status' => 'resolved',
         ]);

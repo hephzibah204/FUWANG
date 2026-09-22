@@ -110,7 +110,7 @@ class EnrollmentAgentSystemTest extends TestCase
         ]);
 
         // Approve agent
-        $approveRes = $this->actingAs($admin)->post(route('admin.agents.approve', $agent->id));
+        $approveRes = $this->actingAs($admin, 'admin')->post(route('admin.agents.approve', $agent->id));
         $approveRes->assertRedirect();
         $this->assertDatabaseHas('enrollment_agents', [
             'id' => $agent->id,
@@ -118,7 +118,7 @@ class EnrollmentAgentSystemTest extends TestCase
         ]);
 
         // Publish MVA
-        $publishRes = $this->actingAs($admin)->post(route('admin.agents.leaderboard.publish'), [
+        $publishRes = $this->actingAs($admin, 'admin')->post(route('admin.agents.leaderboard.publish'), [
             'mva_agent_id' => $agent->id,
         ]);
         $publishRes->assertRedirect();

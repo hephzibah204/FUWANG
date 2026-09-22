@@ -40,7 +40,7 @@
                         </div>
 
                         <div class="d-grid mt-4">
-                            <button type="submit" class="btn btn-secondary btn-lg">Receive from Driver</button>
+                            <button type="submit" class="btn btn-secondary btn-lg" id="submitBtn">Receive from Driver</button>
                         </div>
                     </form>
                 </div>
@@ -49,4 +49,23 @@
         </div>
     </div>
 </div>
+
+<script>
+    // Double submit prevention
+    document.querySelector('form').addEventListener('submit', function() {
+        let btn = document.getElementById('submitBtn');
+        btn.disabled = true;
+        btn.innerHTML = 'Processing...';
+    });
+
+    // Global Keydown listener for barcode scanners
+    document.addEventListener('keydown', function(e) {
+        const trackingInput = document.getElementById('tracking_number');
+        if (document.activeElement !== trackingInput && document.activeElement.tagName !== 'SELECT') {
+            if (e.key.length === 1 && e.key.match(/[a-zA-Z0-9-]/)) {
+                trackingInput.focus();
+            }
+        }
+    });
+</script>
 @endsection

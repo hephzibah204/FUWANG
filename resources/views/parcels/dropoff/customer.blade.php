@@ -40,7 +40,7 @@
                         </div>
 
                         <div class="d-grid mt-4">
-                            <button type="submit" class="btn btn-primary btn-lg">Accept Parcel</button>
+                            <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">Accept Parcel</button>
                         </div>
                     </form>
                 </div>
@@ -49,4 +49,26 @@
         </div>
     </div>
 </div>
+
+<script>
+    // Double submit prevention
+    document.querySelector('form').addEventListener('submit', function() {
+        let btn = document.getElementById('submitBtn');
+        btn.disabled = true;
+        btn.innerHTML = 'Processing...';
+    });
+
+    // Global Keydown listener for barcode scanners
+    // Scanners type very fast. If the user isn't focused on the input, we capture it.
+    document.addEventListener('keydown', function(e) {
+        const trackingInput = document.getElementById('tracking_number');
+        // If they aren't typing in the condition dropdown or already in the tracking input
+        if (document.activeElement !== trackingInput && document.activeElement.tagName !== 'SELECT') {
+            // Only capture alphanumeric characters
+            if (e.key.length === 1 && e.key.match(/[a-zA-Z0-9-]/)) {
+                trackingInput.focus();
+            }
+        }
+    });
+</script>
 @endsection
