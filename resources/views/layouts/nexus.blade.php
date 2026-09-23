@@ -332,6 +332,41 @@
                 flex-direction: column !important;
             }
         }
+        .public-nav .dropdown-menu {
+            background: rgba(11, 17, 33, 0.98);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.12) !important;
+            border-radius: 12px;
+            box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+            padding: 8px;
+            min-width: 210px;
+        }
+        .public-nav .dropdown-item {
+            color: #cbd5e1;
+            border-radius: 8px;
+            padding: 9px 14px;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            transition: all 0.2s ease;
+        }
+        .public-nav .dropdown-item:hover,
+        .public-nav .dropdown-item:focus {
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+            transform: translateX(3px);
+        }
+        .public-nav .dropdown-toggle::after {
+            vertical-align: middle;
+            margin-left: 6px;
+            border-top-color: rgba(255,255,255,0.7);
+        }
+        @media (min-width: 992px) {
+            .public-nav .nav-item.dropdown:hover .dropdown-menu {
+                display: block;
+                margin-top: 0;
+            }
+        }
     </style>
     
     @stack('styles')
@@ -739,15 +774,30 @@
                     <i class="fa-solid fa-bars-staggered"></i>
                 </button>
                 <div class="collapse navbar-collapse" id="navbarNav">
-                    <ul class="navbar-nav mx-auto d-flex flex-row">
-                        <li class="nav-item mx-2"><a class="nav-link text-white small font-weight-bold" href="{{ url('/') }}#services">Services</a></li>
+                    <ul class="navbar-nav mx-auto d-flex flex-column flex-lg-row align-items-lg-center">
+                        <li class="nav-item dropdown mx-2">
+                            <a class="nav-link dropdown-toggle text-white small font-weight-bold" href="{{ url('/') }}#services" id="servicesDropdown" role="button" data-toggle="dropdown" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                Services
+                            </a>
+                            <div class="dropdown-menu shadow-lg border-0" aria-labelledby="servicesDropdown">
+                                <a class="dropdown-item" href="{{ url('/') }}#services">
+                                    <i class="fa-solid fa-border-all mr-2 text-primary"></i> All Services
+                                </a>
+                                <div class="dropdown-divider" style="border-top-color: rgba(255,255,255,0.08);"></div>
+                                <a class="dropdown-item {{ Request::routeIs('public.auctions.*') ? 'active' : '' }}" href="{{ route('public.auctions.index') }}">
+                                    <i class="fa-solid fa-gavel mr-2 text-warning"></i> Auctions
+                                </a>
+                                <a class="dropdown-item" href="{{ url('/') }}#legal-hub">
+                                    <i class="fa-solid fa-scale-balanced mr-2 text-info"></i> AI Legal Hub
+                                </a>
+                                <a class="dropdown-item" href="{{ url('/explore/notary-services') }}">
+                                    <i class="fa-solid fa-file-signature mr-2 text-success"></i> Notary
+                                </a>
+                            </div>
+                        </li>
                         <li class="nav-item mx-2"><a class="nav-link text-white small font-weight-bold {{ Request::routeIs('agent.*') ? 'text-primary' : '' }}" href="{{ route('agent.landing') }}">Enrollment Agent</a></li>
-                        <li class="nav-item mx-2"><a class="nav-link text-white small font-weight-bold" href="{{ route('public.auctions.index') }}">Auctions</a></li>
-                        <li class="nav-item mx-2"><a class="nav-link text-white small font-weight-bold" href="{{ route('logistics.home') }}">Logistics</a></li>
-                        <li class="nav-item mx-2"><a class="nav-link text-white small font-weight-bold" href="{{ url('/explore/notary-services') }}">Notary</a></li>
-                        <li class="nav-item mx-2"><a class="nav-link text-white small font-weight-bold" href="{{ url('/') }}#legal-hub">AI Legal Hub</a></li>
-                        <li class="nav-item mx-2"><a class="nav-link text-white small font-weight-bold" href="{{ route('services.price_list') }}">Pricing</a></li>
-                        <li class="nav-item mx-2"><a class="nav-link text-white small font-weight-bold" href="{{ route('blog.index') }}">Blog</a></li>
+                        <li class="nav-item mx-2"><a class="nav-link text-white small font-weight-bold {{ Request::routeIs('logistics.*') ? 'text-primary' : '' }}" href="{{ route('logistics.home') }}">Logistics</a></li>
+                        <li class="nav-item mx-2"><a class="nav-link text-white small font-weight-bold {{ Request::routeIs('blog.*') ? 'text-primary' : '' }}" href="{{ route('blog.index') }}">Blog</a></li>
                     </ul>
                     <div class="nav-actions d-flex align-items-center gap-3">
                         <a href="{{ route('login') }}" class="btn btn-link text-white text-decoration-none font-weight-bold small">Login</a>
