@@ -727,7 +727,12 @@
         <nav class="navbar navbar-expand-lg navbar-dark fixed-top public-nav py-3" style="background: rgba(3, 7, 18, 0.95); backdrop-filter: blur(15px); border-bottom: 1px solid rgba(255,255,255,0.05); z-index: 1050;">
             <div class="container">
                 <a class="navbar-brand font-weight-bold d-flex align-items-center" href="{{ url('/') }}">
-                    <div class="brand-icon mr-2" style="background: var(--clr-primary); width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center;"><i class="fa-solid fa-bolt text-white" style="font-size: 14px;"></i></div>
+                    @php $publicLogo = \App\Models\SystemSetting::get('site_logo_url'); @endphp
+                    @if($publicLogo)
+                        <img src="{{ $publicLogo }}" alt="{{ \App\Models\SystemSetting::get('site_name', 'Fuwa.NG') }}" loading="lazy" decoding="async" style="height: 36px; width: 36px; object-fit: contain; margin-right: 10px;">
+                    @else
+                        <div class="brand-icon mr-2" style="background: var(--clr-primary); width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center;"><i class="fa-solid fa-bolt text-white" style="font-size: 14px;"></i></div>
+                    @endif
                     <span style="letter-spacing: 1px;">{{ \App\Models\SystemSetting::get('site_name', 'Fuwa.NG') }}</span>
                 </a>
                 <button class="navbar-toggler border-0" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
