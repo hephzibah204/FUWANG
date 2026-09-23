@@ -9,6 +9,7 @@ use App\Services\VtuHubService;
 use App\Services\WalletService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class VtuHubTest extends TestCase
@@ -33,7 +34,7 @@ class VtuHubTest extends TestCase
         $this->vtuHub = app(VtuHubService::class);
     }
 
-    /** @test */
+    #[Test]
     public function it_can_process_a_successful_airtime_request()
     {
         CustomApi::create([
@@ -67,7 +68,7 @@ class VtuHubTest extends TestCase
         $this->assertEquals(4900.00, (float) $this->user->balance->user_balance);
     }
 
-    /** @test */
+    #[Test]
     public function it_refunds_on_api_failure()
     {
         CustomApi::create([
