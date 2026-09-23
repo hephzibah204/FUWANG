@@ -50,7 +50,7 @@ class LogisticsAuthController extends Controller
         $user = User::create([
             'fullname' => $validated['fullname'],
             'email' => $validated['email'],
-            'username' => Str::slug(explode('@', $validated['email'])[0]) . '_' . rand(1000, 9999),
+            'username' => User::generateUniqueUsername($validated['email']),
             'password' => Hash::make($validated['password']),
             'user_status' => 'active',
             'email_verified_at' => now(),

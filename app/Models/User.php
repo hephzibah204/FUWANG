@@ -26,11 +26,31 @@ class User extends Authenticatable implements CanResetPasswordContract, MustVeri
     {
         static::creating(function (User $user) {
             if (empty($user->username)) {
-                $base = !empty($user->email) ? explode('@', $user->email)[0] : 'user';
-                $clean = \Illuminate\Support\Str::lower(preg_replace('/[^a-zA-Z0-9_]/', '', $base));
-                $user->username = \Illuminate\Support\Str::limit($clean, 12, '') . '_' . rand(1000, 9999);
+                $user->username = static::generateUniqueUsername($user->email ?? '');
+            } else {
+                // Defensive guard: ensure any username strictly fits within 20 characters (legacy MySQL schema compatibility)
+                if (strlen($user->username) > 20) {
+                    $user->username = static::generateUniqueUsername($user->username);
+                }
             }
         });
+    }
+
+    public static function generateUniqueUsername(?string $emailOrBase = null): string
+    {
+        $base = !empty($emailOrBase) ? explode('@', $emailOrBase)[0] : 'user';
+        $clean = \Illuminate\Support\Str::lower(preg_replace('/[^a-zA-Z0-9_]/', '', $base));
+        if ($clean === '') {
+            $clean = 'user';
+        }
+
+        // Limit base so base + suffix strictly never exceeds 20 characters
+        do {
+            $suffix = '_' . random_int(1000, 9999);
+            $candidate = \Illuminate\Support\Str::limit($clean, max(1, 20 - strlen($suffix)), '') . $suffix;
+        } while (static::where('username', $candidate)->exists());
+
+        return $candidate;
     }
 
     public function getActivitylogOptions(): LogOptions

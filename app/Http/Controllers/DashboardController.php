@@ -41,12 +41,20 @@ class DashboardController extends Controller
         $referralService->ensureUserReferralCode($user);
         $referralStats = $referralService->statsForUser($user);
 
+        // Fetch KYC verification status
+        $hasTier2Kyc = \App\Support\UserKycIdentifiers::preferredPaymentIdentity($user) !== null;
+        $verifiedBvn = \App\Support\UserKycIdentifiers::verifiedBvn($user);
+        $verifiedNin = \App\Support\UserKycIdentifiers::verifiedNin($user);
+
         return view('dashboard', [
             'user' => $user,
             'balance' => $balance->user_balance,
             'notification' => $notification ? $notification->notification : '',
             'verificationCount' => $verificationCount,
             'referralStats' => $referralStats,
+            'hasTier2Kyc' => $hasTier2Kyc,
+            'verifiedBvn' => $verifiedBvn,
+            'verifiedNin' => $verifiedNin,
         ]);
     }
 }

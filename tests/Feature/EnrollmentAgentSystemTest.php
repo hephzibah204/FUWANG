@@ -144,4 +144,65 @@ class EnrollmentAgentSystemTest extends TestCase
 
         $this->assertEquals('enrollment_agents', $broadcast->target_audience);
     }
+
+    public function test_claimed_preapproved_profile_cannot_be_reclaimed_by_another_user(): void
+    {
+        $preApproved = \App\Models\PreApprovedAgent::create([
+            'agent_code' => 'FUWA-CLAIM-001',
+            'full_name' => 'Original PreApproved Agent',
+            'email' => 'preapproved@example.com',
+            'phone_number' => '08099887766',
+            'is_claimed' => true,
+            'claimed_at' => now(),
+        ]);
+
+        $user = User::factory()->create([
+            'email_verified_at' => now(),
+            'user_status' => 'active',
+        ]);
+
+        $response = $this->actingAs($user)->from(route('agent.register'))->post(route('agent.register.submit'), [
+            'agent_type' => 'existing',
+            'company_agent_code' => 'FUWA-CLAIM-001',
+            'full_name' => 'Impostor Agent',
+            'email' => 'impostor@example.com',
+            'phone_number' => '08011223344',
+            'state' => 'Lagos',
+            'residential_address' => '123 Address',
+            'office_address' => '456 Address',
+            'bvn' => '12345678901',
+            'nin' => '10987654321',
+            'has_machine' => '1',
+            'machine_imei' => '864201041234567',
+        ]);
+
+        $response->assertRedirect(route('agent.register'));
+        $response->assertSessionHasErrors(['company_agent_code']);
+    }
+
+    public function test_existing_agent_requires_machine_imei(): void
+    {
+        $user = User::factory()->create([
+            'email_verified_at' => now(),
+            'user_status' => 'active',
+        ]);
+
+        $response = $this->actingAs($user)->from(route('agent.register'))->post(route('agent.register.submit'), [
+            'agent_type' => 'existing',
+            'company_agent_code' => 'FUWA-EXIST-002',
+            'full_name' => 'Existing Agent No IMEI',
+            'email' => $user->email,
+            'phone_number' => '08012345678',
+            'state' => 'Lagos',
+            'residential_address' => 'Address',
+            'office_address' => 'Address',
+            'bvn' => '12345678901',
+            'nin' => '10987654321',
+            'has_machine' => '0',
+            'machine_imei' => '',
+        ]);
+
+        $response->assertRedirect(route('agent.register'));
+        $response->assertSessionHasErrors(['machine_imei']);
+    }
 }

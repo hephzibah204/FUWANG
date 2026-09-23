@@ -275,20 +275,21 @@
                 </div>
 
                 <div class="row g-3 mb-4">
-                    <div class="col-md-6">
+                    <div class="col-md-6" id="hasMachineSelectBox">
                         <label class="form-label text-white small fw-bold">Do you have physical machine(s) to carry out enrollments?</label>
-                        <select name="has_machine" class="form-input" onchange="toggleMachineIMEI(this.value)">
+                        <select name="has_machine" id="hasMachineSelect" class="form-input" onchange="toggleMachineIMEI(this.value)">
                             <option value="1" {{ old('has_machine', '1') === '1' ? 'selected' : '' }}>Yes — I have physical enrollment hardware/terminal</option>
                             <option value="0" {{ old('has_machine') === '0' ? 'selected' : '' }}>No — I need hardware provisioned by company</option>
                         </select>
                     </div>
 
                     <div class="col-md-6" id="imeiBox">
-                        <label for="machineImeiInput" class="form-label text-white small fw-bold">Machine IMEI / Device Terminal ID</label>
+                        <label for="machineImeiInput" class="form-label text-white small fw-bold">Machine IMEI / Device Terminal ID <span class="text-danger">*</span></label>
                         <div class="input-wrap">
                             <i class="fa-solid fa-barcode input-icon"></i>
-                            <input type="text" id="machineImeiInput" name="machine_imei" class="form-input @error('machine_imei') is-invalid @enderror" value="{{ old('machine_imei') }}" placeholder="e.g. 864201041234567">
+                            <input type="text" id="machineImeiInput" name="machine_imei" class="form-input @error('machine_imei') is-invalid @enderror" value="{{ old('machine_imei') }}" required placeholder="Enter machine IMEI (e.g. 864201041234567)">
                         </div>
+                        <small class="text-muted" style="font-size: 0.75rem;">Existing agents are required to enter their assigned enrollment terminal IMEI.</small>
                         @error('machine_imei') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
                     </div>
                 </div>
@@ -626,10 +627,22 @@ document.addEventListener('DOMContentLoaded', function () {
     let currentResults = [];
 
     function selectAgent(agent) {
-        if (codeInput) codeInput.value = agent.agent_code;
-        if (nameInput) nameInput.value = agent.full_name;
-        if (emailInput && !agent.email.includes('***')) emailInput.value = agent.email;
-        if (phoneInput && !agent.phone_number.includes('****')) phoneInput.value = agent.phone_number;
+        if (codeInput) {
+            codeInput.value = agent.agent_code;
+            codeInput.readOnly = true;
+        }
+        if (nameInput) {
+            nameInput.value = agent.full_name;
+            nameInput.readOnly = true;
+        }
+        if (emailInput && !agent.email.includes('***')) {
+            emailInput.value = agent.email;
+            emailInput.readOnly = true;
+        }
+        if (phoneInput && !agent.phone_number.includes('****')) {
+            phoneInput.value = agent.phone_number;
+            phoneInput.readOnly = true;
+        }
 
         // Display Verified Banner
         if (verifiedName) verifiedName.textContent = agent.full_name;
@@ -647,6 +660,10 @@ document.addEventListener('DOMContentLoaded', function () {
     function clearSelection() {
         searchInput.value = '';
         clearBtn.classList.add('d-none');
+        if (codeInput) codeInput.readOnly = false;
+        if (nameInput) nameInput.readOnly = false;
+        if (emailInput) emailInput.readOnly = false;
+        if (phoneInput) phoneInput.readOnly = false;
         if (verifiedBanner) verifiedBanner.classList.add('d-none');
         if (unmatchedNotice) unmatchedNotice.classList.add('d-none');
         resultsContainer.innerHTML = '';

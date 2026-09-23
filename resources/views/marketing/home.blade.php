@@ -38,13 +38,28 @@
                 </div>
 
                 <ul class="home-sales__trust" aria-label="Trust highlights">
-                    <li>Encrypted requests & audit trail</li>
-                    <li>Pay-as-you-go pricing</li>
-                    <li>Fast setup for teams</li>
+                    <li><i class="fa-solid fa-shield-check text-success mr-2"></i> Encrypted requests & compliance audit trail</li>
+                    <li><i class="fa-solid fa-bolt text-warning mr-2"></i> Instant NIN & BVN verification API (0.4s)</li>
+                    <li><i class="fa-solid fa-coins text-info mr-2"></i> Transparent pay-as-you-go pricing (From ₦100)</li>
                 </ul>
+
+                <div class="hero-metric-strip d-flex gap-4 mt-4 pt-3 border-top border-secondary flex-wrap">
+                    <div>
+                        <div class="h4 font-weight-bold text-white mb-0">99.9%</div>
+                        <div class="small text-muted" style="font-size: 0.75rem;">System Uptime</div>
+                    </div>
+                    <div>
+                        <div class="h4 font-weight-bold text-white mb-0">100k+</div>
+                        <div class="small text-muted" style="font-size: 0.75rem;">Verifications Processed</div>
+                    </div>
+                    <div>
+                        <div class="h4 font-weight-bold text-white mb-0">&lt; 1s</div>
+                        <div class="small text-muted" style="font-size: 0.75rem;">Turnaround Time</div>
+                    </div>
+                </div>
             </div>
 
-            <div class="home-sales__visual" aria-label="Diverse customers and operators">
+            <div class="home-sales__visual position-relative" aria-label="Diverse customers and operators">
                 <img
                     src="{{ $assetPrefix }}/images/people/hero-human.png"
                     alt="A smiling woman representing a verified customer using her mobile phone"
@@ -53,6 +68,26 @@
                     decoding="async"
                     fetchpriority="high"
                 >
+                <!-- Floating Realtime Verification Badge -->
+                <div class="floating-hero-card hero-floating-badge-1">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="badge-icon-wrap"><i class="fa-solid fa-check"></i></div>
+                        <div>
+                            <div class="badge-title">NIN Verified</div>
+                            <div class="badge-sub">NIMC Record Match • 0.38s</div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Floating Wallet & BVN Badge -->
+                <div class="floating-hero-card hero-floating-badge-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="badge-icon-wrap bvn"><i class="fa-solid fa-fingerprint"></i></div>
+                        <div>
+                            <div class="badge-title">BVN Match Confirmed</div>
+                            <div class="badge-sub">Tier 2 Bank Validated</div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </header>

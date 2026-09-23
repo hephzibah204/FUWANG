@@ -643,7 +643,13 @@ INSERT IGNORE INTO `migrations` (`migration`, `batch`) VALUES
   ('2026_09_22_030000_add_onboarding_fields_to_enrollment_agents', 2),
   ('2026_09_22_040000_add_is_fast_tracked_to_enrollment_agents', 2),
   ('2026_09_22_050000_create_pre_approved_agents_table', 2),
-  ('2026_09_22_050000_drop_delivery_agents_table', 2);
+  ('2026_09_22_050000_drop_delivery_agents_table', 2),
+  ('2026_09_23_140000_expand_users_username_column', 2);
+
+-- ------------------------------------------------------------------------------
+-- Migration [65]: 2026_09_23_140000_expand_users_username_column
+-- ------------------------------------------------------------------------------
+ALTER TABLE `users` MODIFY `username` VARCHAR(60) NULL;
 
 
 -- ==============================================================================

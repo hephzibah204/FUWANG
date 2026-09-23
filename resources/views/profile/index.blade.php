@@ -64,10 +64,10 @@
             </div>
         </div>
 
-        <form action="{{ route('logout') }}" method="POST">
+        <form action="{{ route('logout') }}" method="POST" class="mt-4">
             @csrf
-            <button type="submit" class="btn btn-danger btn-lg w-100 font-weight-bold shadow-sm rounded-4" style="background: rgba(220, 53, 69, 0.1); color: #ff4d4d; border: 1px solid rgba(220, 53, 69, 0.2);">
-                <i class="fa fa-power-off mr-2"></i> Logout Session
+            <button type="submit" class="logout-btn-pill">
+                <i class="fa-solid fa-arrow-right-from-bracket mr-2"></i> End Session & Log Out
             </button>
         </form>
     </div>

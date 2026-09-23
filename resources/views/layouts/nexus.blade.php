@@ -217,6 +217,57 @@
         .nexus-toast-icon { font-size: 1.2rem; }
         .nexus-toast-msg { flex: 1; font-size: 0.9rem; }
 
+        /* Logout Button Modern Styling */
+        .logout-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            color: #f87171;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 1rem;
+            flex-shrink: 0;
+            outline: none;
+        }
+        .logout-btn:hover {
+            background: #ef4444;
+            color: #ffffff;
+            border-color: #ef4444;
+            transform: scale(1.08);
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.35);
+        }
+        .logout-btn:active {
+            transform: scale(0.96);
+        }
+        .logout-btn-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 20px;
+            border-radius: 12px;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.25);
+            color: #f87171;
+            font-weight: 700;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            width: 100%;
+        }
+        .logout-btn-pill:hover {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: #ffffff;
+            border-color: #ef4444;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.35);
+        }
+
         /* Mobile Navbar Fixes */
         @media (max-width: 991.98px) {
             .public-nav .navbar-collapse {
@@ -466,21 +517,6 @@
             <div class="nav-item {{ Request::routeIs('dashboard') ? 'active' : '' }}">
                 <a href="{{ route('dashboard') }}"><i class="fa-solid fa-house"></i> <span class="nav-text">Overview</span></a>
             </div>
-            <div class="nav-item {{ Request::routeIs('agent.*') ? 'active' : '' }}">
-                @if(method_exists($webUser, 'isApprovedEnrollmentAgent') && $webUser->isApprovedEnrollmentAgent())
-                    <a href="{{ route('agent.dashboard') }}" class="text-warning font-weight-bold">
-                        <i class="fa-solid fa-id-card-clip text-warning"></i> <span class="nav-text">Enrollment Agent</span>
-                    </a>
-                @elseif(isset($webUser->enrollmentAgent) && $webUser->enrollmentAgent)
-                    <a href="{{ route('agent.onboarding.index') }}">
-                        <i class="fa-solid fa-user-shield text-info"></i> <span class="nav-text">Enrollment Agent</span>
-                    </a>
-                @else
-                    <a href="{{ route('agent.landing') }}">
-                        <i class="fa-solid fa-user-shield text-info"></i> <span class="nav-text">Enrollment Agent</span>
-                    </a>
-                @endif
-            </div>
             <div class="nav-item {{ Request::routeIs('notifications.*') ? 'active' : '' }}">
                 <a href="{{ route('notifications.index') }}"><i class="fa-solid fa-bell"></i> <span class="nav-text">Notifications
                     @if($webUnreadCount > 0)
@@ -677,9 +713,9 @@
                     </div>
                 </div>
             </a>
-            <form action="{{ $showFullAdminSidebar ? route('admin.logout') : route('logout') }}" method="POST" id="logout-form">
+            <form action="{{ $showFullAdminSidebar ? route('admin.logout') : route('logout') }}" method="POST" id="logout-form" class="m-0">
                 @csrf
-                <button type="submit" class="logout-btn">
+                <button type="submit" class="logout-btn" title="Sign Out / Logout" aria-label="Sign Out">
                     <i class="fa-solid fa-arrow-right-from-bracket"></i>
                 </button>
             </form>

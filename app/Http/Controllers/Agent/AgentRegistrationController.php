@@ -95,7 +95,9 @@ class AgentRegistrationController extends Controller
 
     public function store(Request $request, AccountKycIdentityService $kycService)
     {
-        $validated = $request->validate([
+        $agentType = $request->input('agent_type', 'new');
+        
+        $rules = [
             'agent_type' => ['required', 'string', 'in:existing,new'],
             'company_agent_code' => ['required_if:agent_type,existing', 'nullable', 'string', 'max:50'],
             'full_name' => ['required', 'string', 'max:255'],
@@ -107,8 +109,72 @@ class AgentRegistrationController extends Controller
             'residential_address' => ['required', 'string', 'max:1000'],
             'office_address' => ['required', 'string', 'max:1000'],
             'has_machine' => ['required', 'boolean'],
-            'machine_imei' => ['required_if:has_machine,1', 'nullable', 'string', 'max:100'],
-        ]);
+            'machine_imei' => [$agentType === 'existing' ? 'required' : 'required_if:has_machine,1', 'nullable', 'string', 'max:100'],
+        ];
+
+        $validated = $request->validate($rules);
+
+        // All existing agents must have machine set to true
+        if ($validated['agent_type'] === 'existing') {
+            $validated['has_machine'] = true;
+        }
+
+        // If existing agent profile selected, verify and claim atomic pre-approved roster profile
+        $preApprovedRecord = null;
+        if ($validated['agent_type'] === 'existing') {
+            $code = $validated['company_agent_code'] ?? null;
+            $email = $validated['email'] ?? null;
+            $phone = $validated['phone_number'] ?? null;
+
+            $preApprovedQuery = PreApprovedAgent::where('is_claimed', false);
+            if (!empty($code)) {
+                $preApprovedRecord = $preApprovedQuery->where('agent_code', $code)->first();
+            } elseif (!empty($email) || !empty($phone)) {
+                $preApprovedRecord = $preApprovedQuery->where(function ($q) use ($email, $phone) {
+                    if (!empty($email)) {
+                        $q->where('email', $email);
+                    }
+                    if (!empty($phone)) {
+                        $q->orWhere('phone_number', $phone);
+                    }
+                })->first();
+            }
+
+            if (!$preApprovedRecord) {
+                // Check if account was already claimed by someone else
+                $claimedQuery = PreApprovedAgent::where('is_claimed', true);
+                if (!empty($code)) {
+                    $alreadyClaimed = $claimedQuery->where('agent_code', $code)->first();
+                } else {
+                    $alreadyClaimed = $claimedQuery->where(function ($q) use ($email, $phone) {
+                        if (!empty($email)) {
+                            $q->where('email', $email);
+                        }
+                        if (!empty($phone)) {
+                            $q->orWhere('phone_number', $phone);
+                        }
+                    })->first();
+                }
+
+                if ($alreadyClaimed) {
+                    return back()
+                        ->withInput()
+                        ->withErrors(['company_agent_code' => 'This pre-approved agent profile has already been claimed by another registered user account. Multi-claiming is prohibited.']);
+                }
+            }
+
+            // Lock prefilled info from preApprovedRecord if found
+            if ($preApprovedRecord) {
+                $validated['company_agent_code'] = $preApprovedRecord->agent_code;
+                $validated['full_name'] = $preApprovedRecord->full_name ?: trim($preApprovedRecord->first_name . ' ' . $preApprovedRecord->last_name);
+                if (!empty($preApprovedRecord->email)) {
+                    $validated['email'] = $preApprovedRecord->email;
+                }
+                if (!empty($preApprovedRecord->phone_number)) {
+                    $validated['phone_number'] = $preApprovedRecord->phone_number;
+                }
+            }
+        }
 
         // Find or create User record
         $user = Auth::user();
@@ -125,7 +191,7 @@ class AgentRegistrationController extends Controller
                 'fullname' => $validated['full_name'],
                 'number' => $validated['phone_number'],
                 'email' => $validated['email'],
-                'username' => Str::slug(explode('@', $validated['email'])[0]) . '_' . rand(1000, 9999),
+                'username' => User::generateUniqueUsername($validated['email']),
                 'password' => Hash::make(Str::random(16)),
                 'user_status' => 'active',
                 'email_verified_at' => now(),
@@ -208,7 +274,7 @@ class AgentRegistrationController extends Controller
             ]
         );
 
-        // Mark pre-approved record as claimed using atomic lock inside transaction
+        // Mark pre-approved record as claimed atomically inside transaction
         if ($validated['agent_type'] === 'existing') {
             $code = $validated['company_agent_code'] ?? null;
             $email = $validated['email'] ?? null;
