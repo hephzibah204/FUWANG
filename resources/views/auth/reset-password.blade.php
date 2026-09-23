@@ -6,7 +6,10 @@
 @section('content')
 <div class="auth-container">
     <div class="auth-brand">
-        <a href="/" class="logo"><i class="fa-solid fa-bolt"></i> Fuwa<span>..NG</span></a>
+        <a href="/" class="logo d-flex align-items-center mb-4 text-decoration-none">
+            <img src="{{ \App\Models\SystemSetting::get('site_logo_url', '/images/logo.png') }}" alt="{{ \App\Models\SystemSetting::get('site_name', 'Fuwa.NG') }}" style="height: 40px; width: 40px; object-fit: contain; margin-right: 10px;">
+            <span class="text-white font-weight-bold" style="font-size: 1.5rem;">Fuwa<span class="text-primary">.NG</span></span>
+        </a>
         <h2>Set a new password</h2>
         <p>Use a strong password to keep your account secure.</p>
         <div class="brand-features">

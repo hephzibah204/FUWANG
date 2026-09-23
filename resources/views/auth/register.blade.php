@@ -14,8 +14,8 @@
                         <span class="badge-pill-glow"><i class="fa-solid fa-bolt text-warning mr-1"></i> Unified Financial & Identity Platform</span>
                     </div>
 
-                    <a href="/" class="auth-logo-text d-inline-block text-decoration-none mb-4">
-                        <span class="logo-icon"><i class="fa-solid fa-shield-halved"></i></span>
+                    <a href="/" class="auth-logo-text d-inline-flex align-items-center text-decoration-none mb-4">
+                        <img src="{{ \App\Models\SystemSetting::get('site_logo_url', '/images/logo.png') }}" alt="{{ \App\Models\SystemSetting::get('site_name', 'Fuwa.NG') }}" style="height: 42px; width: 42px; object-fit: contain; margin-right: 12px;">
                         <span class="logo-title">Fuwa<span class="text-primary">.NG</span></span>
                     </a>
 

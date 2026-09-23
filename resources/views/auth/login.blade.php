@@ -16,10 +16,8 @@
                 <span class="status-dot"></span> All Systems Operational
             </div>
 
-            <a href="/" class="auth-logo">
-                <div class="logo-icon-bg">
-                    <i class="fa-solid fa-bolt"></i>
-                </div>
+            <a href="/" class="auth-logo d-flex align-items-center">
+                <img src="{{ \App\Models\SystemSetting::get('site_logo_url', '/images/logo.png') }}" alt="{{ \App\Models\SystemSetting::get('site_name', 'Fuwa.NG') }}" style="height: 42px; width: 42px; object-fit: contain; margin-right: 12px;">
                 <span class="logo-text">Fuwa<span class="logo-accent">.NG</span></span>
             </a>
 
