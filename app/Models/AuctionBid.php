@@ -22,4 +22,9 @@ class AuctionBid extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    public function lot()
+    {
+        return $this->belongsTo(AuctionLot::class, 'lot_id', 'lot_code');
+    }
 }

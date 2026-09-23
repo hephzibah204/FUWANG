@@ -43,4 +43,9 @@ class AuctionLot extends Model
     {
         return $this->hasMany(AuctionLotImage::class, 'auction_lot_id')->orderBy('sort_order')->orderBy('id');
     }
+
+    public function bids()
+    {
+        return $this->hasMany(AuctionBid::class, 'lot_id', 'lot_code');
+    }
 }

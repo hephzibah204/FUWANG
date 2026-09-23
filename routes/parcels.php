@@ -14,7 +14,7 @@ Route::prefix('parcels-agent')->name('parcels.')->middleware(['web', 'auth', 'pa
 
     Route::get('/dashboard', [AgentDashboardController::class, 'index'])->name('dashboard');
 
-    Route::middleware(['throttle:30,1'])->group(function() {
+    Route::middleware(['throttle:60,1'])->group(function() {
         Route::get('/dropoff/customer', [DropOffController::class, 'showCustomerDropOff'])->name('dropoff.customer');
         Route::post('/dropoff/customer', [DropOffController::class, 'processCustomerDropOff'])->name('dropoff.customer.process');
 

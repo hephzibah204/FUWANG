@@ -41,15 +41,27 @@ class ProcessAuctions extends Command
         }
 
         // 2. Live -> Ended
-        $toEnded = AuctionLot::where('status', 'live')
+        $endedLots = AuctionLot::where('status', 'live')
             ->where('end_at', '<=', $now)
-            ->update(['status' => 'ended']);
+            ->get();
 
+        $toEnded = $endedLots->count();
         if ($toEnded > 0) {
+            foreach ($endedLots as $lot) {
+                $lot->status = 'ended';
+                $lot->save();
+
+                $winningBid = \App\Models\AuctionBid::where('lot_id', $lot->lot_code)
+                    ->where('status', 'winning')
+                    ->first();
+
+                if ($winningBid) {
+                    Log::info("Auction Lot [{$lot->lot_code}] ended. Winning bid: {$winningBid->reference} by User #{$winningBid->user_id} for ₦{$winningBid->bid_amount}");
+                }
+            }
+
             $this->info("Transitioned {$toEnded} lots to ENDED.");
             Log::info("Auction: Transitioned {$toEnded} lots to ENDED.");
-            
-            // Note: In a real app, you'd trigger notifications for winners here.
         }
 
         return Command::SUCCESS;

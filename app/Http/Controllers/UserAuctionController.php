@@ -102,10 +102,23 @@ class UserAuctionController extends Controller
             return response()->json(['ok' => false, 'message' => 'Your bid must be at least ₦' . number_format($minRequired, 2)], 422);
         }
 
-        // 4. Check wallet balance (ensure user can cover the bid)
+        // 4. Check wallet balance (ensure user can cover the bid taking into account other active winning bids)
         $balance = (float) ($user->balance?->user_balance ?? 0);
-        if ($balance < $request->amount) {
-            return response()->json(['ok' => false, 'message' => 'Insufficient wallet balance to place this bid.'], 422);
+        $committedBids = (float) AuctionBid::query()
+            ->where('user_id', $user->id)
+            ->where('status', 'winning')
+            ->where('lot_id', '!=', $lot->lot_code)
+            ->whereHas('lot', function ($q) {
+                $q->where('status', 'live');
+            })
+            ->sum('bid_amount');
+
+        $availableBalance = max(0, $balance - $committedBids);
+        if ($availableBalance < $request->amount) {
+            $msg = $committedBids > 0
+                ? 'Insufficient available wallet balance. You have ₦' . number_format($committedBids, 2) . ' committed to other active winning bids.'
+                : 'Insufficient wallet balance to place this bid.';
+            return response()->json(['ok' => false, 'message' => $msg], 422);
         }
 
         return DB::transaction(function () use ($lot, $user, $request) {
@@ -114,6 +127,24 @@ class UserAuctionController extends Controller
             $minRequired = (float) $freshLot->current_price + (float) $freshLot->bid_increment;
             if ($request->amount < $minRequired) {
                 throw new \Exception('Price has changed. Minimum bid is now ₦' . number_format($minRequired, 2));
+            }
+
+            // Lock balance and re-verify committed bids under transaction
+            $accBalance = \App\Models\AccountBalance::where('user_id', $user->id)->lockForUpdate()->first();
+            $currentBalance = (float) ($accBalance?->user_balance ?? 0);
+
+            $committed = (float) AuctionBid::query()
+                ->where('user_id', $user->id)
+                ->where('status', 'winning')
+                ->where('lot_id', '!=', $lot->lot_code)
+                ->whereHas('lot', function ($q) {
+                    $q->where('status', 'live');
+                })
+                ->lockForUpdate()
+                ->sum('bid_amount');
+
+            if (($currentBalance - $committed) < $request->amount) {
+                throw new \Exception('Insufficient available wallet balance to cover this bid.');
             }
 
             // Mark previous highest bid for this lot as 'outbid'

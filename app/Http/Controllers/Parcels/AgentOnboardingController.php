@@ -28,7 +28,7 @@ class AgentOnboardingController extends Controller
             'shop_address' => 'required|string|max:500',
             'state' => 'required|string|max:100',
             'city' => 'required|string|max:100',
-            'nin_number' => 'required|string|min:11|max:11',
+            'nin_number' => 'required|digits:11',
         ]);
 
         $user = Auth::user();

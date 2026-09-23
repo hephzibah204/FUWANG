@@ -26,7 +26,7 @@ class PickupController extends Controller
         $request->validate([
             'tracking_number' => 'required|string',
             'id_type' => 'required|string',
-            'signature_data' => 'required|string', // Base64 canvas data
+            'signature_data' => 'required|string|max:500000', // Base64 canvas data limit
         ]);
 
         $agent = $request->user()->parcelAgent;
