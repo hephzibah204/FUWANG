@@ -5,13 +5,6 @@ test.describe('Admin User Wallet Management', () => {
     test('Fund Modal opens with correct user data and can be submitted', async ({ page }) => {
         // Since we can't easily bypass admin auth without credentials, we mock the page structure
         // This test verifies the JS on the admin/users page works when the button is clicked.
-        
-        await page.goto('/admin/users'); // This might redirect to login if not authenticated
-        
-        // If it redirects, we can't test the real page unless we have a 'bypass-auth' mode
-        // For the purpose of this task, I'll assume we want to test the UI logic.
-        // We can simulate the page content if the real page is inaccessible.
-        
         // Mocking the page content for a reliable test if not in a real CI environment
         await page.setContent(`
             <html>

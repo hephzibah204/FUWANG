@@ -57,20 +57,29 @@ class PickupController extends Controller
         \Illuminate\Support\Facades\Storage::disk('local')->put('parcels/signatures/' . $imageName, $decoded);
         $signaturePath = 'parcels/signatures/' . $imageName;
 
-        // 2. Update internal Parcel status
-        $parcel->status = 'customer_collected';
-        $parcel->save();
+        // 2. Wrap DB and Sync in transaction
+        try {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($parcel, $agent, $request, $signaturePath, $trackingNumber, $adapter) {
+                // Update internal Parcel status
+                $parcel->status = 'customer_collected';
+                $parcel->save();
 
-        // 3. Log Chain of Custody Event
-        ParcelCustodyEvent::create([
-            'parcel_id' => $parcel->id,
-            'agent_id' => $agent->id,
-            'event_type' => 'agent_to_customer',
-            'notes' => 'ID Type: ' . $request->input('id_type') . ' | Signature File: ' . $signaturePath,
-        ]);
+                // Log Chain of Custody Event
+                ParcelCustodyEvent::create([
+                    'parcel_id' => $parcel->id,
+                    'agent_id' => $agent->id,
+                    'event_type' => 'agent_to_customer',
+                    'notes' => 'ID Type: ' . $request->input('id_type') . ' | Signature File: ' . $signaturePath,
+                ]);
 
-        // 4. Sync back to Courier
-        $adapter->updateParcelStatus($trackingNumber, 'customer_collected');
+                // Sync back to Courier
+                $adapter->updateParcelStatus($trackingNumber, 'customer_collected');
+            });
+        } catch (\Exception $e) {
+            // Cleanup the saved file on failure to prevent disk leaks
+            \Illuminate\Support\Facades\Storage::disk('local')->delete($signaturePath);
+            return back()->with('error', 'An error occurred while processing the pickup. Please try again.');
+        }
 
         return redirect()->route('parcels.dashboard')->with('success', "Parcel {$trackingNumber} successfully handed over to customer.");
     }
@@ -104,18 +113,20 @@ class PickupController extends Controller
             return back()->with('error', 'Parcel not found in shop inventory or not ready for driver pickup.');
         }
 
-        $parcel->status = 'driver_collected';
-        $parcel->condition = $request->input('condition');
-        $parcel->save();
+        \Illuminate\Support\Facades\DB::transaction(function () use ($parcel, $agent, $request, $trackingNumber, $adapter) {
+            $parcel->status = 'driver_collected';
+            $parcel->condition = $request->input('condition');
+            $parcel->save();
 
-        ParcelCustodyEvent::create([
-            'parcel_id' => $parcel->id,
-            'agent_id' => $agent->id,
-            'event_type' => 'agent_to_driver',
-            'notes' => 'Handover Condition: ' . $parcel->condition,
-        ]);
+            ParcelCustodyEvent::create([
+                'parcel_id' => $parcel->id,
+                'agent_id' => $agent->id,
+                'event_type' => 'agent_to_driver',
+                'notes' => 'Handover Condition: ' . $parcel->condition,
+            ]);
 
-        $adapter->updateParcelStatus($trackingNumber, 'driver_collected');
+            $adapter->updateParcelStatus($trackingNumber, 'driver_collected');
+        });
 
         return redirect()->route('parcels.dashboard')->with('success', "Parcel {$trackingNumber} successfully handed over to driver.");
     }

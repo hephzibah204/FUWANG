@@ -16,13 +16,17 @@ test.describe('Core User Journeys', () => {
   test('User Registration Form Validation', async ({ page }) => {
     await page.goto('/register');
     
-    await expect(page.getByRole('heading', { name: /Register/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Register|Create your Account/i })).toBeVisible();
     
-    // Attempt empty submission
-    await page.getByRole('button', { name: /Register|Submit/i }).click();
+    // Check that required fields exist
+    await expect(page.locator('#fullname')).toHaveAttribute('required', '');
     
-    // Assert HTML5 validation or Laravel error messages appear
-    const errorAlert = page.locator('.invalid-feedback, .alert-danger').first();
+    // Attempt submission with novalidate to test error response
+    await page.$eval('#registerForm', form => form.noValidate = true);
+    await page.getByRole('button', { name: /Register|Submit|Create Account/i }).click();
+    
+    // Assert error container appears
+    const errorAlert = page.locator('#errorMsgContainer, .alert-danger, .invalid-feedback').first();
     await expect(errorAlert).toBeVisible();
   });
 
@@ -30,11 +34,8 @@ test.describe('Core User Journeys', () => {
     await page.goto('/login');
     
     await page.getByLabel(/Email/i).fill('testuser@fuwa.ng');
-    await page.getByLabel(/Password/i).fill('password123');
-    await page.getByRole('button', { name: /Login/i }).click();
-    
-    // Note: Depends on DB state, so we just check it attempts to submit
-    // In a real environment, we'd mock the backend or seed the DB.
+    await page.locator('input[name="password"]').fill('password123');
+    await page.getByRole('button', { name: /Login|Sign in/i }).click();
   });
 
 });

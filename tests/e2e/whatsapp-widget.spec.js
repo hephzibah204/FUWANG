@@ -79,7 +79,7 @@ test.describe('Dynamic WhatsApp Widget', () => {
 
     test('Widget click fires analytics API', async ({ page }) => {
         await page.route('**/api/whatsapp-widget/config', async route => {
-            await route.fulfill({ json: { status: true, data: { enabled: true, number: '123', hours_start: '00:00', hours_end: '23:59', server_time: '12:00' } } });
+            await route.fulfill({ json: { status: true, data: { enabled: true, number: '123', position: 'bottom-right', display_pages: 'all', hours_start: '00:00', hours_end: '23:59', server_time: '12:00' } } });
         });
 
         let clickApiCalled = false;

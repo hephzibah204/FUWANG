@@ -68,8 +68,16 @@ class WhatsAppWidget {
             return;
         }
 
-        // Parse config
-        const { position, size, color, hover_color, x_offset, y_offset, animation, number, prefilled_message } = this.config;
+        // Parse config with defaults
+        const position = this.config.position || 'bottom-right';
+        const size = this.config.size || 60;
+        const color = this.config.color || '#25D366';
+        const hover_color = this.config.hover_color || '#128C7E';
+        const x_offset = this.config.x_offset ?? 20;
+        const y_offset = this.config.y_offset ?? 20;
+        const animation = this.config.animation || 'none';
+        const number = this.config.number || '';
+        const prefilled_message = this.config.prefilled_message || '';
 
         // Position styles
         let positionStyles = `position: fixed; z-index: 9999; width: ${size}px; height: ${size}px;`;

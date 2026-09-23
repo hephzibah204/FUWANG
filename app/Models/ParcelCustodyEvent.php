@@ -10,10 +10,6 @@ class ParcelCustodyEvent extends Model
         'parcel_id',
         'agent_id',
         'event_type',
-        'from_entity_type',
-        'from_entity_id',
-        'to_entity_type',
-        'to_entity_id',
         'notes',
     ];
 
@@ -25,15 +21,5 @@ class ParcelCustodyEvent extends Model
     public function agent()
     {
         return $this->belongsTo(ParcelAgent::class);
-    }
-
-    public function fromEntity()
-    {
-        return $this->morphTo('from_entity');
-    }
-
-    public function toEntity()
-    {
-        return $this->morphTo('to_entity');
     }
 }

@@ -15,14 +15,28 @@ class GeminiService
 
     public function __construct()
     {
-        // Try to get API key from CustomApi first (new controllable way)
-        $customApi = \App\Models\CustomApi::where('service_type', 'gemini_ai')->where('status', true)->first();
-        if ($customApi) {
-            $this->apiKey = $customApi->api_key;
-        } else {
-            // Fallback to legacy ApiCenter
-            $apiCenter = ApiCenter::first();
-            $this->apiKey = $apiCenter?->gemini_api_key;
+        $this->apiKey = null;
+
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('custom_apis')) {
+                $customApi = \App\Models\CustomApi::where('service_type', 'gemini_ai')->where('status', true)->first();
+                if ($customApi) {
+                    $this->apiKey = $customApi->api_key;
+                }
+            }
+        } catch (\Throwable $e) {
+            $this->apiKey = null;
+        }
+
+        if (empty($this->apiKey)) {
+            try {
+                if (\Illuminate\Support\Facades\Schema::hasTable('api_centers')) {
+                    $apiCenter = ApiCenter::first();
+                    $this->apiKey = $apiCenter?->gemini_api_key;
+                }
+            } catch (\Throwable $e) {
+                $this->apiKey = null;
+            }
         }
 
         // Fallback to env-based config (GEMINI_API_KEY) when DB credentials are not set.

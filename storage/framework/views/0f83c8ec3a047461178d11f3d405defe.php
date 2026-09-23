@@ -286,9 +286,12 @@
     <?php echo $__env->yieldPushContent('styles'); ?>
 </head>
 <?php
-    $webUser = Auth::user();
+    $rawUser = Auth::user();
+    $webUser = Auth::guard('web')->user() ?? ($rawUser instanceof \App\Models\User ? $rawUser : null);
     $adminUser = Auth::guard('admin')->user();
-    $authUser = $webUser ?: $adminUser;
+    $logisticsStaffUser = Auth::guard('logistics_staff')->user() ?? ($rawUser instanceof \App\Models\LogisticsStaff ? $rawUser : null);
+    $auctionAdminUser = Auth::guard('auction_admin')->user() ?? ($rawUser instanceof \App\Models\AuctionAdmin ? $rawUser : null);
+    $authUser = $webUser ?: ($adminUser ?: ($logisticsStaffUser ?: $auctionAdminUser));
     $isAuthed = (bool) $authUser;
     $adminPath = trim((string) config('app.admin_path', 'admin'), '/');
     $onAdminArea = $adminPath !== '' && (request()->is($adminPath) || request()->is($adminPath . '/*'));
@@ -298,9 +301,9 @@
     }
     // Full admin chrome only on admin URLs — both guards can be logged in at once (same session).
     $showFullAdminSidebar = (bool) $adminUser && $onAdminArea;
-    $displayUser = ($onAdminArea && $adminUser) ? $adminUser : ($webUser ?? $adminUser);
-    $webUnreadCount = $webUser ? (int) $webUser->unreadNotifications()->count() : 0;
-    $isAuthPage = request()->routeIs('login', 'register', 'password.*', 'admin.login', 'admin.2fa.*');
+    $displayUser = ($onAdminArea && $adminUser) ? $adminUser : ($authUser ?? null);
+    $webUnreadCount = ($webUser && method_exists($webUser, 'unreadNotifications')) ? (int) $webUser->unreadNotifications()->count() : 0;
+    $isAuthPage = request()->routeIs('login', 'register', 'password.*', 'admin.login', 'admin.2fa.*', 'logistics.ops.login');
     $showDashboardChrome = $isAuthed && ! $isAuthPage;
 ?>
 <body class="<?php echo e($showDashboardChrome ? 'dashboard-body' : ''); ?>">
@@ -425,17 +428,50 @@
                     <?php endif; ?>
                 </div>
             </div>
+            <?php elseif($logisticsStaffUser && request()->routeIs('logistics.ops.*')): ?>
+            <div class="nav-section">Logistics Ops</div>
+            <div class="nav-item <?php echo e(Request::routeIs('logistics.ops.dashboard') ? 'active' : ''); ?>">
+                <a href="<?php echo e(route('logistics.ops.dashboard')); ?>"><i class="fa-solid fa-gauge-high"></i> <span class="nav-text">Dashboard</span></a>
+            </div>
+            <div class="nav-item <?php echo e(Request::routeIs('logistics.ops.orders.*') ? 'active' : ''); ?>">
+                <a href="<?php echo e(route('logistics.ops.orders.index')); ?>"><i class="fa-solid fa-boxes-stacked"></i> <span class="nav-text">Orders</span></a>
+            </div>
+            <?php if(method_exists($logisticsStaffUser, 'hasPermission') && $logisticsStaffUser->hasPermission('logistics.shipments.monitor')): ?>
+            <div class="nav-item <?php echo e(Request::routeIs('logistics.ops.shipments.*') ? 'active' : ''); ?>">
+                <a href="<?php echo e(route('logistics.ops.shipments.index')); ?>"><i class="fa-solid fa-truck-fast"></i> <span class="nav-text">Shipments</span></a>
+            </div>
+            <?php endif; ?>
+            <?php if(method_exists($logisticsStaffUser, 'hasPermission') && $logisticsStaffUser->hasPermission('logistics.agents.view')): ?>
+            <div class="nav-item <?php echo e(Request::routeIs('logistics.ops.agents.*') ? 'active' : ''); ?>">
+                <a href="<?php echo e(route('logistics.ops.agents.index')); ?>"><i class="fa-solid fa-people-carry-box"></i> <span class="nav-text">Agents</span></a>
+            </div>
+            <?php endif; ?>
+            <?php if(method_exists($logisticsStaffUser, 'hasPermission') && $logisticsStaffUser->hasPermission('logistics.centers.manage')): ?>
+            <div class="nav-item <?php echo e(Request::routeIs('logistics.ops.centers.*') ? 'active' : ''); ?>">
+                <a href="<?php echo e(route('logistics.ops.centers.index')); ?>"><i class="fa-solid fa-warehouse"></i> <span class="nav-text">Centers</span></a>
+            </div>
+            <?php endif; ?>
+            <?php if(method_exists($logisticsStaffUser, 'hasPermission') && $logisticsStaffUser->hasPermission('logistics.inventory.view')): ?>
+            <div class="nav-item <?php echo e(Request::routeIs('logistics.ops.inventory.*') ? 'active' : ''); ?>">
+                <a href="<?php echo e(route('logistics.ops.inventory.index')); ?>"><i class="fa-solid fa-boxes-packing"></i> <span class="nav-text">Inventory</span></a>
+            </div>
+            <?php endif; ?>
+            <?php if(method_exists($logisticsStaffUser, 'hasPermission') && $logisticsStaffUser->hasPermission('logistics.analytics.view')): ?>
+            <div class="nav-item <?php echo e(Request::routeIs('logistics.ops.analytics.*') ? 'active' : ''); ?>">
+                <a href="<?php echo e(route('logistics.ops.analytics.index')); ?>"><i class="fa-solid fa-chart-pie"></i> <span class="nav-text">Analytics</span></a>
+            </div>
+            <?php endif; ?>
             <?php elseif($webUser): ?>
             <div class="nav-section">Main Menu</div>
             <div class="nav-item <?php echo e(Request::routeIs('dashboard') ? 'active' : ''); ?>">
                 <a href="<?php echo e(route('dashboard')); ?>"><i class="fa-solid fa-house"></i> <span class="nav-text">Overview</span></a>
             </div>
             <div class="nav-item <?php echo e(Request::routeIs('agent.*') ? 'active' : ''); ?>">
-                <?php if($webUser->isApprovedEnrollmentAgent()): ?>
+                <?php if(method_exists($webUser, 'isApprovedEnrollmentAgent') && $webUser->isApprovedEnrollmentAgent()): ?>
                     <a href="<?php echo e(route('agent.dashboard')); ?>" class="text-warning font-weight-bold">
                         <i class="fa-solid fa-id-card-clip text-warning"></i> <span class="nav-text">Enrollment Agent</span>
                     </a>
-                <?php elseif($webUser->enrollmentAgent): ?>
+                <?php elseif(isset($webUser->enrollmentAgent) && $webUser->enrollmentAgent): ?>
                     <a href="<?php echo e(route('agent.onboarding.index')); ?>">
                         <i class="fa-solid fa-user-shield text-info"></i> <span class="nav-text">Enrollment Agent</span>
                     </a>

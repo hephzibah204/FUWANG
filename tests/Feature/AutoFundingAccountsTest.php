@@ -12,13 +12,14 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class AutoFundingAccountsTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @test */
+    #[Test]
     public function it_generates_and_persists_reserved_accounts()
     {
         $this->withoutMiddleware(ValidateCsrfToken::class);
@@ -111,7 +112,7 @@ class AutoFundingAccountsTest extends TestCase
         $this->assertNotEmpty($detail->account_reference);
     }
 
-    /** @test */
+    #[Test]
     public function regenerate_is_forbidden_for_non_admin_users()
     {
         $this->withoutMiddleware(ValidateCsrfToken::class);

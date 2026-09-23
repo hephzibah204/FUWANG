@@ -29,7 +29,7 @@ class AgentRegistrationController extends Controller
     {
         $q = trim((string) $request->query('q', ''));
 
-        if (strlen($q) < 1) {
+        if (strlen($q) < 3) {
             return response()->json(['agents' => []]);
         }
 
@@ -115,9 +115,10 @@ class AgentRegistrationController extends Controller
         if (!$user) {
             $existingUser = User::where('email', $validated['email'])->first();
             if ($existingUser) {
+                $loginUrl = route('login') . '?email=' . urlencode($validated['email']);
                 return back()
                     ->withInput()
-                    ->withErrors(['email' => 'An account with this email address already exists. Please log in first to link your enrollment agent profile.']);
+                    ->withErrors(['email' => "An account with this email address already exists. Please <a href='{$loginUrl}' class='alert-link fw-bold text-decoration-underline'>log in here</a> first to link your enrollment agent profile."]);
             }
 
             $user = User::create([
@@ -201,7 +202,7 @@ class AgentRegistrationController extends Controller
                 'nin_server_status' => $ninServerStatus,
                 'nin_verification_meta' => $ninVerificationMeta,
                 'has_machine' => (bool)$validated['has_machine'],
-                'machine_imei' => $validated['machine_imei'] ?? 'NOT_ASSIGNED',
+                'machine_imei' => (bool)$validated['has_machine'] ? ($validated['machine_imei'] ?? null) : null,
                 'status' => 'pending',
                 'onboarding_step' => 'basic_info',
             ]
@@ -210,15 +211,23 @@ class AgentRegistrationController extends Controller
         // Mark pre-approved record as claimed using atomic lock inside transaction
         if ($validated['agent_type'] === 'existing') {
             $code = $validated['company_agent_code'] ?? null;
-            $name = $finalFullName ?: ($validated['full_name'] ?? null);
+            $email = $validated['email'] ?? null;
+            $phone = $validated['phone_number'] ?? null;
 
-            DB::transaction(function () use ($code, $name, $user, $agent) {
+            DB::transaction(function () use ($code, $email, $phone, $user, $agent) {
                 $preApprovedQuery = PreApprovedAgent::where('is_claimed', false);
 
                 if (!empty($code)) {
                     $preApproved = $preApprovedQuery->where('agent_code', $code)->lockForUpdate()->first();
-                } elseif (!empty($name)) {
-                    $preApproved = $preApprovedQuery->where('full_name', $name)->lockForUpdate()->first();
+                } elseif (!empty($email) || !empty($phone)) {
+                    $preApproved = $preApprovedQuery->where(function ($q) use ($email, $phone) {
+                        if (!empty($email)) {
+                            $q->where('email', $email);
+                        }
+                        if (!empty($phone)) {
+                            $q->orWhere('phone_number', $phone);
+                        }
+                    })->lockForUpdate()->first();
                 } else {
                     $preApproved = null;
                 }

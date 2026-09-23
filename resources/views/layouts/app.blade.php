@@ -139,11 +139,11 @@
 
         <nav class="sidebar-nav">
             <div class="nav-section">Main Menu</div>
-            @if(Auth::user()->isApprovedEnrollmentAgent())
+            @if(Auth::user() && method_exists(Auth::user(), 'isApprovedEnrollmentAgent') && Auth::user()->isApprovedEnrollmentAgent())
                 <div class="nav-item {{ Request::routeIs('agent.dashboard') ? 'active' : '' }}">
                     <a href="{{ route('agent.dashboard') }}" class="text-warning fw-bold"><i class="fa-solid fa-id-card-clip text-warning"></i> Agency Dashboard</a>
                 </div>
-            @elseif(Auth::user()->enrollmentAgent)
+            @elseif(Auth::user() && isset(Auth::user()->enrollmentAgent) && Auth::user()->enrollmentAgent)
                 <div class="nav-item {{ Request::routeIs('agent.onboarding.*') ? 'active' : '' }}">
                     <a href="{{ route('agent.onboarding.index') }}"><i class="fa-solid fa-user-shield text-info"></i> Enrollment Agent</a>
                 </div>

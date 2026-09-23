@@ -37,22 +37,23 @@ class AgentOnboardingController extends Controller
             return redirect()->route('parcels.dashboard');
         }
 
-        // Create the Shop Location
-        $shop = ParcelShop::create([
-            'name' => $request->input('shop_name'),
-            'address' => $request->input('shop_address'),
-            'state' => $request->input('state'),
-            'city' => $request->input('city'),
-            'is_active' => false,
-        ]);
+        // Create Shop and Agent in a transaction
+        \Illuminate\Support\Facades\DB::transaction(function () use ($request, $user) {
+            $shop = ParcelShop::create([
+                'name' => $request->input('shop_name'),
+                'address' => $request->input('shop_address'),
+                'state' => $request->input('state'),
+                'city' => $request->input('city'),
+                'is_active' => false,
+            ]);
 
-        // Create the Agent Profile linked to the User and Shop
-        ParcelAgent::create([
-            'user_id' => $user->id,
-            'shop_id' => $shop->id,
-            'nin_number' => $request->input('nin_number'),
-            'status' => 'pending',
-        ]);
+            ParcelAgent::create([
+                'user_id' => $user->id,
+                'shop_id' => $shop->id,
+                'nin_number' => $request->input('nin_number'),
+                'status' => 'pending',
+            ]);
+        });
 
         return redirect()->route('parcels.dashboard')->with('success', 'Your application to become a Parcel Agent has been submitted. Please wait for admin approval.');
     }

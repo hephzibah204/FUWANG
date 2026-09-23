@@ -9,6 +9,7 @@ use App\Models\VtuTransaction;
 use App\Services\EducationEpinConsolidationService;
 use App\Services\EpinCatalogService;
 use App\Services\VtuHubService;
+use App\Services\WalletService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -364,17 +365,14 @@ class VTUController extends Controller
         ]);
 
         $user = Auth::user();
+        if (! $user) {
+            return response()->json(['status' => false, 'message' => 'Unauthenticated.'], 401);
+        }
 
         $unitCost = $request->pin_type === 'data' ? (float) $request->data_plan_price : (float) $request->amount;
         $totalCost = $unitCost * (int) $request->quantity;
 
-        // Check user balance
-        $balance = DB::table('account_balances')->where('user_id', $user->id)->first();
-        if (! $balance || $balance->user_balance < $totalCost) {
-            return response()->json(['status' => false, 'message' => 'Insufficient wallet balance.']);
-        }
-
-        // Get API Keys from Admin Settings
+        // Get API Keys from Admin Settings before debiting
         $apiCenter = DB::table('api_centers')->first();
         $userId = $apiCenter->clubkonnect_userid ?? null;
         $apiKey = $apiCenter->clubkonnect_apikey ?? null;
@@ -384,90 +382,90 @@ class VTUController extends Controller
         }
 
         $requestId = 'RCP_'.time().'_'.Str::random(6);
+        $orderType = $request->pin_type === 'data' ? 'Data PIN Printing' : 'Recharge Card Printing';
 
-        if ($request->pin_type === 'data') {
-            // Data PIN API Call
-            $response = Http::get('https://www.nellobytesystems.com/APIDatabundleEPINV1.asp', [
-                'UserID' => $userId,
-                'APIKey' => $apiKey,
-                'MobileNetwork' => $request->network,
-                'DataPlan' => $request->data_plan,
-                'Quantity' => $request->quantity,
-                'RequestID' => $requestId,
+        $walletService = app(WalletService::class);
+        $debitResult = $walletService->debit($user, $totalCost, $orderType, 'RCP', $requestId);
+
+        if (! ($debitResult['ok'] ?? false)) {
+            return response()->json([
+                'status' => false,
+                'message' => $debitResult['message'] ?? 'Insufficient wallet balance.',
             ]);
-            $data = $response->json();
-
-            // Check for errors
-            if (isset($data['status']) && in_array($data['status'], ['API_ERROR', 'INVALID_CREDENTIALS', 'MISSING_CREDENTIALS', 'INVALID_DATAPLAN', 'MISSING_DATAPLAN'])) {
-                return response()->json(['status' => false, 'message' => 'Provider error: '.($data['status'] ?? 'Unknown')]);
-            }
-
-            if (isset($data['status']) && $data['status'] === 'ORDER_RECEIVED') {
-                // Deduct balance
-                DB::table('account_balances')->where('user_id', $user->id)->update([
-                    'user_balance' => $balance->user_balance - $totalCost,
-                ]);
-
-                // Log Transaction
-                Transaction::create([
-                    'user_id' => $user->id,
-                    'reference' => $requestId,
-                    'type' => 'Data PIN Printing',
-                    'amount' => $totalCost,
-                    'status' => 'pending',
-                    'description' => "Ordered {$request->quantity} Data PINs (OrderID: {$data['orderid']})",
-                    'provider_reference' => $data['orderid'] ?? null,
-                ]);
-
-                return response()->json([
-                    'status' => true,
-                    'message' => 'Data PIN order received successfully. They are being processed.',
-                    'order_id' => $data['orderid'],
-                    'async' => true,
-                ]);
-            }
-        } else {
-            // Airtime PIN API Call
-            $response = Http::get('https://www.nellobytesystems.com/APIEPINV1.asp', [
-                'UserID' => $userId,
-                'APIKey' => $apiKey,
-                'MobileNetwork' => $request->network,
-                'Value' => $request->amount,
-                'Quantity' => $request->quantity,
-                'RequestID' => $requestId,
-            ]);
-            $data = $response->json();
-
-            if (isset($data['status']) && $data['status'] === 'API_ERROR') {
-                return response()->json(['status' => false, 'message' => 'Provider error: '.($data['msg'] ?? 'Unknown')]);
-            }
-
-            if (isset($data['TXN_EPIN']) && is_array($data['TXN_EPIN'])) {
-                // Deduct balance
-                DB::table('account_balances')->where('user_id', $user->id)->update([
-                    'user_balance' => $balance->user_balance - $totalCost,
-                ]);
-
-                // Log Transaction
-                Transaction::create([
-                    'user_id' => $user->id,
-                    'reference' => $requestId,
-                    'type' => 'Recharge Card Printing',
-                    'amount' => $totalCost,
-                    'status' => 'success',
-                    'description' => "Printed {$request->quantity} x ₦{$request->amount} Recharge Cards",
-                ]);
-
-                return response()->json([
-                    'status' => true,
-                    'message' => 'Pins generated successfully.',
-                    'pins' => $data['TXN_EPIN'],
-                    'async' => false,
-                ]);
-            }
         }
 
-        return response()->json(['status' => false, 'message' => 'Failed to generate pins. Please try again or contact support.']);
+        $tx = $debitResult['tx'] ?? null;
+
+        try {
+            if ($request->pin_type === 'data') {
+                // Data PIN API Call
+                $response = Http::timeout(45)->get('https://www.nellobytesystems.com/APIDatabundleEPINV1.asp', [
+                    'UserID' => $userId,
+                    'APIKey' => $apiKey,
+                    'MobileNetwork' => $request->network,
+                    'DataPlan' => $request->data_plan,
+                    'Quantity' => $request->quantity,
+                    'RequestID' => $requestId,
+                ]);
+                $data = $response->json();
+
+                // Check for errors
+                if (isset($data['status']) && in_array($data['status'], ['API_ERROR', 'INVALID_CREDENTIALS', 'MISSING_CREDENTIALS', 'INVALID_DATAPLAN', 'MISSING_DATAPLAN'])) {
+                    $walletService->credit($user, $totalCost, 'Refund: ' . $orderType, 'REF-' . $requestId);
+                    if ($tx) $tx->update(['status' => 'failed']);
+                    return response()->json(['status' => false, 'message' => 'Provider error: '.($data['status'] ?? 'Unknown')]);
+                }
+
+                if (isset($data['status']) && $data['status'] === 'ORDER_RECEIVED') {
+                    if ($tx) $tx->update(['status' => 'success']);
+
+                    return response()->json([
+                        'status' => true,
+                        'message' => 'Data PIN order received successfully. They are being processed.',
+                        'order_id' => $data['orderid'],
+                        'async' => true,
+                    ]);
+                }
+            } else {
+                // Airtime PIN API Call
+                $response = Http::timeout(45)->get('https://www.nellobytesystems.com/APIEPINV1.asp', [
+                    'UserID' => $userId,
+                    'APIKey' => $apiKey,
+                    'MobileNetwork' => $request->network,
+                    'Value' => $request->amount,
+                    'Quantity' => $request->quantity,
+                    'RequestID' => $requestId,
+                ]);
+                $data = $response->json();
+
+                if (isset($data['status']) && $data['status'] === 'API_ERROR') {
+                    $walletService->credit($user, $totalCost, 'Refund: ' . $orderType, 'REF-' . $requestId);
+                    if ($tx) $tx->update(['status' => 'failed']);
+                    return response()->json(['status' => false, 'message' => 'Provider error: '.($data['msg'] ?? 'Unknown')]);
+                }
+
+                if (isset($data['TXN_EPIN']) && is_array($data['TXN_EPIN'])) {
+                    if ($tx) $tx->update(['status' => 'success']);
+
+                    return response()->json([
+                        'status' => true,
+                        'message' => 'Pins generated successfully.',
+                        'pins' => $data['TXN_EPIN'],
+                        'async' => false,
+                    ]);
+                }
+            }
+        } catch (\Throwable $e) {
+            $walletService->credit($user, $totalCost, 'Refund: ' . $orderType, 'REF-' . $requestId);
+            if ($tx) $tx->update(['status' => 'failed']);
+            return response()->json(['status' => false, 'message' => 'Network error connecting to card provider. Your wallet was refunded.']);
+        }
+
+        // If provider responded without expected payload, refund and fail safely
+        $walletService->credit($user, $totalCost, 'Refund: ' . $orderType, 'REF-' . $requestId);
+        if ($tx) $tx->update(['status' => 'failed']);
+
+        return response()->json(['status' => false, 'message' => 'Failed to generate pins. Your wallet was refunded.']);
     }
 
     public function queryRechargeOrder(Request $request)

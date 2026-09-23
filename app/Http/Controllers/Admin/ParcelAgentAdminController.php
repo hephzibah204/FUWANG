@@ -20,18 +20,20 @@ class ParcelAgentAdminController extends Controller
             'status' => 'required|in:pending,approved,suspended',
         ]);
 
-        $agent->status = $request->input('status');
-        if ($agent->status === 'approved' && is_null($agent->verified_at)) {
-            $agent->verified_at = now();
-        }
-        $agent->save();
+        \Illuminate\Support\Facades\DB::transaction(function () use ($agent, $request) {
+            $agent->status = $request->input('status');
+            if ($agent->status === 'approved' && is_null($agent->verified_at)) {
+                $agent->verified_at = now();
+            }
+            $agent->save();
 
-        // Ensure the associated shop is also active if approved
-        if ($agent->status === 'approved') {
-            $agent->shop->update(['is_active' => true]);
-        } elseif ($agent->status === 'suspended') {
-            $agent->shop->update(['is_active' => false]);
-        }
+            // Ensure the associated shop is also active if approved
+            if ($agent->status === 'approved') {
+                $agent->shop->update(['is_active' => true]);
+            } elseif ($agent->status === 'suspended') {
+                $agent->shop->update(['is_active' => false]);
+            }
+        });
 
         return back()->with('success', "Agent status updated to {$agent->status}.");
     }

@@ -140,9 +140,20 @@ class AdminAgentController extends Controller
 
         $file = $request->file('agent_file');
         $path = $file->getRealPath();
+        $extension = strtolower($file->getClientOriginalExtension());
 
-        try {
-            $pythonScript = <<<PYTHON
+        $data = [];
+
+        // Check if python is available
+        $hasPython = false;
+        @exec('python --version 2>&1', $pyOutput, $pyStatus);
+        if ($pyStatus === 0) {
+            $hasPython = true;
+        }
+
+        if ($hasPython) {
+            try {
+                $pythonScript = <<<PYTHON
 import openpyxl, json, sys, csv
 
 filePath = r"{$path}"
@@ -188,38 +199,65 @@ for row in rows[start_row:]:
 print(json.dumps(output))
 PYTHON;
 
-            $tmpScript = sys_get_temp_dir() . '/parse_upload_' . time() . '.py';
-            file_put_contents($tmpScript, $pythonScript);
+                $tmpScript = sys_get_temp_dir() . '/parse_upload_' . time() . '.py';
+                file_put_contents($tmpScript, $pythonScript);
 
-            $output = shell_exec("python " . escapeshellarg($tmpScript));
-            @unlink($tmpScript);
+                $output = shell_exec("python " . escapeshellarg($tmpScript));
+                @unlink($tmpScript);
 
-            $data = json_decode($output, true);
-
-            if (!is_array($data) || empty($data)) {
-                return back()->with('error', 'Could not parse records from uploaded file. Please check Excel headers.');
+                $data = json_decode($output, true);
+            } catch (\Throwable $e) {
+                $data = [];
             }
-
-            $count = 0;
-            foreach ($data as $item) {
-                $fullName = trim(($item['first_name'] ?? '') . ' ' . ($item['last_name'] ?? ''));
-
-                \App\Models\PreApprovedAgent::updateOrCreate(
-                    ['agent_code' => $item['agent_code']],
-                    [
-                        'first_name' => $item['first_name'],
-                        'last_name' => $item['last_name'],
-                        'full_name' => $fullName,
-                        'email' => $item['email'],
-                        'phone_number' => $item['phone_number'],
-                    ]
-                );
-                $count++;
-            }
-
-            return back()->with('success', "Successfully imported {$count} pre-approved existing enrollment agents.");
-        } catch (\Throwable $e) {
-            return back()->with('error', 'Upload failed: ' . $e->getMessage());
         }
+
+        // Native PHP CSV fallback
+        if (empty($data) && $extension === 'csv') {
+            if (($handle = fopen($path, 'r')) !== false) {
+                $headerSeen = false;
+                while (($row = fgetcsv($handle, 1000, ',')) !== false) {
+                    if (!$row || count($row) < 3) continue;
+                    $rowStr = implode(' ', $row);
+                    if (str_contains(strtolower($rowStr), 'agent code')) {
+                        $headerSeen = true;
+                        continue;
+                    }
+                    $code = str_replace('"', '', trim($row[5] ?? ''));
+                    if (!empty($code)) {
+                        $data[] = [
+                            'first_name' => str_replace('"', '', trim($row[1] ?? '')),
+                            'last_name' => str_replace('"', '', trim($row[2] ?? '')),
+                            'email' => str_replace('"', '', trim($row[3] ?? '')),
+                            'phone_number' => str_replace('"', '', trim($row[4] ?? '')),
+                            'agent_code' => $code,
+                        ];
+                    }
+                }
+                fclose($handle);
+            }
+        }
+
+        if (!is_array($data) || empty($data)) {
+            return back()->with('error', 'Could not parse records from uploaded file. Ensure headers match agent code layout.');
+        }
+
+        $count = 0;
+        foreach ($data as $item) {
+            $fullName = trim(($item['first_name'] ?? '') . ' ' . ($item['last_name'] ?? ''));
+
+            \App\Models\PreApprovedAgent::updateOrCreate(
+                ['agent_code' => $item['agent_code']],
+                [
+                    'first_name' => $item['first_name'],
+                    'last_name' => $item['last_name'],
+                    'full_name' => $fullName,
+                    'email' => $item['email'],
+                    'phone_number' => $item['phone_number'],
+                ]
+            );
+            $count++;
+        }
+
+        return back()->with('success', "Successfully imported {$count} pre-approved existing enrollment agents.");
     }
 }

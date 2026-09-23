@@ -244,4 +244,12 @@ class User extends Authenticatable implements CanResetPasswordContract, MustVeri
 
         return session('active_dashboard_mode', 'agency');
     }
+
+    /**
+     * Get the user's wallet balance from AccountBalance.
+     */
+    public function getWalletBalanceAttribute(): float
+    {
+        return (float) ($this->balance?->user_balance ?? 0);
+    }
 }

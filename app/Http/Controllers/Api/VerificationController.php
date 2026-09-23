@@ -19,10 +19,10 @@ class VerificationController extends Controller
     {
         $request->validate([
             'number' => ['required', 'string'],
-            'firstname' => ['required', 'string'],
-            'lastname' => ['required', 'string'],
-            'dob' => ['required', 'string'],
-            'mode' => ['required', 'in:nin,phone'],
+            'firstname' => ['nullable', 'string'],
+            'lastname' => ['nullable', 'string'],
+            'dob' => ['nullable', 'string'],
+            'mode' => ['required', 'in:nin,phone,demographic'],
             'api_provider_id' => ['nullable', 'exists:custom_apis,id'],
         ]);
 

@@ -52,31 +52,33 @@ class DropOffController extends Controller
         // 3.5. Get Courier ID dynamically
         $courierId = \App\Models\ParcelCourier::where('name', 'FuwaPost')->value('id') ?? 1;
 
-        // 4. Create or update Parcel record in Shop Inventory
-        $parcel = Parcel::updateOrCreate(
-            ['tracking_number' => $trackingNumber],
-            [
-                'courier_id' => $courierId,
-                'shop_id' => $agent->shop_id,
-                'status' => 'customer_dropped_off',
-                'condition' => $request->input('condition'),
-                'weight' => $details['weight'] ?? null,
-                'price' => $details['price'] ?? null,
-                'sender_data' => $parcelInfo['sender'],
-                'receiver_data' => $parcelInfo['receiver'],
-            ]
-        );
+        // 4. Wrap DB operations in a transaction
+        \Illuminate\Support\Facades\DB::transaction(function () use ($trackingNumber, $courierId, $agent, $request, $details, $parcelInfo, $adapter) {
+            $parcel = Parcel::updateOrCreate(
+                ['tracking_number' => $trackingNumber],
+                [
+                    'courier_id' => $courierId,
+                    'shop_id' => $agent->shop_id,
+                    'status' => 'customer_dropped_off',
+                    'condition' => $request->input('condition'),
+                    'weight' => $details['weight'] ?? null,
+                    'price' => $details['price'] ?? null,
+                    'sender_data' => $parcelInfo['sender'],
+                    'receiver_data' => $parcelInfo['receiver'],
+                ]
+            );
 
-        // 5. Log Chain of Custody Event
-        ParcelCustodyEvent::create([
-            'parcel_id' => $parcel->id,
-            'agent_id' => $agent->id,
-            'event_type' => 'customer_to_agent',
-            'notes' => 'Condition: ' . $parcel->condition,
-        ]);
+            // 5. Log Chain of Custody Event
+            ParcelCustodyEvent::create([
+                'parcel_id' => $parcel->id,
+                'agent_id' => $agent->id,
+                'event_type' => 'customer_to_agent',
+                'notes' => 'Condition: ' . $parcel->condition,
+            ]);
 
-        // 6. Sync back to Courier
-        $adapter->updateParcelStatus($trackingNumber, 'customer_dropped_off');
+            // 6. Sync back to Courier
+            $adapter->updateParcelStatus($trackingNumber, 'customer_dropped_off');
+        });
 
         return redirect()->route('parcels.dashboard')->with('success', "Parcel {$trackingNumber} successfully dropped off and added to inventory.");
     }
@@ -116,28 +118,30 @@ class DropOffController extends Controller
 
         $courierId = \App\Models\ParcelCourier::where('name', 'FuwaPost')->value('id') ?? 1;
 
-        $parcel = Parcel::updateOrCreate(
-            ['tracking_number' => $trackingNumber],
-            [
-                'courier_id' => $courierId,
-                'shop_id' => $agent->shop_id,
-                'status' => 'driver_dropped_off', // Ready for customer pickup
-                'condition' => $request->input('condition'),
-                'weight' => $details['weight'] ?? null,
-                'price' => $details['price'] ?? null,
-                'sender_data' => $parcelInfo['sender'],
-                'receiver_data' => $parcelInfo['receiver'],
-            ]
-        );
+        \Illuminate\Support\Facades\DB::transaction(function () use ($trackingNumber, $courierId, $agent, $request, $details, $parcelInfo, $adapter) {
+            $parcel = Parcel::updateOrCreate(
+                ['tracking_number' => $trackingNumber],
+                [
+                    'courier_id' => $courierId,
+                    'shop_id' => $agent->shop_id,
+                    'status' => 'driver_dropped_off', // Ready for customer pickup
+                    'condition' => $request->input('condition'),
+                    'weight' => $details['weight'] ?? null,
+                    'price' => $details['price'] ?? null,
+                    'sender_data' => $parcelInfo['sender'],
+                    'receiver_data' => $parcelInfo['receiver'],
+                ]
+            );
 
-        ParcelCustodyEvent::create([
-            'parcel_id' => $parcel->id,
-            'agent_id' => $agent->id,
-            'event_type' => 'driver_to_agent',
-            'notes' => 'Condition: ' . $parcel->condition,
-        ]);
+            ParcelCustodyEvent::create([
+                'parcel_id' => $parcel->id,
+                'agent_id' => $agent->id,
+                'event_type' => 'driver_to_agent',
+                'notes' => 'Condition: ' . $parcel->condition,
+            ]);
 
-        $adapter->updateParcelStatus($trackingNumber, 'driver_dropped_off');
+            $adapter->updateParcelStatus($trackingNumber, 'driver_dropped_off');
+        });
 
         return redirect()->route('parcels.dashboard')->with('success', "Parcel {$trackingNumber} received from driver. Ready for customer pickup.");
     }

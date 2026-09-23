@@ -8,6 +8,10 @@ const gateways = [
 
 test.describe('Wallet funding gateway modals', () => {
   test.beforeEach(async ({ page }) => {
+    await page.route(/.*(paystack\.co|checkout\.flutterwave\.com|sdk\.monnify\.com).*/, (route) => {
+      route.fulfill({ status: 200, contentType: 'application/javascript', body: '' });
+    });
+
     await page.addInitScript(() => {
       (window as any).__sdkCalls = [];
 

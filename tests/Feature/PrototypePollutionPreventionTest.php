@@ -2,11 +2,12 @@
 
 namespace Tests\Feature;
 
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class PrototypePollutionPreventionTest extends TestCase
 {
-    /** @test */
+    #[Test]
     public function it_allows_safe_requests_to_pass()
     {
         $response = $this->postJson('/api/logistics/ops/login', [
@@ -18,7 +19,7 @@ class PrototypePollutionPreventionTest extends TestCase
         $this->assertNotEquals(400, $response->getStatusCode());
     }
 
-    /** @test */
+    #[Test]
     public function it_blocks_requests_containing_proto_in_payload_keys()
     {
         $response = $this->postJson('/api/logistics/ops/login', [
@@ -35,7 +36,7 @@ class PrototypePollutionPreventionTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function it_blocks_requests_containing_proto_in_payload_nested_keys()
     {
         $response = $this->postJson('/api/logistics/ops/login', [
@@ -50,7 +51,7 @@ class PrototypePollutionPreventionTest extends TestCase
         $response->assertStatus(400);
     }
 
-    /** @test */
+    #[Test]
     public function it_blocks_requests_containing_proto_in_string_values()
     {
         $response = $this->postJson('/api/logistics/ops/login', [

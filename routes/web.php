@@ -61,7 +61,7 @@ Route::post('/register',[App\Http\Controllers\Auth\RegisterController::class, 'r
 // Pre-login public Enrollment Agent Landing & Registration routes
 Route::get('/agents', [App\Http\Controllers\AgentLandingController::class, 'index'])->middleware('track.view:agent_landing')->name('agent.landing');
 Route::get('/agent/register', [App\Http\Controllers\Agent\AgentRegistrationController::class, 'showForm'])->name('agent.register');
-Route::get('/agent/search-preapproved', [App\Http\Controllers\Agent\AgentRegistrationController::class, 'searchPreApproved'])->name('agent.search_preapproved');
+Route::get('/agent/search-preapproved', [App\Http\Controllers\Agent\AgentRegistrationController::class, 'searchPreApproved'])->middleware('throttle:15,1')->name('agent.search_preapproved');
 Route::post('/agent/register', [App\Http\Controllers\Agent\AgentRegistrationController::class, 'store'])->name('agent.register.submit');
 Route::get('/auth/google/redirect', [GoogleAuthController::class, 'redirect'])->name('auth.google.redirect');
 Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])->name('auth.google.callback');

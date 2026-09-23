@@ -13,6 +13,7 @@ test.describe('Global Error Handling Modals', () => {
         });
 
         // Evaluate a fetch request in the browser context using the global axios instance
+        await page.waitForFunction(() => typeof window.axios !== 'undefined');
         await page.evaluate(() => {
             window.axios.post('/api/vtu/airtime').catch(() => {});
         });
@@ -41,6 +42,7 @@ test.describe('Global Error Handling Modals', () => {
             await route.fulfill({ status: 401, json: { message: 'Unauthenticated.' } });
         });
 
+        await page.waitForFunction(() => typeof window.axios !== 'undefined');
         await page.evaluate(() => {
             window.axios.get('/api/user/profile').catch(() => {});
         });
@@ -62,6 +64,7 @@ test.describe('Global Error Handling Modals', () => {
             await route.fulfill({ status: 500, json: { message: 'Internal Server Error' } });
         });
 
+        await page.waitForFunction(() => typeof window.axios !== 'undefined');
         await page.evaluate(() => {
             window.axios.get('/api/some-endpoint').catch(() => {});
         });
