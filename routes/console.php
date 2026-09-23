@@ -9,3 +9,5 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('app:aggregate-metrics')->everyTenMinutes();
+Schedule::command('agent:retry-pending-nin')->everyFifteenMinutes();
+Schedule::command('auction:process-status')->everyMinute();

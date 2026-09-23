@@ -182,13 +182,31 @@
                             </div>
                         </div>
 
-                        <!-- Company Agent Code Field -->
+                        <!-- Company Agent Code & Email OTP Claim Section -->
                         <div class="mt-3 pt-3 border-top border-secondary border-opacity-25">
-                            <div class="d-flex align-items-center justify-content-between mb-1">
-                                <label for="companyAgentCodeInput" class="text-white-50 small fw-bold mb-0">Company Agent Code / Station License ID</label>
-                                <span class="text-muted small" style="font-size: 0.75rem;">(Auto-filled on profile selection)</span>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="d-flex align-items-center justify-content-between mb-1">
+                                        <label for="companyAgentCodeInput" class="text-white-50 small fw-bold mb-0">Company Agent Code / Station License ID</label>
+                                        <span class="text-muted small" style="font-size: 0.75rem;">(Auto-filled)</span>
+                                    </div>
+                                    <input type="text" id="companyAgentCodeInput" name="company_agent_code" class="form-input text-white" value="{{ old('company_agent_code') }}" placeholder="e.g. FUWA-LO001">
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="d-flex align-items-center justify-content-between mb-1">
+                                        <label for="claimOtpInput" class="text-white-50 small fw-bold mb-0">Profile Claim Verification OTP <span class="text-danger">*</span></label>
+                                        <button type="button" id="sendOtpBtn" class="btn btn-link text-gold p-0 text-decoration-none small" style="font-size: 0.75rem;" disabled>
+                                            <i class="fa-solid fa-paper-plane me-1"></i> Send Email OTP
+                                        </button>
+                                    </div>
+                                    <div class="input-wrap">
+                                        <i class="fa-solid fa-key input-icon text-gold"></i>
+                                        <input type="text" id="claimOtpInput" name="claim_otp" maxlength="6" class="form-input text-white @error('claim_otp') is-invalid @enderror" value="{{ old('claim_otp') }}" placeholder="6-digit Email OTP">
+                                    </div>
+                                    <span id="otpStatusMsg" class="d-block small mt-1 text-muted" style="font-size: 0.75rem;">Select your profile above to send OTP.</span>
+                                    @error('claim_otp') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                                </div>
                             </div>
-                            <input type="text" id="companyAgentCodeInput" name="company_agent_code" class="form-input text-white" value="{{ old('company_agent_code') }}" placeholder="e.g. FUWA-LO001">
                         </div>
                     </div>
                 </div>
@@ -626,6 +644,9 @@ document.addEventListener('DOMContentLoaded', function () {
     let selectedIndex = -1;
     let currentResults = [];
 
+    const sendOtpBtn = document.getElementById('sendOtpBtn');
+    const otpStatusMsg = document.getElementById('otpStatusMsg');
+
     function selectAgent(agent) {
         if (codeInput) {
             codeInput.value = agent.agent_code;
@@ -644,6 +665,12 @@ document.addEventListener('DOMContentLoaded', function () {
             phoneInput.readOnly = true;
         }
 
+        if (sendOtpBtn) sendOtpBtn.disabled = false;
+        if (otpStatusMsg) {
+            otpStatusMsg.className = 'd-block small mt-1 text-gold';
+            otpStatusMsg.textContent = 'Click "Send Email OTP" to verify account ownership.';
+        }
+
         // Display Verified Banner
         if (verifiedName) verifiedName.textContent = agent.full_name;
         if (verifiedCode) verifiedCode.textContent = agent.agent_code;
@@ -657,6 +684,48 @@ document.addEventListener('DOMContentLoaded', function () {
         resultsContainer.classList.add('d-none');
     }
 
+    if (sendOtpBtn) {
+        sendOtpBtn.addEventListener('click', function() {
+            const code = codeInput ? codeInput.value : '';
+            if (!code) return;
+
+            sendOtpBtn.disabled = true;
+            sendOtpBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Sending...';
+
+            fetch(`{{ route('agent.send_claim_otp') }}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ company_agent_code: code })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.ok) {
+                    if (otpStatusMsg) {
+                        otpStatusMsg.className = 'd-block small mt-1 text-emerald';
+                        otpStatusMsg.innerHTML = '<i class="fa-solid fa-circle-check me-1"></i> ' + data.message;
+                    }
+                    sendOtpBtn.innerHTML = '<i class="fa-solid fa-check me-1"></i> Sent';
+                } else {
+                    if (otpStatusMsg) {
+                        otpStatusMsg.className = 'd-block small mt-1 text-danger';
+                        otpStatusMsg.textContent = data.message || 'Failed to send OTP.';
+                    }
+                    sendOtpBtn.disabled = false;
+                    sendOtpBtn.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> Resend OTP';
+                }
+            })
+            .catch(err => {
+                console.error('OTP send error:', err);
+                sendOtpBtn.disabled = false;
+                sendOtpBtn.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> Send Email OTP';
+            });
+        });
+    }
+
     function clearSelection() {
         searchInput.value = '';
         clearBtn.classList.add('d-none');
@@ -664,6 +733,11 @@ document.addEventListener('DOMContentLoaded', function () {
         if (nameInput) nameInput.readOnly = false;
         if (emailInput) emailInput.readOnly = false;
         if (phoneInput) phoneInput.readOnly = false;
+        if (sendOtpBtn) sendOtpBtn.disabled = true;
+        if (otpStatusMsg) {
+            otpStatusMsg.className = 'd-block small mt-1 text-muted';
+            otpStatusMsg.textContent = 'Select your profile above to send OTP.';
+        }
         if (verifiedBanner) verifiedBanner.classList.add('d-none');
         if (unmatchedNotice) unmatchedNotice.classList.add('d-none');
         resultsContainer.innerHTML = '';

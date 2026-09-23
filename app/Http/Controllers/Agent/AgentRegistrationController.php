@@ -93,6 +93,55 @@ class AgentRegistrationController extends Controller
         return response()->json(['agents' => $agents]);
     }
 
+    public function sendClaimOtp(Request $request)
+    {
+        $validated = $request->validate([
+            'company_agent_code' => ['required', 'string', 'max:50'],
+        ]);
+
+        $preApproved = PreApprovedAgent::where('agent_code', $validated['company_agent_code'])
+            ->where('is_claimed', false)
+            ->first();
+
+        if (!$preApproved) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Profile not found or already claimed.',
+            ], 422);
+        }
+
+        if (empty($preApproved->email)) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'This profile does not have a registered email address for OTP dispatch.',
+            ], 422);
+        }
+
+        $otp = (string) random_int(100000, 999999);
+        session([
+            'claim_otp_code_' . $preApproved->agent_code => $otp,
+            'claim_otp_expires_' . $preApproved->agent_code => now()->addMinutes(15),
+        ]);
+
+        try {
+            \Illuminate\Support\Facades\Mail::to($preApproved->email)->send(new \App\Mail\AgentClaimVerificationMail($preApproved, $otp));
+        } catch (\Throwable $e) {
+            Log::error('Failed to send claim verification email: ' . $e->getMessage());
+            return response()->json([
+                'ok' => false,
+                'message' => 'Unable to send verification email. Please contact support.',
+            ], 500);
+        }
+
+        [$emailUser, $domain] = explode('@', $preApproved->email, 2);
+        $maskedEmail = (strlen($emailUser) > 1 ? substr($emailUser, 0, 1) : 'a') . '***@' . $domain;
+
+        return response()->json([
+            'ok' => true,
+            'message' => "Verification OTP sent to {$maskedEmail}.",
+        ]);
+    }
+
     public function store(Request $request, AccountKycIdentityService $kycService)
     {
         $agentType = $request->input('agent_type', 'new');
@@ -100,6 +149,7 @@ class AgentRegistrationController extends Controller
         $rules = [
             'agent_type' => ['required', 'string', 'in:existing,new'],
             'company_agent_code' => ['required_if:agent_type,existing', 'nullable', 'string', 'max:50'],
+            'claim_otp' => ['required_if:agent_type,existing', 'nullable', 'string', 'digits:6'],
             'full_name' => ['required', 'string', 'max:255'],
             'phone_number' => ['required', 'string', 'max:20'],
             'email' => ['required', 'email', 'max:255'],
@@ -119,7 +169,7 @@ class AgentRegistrationController extends Controller
             $validated['has_machine'] = true;
         }
 
-        // If existing agent profile selected, verify and claim atomic pre-approved roster profile
+        // If existing agent profile selected, verify OTP and claim atomic pre-approved roster profile
         $preApprovedRecord = null;
         if ($validated['agent_type'] === 'existing') {
             $code = $validated['company_agent_code'] ?? null;
@@ -160,6 +210,18 @@ class AgentRegistrationController extends Controller
                     return back()
                         ->withInput()
                         ->withErrors(['company_agent_code' => 'This pre-approved agent profile has already been claimed by another registered user account. Multi-claiming is prohibited.']);
+                }
+            }
+
+            // Verify Email Claim OTP if preApprovedRecord exists
+            if ($preApprovedRecord) {
+                $savedOtp = session('claim_otp_code_' . $preApprovedRecord->agent_code);
+                $expiresAt = session('claim_otp_expires_' . $preApprovedRecord->agent_code);
+
+                if (!$savedOtp || !$expiresAt || now()->greaterThan($expiresAt) || $savedOtp !== $validated['claim_otp']) {
+                    return back()
+                        ->withInput()
+                        ->withErrors(['claim_otp' => 'Invalid or expired email verification OTP. Please click "Send Email OTP" to receive a fresh verification code.']);
                 }
             }
 
