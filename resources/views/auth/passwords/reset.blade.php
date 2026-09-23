@@ -13,7 +13,7 @@
             <div class="col-12 col-md-8 col-lg-5">
                 <div class="text-center mb-4">
                     <a href="{{ url('/') }}" class="text-decoration-none d-inline-block">
-                        @php $logoUrl = \App\Models\SystemSetting::get('site_logo_url'); @endphp
+                        @php $logoUrl = \App\Models\SystemSetting::get('site_logo_url', '/images/logo.png'); @endphp
                         @if($logoUrl)
                             <img src="{{ $logoUrl }}" alt="Logo" style="max-height: 48px; margin-bottom: 1rem;">
                         @else

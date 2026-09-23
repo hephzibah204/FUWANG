@@ -275,11 +275,11 @@
 @endsection
 
 @push('styles')
-<link rel="stylesheet" href="{{ $assetPrefix . '/assets/nexus/css/home-sales.css' }}">
+<link rel="stylesheet" href="{{ $assetPrefix . '/assets/nexus/css/home-sales.css?v=' . @filemtime(public_path('assets/nexus/css/home-sales.css')) }}">
 @endpush
 
 @push('scripts')
-<script src="{{ $assetPrefix . '/assets/nexus/js/home-sales.js' }}" defer></script>
+<script src="{{ $assetPrefix . '/assets/nexus/js/home-sales.js?v=' . @filemtime(public_path('assets/nexus/js/home-sales.js')) }}" defer></script>
 <script type="application/ld+json">
 {
     "@context": "https://schema.org",

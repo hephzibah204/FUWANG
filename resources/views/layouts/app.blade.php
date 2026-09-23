@@ -12,7 +12,13 @@
     <meta property="og:description" content="@yield('og_description', trim($__env->yieldContent('meta_description')) ?: \App\Models\SystemSetting::get('seo_description', ''))">
     <meta property="og:type" content="@yield('og_type', 'website')">
     <meta property="og:url" content="{{ request()->fullUrl() }}">
-    @php $ogImg = \App\Models\SystemSetting::get('seo_default_image_url') ?: \App\Models\SystemSetting::get('site_logo_url'); @endphp
+    @php
+        $siteLogo = \App\Models\SystemSetting::get('site_logo_url');
+        if (!$siteLogo && file_exists(public_path('images/logo.png'))) {
+            $siteLogo = '/images/logo.png';
+        }
+        $ogImg = \App\Models\SystemSetting::get('seo_default_image_url') ?: $siteLogo;
+    @endphp
     @if($ogImg)
         <meta property="og:image" content="{{ $ogImg }}">
     @endif
@@ -23,7 +29,14 @@
         <meta name="twitter:image" content="{{ $ogImg }}">
     @endif
     
-    @php $favUrl = \App\Models\SystemSetting::get('site_favicon_url'); @endphp
+    @php
+        $favUrl = \App\Models\SystemSetting::get('site_favicon_url');
+        if (!$favUrl && file_exists(public_path('images/favicon.png'))) {
+            $favUrl = '/images/favicon.png';
+        } elseif (!$favUrl && file_exists(public_path('favicon.ico'))) {
+            $favUrl = '/favicon.ico';
+        }
+    @endphp
     @if($favUrl)
         <link rel="icon" type="image/png" href="{{ $favUrl }}">
     @endif
@@ -120,9 +133,8 @@
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <div class="sidebar-logo">
-                @php $logoUrl = \App\Models\SystemSetting::get('site_logo_url'); @endphp
-                @if($logoUrl)
-                    <img src="{{ $logoUrl }}" alt="{{ \App\Models\SystemSetting::get('site_name', 'Logo') }}" loading="lazy" decoding="async" style="max-height: 30px; margin-right: 10px;">
+                @if($siteLogo)
+                    <img src="{{ $siteLogo }}" alt="{{ \App\Models\SystemSetting::get('site_name', 'Logo') }}" loading="lazy" decoding="async" style="max-height: 30px; margin-right: 10px;">
                 @else
                     <i class="fa-solid fa-bolt"></i>
                 @endif
