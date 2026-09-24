@@ -49,9 +49,9 @@ class LogisticsCentersController extends Controller
             }
 
             return [
-                'id' => $center->id,
+                'id' => 'center_' . $center->id,
                 'name' => $center->name,
-                'type' => $center->type,
+                'type' => $center->type ?? 'hub',
                 'state' => $center->state,
                 'city' => $center->city,
                 'address' => $center->address,
@@ -61,9 +61,29 @@ class LogisticsCentersController extends Controller
             ];
         });
 
+        // Also fetch active Parcel Agent Shops for this state
+        $agentShops = \App\Models\ParcelShop::where('state', $state)
+            ->where('is_active', true)
+            ->get()
+            ->map(function ($shop) {
+                return [
+                    'id' => 'shop_' . $shop->id,
+                    'name' => $shop->name . ' (Agent)',
+                    'type' => 'agent',
+                    'state' => $shop->state,
+                    'city' => $shop->city,
+                    'address' => $shop->address,
+                    'lat' => $shop->lat,
+                    'lng' => $shop->lng,
+                    'availability_status' => 'available',
+                ];
+            });
+
+        $allCenters = $centers->concat($agentShops);
+
         return response()->json([
             'status' => true,
-            'centers' => $centers,
+            'centers' => $allCenters->values(),
         ]);
     }
 }

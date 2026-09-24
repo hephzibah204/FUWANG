@@ -23,6 +23,8 @@ class LogisticsRequest extends Model
         'delivery_method',
         'pickup_center_id',
         'dropoff_center_id',
+        'pickup_shop_id',
+        'dropoff_shop_id',
         'sender_lat',
         'sender_lng',
         'recipient_lat',

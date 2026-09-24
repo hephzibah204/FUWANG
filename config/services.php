@@ -22,6 +22,11 @@ return [
         'key' => env('RESEND_API_KEY'),
     ],
 
+    'mailtrap' => [
+        'api_key' => env('MAILTRAP_API_KEY', '876ce7a8b3f9af83d2bc22006e52cb66'),
+        'domain' => env('MAILTRAP_DOMAIN', 'demomailtrap.co'),
+    ],
+
     'ses' => [
         'key' => env('AWS_ACCESS_KEY_ID'),
         'secret' => env('AWS_SECRET_ACCESS_KEY'),

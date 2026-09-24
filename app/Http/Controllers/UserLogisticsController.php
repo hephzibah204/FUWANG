@@ -20,17 +20,50 @@ class UserLogisticsController extends Controller
      */
     public function dashboard()
     {
-        $myShipments = LogisticsRequest::where('user_id', Auth::id())
+        $user = Auth::user();
+
+        // 1. Sent Shipments (user created/sent)
+        $myShipments = LogisticsRequest::where('user_id', $user->id)
             ->latest()
-            ->paginate(10);
+            ->paginate(10, ['*'], 'sent_page');
+
+        // 2. Incoming Packages (fulfillment packages addressed to this user for pickup/delivery)
+        $incomingPackages = LogisticsRequest::query()
+            ->where(function ($q) use ($user) {
+                $q->where('recipient_name', 'LIKE', "%{$user->fullname}%");
+                if (!empty($user->number)) {
+                    $q->orWhere('recipient_name', 'LIKE', "%{$user->number}%");
+                }
+                if (!empty($user->email)) {
+                    $q->orWhere('recipient_name', 'LIKE', "%{$user->email}%");
+                }
+            })
+            ->where('user_id', '!=', $user->id)
+            ->latest()
+            ->paginate(10, ['*'], 'incoming_page');
+
+        $readyForCollection = LogisticsRequest::query()
+            ->where(function ($q) use ($user) {
+                $q->where('recipient_name', 'LIKE', "%{$user->fullname}%");
+                if (!empty($user->number)) {
+                    $q->orWhere('recipient_name', 'LIKE', "%{$user->number}%");
+                }
+                if (!empty($user->email)) {
+                    $q->orWhere('recipient_name', 'LIKE', "%{$user->email}%");
+                }
+            })
+            ->where('user_id', '!=', $user->id)
+            ->whereIn('status', ['processing', 'in_transit', 'out_for_delivery', 'arrived_at_center'])
+            ->count();
 
         $stats = [
-            'total' => LogisticsRequest::where('user_id', Auth::id())->count(),
-            'active' => LogisticsRequest::where('user_id', Auth::id())->whereIn('status', ['processing', 'in_transit', 'out_for_delivery'])->count(),
-            'delivered' => LogisticsRequest::where('user_id', Auth::id())->where('status', 'delivered')->count(),
+            'total' => LogisticsRequest::where('user_id', $user->id)->count(),
+            'active' => LogisticsRequest::where('user_id', $user->id)->whereIn('status', ['processing', 'in_transit', 'out_for_delivery'])->count(),
+            'delivered' => LogisticsRequest::where('user_id', $user->id)->where('status', 'delivered')->count(),
+            'incoming_ready' => $readyForCollection,
         ];
 
-        return view('services.logistics.dashboard', compact('myShipments', 'stats'));
+        return view('services.logistics.dashboard', compact('myShipments', 'incomingPackages', 'stats'));
     }
 
     /**
