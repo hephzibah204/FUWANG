@@ -1,12 +1,12 @@
 @extends('layouts.nexus')
 
 @section('title', 'Become a Licensed NIN Registration Agent in Nigeria | Complete Guide & Portal - ' . config('app.name'))
-@section('meta_description', 'Learn how to become an accredited NIN Enrollment Agent in Nigeria with Fuwa.NG. Discover hardware requirements, registration steps, step-by-step onboarding, and high commission payouts.')
+@section('meta_description', 'Learn how to become an accredited NIN Enrollment Agent in Nigeria with Fuwa.NG. Discover hardware requirements, registration steps, and step-by-step onboarding.')
 @section('meta_keywords', 'become nin registration agent nigeria, nin enrollment agent, nimc agent registration, start nin registration business, nin agent hardware, nimc license agent, fuwa ng agents')
 @section('canonical', route('agent.landing'))
 
 @section('og_title', 'Become a Licensed NIN Registration Agent in Nigeria - Fuwa.NG Agent Portal')
-@section('og_description', 'Start your own profitable NIN registration agency in Nigeria. Easy onboarding, verified hardware support, fast payout, and NIMC compliance.')
+@section('og_description', 'Start your own profitable NIN registration agency in Nigeria. Easy onboarding, verified hardware support, and NIMC compliance.')
 @section('og_type', 'website')
 
 @section('content')
@@ -22,7 +22,7 @@
                 Become a Licensed <span class="text-primary">NIN Registration Agent</span> in Nigeria
             </h1>
             <p class="lead text-white-50 mb-4 me-lg-4">
-                Launch and expand your National Identification Number (NIN) enrollment center. Join thousands of verified agents nationwide powering digital identity captured with high-speed synchronization, guaranteed commission payouts, and 24/7 dedicated support.
+                Launch and expand your National Identification Number (NIN) enrollment center. Join thousands of verified agents nationwide powering digital identity capture with high-speed synchronization and 24/7 dedicated support.
             </p>
             
             <div class="d-flex flex-wrap align-items-center gap-3 mb-4">
@@ -85,8 +85,8 @@
                     <div class="row g-3 mb-4">
                         <div class="col-6">
                             <div class="p-3 rounded-3" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05);">
-                                <small class="text-white-50 d-block mb-1">Instant Payouts</small>
-                                <h4 class="text-white fw-bold mb-0">₦500+ <small class="fs-6 text-primary">/enrollment</small></h4>
+                                <small class="text-white-50 d-block mb-1">Accreditation</small>
+                                <h4 class="text-white fw-bold mb-0">Official <small class="fs-6 text-primary">License</small></h4>
                             </div>
                         </div>
                         <div class="col-6">
@@ -161,11 +161,11 @@
 
                 <div class="d-flex align-items-start gap-3 p-3 rounded-3" style="background: rgba(255,255,255,0.02);">
                     <div class="bg-primary bg-opacity-25 text-primary rounded-circle p-2 mt-1">
-                        <i class="fa-solid fa-laptop-code fa-fw"></i>
+                        <i class="fa-solid fa-fingerprint fa-fw"></i>
                     </div>
                     <div>
                         <h6 class="text-white mb-1 fw-bold">2. Biometric Hardware / Machine</h6>
-                        <p class="text-white-50 small mb-0">A Windows Laptop/PC, NIMC-compliant Biometric Fingerprint Scanner (e.g. Digital Persona / Mantra), and ICAO compliant Web Camera.</p>
+                        <p class="text-white-50 small mb-0">NIMC-compliant Biometric Fingerprint Scanner (e.g. Digital Persona / Mantra) and ICAO compliant Web Camera.</p>
                     </div>
                 </div>
 
@@ -217,7 +217,7 @@
                     <div class="timeline-item position-relative">
                         <span class="badge bg-success rounded-circle position-absolute start-0 top-0 translate-middle-x p-2" style="margin-left: -24px;">4</span>
                         <h5 class="text-white fw-bold mb-1">Get Approved & Start Enrolling</h5>
-                        <p class="text-white-50 small mb-0">Once verified, access the agent portal, generate NIN slips, execute modifications, and earn daily commissions.</p>
+                        <p class="text-white-50 small mb-0">Once verified, access the agent portal, generate NIN slips, and execute modifications.</p>
                     </div>
                 </div>
 
@@ -243,7 +243,7 @@
                     </p>
 
                     <p>
-                        Becoming a recognized <strong>Enrollment Agent in Nigeria</strong> through Fuwa.NG gives you a lucrative opportunity to serve your community while building a sustainable income stream. As a licensed agent, you can perform new NIN enrollments, NIN modifications (date of birth, change of name, phone number update), and instant NIN slip prints.
+                        Becoming a recognized <strong>Enrollment Agent in Nigeria</strong> through Fuwa.NG gives you an opportunity to serve your community. As a licensed agent, you can perform new NIN enrollments, NIN modifications (date of birth, change of name, phone number update), and instant NIN slip prints.
                     </p>
 
                     <h3 class="text-white fw-bold h4 mt-5 mb-3">Key Benefits of Joining the Fuwa.NG Agent Network</h3>
@@ -251,8 +251,8 @@
                     <div class="row g-4 my-2">
                         <div class="col-md-6">
                             <div class="p-3 rounded-3" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05);">
-                                <h5 class="text-white fw-bold"><i class="fa-solid fa-sack-dollar text-primary me-2"></i>High Profit Margins</h5>
-                                <p class="small mb-0">Earn generous commission payouts per successful enrollment and instant slip print service.</p>
+                                <h5 class="text-white fw-bold"><i class="fa-solid fa-certificate text-primary me-2"></i>Official Accreditation</h5>
+                                <p class="small mb-0">Operate as an accredited ecosystem partner with direct NIMC verification infrastructure.</p>
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -264,7 +264,7 @@
                         <div class="col-md-6">
                             <div class="p-3 rounded-3" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05);">
                                 <h5 class="text-white fw-bold"><i class="fa-solid fa-trophy text-primary me-2"></i>Monthly Agent Rewards</h5>
-                                <p class="small mb-0">Compete in our Most Valuable Agent (MVA) monthly leaderboard for cash bonuses and free hardware upgrades.</p>
+                                <p class="small mb-0">Compete in our Most Valuable Agent (MVA) monthly leaderboard for recognition and hardware upgrades.</p>
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -295,13 +295,13 @@
                         <div class="accordion-item bg-transparent border-secondary border-opacity-25 mb-2 rounded-3" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08) !important;">
                             <h2 class="accordion-header mb-0">
                                 <button class="accordion-button collapsed bg-transparent text-white fw-bold w-100 text-start p-3 d-flex justify-content-between align-items-center" type="button" data-toggle="collapse" data-bs-toggle="collapse" data-target="#faq2" data-bs-target="#faq2" style="border: 0; outline: none; box-shadow: none;">
-                                    <span>Can I use my existing biometric laptop or machine?</span>
+                                    <span>Can I use my existing biometric machine?</span>
                                     <i class="fa-solid fa-chevron-down ms-2 small opacity-75"></i>
                                 </button>
                             </h2>
                             <div id="faq2" class="accordion-collapse collapse" data-parent="#agentFaqAccordion" data-bs-parent="#agentFaqAccordion">
                                 <div class="accordion-body text-white-50 px-3 pb-3">
-                                    Yes! You can connect your existing NIMC-compliant biometric scanner and laptop. Simply input your machine IMEI or serial number during registration.
+                                    Yes! You can connect your existing NIMC-compliant biometric scanner. Simply input your machine IMEI or serial number during registration.
                                 </div>
                             </div>
                         </div>
@@ -315,7 +315,7 @@
                             </h2>
                             <div id="faq3" class="accordion-collapse collapse" data-parent="#agentFaqAccordion" data-bs-parent="#agentFaqAccordion">
                                 <div class="accordion-body text-white-50 px-3 pb-3">
-                                    Registration is free to get started. You only top up your wallet balance to cover processing fees per enrollment or modification request.
+                                    Yes, agent registration requires a licensing and accreditation fee. Once your application is submitted, our team will contact you with details regarding the accreditation process.
                                 </div>
                             </div>
                         </div>
