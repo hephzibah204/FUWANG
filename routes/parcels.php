@@ -23,6 +23,7 @@ Route::prefix('parcels-agent')->name('parcels.')->middleware(['web', 'auth', 'pa
 
         Route::get('/pickup/customer', [PickupController::class, 'showCustomerPickup'])->name('pickup.customer');
         Route::post('/pickup/customer', [PickupController::class, 'processCustomerPickup'])->name('pickup.customer.process');
+        Route::post('/pickup/customer/reject', [PickupController::class, 'processCustomerReject'])->name('pickup.customer.reject');
 
         Route::get('/pickup/driver', [PickupController::class, 'showDriverPickup'])->name('pickup.driver');
         Route::post('/pickup/driver', [PickupController::class, 'processDriverPickup'])->name('pickup.driver.process');

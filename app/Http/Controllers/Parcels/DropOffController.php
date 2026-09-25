@@ -99,10 +99,12 @@ class DropOffController extends Controller
         $request->validate([
             'tracking_number' => 'required|string',
             'condition' => 'required|in:good,damaged',
+            'damage_photo' => 'nullable|image|max:5120',
         ]);
 
         $agent = $request->user()->parcelAgent;
         $trackingNumber = $request->input('tracking_number');
+        $condition = $request->input('condition');
 
         $details = $adapter->validateTrackingNumber($trackingNumber);
         if (!$details) {
@@ -115,33 +117,50 @@ class DropOffController extends Controller
         }
 
         $parcelInfo = $adapter->fetchParcelDetails($trackingNumber);
-
         $courierId = \App\Models\ParcelCourier::where('name', 'FuwaPost')->value('id') ?? 1;
 
-        \Illuminate\Support\Facades\DB::transaction(function () use ($trackingNumber, $courierId, $agent, $request, $details, $parcelInfo, $adapter) {
-            $parcel = Parcel::updateOrCreate(
-                ['tracking_number' => $trackingNumber],
-                [
-                    'courier_id' => $courierId,
-                    'shop_id' => $agent->shop_id,
-                    'status' => 'driver_dropped_off', // Ready for customer pickup
-                    'condition' => $request->input('condition'),
-                    'weight' => $details['weight'] ?? null,
-                    'price' => $details['price'] ?? null,
-                    'sender_data' => $parcelInfo['sender'],
-                    'receiver_data' => $parcelInfo['receiver'],
-                ]
-            );
+        // Handle Damage Photo
+        $photoPath = null;
+        if ($condition === 'damaged' && $request->hasFile('damage_photo')) {
+            $photoPath = $request->file('damage_photo')->store('parcels/damage_photos', 'local');
+        }
 
-            ParcelCustodyEvent::create([
-                'parcel_id' => $parcel->id,
-                'agent_id' => $agent->id,
-                'event_type' => 'driver_to_agent',
-                'notes' => 'Condition: ' . $parcel->condition,
-            ]);
+        try {
+            $parcel = \Illuminate\Support\Facades\DB::transaction(function () use ($trackingNumber, $courierId, $agent, $condition, $photoPath, $details, $parcelInfo, $adapter) {
+                $parcel = Parcel::updateOrCreate(
+                    ['tracking_number' => $trackingNumber],
+                    [
+                        'courier_id' => $courierId,
+                        'shop_id' => $agent->shop_id,
+                        'status' => 'driver_dropped_off', // Ready for customer pickup
+                        'condition' => $condition,
+                        'weight' => $details['weight'] ?? null,
+                        'price' => $details['price'] ?? null,
+                        'sender_data' => $parcelInfo['sender'],
+                        'receiver_data' => $parcelInfo['receiver'],
+                    ]
+                );
 
-            $adapter->updateParcelStatus($trackingNumber, 'driver_dropped_off');
-        });
+                ParcelCustodyEvent::create([
+                    'parcel_id' => $parcel->id,
+                    'agent_id' => $agent->id,
+                    'event_type' => 'driver_to_agent',
+                    'notes' => 'Condition: ' . $condition . ($photoPath ? " | Damage Photo: $photoPath" : ''),
+                ]);
+
+                $adapter->updateParcelStatus($trackingNumber, 'driver_dropped_off');
+                return $parcel;
+            });
+            
+            // Send Notification to recipient if email is available
+            if (!empty($parcel->receiver_data['email'])) {
+                \Illuminate\Support\Facades\Notification::route('mail', $parcel->receiver_data['email'])
+                    ->notify(new \App\Notifications\ParcelReadyForCollection($parcel, $agent->shop));
+            }
+        } catch (\Exception $e) {
+            if ($photoPath) \Illuminate\Support\Facades\Storage::disk('local')->delete($photoPath);
+            throw $e;
+        }
 
         return redirect()->route('parcels.dashboard')->with('success', "Parcel {$trackingNumber} received from driver. Ready for customer pickup.");
     }

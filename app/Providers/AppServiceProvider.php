@@ -112,6 +112,46 @@ class AppServiceProvider extends ServiceProvider
             $view->with('adminNavigation', $navigationService->getAdminNavigation());
         });
 
+        View::composer('services.*', function ($view) {
+            $data = $view->getData();
+            foreach ($data as $key => $value) {
+                if ($value instanceof \Illuminate\Database\Eloquent\Collection) {
+                    if ($value->isNotEmpty() && $value->first() instanceof \App\Models\CustomApi) {
+                        $value->transform(function ($provider) {
+                            if (stripos((string) $provider->name, 'vuvaa') !== false || stripos((string) $provider->provider_identifier, 'vuvaa') !== false) {
+                                $provider->name = 'Provider 1';
+                            } elseif (stripos((string) $provider->name, 'dataverify') !== false || stripos((string) $provider->provider_identifier, 'dataverify') !== false) {
+                                $provider->name = 'Provider 2';
+                            } else {
+                                $hash = crc32((string) $provider->name);
+                                $provider->name = 'Provider ' . (($hash % 10) + 3);
+                            }
+                            return $provider;
+                        });
+                    }
+                }
+            }
+        });
+
+        try {
+            if (Schema::hasTable('api_centers')) {
+                $ac = \Illuminate\Support\Facades\DB::table('api_centers')->first();
+                if ($ac && !empty($ac->resend_api_key)) {
+                    config([
+                        'services.resend.key' => $ac->resend_api_key,
+                        'mail.default' => 'smtp',
+                        'mail.mailers.smtp.host' => 'smtp.resend.com',
+                        'mail.mailers.smtp.port' => 465,
+                        'mail.mailers.smtp.encryption' => 'tls',
+                        'mail.mailers.smtp.username' => 'resend',
+                        'mail.mailers.smtp.password' => $ac->resend_api_key,
+                    ]);
+                }
+            }
+        } catch (\Exception $e) {
+            // Safe ignore
+        }
+
         Transaction::observe(TransactionObserver::class);
     }
 }

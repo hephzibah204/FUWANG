@@ -181,23 +181,23 @@
                                     <div class="d-flex align-items-center flex-wrap" style="gap: 12px;">
                                         <div class="custom-control custom-radio">
                                             <input type="radio" id="ot_info" name="output_type" value="info_page" class="custom-control-input" checked>
-                                            <label class="custom-control-label" for="ot_info">Information Page</label>
+                                            <label class="custom-control-label" for="ot_info" title="View details on screen only"><i class="fa-solid fa-display text-muted mr-1"></i> Information Page</label>
                                         </div>
                                         <div class="custom-control custom-radio">
                                             <input type="radio" id="ot_standard" name="output_type" value="standard_slip" class="custom-control-input">
-                                            <label class="custom-control-label" for="ot_standard">Standard Slip (PDF)</label>
+                                            <label class="custom-control-label" for="ot_standard" title="Generate the standard printable slip"><i class="fa-regular fa-file-pdf text-muted mr-1"></i> Standard Slip</label>
                                         </div>
                                         <div class="custom-control custom-radio">
                                             <input type="radio" id="ot_regular" name="output_type" value="regular_slip" class="custom-control-input">
-                                            <label class="custom-control-label" for="ot_regular">Regular Slip (PDF)</label>
+                                            <label class="custom-control-label" for="ot_regular" title="Generate regular slip"><i class="fa-regular fa-id-card text-muted mr-1"></i> Regular Slip</label>
                                         </div>
                                         <div class="custom-control custom-radio">
                                             <input type="radio" id="ot_premium" name="output_type" value="premium_slip" class="custom-control-input">
-                                            <label class="custom-control-label" for="ot_premium">Premium Slip (PDF)</label>
+                                            <label class="custom-control-label" for="ot_premium" title="Generate plastic-ready premium card"><i class="fa-solid fa-address-card text-warning mr-1"></i> Premium Slip</label>
                                         </div>
                                         <div class="custom-control custom-radio">
                                             <input type="radio" id="ot_vnin" name="output_type" value="vnin_slip" class="custom-control-input">
-                                            <label class="custom-control-label" for="ot_vnin">vNIN Slip (PDF)</label>
+                                            <label class="custom-control-label" for="ot_vnin" title="Generate virtual NIN token slip"><i class="fa-solid fa-qrcode text-muted mr-1"></i> vNIN Slip</label>
                                         </div>
                                     </div>
                                 </div>
@@ -341,8 +341,20 @@
                                 @forelse($myResults as $res)
                                     <tr>
                                         <td><code class="text-primary">{{ $res->reference_id }}</code></td>
-                                        <td>{{ $res->response_data['firstname'] ?? 'N/A' }} {{ $res->response_data['lastname'] ?? $res->response_data['surname'] ?? '' }}</td>
-                                        <td>{{ $res->identifier }}</td>
+                                        <td>
+                                            @php
+                                                $fName = $res->response_data['firstname'] ?? 'N/A';
+                                                $lName = $res->response_data['lastname'] ?? $res->response_data['surname'] ?? '';
+                                                $fullName = trim($fName . ' ' . $lName);
+                                                echo $fullName !== 'N/A' && strlen($fullName) > 4 ? substr($fullName, 0, 2) . '***' . substr($fullName, -2) : $fullName;
+                                            @endphp
+                                        </td>
+                                        <td>
+                                            @php
+                                                $ident = $res->identifier;
+                                                echo strlen($ident) > 6 ? substr($ident, 0, 3) . '****' . substr($ident, -3) : $ident;
+                                            @endphp
+                                        </td>
                                         <td><span class="badge badge-outline-primary">{{ $res->provider_name }}</span></td>
                                         <td>{{ $res->created_at->format('M d, Y') }}</td>
                                         <td class="text-right">
@@ -368,7 +380,13 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="6" class="text-center py-4 text-muted small">No records found in vault. Your completed verifications will appear here.</td>
+                                        <td colspan="6" class="text-center py-5">
+                                            <div class="empty-state" style="opacity: 0.7;">
+                                                <i class="fa-solid fa-box-open text-muted mb-3" style="font-size: 3rem;"></i>
+                                                <h6 class="text-white font-weight-bold">Vault Empty</h6>
+                                                <p class="text-muted small mb-0">No records found. Completed verifications will securely appear here.</p>
+                                            </div>
+                                        </td>
                                     </tr>
                                 @endforelse
                             </tbody>
@@ -550,6 +568,8 @@
             label.textContent = 'Phone Number';
             input.placeholder = 'Enter registered phone number';
             input.maxLength = 11;
+            input.pattern = '\\d{11}';
+            input.oninput = function() { this.value = this.value.replace(/[^0-9]/g, ''); };
             icon.className = 'fa-solid fa-phone';
             identityFields.style.display = 'none';
             if (outputTypeGroup) outputTypeGroup.style.display = '';
@@ -570,6 +590,8 @@
             label.textContent = 'Tracking ID';
             input.placeholder = 'Enter NIMC tracking ID';
             input.maxLength = 25;
+            input.pattern = '[A-Za-z0-9]+';
+            input.oninput = function() { this.value = this.value.replace(/[^a-zA-Z0-9]/g, ''); };
             icon.className = 'fa-solid fa-fingerprint';
             identityFields.style.display = 'none';
             if (outputTypeGroup) outputTypeGroup.style.display = '';
@@ -589,7 +611,9 @@
             requeryInput.required = false;
             label.textContent = 'NIN to Validate';
             input.placeholder = 'Enter 11-digit NIN (record not found case)';
-            input.maxLength = 25;
+            input.maxLength = 11;
+            input.pattern = '\\d{11}';
+            input.oninput = function() { this.value = this.value.replace(/[^0-9]/g, ''); };
             icon.className = 'fa-solid fa-wrench';
             identityFields.style.display = 'none';
             if (outputTypeGroup) outputTypeGroup.style.display = 'none';
@@ -609,7 +633,9 @@
             requeryInput.required = false;
             label.textContent = 'NIN to Check Status';
             input.placeholder = 'Enter the NIN used for validation';
-            input.maxLength = 25;
+            input.maxLength = 11;
+            input.pattern = '\\d{11}';
+            input.oninput = function() { this.value = this.value.replace(/[^0-9]/g, ''); };
             icon.className = 'fa-solid fa-rotate';
             identityFields.style.display = 'none';
             if (outputTypeGroup) outputTypeGroup.style.display = 'none';
@@ -630,6 +656,8 @@
             label.textContent = 'National Identification Number (NIN)';
             input.placeholder = 'Enter 11-digit NIN';
             input.maxLength = 11;
+            input.pattern = '\\d{11}';
+            input.oninput = function() { this.value = this.value.replace(/[^0-9]/g, ''); };
             icon.className = 'fa-regular fa-id-card';
             identityFields.style.display = 'none';
             if (outputTypeGroup) outputTypeGroup.style.display = '';
@@ -697,6 +725,8 @@
             label.textContent = 'National Identification Number (NIN)';
             input.placeholder = 'Enter 11-digit NIN';
             input.maxLength = 11;
+            input.pattern = '\\d{11}';
+            input.oninput = function() { this.value = this.value.replace(/[^0-9]/g, ''); };
             icon.className = 'fa-regular fa-id-card';
             identityFields.style.display = 'none';
             if (outputTypeGroup) outputTypeGroup.style.display = '';

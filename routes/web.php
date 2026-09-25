@@ -703,6 +703,7 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
             // Parcel Agents Admin
             Route::get('/parcels/agents', [\App\Http\Controllers\Admin\ParcelAgentAdminController::class, 'index'])->name('parcels.agents.index');
             Route::put('/parcels/agents/{agent}/status', [\App\Http\Controllers\Admin\ParcelAgentAdminController::class, 'updateStatus'])->name('parcels.agents.status');
+            Route::get('/parcels/audit', [\App\Http\Controllers\Admin\ParcelAgentAdminController::class, 'audit'])->name('parcels.audit.index');
         });
     });
 // ── End of admin group ───────────────────────────────────

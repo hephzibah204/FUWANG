@@ -15,6 +15,8 @@ class LogisticsRequest extends Model
         'sender_address',
         'recipient_name',
         'recipient_address',
+        'recipient_phone',
+        'recipient_email',
         'sender_state',
         'sender_city',
         'recipient_state',
@@ -97,5 +99,15 @@ class LogisticsRequest extends Model
     public function dropoffCenter()
     {
         return $this->belongsTo(LogisticsCenter::class, 'dropoff_center_id');
+    }
+
+    public function pickupShop()
+    {
+        return $this->belongsTo(ParcelShop::class, 'pickup_shop_id');
+    }
+
+    public function dropoffShop()
+    {
+        return $this->belongsTo(ParcelShop::class, 'dropoff_shop_id');
     }
 }

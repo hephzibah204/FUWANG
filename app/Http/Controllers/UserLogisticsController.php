@@ -53,12 +53,12 @@ class UserLogisticsController extends Controller
                 }
             })
             ->where('user_id', '!=', $user->id)
-            ->whereIn('status', ['processing', 'in_transit', 'out_for_delivery', 'arrived_at_center'])
+            ->whereIn('status', ['processing', 'in_transit', 'out_for_delivery', 'arrived_at_center', 'ready_for_collection', 'awaiting_pickup'])
             ->count();
 
         $stats = [
             'total' => LogisticsRequest::where('user_id', $user->id)->count(),
-            'active' => LogisticsRequest::where('user_id', $user->id)->whereIn('status', ['processing', 'in_transit', 'out_for_delivery'])->count(),
+            'active' => LogisticsRequest::where('user_id', $user->id)->whereIn('status', ['processing', 'in_transit', 'out_for_delivery', 'ready_for_collection', 'awaiting_pickup'])->count(),
             'delivered' => LogisticsRequest::where('user_id', $user->id)->where('status', 'delivered')->count(),
             'incoming_ready' => $readyForCollection,
         ];
@@ -95,12 +95,14 @@ class UserLogisticsController extends Controller
             'sender_state'     => ['required', 'string', \Illuminate\Validation\Rule::in($states)],
             'sender_address'   => 'nullable|string|max:255',
             'recipient_name'   => 'required|string|max:100',
+            'recipient_phone'  => 'required|string|max:50',
+            'recipient_email'  => 'nullable|email|max:255',
             'recipient_state'  => ['required', 'string', \Illuminate\Validation\Rule::in($states)],
             'recipient_address'=> 'nullable|string|max:255',
             'pickup_method'    => 'required|string|in:center_dropoff,home_pickup',
             'delivery_method'  => 'required|string|in:home_delivery,center_pickup',
-            'pickup_center_id' => 'nullable|integer',
-            'dropoff_center_id'=> 'nullable|integer',
+            'pickup_center_id' => 'nullable|string',
+            'dropoff_center_id'=> 'nullable|string',
             'weight'           => 'required|numeric|min:0.1',
             'description'      => 'required|string|max:255',
             'delivery_type'    => 'required|string|in:standard,express,overnight,same_day',
@@ -150,6 +152,25 @@ class UserLogisticsController extends Controller
             return response()->json(['status' => false, 'message' => $debit['message']]);
         }
 
+        // Parse center/shop prefixes
+        $pickup_center_id = null;
+        $pickup_shop_id = null;
+        if ($request->filled('pickup_center_id')) {
+            $parts = explode('_', $request->pickup_center_id);
+            if ($parts[0] === 'shop') $pickup_shop_id = $parts[1];
+            else if ($parts[0] === 'center') $pickup_center_id = $parts[1];
+            else $pickup_center_id = $request->pickup_center_id; // fallback
+        }
+
+        $dropoff_center_id = null;
+        $dropoff_shop_id = null;
+        if ($request->filled('dropoff_center_id')) {
+            $parts = explode('_', $request->dropoff_center_id);
+            if ($parts[0] === 'shop') $dropoff_shop_id = $parts[1];
+            else if ($parts[0] === 'center') $dropoff_center_id = $parts[1];
+            else $dropoff_center_id = $request->dropoff_center_id; // fallback
+        }
+
         // Persist logistics request
         $shipment = LogisticsRequest::create([
             'user_id' => Auth::id(),
@@ -157,12 +178,16 @@ class UserLogisticsController extends Controller
             'sender_address' => $request->sender_address,
             'recipient_name' => $request->recipient_name,
             'recipient_address' => $request->recipient_address,
+            'recipient_phone' => $request->recipient_phone,
+            'recipient_email' => $request->recipient_email,
             'sender_state' => $request->sender_state,
             'recipient_state' => $request->recipient_state,
             'pickup_method' => $request->pickup_method,
             'delivery_method' => $request->delivery_method,
-            'pickup_center_id' => $request->pickup_center_id,
-            'dropoff_center_id' => $request->dropoff_center_id,
+            'pickup_center_id' => $pickup_center_id,
+            'pickup_shop_id' => $pickup_shop_id,
+            'dropoff_center_id' => $dropoff_center_id,
+            'dropoff_shop_id' => $dropoff_shop_id,
             'distance_km' => $quote['distance_km'] ?? null,
             'weight' => $request->weight,
             'description' => $request->description,
@@ -199,6 +224,16 @@ class UserLogisticsController extends Controller
      */
     private function generateWaybillPdf(LogisticsRequest $shipment)
     {
+        $options = new \chillerlan\QRCode\QROptions([
+            'version'      => \chillerlan\QRCode\Common\Version::AUTO,
+            'outputType'   => \chillerlan\QRCode\Output\QROutputInterface::GDIMAGE_PNG,
+            'imageBase64'  => true,
+            'eccLevel'     => \chillerlan\QRCode\Common\EccLevel::L,
+            'addQuietzone' => false,
+        ]);
+        
+        $qrcode = (new \chillerlan\QRCode\QRCode($options))->render($shipment->tracking_id);
+
         $data = [
             'reference' => $shipment->tracking_id,
             'date'      => $shipment->created_at->format('F d, Y - H:i'),
@@ -209,6 +244,7 @@ class UserLogisticsController extends Controller
             'description' => $shipment->description,
             'weight' => $shipment->weight,
             'delivery_type' => $shipment->delivery_type,
+            'qrcode' => $qrcode,
         ];
 
         $pdf = Pdf::loadView('pdf.waybill', $data);

@@ -55,8 +55,8 @@
         </div>
     </div>
 
-    <div class="barcode">
-        * {{ $reference }} *
+    <div>
+        <img src="{{ $qrcode }}" alt="QR Code" style="height: 60px;" />
     </div>
 
     <div style="text-align: center; margin-top: 20px;">

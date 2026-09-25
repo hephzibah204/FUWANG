@@ -16,6 +16,10 @@ class FuwaPostAdapter implements CourierAdapterInterface
             return null;
         }
 
+        if (in_array($logisticsRequest->status, ['delivered', 'cancelled', 'rejected'])) {
+            return null;
+        }
+
         return [
             'tracking_number' => $logisticsRequest->tracking_id,
             'status' => $logisticsRequest->status,
@@ -46,6 +50,8 @@ class FuwaPostAdapter implements CourierAdapterInterface
             'receiver' => [
                 'name' => $logisticsRequest->recipient_name,
                 'address' => $logisticsRequest->recipient_address,
+                'phone' => $logisticsRequest->recipient_phone,
+                'email' => $logisticsRequest->recipient_email,
                 'state' => $logisticsRequest->recipient_state,
                 'city' => $logisticsRequest->recipient_city,
             ]

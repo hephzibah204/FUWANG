@@ -110,8 +110,8 @@
                                 $incBadge = match($inc->status) {
                                     'processing' => 'badge-info',
                                     'in_transit' => 'badge-primary',
-                                    'arrived_at_center', 'out_for_delivery' => 'badge-warning',
-                                    'delivered' => 'badge-success',
+                                    'arrived_at_center', 'out_for_delivery', 'awaiting_pickup' => 'badge-warning',
+                                    'delivered', 'ready_for_collection' => 'badge-success',
                                     'cancelled' => 'badge-danger',
                                     default => 'badge-light'
                                 };
@@ -124,9 +124,9 @@
                             <span class="badge badge-pill {{ $incBadge }} px-2 py-1" style="min-width: 90px;">{{ $statusLabel }}</span>
                         </td>
                         <td class="small text-white-50">
-                            @if($inc->delivery_method === 'center_pickup' && $inc->dropoffCenter)
-                                <strong class="text-white d-block"><i class="fa fa-location-dot text-warning mr-1"></i> {{ $inc->dropoffCenter->name }}</strong>
-                                {{ $inc->dropoffCenter->address }}
+                            @if($inc->delivery_method === 'center_pickup' && ($inc->dropoffCenter || $inc->dropoffShop))
+                                <strong class="text-white d-block"><i class="fa fa-location-dot text-warning mr-1"></i> {{ $inc->dropoffCenter ? $inc->dropoffCenter->name : $inc->dropoffShop->shop_name }}</strong>
+                                {{ $inc->dropoffCenter ? $inc->dropoffCenter->address : $inc->dropoffShop->address }}
                             @else
                                 {{ \Illuminate\Support\Str::limit($inc->recipient_address ?: $inc->recipient_state, 35) }}
                             @endif
@@ -190,7 +190,7 @@
                                 $badge = match($s->status) {
                                     'processing' => 'badge-info',
                                     'in_transit' => 'badge-primary',
-                                    'delivered' => 'badge-success',
+                                    'delivered', 'ready_for_collection' => 'badge-success',
                                     'cancelled' => 'badge-danger',
                                     default => 'badge-light'
                                 };

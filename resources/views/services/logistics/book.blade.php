@@ -39,6 +39,14 @@
                         <input type="text" name="recipient_name" class="form-control tracking-input py-2" required>
                     </div>
                     <div class="col-md-6 mb-3">
+                        <label class="text-white-50 small mb-2">Recipient Phone</label>
+                        <input type="tel" name="recipient_phone" class="form-control tracking-input py-2" placeholder="080..." required>
+                    </div>
+                    <div class="col-md-12 mb-3">
+                        <label class="text-white-50 small mb-2">Recipient Email</label>
+                        <input type="email" name="recipient_email" class="form-control tracking-input py-2" placeholder="For notifications">
+                    </div>
+                    <div class="col-md-6 mb-3">
                         <label class="text-white-50 small mb-2">Recipient State</label>
                         <select name="recipient_state" id="recipient_state" class="form-control tracking-input py-2" required>
                             <option value="">Select state</option>

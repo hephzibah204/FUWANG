@@ -114,9 +114,19 @@ class VTUController extends Controller
             ->map(function ($p) {
                 $cfg = is_array($p->config) ? $p->config : [];
 
+                $maskedName = '';
+                if (stripos((string) $p->name, 'vuvaa') !== false || stripos((string) $p->provider_identifier, 'vuvaa') !== false) {
+                    $maskedName = 'Provider 1';
+                } elseif (stripos((string) $p->name, 'dataverify') !== false || stripos((string) $p->provider_identifier, 'dataverify') !== false) {
+                    $maskedName = 'Provider 2';
+                } else {
+                    $hash = crc32((string) $p->name);
+                    $maskedName = 'Provider ' . (($hash % 10) + 3);
+                }
+
                 return [
                     'id' => $p->id,
-                    'name' => $p->name,
+                    'name' => $maskedName,
                     'fee_type' => $cfg['fee_type'] ?? $cfg['commission_type'] ?? 'flat',
                     'fee_value' => (float) ($cfg['fee_value'] ?? $cfg['commission_value'] ?? 0),
                     'min_amount' => isset($cfg['min_amount']) ? (float) $cfg['min_amount'] : null,

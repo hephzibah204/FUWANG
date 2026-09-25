@@ -26,6 +26,24 @@ class VerificationResult extends Model
         'response_data' => 'array',
     ];
 
+    public function getProviderNameAttribute($value)
+    {
+        if (request()->is('admin*') || request()->is('api/admin*')) {
+            return $value;
+        }
+
+        if (stripos((string) $value, 'vuvaa') !== false) {
+            return 'Provider 1';
+        }
+        if (stripos((string) $value, 'dataverify') !== false) {
+            return 'Provider 2';
+        }
+
+        // Deterministic masking for any other providers
+        $hash = crc32((string) $value);
+        return 'Provider ' . (($hash % 10) + 3);
+    }
+
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()

@@ -47,13 +47,26 @@
                                 <canvas id="signatureCanvas" width="100%" height="200" style="width: 100%; height: 200px; cursor: crosshair;"></canvas>
                             </div>
                             <button type="button" class="btn btn-sm btn-outline-danger mt-2" id="clearSignature">Clear Signature</button>
-                            <input type="hidden" name="signature_data" id="signature_data" required>
+                            <input type="hidden" name="signature_data" id="signature_data">
                             @error('signature_data')<div class="text-danger mt-1 small">{{ $message }}</div>@enderror
                         </div>
 
-                        <div class="d-grid mt-4">
+                        <div class="d-grid gap-2 mt-4">
                             <button type="button" class="btn btn-success btn-lg" onclick="submitPickupForm()">Release Parcel</button>
+                            <button type="button" class="btn btn-outline-danger" onclick="document.getElementById('rejectForm').style.display='block'; this.style.display='none';">Customer Rejects Parcel</button>
                         </div>
+                    </form>
+
+                    <!-- Hidden Reject Form -->
+                    <form action="{{ route('parcels.pickup.customer.reject') }}" method="POST" id="rejectForm" style="display: none;" class="mt-4 border-top pt-4">
+                        @csrf
+                        <input type="hidden" name="tracking_number" id="reject_tracking_number" value="">
+                        
+                        <div class="mb-3">
+                            <label for="rejection_reason" class="form-label fw-bold text-danger">Reason for Rejection</label>
+                            <input type="text" class="form-control" name="rejection_reason" placeholder="e.g. Package damaged, wrong item..." required>
+                        </div>
+                        <button type="submit" class="btn btn-danger w-100" onclick="document.getElementById('reject_tracking_number').value = document.getElementById('tracking_number').value;">Confirm Rejection</button>
                     </form>
                 </div>
             </div>

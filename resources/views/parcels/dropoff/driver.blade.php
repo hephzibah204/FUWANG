@@ -18,7 +18,7 @@
                     
                     <p class="text-muted mb-4">Accept a parcel from a courier driver to hold for customer collection.</p>
 
-                    <form action="{{ route('parcels.dropoff.driver.process') }}" method="POST">
+                    <form action="{{ route('parcels.dropoff.driver.process') }}" method="POST" enctype="multipart/form-data">
                         @csrf
                         
                         <div class="mb-4">
@@ -32,11 +32,17 @@
 
                         <div class="mb-4">
                             <label for="condition" class="form-label fw-bold">Parcel Condition</label>
-                            <select class="form-select form-select-lg @error('condition') is-invalid @enderror" id="condition" name="condition" required>
+                            <select class="form-select form-select-lg @error('condition') is-invalid @enderror" id="condition" name="condition" required onchange="document.getElementById('damagePhotoWrapper').style.display = (this.value === 'damaged' ? 'block' : 'none');">
                                 <option value="good" {{ old('condition') == 'good' ? 'selected' : '' }}>Good Condition</option>
                                 <option value="damaged" {{ old('condition') == 'damaged' ? 'selected' : '' }}>Defective / Damaged</option>
                             </select>
                             @error('condition')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+
+                        <div class="mb-4" id="damagePhotoWrapper" style="display: {{ old('condition') == 'damaged' ? 'block' : 'none' }};">
+                            <label for="damage_photo" class="form-label fw-bold text-danger"><i class="fa fa-camera"></i> Upload Damage Photo (Required if damaged)</label>
+                            <input type="file" class="form-control form-control-lg @error('damage_photo') is-invalid @enderror" id="damage_photo" name="damage_photo" accept="image/*">
+                            @error('damage_photo')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
 
                         <div class="d-grid mt-4">

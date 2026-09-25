@@ -37,4 +37,13 @@ class ParcelAgentAdminController extends Controller
 
         return back()->with('success', "Agent status updated to {$agent->status}.");
     }
+
+    public function audit(Request $request)
+    {
+        $events = \App\Models\ParcelCustodyEvent::with(['parcel', 'agent.user', 'agent.shop'])
+            ->orderBy('created_at', 'desc')
+            ->paginate(30);
+
+        return view('admin.parcels.audit.index', compact('events'));
+    }
 }

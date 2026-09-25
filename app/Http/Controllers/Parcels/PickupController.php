@@ -85,6 +85,44 @@ class PickupController extends Controller
     }
 
     /**
+     * Process a customer rejecting a parcel.
+     */
+    public function processCustomerReject(Request $request, FuwaPostAdapter $adapter)
+    {
+        $request->validate([
+            'tracking_number' => 'required|string',
+            'rejection_reason' => 'required|string|max:255',
+        ]);
+
+        $agent = $request->user()->parcelAgent;
+        $trackingNumber = $request->input('tracking_number');
+
+        $parcel = Parcel::where('tracking_number', $trackingNumber)
+            ->where('shop_id', $agent->shop_id)
+            ->first();
+
+        if (!$parcel || $parcel->status !== 'driver_dropped_off') {
+            return back()->with('error', 'Parcel not found in shop inventory or not ready for customer pickup/rejection.');
+        }
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($parcel, $agent, $request, $trackingNumber, $adapter) {
+            $parcel->status = 'rejected';
+            $parcel->save();
+
+            ParcelCustodyEvent::create([
+                'parcel_id' => $parcel->id,
+                'agent_id' => $agent->id,
+                'event_type' => 'customer_rejected',
+                'notes' => 'Rejection Reason: ' . $request->input('rejection_reason'),
+            ]);
+
+            $adapter->updateParcelStatus($trackingNumber, 'rejected');
+        });
+
+        return redirect()->route('parcels.dashboard')->with('success', "Parcel {$trackingNumber} has been rejected and moved to Driver Collection inventory.");
+    }
+
+    /**
      * Show the driver pickup form.
      */
     public function showDriverPickup()

@@ -123,7 +123,16 @@ class LogisticsPricingEngine
     {
         $pickupMethod = (string) ($input['pickup_method'] ?? 'center_dropoff');
         if ($pickupMethod === 'center_dropoff' && ! empty($input['pickup_center_id'])) {
-            $center = LogisticsCenter::query()->find((int) $input['pickup_center_id']);
+            $parts = explode('_', (string) $input['pickup_center_id']);
+            $center = null;
+            if (count($parts) === 2 && $parts[0] === 'shop') {
+                $center = \App\Models\ParcelShop::query()->find((int) $parts[1]);
+            } else if (count($parts) === 2 && $parts[0] === 'center') {
+                $center = LogisticsCenter::query()->find((int) $parts[1]);
+            } else {
+                $center = LogisticsCenter::query()->find((int) $input['pickup_center_id']);
+            }
+            
             if ($center && $center->lat !== null && $center->lng !== null) {
                 return ['lat' => (float) $center->lat, 'lng' => (float) $center->lng];
             }
@@ -145,7 +154,16 @@ class LogisticsPricingEngine
     {
         $deliveryMethod = (string) ($input['delivery_method'] ?? 'home_delivery');
         if ($deliveryMethod === 'center_pickup' && ! empty($input['dropoff_center_id'])) {
-            $center = LogisticsCenter::query()->find((int) $input['dropoff_center_id']);
+            $parts = explode('_', (string) $input['dropoff_center_id']);
+            $center = null;
+            if (count($parts) === 2 && $parts[0] === 'shop') {
+                $center = \App\Models\ParcelShop::query()->find((int) $parts[1]);
+            } else if (count($parts) === 2 && $parts[0] === 'center') {
+                $center = LogisticsCenter::query()->find((int) $parts[1]);
+            } else {
+                $center = LogisticsCenter::query()->find((int) $input['dropoff_center_id']);
+            }
+
             if ($center && $center->lat !== null && $center->lng !== null) {
                 return ['lat' => (float) $center->lat, 'lng' => (float) $center->lng];
             }
