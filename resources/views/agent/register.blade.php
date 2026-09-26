@@ -72,7 +72,7 @@
         @endif
 
         <!-- Main Form Card -->
-        <div class="auth-card p-4 p-md-5 rounded-4 position-relative">
+        <div class="auth-card p-4 p-md-5 rounded-4 position-relative mx-auto" style="max-width: 850px; width: 100%;">
             <form action="{{ route('agent.register.submit') }}" method="POST" id="agentRegisterForm">
                 @csrf
 
@@ -190,7 +190,10 @@
                                         <label for="companyAgentCodeInput" class="text-white-50 small fw-bold mb-0">Company Agent Code / Station License ID</label>
                                         <span class="text-muted small" style="font-size: 0.75rem;">(Auto-filled)</span>
                                     </div>
-                                    <input type="text" id="companyAgentCodeInput" name="company_agent_code" class="form-input text-white" value="{{ old('company_agent_code') }}" placeholder="e.g. FUWA-LO001">
+                                    <div class="input-wrap">
+                                        <i class="fa-solid fa-id-badge input-icon text-muted"></i>
+                                        <input type="text" id="companyAgentCodeInput" name="company_agent_code" class="form-input text-white" value="{{ old('company_agent_code') }}" placeholder="e.g. FUWA-LO001">
+                                    </div>
                                 </div>
                                 <div class="col-md-6">
                                     <div class="d-flex align-items-center justify-content-between mb-1">
@@ -276,13 +279,13 @@
 
                     <div class="col-md-6">
                         <label for="residentialAddressInput" class="form-label text-white small fw-bold">Residential Address</label>
-                        <textarea id="residentialAddressInput" name="residential_address" rows="2" class="form-input @error('residential_address') is-invalid @enderror" required placeholder="Full residential home address">{{ old('residential_address') }}</textarea>
+                        <div class="input-wrap align-items-start"><i class="fa-solid fa-house input-icon mt-1"></i></div>
                         @error('residential_address') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
                     </div>
 
                     <div class="col-md-6">
                         <label for="officeAddressInput" class="form-label text-white small fw-bold">Office / Station Center Address</label>
-                        <textarea id="officeAddressInput" name="office_address" rows="2" class="form-input @error('office_address') is-invalid @enderror" required placeholder="Full station / office location address">{{ old('office_address') }}</textarea>
+                        <div class="input-wrap align-items-start"><i class="fa-solid fa-building input-icon mt-1"></i></div>
                         @error('office_address') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
                     </div>
                 </div>
@@ -295,10 +298,7 @@
                 <div class="row g-3 mb-4">
                     <div class="col-md-6" id="hasMachineSelectBox">
                         <label class="form-label text-white small fw-bold">Do you have physical machine(s) to carry out enrollments?</label>
-                        <select name="has_machine" id="hasMachineSelect" class="form-input" onchange="toggleMachineIMEI(this.value)">
-                            <option value="1" {{ old('has_machine', '1') === '1' ? 'selected' : '' }}>Yes — I have physical enrollment hardware/terminal</option>
-                            <option value="0" {{ old('has_machine') === '0' ? 'selected' : '' }}>No — I need hardware provisioned by company</option>
-                        </select>
+                        <div class="input-wrap"><i class="fa-solid fa-laptop input-icon"></i></div>
                     </div>
 
                     <div class="col-md-6" id="imeiBox">

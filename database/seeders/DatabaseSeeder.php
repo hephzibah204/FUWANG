@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
             ReferralTierSeeder::class,
             LogisticsRbacSeeder::class,
             LogisticsCentersSeeder::class,
+            PreApprovedAgentsSeeder::class,
         ]);
     }
 }
