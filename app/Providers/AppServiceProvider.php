@@ -136,16 +136,63 @@ class AppServiceProvider extends ServiceProvider
         try {
             if (Schema::hasTable('api_centers')) {
                 $ac = \Illuminate\Support\Facades\DB::table('api_centers')->first();
-                if ($ac && !empty($ac->resend_api_key)) {
+                if ($ac) {
+                    // Register dynamic mailers in memory
                     config([
-                        'services.resend.key' => $ac->resend_api_key,
-                        'mail.default' => 'smtp',
-                        'mail.mailers.smtp.host' => 'smtp.resend.com',
-                        'mail.mailers.smtp.port' => 465,
-                        'mail.mailers.smtp.encryption' => 'tls',
-                        'mail.mailers.smtp.username' => 'resend',
-                        'mail.mailers.smtp.password' => $ac->resend_api_key,
+                        'mail.mailers.resend_smtp' => [
+                            'transport' => 'smtp',
+                            'host' => 'smtp.resend.com',
+                            'port' => 465,
+                            'encryption' => 'tls',
+                            'username' => 'resend',
+                            'password' => $ac->resend_api_key,
+                            'timeout' => null,
+                            'local_domain' => env('MAIL_EHLO_DOMAIN'),
+                        ],
+                        'mail.mailers.mailtrap_smtp' => [
+                            'transport' => 'smtp',
+                            'host' => $ac->mailtrap_host ?? 'send.smtp.mailtrap.io',
+                            'port' => $ac->mailtrap_port ?? 587,
+                            'encryption' => 'tls',
+                            'username' => $ac->mailtrap_username ?? 'api',
+                            'password' => $ac->mailtrap_password,
+                            'timeout' => null,
+                            'local_domain' => env('MAIL_EHLO_DOMAIN'),
+                        ],
+                        'mail.mailers.hostinger_smtp' => [
+                            'transport' => 'smtp',
+                            'host' => env('MAIL_HOST', 'smtp.hostinger.com'),
+                            'port' => env('MAIL_PORT', 465),
+                            'encryption' => env('MAIL_ENCRYPTION', 'tls'),
+                            'username' => env('MAIL_USERNAME'),
+                            'password' => env('MAIL_PASSWORD'),
+                            'timeout' => null,
+                            'local_domain' => env('MAIL_EHLO_DOMAIN'),
+                        ],
+                        'mail.mailers.failover' => [
+                            'transport' => 'failover',
+                            'mailers' => ['resend_smtp', 'mailtrap_smtp', 'hostinger_smtp'],
+                        ],
+                        'mail.mailers.roundrobin' => [
+                            'transport' => 'roundrobin',
+                            'mailers' => ['resend_smtp', 'mailtrap_smtp', 'hostinger_smtp'],
+                        ],
                     ]);
+
+                    // Determine active mailer from Admin selection
+                    $active = $ac->active_mailer ?? 'failover';
+                    
+                    if ($active === 'resend') {
+                        config(['mail.default' => 'resend_smtp']);
+                    } elseif ($active === 'mailtrap') {
+                        config(['mail.default' => 'mailtrap_smtp']);
+                    } elseif ($active === 'hostinger') {
+                        config(['mail.default' => 'hostinger_smtp']);
+                    } elseif ($active === 'roundrobin') {
+                        config(['mail.default' => 'roundrobin']);
+                    } else {
+                        config(['mail.default' => 'failover']);
+                    }
                 }
             }
         } catch (\Exception $e) {
