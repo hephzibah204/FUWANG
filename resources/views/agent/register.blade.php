@@ -378,6 +378,7 @@
     .agent-register-wrapper {
         position: relative;
         min-height: calc(100vh - 120px);
+        padding: 1.5rem 1.5rem;
     }
 
     /* Reduce outer padding when inside authenticated dashboard */
@@ -385,9 +386,44 @@
         .dashboard-content {
             padding: 0 !important;
         }
+        .agent-register-wrapper {
+            padding: 2rem 2.5rem;
+        }
     }
-    .agent-register-wrapper {
-        padding: 1.5rem 2rem;
+
+    @media (max-width: 767.98px) {
+        .agent-register-wrapper {
+            padding: 1rem 0.75rem;
+        }
+        .agent-lookup-box {
+            padding: 1.25rem 1rem !important;
+        }
+        .category-card {
+            padding: 14px 14px !important;
+            gap: 12px !important;
+        }
+        .category-icon {
+            width: 38px !important;
+            height: 38px !important;
+            font-size: 1.1rem !important;
+        }
+        .category-title {
+            font-size: 0.92rem !important;
+        }
+        .category-desc {
+            font-size: 0.78rem !important;
+        }
+        .form-input {
+            font-size: 0.9rem !important;
+            padding: 0.75rem 1rem 0.75rem 2.6rem !important;
+        }
+        .input-icon {
+            left: 0.9rem !important;
+        }
+        .btn-full {
+            font-size: 0.95rem !important;
+            padding: 0.85rem 1rem !important;
+        }
     }
 
     /* Category Cards - Clean Glassmorphic, No Solid Yellow */
