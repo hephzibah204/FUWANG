@@ -18,15 +18,15 @@ class EnsureApprovedAgent
     {
         $user = Auth::user();
 
-        if (! $user || ! $user->isApprovedEnrollmentAgent() || empty($user->enrollmentAgent->picture_path)) {
+        if (! $user || ! $user->enrollmentAgent) {
             if ($request->expectsJson()) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Access denied. You must be an approved enrollment agent with an uploaded profile picture.',
+                    'message' => 'Access denied. You must be an enrollment agent.',
                 ], 403);
             }
 
-            return redirect()->route('agent.onboarding.index')->with('error', 'Please upload your profile picture to fully activate your agent account.');
+            return redirect()->route('agent.register')->with('info', 'Please submit your agent registration first.');
         }
 
         if (! session()->has('active_dashboard_mode')) {

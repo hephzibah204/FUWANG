@@ -255,6 +255,25 @@
                         @error('phone_number') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
                     </div>
 
+                    @guest
+                    <div class="col-md-6">
+                        <label for="passwordInput" class="form-label text-white small fw-bold">Account Password <span class="text-danger">*</span></label>
+                        <div class="input-wrap">
+                            <i class="fa-solid fa-lock input-icon text-gold"></i>
+                            <input type="password" id="passwordInput" name="password" class="form-input @error('password') is-invalid @enderror" required placeholder="Minimum 8 characters">
+                        </div>
+                        @error('password') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="passwordConfirmInput" class="form-label text-white small fw-bold">Confirm Password <span class="text-danger">*</span></label>
+                        <div class="input-wrap">
+                            <i class="fa-solid fa-lock input-icon text-gold"></i>
+                            <input type="password" id="passwordConfirmInput" name="password_confirmation" class="form-input" required placeholder="Re-enter password">
+                        </div>
+                    </div>
+                    @endguest
+
                     <div class="col-md-6">
                         <label for="ninInput" class="form-label text-white small fw-bold">NIN (National Identification Number - 11 Digits)</label>
                         <div class="input-wrap">

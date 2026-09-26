@@ -34,7 +34,7 @@ class EnrollmentAgentSystemTest extends TestCase
             'machine_imei' => '864201041234567',
         ]);
 
-        $response->assertRedirect(route('agent.onboarding.index'));
+        $response->assertRedirect(route('agent.dashboard'));
         $this->assertDatabaseHas('enrollment_agents', [
             'user_id' => $user->id,
             'agent_type' => 'existing',
@@ -237,11 +237,36 @@ class EnrollmentAgentSystemTest extends TestCase
             'machine_imei' => '864201041234567',
         ]);
 
-        $response->assertRedirect(route('agent.onboarding.index'));
+        $response->assertRedirect(route('agent.dashboard'));
         $this->assertDatabaseHas('enrollment_agents', [
             'user_id' => $user->id,
             'company_agent_code' => 'FUWA-NOOTP-001',
             'is_fast_tracked' => true,
+        ]);
+    }
+
+    public function test_guest_can_register_as_agent_with_custom_password(): void
+    {
+        $response = $this->post(route('agent.register.submit'), [
+            'agent_type' => 'new',
+            'full_name' => 'Guest New Agent',
+            'email' => 'guestagent@example.com',
+            'password' => 'SecretPass123!',
+            'password_confirmation' => 'SecretPass123!',
+            'phone_number' => '08099112233',
+            'state' => 'Lagos',
+            'residential_address' => 'Home Address',
+            'office_address' => 'Office Address',
+            'bvn' => '12345678901',
+            'nin' => '10987654321',
+            'has_machine' => '0',
+            'machine_imei' => '',
+        ]);
+
+        $response->assertRedirect(route('agent.dashboard'));
+        $this->assertDatabaseHas('users', [
+            'email' => 'guestagent@example.com',
+            'fullname' => 'Guest New Agent',
         ]);
     }
 }

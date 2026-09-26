@@ -172,6 +172,7 @@ class AgentRegistrationController extends Controller
             'full_name' => ['required', 'string', 'max:255'],
             'phone_number' => ['required', 'string', 'max:20'],
             'email' => ['required', 'email', 'max:255'],
+            'password' => [Auth::check() ? 'nullable' : 'required', 'nullable', 'string', 'min:8', 'confirmed'],
             'bvn' => ['required', 'string', 'digits:11'],
             'nin' => ['required', 'string', 'digits:11'],
             'state' => ['required', 'string', 'max:100'],
@@ -265,7 +266,7 @@ class AgentRegistrationController extends Controller
                 'number' => $validated['phone_number'],
                 'email' => $validated['email'],
                 'username' => User::generateUniqueUsername($validated['email']),
-                'password' => Hash::make(Str::random(16)),
+                'password' => Hash::make($validated['password']),
                 'user_status' => 'active',
                 'email_verified_at' => now(),
             ]);
@@ -386,9 +387,9 @@ class AgentRegistrationController extends Controller
         }
 
         $msg = $ninServerStatus === 'verified'
-            ? 'Basic registration complete! Your NIN was verified. Please upload your Agency KYC documents to complete your application.'
-            : 'Basic registration complete! (NIN server is currently offline; your NIN will be verified automatically in background). Please upload your Agency KYC documents.';
+            ? 'Phase 1 registration complete! Your NIN was verified. Welcome to your Agent Dashboard.'
+            : 'Phase 1 registration complete! (NIN server is currently offline; your NIN will be verified in the background). Welcome to your Agent Dashboard.';
 
-        return redirect()->route('agent.onboarding.index')->with('success', $msg);
+        return redirect()->route('agent.dashboard')->with('success', $msg);
     }
 }
