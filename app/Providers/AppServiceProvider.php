@@ -169,17 +169,17 @@ class AppServiceProvider extends ServiceProvider
                         ],
                     ]);
 
-                    // Determine active mailer from Admin selection
-                    $active = $ac->active_mailer ?? 'failover';
+                    // Determine active mailer from Admin selection (defaults to Resend)
+                    $active = $ac->active_mailer ?? 'resend';
                     
-                    if ($active === 'resend') {
-                        config(['mail.default' => 'resend_smtp']);
-                    } elseif ($active === 'mailtrap') {
+                    if ($active === 'mailtrap') {
                         config(['mail.default' => 'mailtrap_smtp']);
+                    } elseif ($active === 'failover') {
+                        config(['mail.default' => 'failover']);
                     } elseif ($active === 'roundrobin') {
                         config(['mail.default' => 'roundrobin']);
                     } else {
-                        config(['mail.default' => 'failover']);
+                        config(['mail.default' => 'resend_smtp']);
                     }
                 }
             }
