@@ -98,16 +98,18 @@
                         </div>
 
                         <div class="col-md-6">
-                            <label class="form-label text-white small fw-bold">3. Business Registration (CAC Number)</label>
+                            <label class="form-label text-white small fw-bold">3. Business Registration (CAC Number) <span class="badge bg-secondary font-monospace" style="font-size: 0.65rem;">Optional</span></label>
                             <input type="text" name="business_registration_number" value="{{ old('business_registration_number', $agent->business_registration_number) }}" class="form-control mb-2" placeholder="e.g. RC1234567 or BN9876543">
-                            <small class="text-white-50">Optional for individual agents, required for registered businesses.</small>
+                            <small class="text-warning" style="font-size: 0.75rem;"><i class="fa-solid fa-circle-info me-1"></i>Optional for individual agents. Uploading CAC boosts your Agency Trust Score & KYC Tier level.</small>
                         </div>
 
                         <div class="col-md-6">
-                            <label class="form-label text-white small fw-bold">4. CAC / Business Registration Document</label>
+                            <label class="form-label text-white small fw-bold">4. CAC / Business Registration Certificate <span class="badge bg-secondary font-monospace" style="font-size: 0.65rem;">Optional</span></label>
                             <input type="file" name="business_doc" accept="image/png,image/jpeg,image/webp,application/pdf" class="form-control mb-2">
                             @if($agent->business_registration_doc_path)
                                 <div class="badge bg-info"><i class="fa-solid fa-check me-1"></i>Business Document Uploaded</div>
+                            @else
+                                <small class="text-white-50" style="font-size: 0.75rem;">PNG, JPG, WEBP, or PDF (max 5MB). Increases profile trust rating.</small>
                             @endif
                         </div>
                     </div>
