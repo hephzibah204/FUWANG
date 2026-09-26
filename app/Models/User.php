@@ -96,8 +96,11 @@ class User extends Authenticatable implements CanResetPasswordContract, MustVeri
                 ],
             ]);
         }
-
-        Mail::to($this->email)->queue($mailable);
+        try {
+            Mail::to($this->email)->send($mailable);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Password reset email sending failed: ' . $e->getMessage());
+        }
     }
 
     public function sendEmailVerificationNotification()

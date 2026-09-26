@@ -39,7 +39,11 @@ class EmailNotificationService
             ]);
         }
 
-        Mail::to($user->email)->queue($mailable);
+        try {
+            Mail::to($user->email)->send($mailable);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Welcome email send failed: ' . $e->getMessage());
+        }
     }
 
     public function sendLoginAlert(User $user, string $loginIp, ?string $userAgent, string $loginAtIso): void
@@ -77,6 +81,10 @@ class EmailNotificationService
             ]);
         }
 
-        Mail::to($user->email)->queue($mailable);
+        try {
+            Mail::to($user->email)->send($mailable);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Login alert email send failed: ' . $e->getMessage());
+        }
     }
 }
