@@ -713,8 +713,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 },
                 body: JSON.stringify({ company_agent_code: code })
             })
-            .then(res => res.json())
-            .then(data => {
+            .then(async res => { let data = {}; try { data = await res.json(); } catch (e) { if (res.status === 419) { data.message = "Your session has expired. Please refresh the page and try again."; } else { data.message = "Server error. Please check your internet connection or contact support."; } data.ok = false; } if (!res.ok && data.ok === undefined) data.ok = false; return data; }) .then(data => {
                 if (data.ok) {
                     if (otpStatusMsg) {
                         otpStatusMsg.className = 'd-block small mt-1 text-emerald';
@@ -730,11 +729,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     sendOtpBtn.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> Resend OTP';
                 }
             })
-            .catch(err => {
-                console.error('OTP send error:', err);
-                sendOtpBtn.disabled = false;
-                sendOtpBtn.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> Send Email OTP';
-            });
+            .catch(err => { console.error('OTP send error:', err); if (otpStatusMsg) { otpStatusMsg.className = 'd-block small mt-1 text-danger'; otpStatusMsg.textContent = 'A network error occurred. Please refresh the page.'; } sendOtpBtn.disabled = false; sendOtpBtn.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> Send Email OTP'; });
         });
     }
 
