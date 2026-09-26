@@ -4,7 +4,7 @@
 @section('public_wrapper_class', 'none')
 
 @section('content')
-<div class="agent-register-wrapper py-4 px-2 px-md-4">
+<div class="agent-register-wrapper">
     <!-- Ambient Background Blobs -->
     <div class="bg-glow blob-1"></div>
     <div class="bg-glow blob-2"></div>
@@ -339,6 +339,16 @@
     .agent-register-wrapper {
         position: relative;
         min-height: calc(100vh - 120px);
+    }
+
+    /* Reduce outer padding when inside authenticated dashboard */
+    @media (min-width: 992px) {
+        .dashboard-content {
+            padding: 0 !important;
+        }
+    }
+    .agent-register-wrapper {
+        padding: 1.5rem 2rem;
     }
 
     /* Category Cards - Clean Glassmorphic, No Solid Yellow */
