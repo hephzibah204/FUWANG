@@ -139,11 +139,11 @@
                 
                 <div class="d-flex flex-wrap align-items-center gap-3 mb-4">
                     @auth
-                        @if(\ && \->isApproved())
+                        @if( && ->isApproved())
                             <a href="{{ route('agent.dashboard') }}" class="btn btn-primary btn-lg rounded-pill px-4 py-3 fw-bold hover-translate-up shadow-lg">
                                 <i class="fa-solid fa-gauge-high me-2"></i>Enter Workspace
                             </a>
-                        @elseif(\)
+                        @elseif()
                             <a href="{{ route('agent.onboarding.index') }}" class="btn btn-primary btn-lg rounded-pill px-4 py-3 fw-bold hover-translate-up shadow-lg">
                                 <i class="fa-solid fa-list-check me-2"></i>Resume Onboarding
                             </a>
