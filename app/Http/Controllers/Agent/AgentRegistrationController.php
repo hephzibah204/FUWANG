@@ -23,7 +23,7 @@ class AgentRegistrationController extends Controller
         $initialType = $request->query('type', 'new');
 
         $preApprovedAgents = PreApprovedAgent::where('is_claimed', false)
-            ->select('agent_code', 'full_name', 'email', 'phone_number', 'state', 'lga')
+            ->select('agent_code', 'full_name', 'email', 'phone_number')
             ->get()
             ->map(function($a) {
                 $emailUser = explode('@', $a->email)[0] ?? '';
@@ -37,9 +37,7 @@ class AgentRegistrationController extends Controller
                     'email' => $a->email,
                     'phone_number' => $a->phone_number,
                     'masked_email' => $maskedEmail,
-                    'masked_phone' => $maskedPhone,
-                    'state' => $a->state,
-                    'lga' => $a->lga,
+                    'masked_phone' => $maskedPhone
                 ];
             });
 
