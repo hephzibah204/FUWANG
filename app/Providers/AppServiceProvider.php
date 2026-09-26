@@ -159,23 +159,13 @@ class AppServiceProvider extends ServiceProvider
                             'timeout' => null,
                             'local_domain' => env('MAIL_EHLO_DOMAIN'),
                         ],
-                        'mail.mailers.hostinger_smtp' => [
-                            'transport' => 'smtp',
-                            'host' => env('MAIL_HOST', 'smtp.hostinger.com'),
-                            'port' => env('MAIL_PORT', 465),
-                            'encryption' => env('MAIL_ENCRYPTION', 'tls'),
-                            'username' => env('MAIL_USERNAME'),
-                            'password' => env('MAIL_PASSWORD'),
-                            'timeout' => null,
-                            'local_domain' => env('MAIL_EHLO_DOMAIN'),
-                        ],
                         'mail.mailers.failover' => [
                             'transport' => 'failover',
-                            'mailers' => ['resend_smtp', 'mailtrap_smtp', 'hostinger_smtp'],
+                            'mailers' => ['resend_smtp', 'mailtrap_smtp'],
                         ],
                         'mail.mailers.roundrobin' => [
                             'transport' => 'roundrobin',
-                            'mailers' => ['resend_smtp', 'mailtrap_smtp', 'hostinger_smtp'],
+                            'mailers' => ['resend_smtp', 'mailtrap_smtp'],
                         ],
                     ]);
 
@@ -186,8 +176,6 @@ class AppServiceProvider extends ServiceProvider
                         config(['mail.default' => 'resend_smtp']);
                     } elseif ($active === 'mailtrap') {
                         config(['mail.default' => 'mailtrap_smtp']);
-                    } elseif ($active === 'hostinger') {
-                        config(['mail.default' => 'hostinger_smtp']);
                     } elseif ($active === 'roundrobin') {
                         config(['mail.default' => 'roundrobin']);
                     } else {
