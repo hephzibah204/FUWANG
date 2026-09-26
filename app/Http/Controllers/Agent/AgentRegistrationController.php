@@ -250,10 +250,14 @@ class AgentRegistrationController extends Controller
         if (!$user) {
             $existingUser = User::where('email', $validated['email'])->first();
             if ($existingUser) {
-                $loginUrl = route('login') . '?email=' . urlencode($validated['email']);
+                $loginUrl = route('login', [
+                    'email' => $validated['email'],
+                    'redirect' => route('agent.register', ['type' => $validated['agent_type'] ?? 'existing'])
+                ]);
                 return back()
                     ->withInput()
-                    ->withErrors(['email' => "An account with this email address already exists. Please <a href='{$loginUrl}' class='alert-link fw-bold text-decoration-underline'>log in here</a> first to link your enrollment agent profile."]);
+                    ->with('existing_account_login_url', $loginUrl)
+                    ->withErrors(['email' => 'An account with this email address already exists. Please log in to your account first to link your enrollment agent profile.']);
             }
 
             $user = User::create([

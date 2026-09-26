@@ -81,6 +81,9 @@
                     @if(request('service'))
                         <input type="hidden" name="service" value="{{ request('service') }}">
                     @endif
+                    @if(request('redirect'))
+                        <input type="hidden" name="redirect" value="{{ request('redirect') }}">
+                    @endif
 
                     <div id="errorContainer" class="alert-banner alert-banner-danger {{ $errors->any() ? '' : 'd-none' }}">
                         <i class="fa-solid fa-circle-exclamation mr-2"></i>
@@ -103,7 +106,7 @@
                         <label for="email" class="form-label">Email Address</label>
                         <div class="input-wrap">
                             <i class="fa-regular fa-envelope input-icon"></i>
-                            <input type="email" id="email" name="email" value="{{ old('email') }}" placeholder="name@example.com" required autofocus class="form-input">
+                            <input type="email" id="email" name="email" value="{{ old('email', request('email')) }}" placeholder="name@example.com" required autofocus class="form-input">
                         </div>
                     </div>
 

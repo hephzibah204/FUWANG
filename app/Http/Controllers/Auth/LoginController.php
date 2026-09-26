@@ -131,11 +131,16 @@ class LoginController extends Controller
                 ? route('agent.dashboard')
                 : route('dashboard');
 
-            $redirect = ($user instanceof \Illuminate\Contracts\Auth\MustVerifyEmail && ! $user->hasVerifiedEmail())
-                ? route('verification.notice')
-                : ($service === 'logistics'
-                    ? route('logistics.dashboard')
-                    : ($service === 'auctions' ? route('auction.dashboard') : $defaultDashboard));
+            $targetRedirect = $request->input('redirect');
+            if ($targetRedirect && (str_starts_with($targetRedirect, '/') || str_starts_with($targetRedirect, config('app.url')))) {
+                $redirect = $targetRedirect;
+            } else {
+                $redirect = ($user instanceof \Illuminate\Contracts\Auth\MustVerifyEmail && ! $user->hasVerifiedEmail())
+                    ? route('verification.notice')
+                    : ($service === 'logistics'
+                        ? route('logistics.dashboard')
+                        : ($service === 'auctions' ? route('auction.dashboard') : $defaultDashboard));
+            }
             if ($wantsJson) {
                 return response()->json([
                     'status' => 'success',

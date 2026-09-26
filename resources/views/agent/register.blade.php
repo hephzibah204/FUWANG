@@ -67,7 +67,16 @@
 
         @if ($errors->any())
             <div class="alert-banner alert-banner-danger mb-4">
-                <i class="fa-solid fa-circle-exclamation me-2"></i> {{ $errors->first() }}
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <div>
+                        <i class="fa-solid fa-circle-exclamation me-2"></i> {{ $errors->first() }}
+                    </div>
+                    @if(session('existing_account_login_url'))
+                        <a href="{{ session('existing_account_login_url') }}" class="btn btn-sm btn-warning rounded-pill px-3 py-1 fw-bold text-dark text-decoration-none">
+                            <i class="fa-solid fa-arrow-right-to-bracket me-1"></i> Log In Now
+                        </a>
+                    @endif
+                </div>
             </div>
         @endif
 
@@ -223,7 +232,18 @@
                             <i class="fa-regular fa-envelope input-icon"></i>
                             <input type="email" id="emailInput" name="email" class="form-input @error('email') is-invalid @enderror" value="{{ old('email', Auth::user()?->email) }}" required placeholder="your.email@example.com">
                         </div>
-                        @error('email') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                        @error('email')
+                            <div class="text-danger small mt-1">
+                                <i class="fa-solid fa-circle-exclamation me-1"></i> {{ $message }}
+                            </div>
+                            @if(session('existing_account_login_url'))
+                                <div class="mt-2">
+                                    <a href="{{ session('existing_account_login_url') }}" class="btn btn-sm btn-outline-warning rounded-pill px-3 py-1 fw-bold text-decoration-none">
+                                        <i class="fa-solid fa-arrow-right-to-bracket me-1"></i> Log In to Existing Account
+                                    </a>
+                                </div>
+                            @endif
+                        @enderror
                     </div>
 
                     <div class="col-md-6">
