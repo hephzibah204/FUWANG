@@ -683,48 +683,7 @@ document.addEventListener('DOMContentLoaded', function () {
         resultsContainer.classList.add('d-none');
     }
 
-    )
-            .then(async res => { let data = {}; try { data = await res.json(); } catch (e) { if (res.status === 419) { data.message = "Your session has expired. Please refresh the page and try again."; } else { data.message = "Server error. Please check your internet connection or contact support."; } data.ok = false; } if (!res.ok && data.ok === undefined) data.ok = false; return data; }) .then(data => {
-                if (data.ok) {
-                    if (otpStatusMsg) {
-                        otpStatusMsg.className = 'd-block small mt-1 text-emerald';
-                        otpStatusMsg.innerHTML = '<i class="fa-solid fa-circle-check me-1"></i> ' + data.message;
-                    }
-                    sendOtpBtn.innerHTML = '<i class="fa-solid fa-check me-1"></i> Sent';
-                } else {
-                    if (otpStatusMsg) {
-                        otpStatusMsg.className = 'd-block small mt-1 text-danger';
-                        otpStatusMsg.textContent = data.message || 'Failed to send OTP.';
-                    }
-                    sendOtpBtn.disabled = false;
-                    sendOtpBtn.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> Resend OTP';
-                }
-            })
-            .catch(err => { console.error('OTP send error:', err); if (otpStatusMsg) { otpStatusMsg.className = 'd-block small mt-1 text-danger'; otpStatusMsg.textContent = 'A network error occurred. Please refresh the page.'; } sendOtpBtn.disabled = false; sendOtpBtn.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> Send Email OTP'; });
-        });
-    }
-
-    function clearSelection() {
-        searchInput.value = '';
-        clearBtn.classList.add('d-none');
-        if (codeInput) codeInput.readOnly = false;
-        if (nameInput) nameInput.readOnly = false;
-        if (emailInput) emailInput.readOnly = false;
-        if (phoneInput) phoneInput.readOnly = false;
-        if (sendOtpBtn) sendOtpBtn.disabled = true;
-        if (otpStatusMsg) {
-            otpStatusMsg.className = 'd-block small mt-1 text-muted';
-            otpStatusMsg.textContent = 'Select your profile above to send OTP.';
-        }
-        if (verifiedBanner) verifiedBanner.classList.add('d-none');
-        if (unmatchedNotice) unmatchedNotice.classList.add('d-none');
-        resultsContainer.innerHTML = '';
-        resultsContainer.classList.add('d-none');
-        selectedIndex = -1;
-    }
-
-    if (changeBtn) {
-        changeBtn.addEventListener('click', function() {
+        if (changeBtn) {     changeBtn.addEventListener('click', function() {
             clearSelection();
             searchInput.focus();
         });
@@ -752,14 +711,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (spinner) spinner.classList.remove('d-none');
 
-        
-        // Synchronous Instant Search
-        const q = query.toLowerCase();
-        const results = preApprovedData.filter(a => {
-            return (a.full_name && a.full_name.toLowerCase().includes(q)) || 
-                   (a.agent_code && a.agent_code.toLowerCase().includes(q)) ||
-                   (a.email && a.email.toLowerCase().includes(q)) ||
-                   (a.phone_number && a.phone_number.includes(q));
+        var q = query.toLowerCase();
+        var results = preApprovedData.filter(function(a) {
+            return (a.full_name && a.full_name.toLowerCase().indexOf(q) !== -1) ||
+                   (a.agent_code && a.agent_code.toLowerCase().indexOf(q) !== -1) ||
+                   (a.email && a.email.toLowerCase().indexOf(q) !== -1) ||
+                   (a.phone_number && a.phone_number.indexOf(q) !== -1);
         }).slice(0, 50);
 
         if (spinner) spinner.classList.add('d-none');
@@ -769,51 +726,34 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (currentResults.length > 0) {
             if (unmatchedNotice) unmatchedNotice.classList.add('d-none');
-
-            currentResults.forEach((agent) => {
-                const item = document.createElement('div');
+            currentResults.forEach(function(agent) {
+                var item = document.createElement('div');
                 item.className = 'autocomplete-item';
                 item.setAttribute('role', 'option');
                 item.setAttribute('tabindex', '0');
-
-                const initials = (agent.full_name || 'AG')
-                    .split(' ')
-                    .map(n => n[0])
-                    .slice(0, 2)
-                    .join('')
-                    .toUpperCase();
-
-                item.innerHTML = \
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="agent-avatar-chip">\</div>
-                        <div>
-                            <div class="d-flex align-items-center gap-2">
-                                <strong class="text-white">\</strong>
-                                <span class="badge-gold font-monospace">\</span>
-                            </div>
-                            <div class="text-muted small"> • </div>
-                        </div>
-                    </div>
-                    <span class="badge-select-pill">Select</span>
-                \;
-
-                item.addEventListener('click', function () {
-                    selectAgent(agent);
-                });
-
+                var parts = (agent.full_name || 'AG').split(' ');
+                var initials = parts.slice(0, 2).map(function(n){ return n[0] || ''; }).join('').toUpperCase();
+                item.innerHTML =
+                    '<div class="d-flex align-items-center gap-3">' +
+                        '<div class="agent-avatar-chip">' + initials + '</div>' +
+                        '<div>' +
+                            '<div class="d-flex align-items-center gap-2">' +
+                                '<strong class="text-white">' + agent.full_name + '</strong>' +
+                                '<span class="badge-gold font-monospace">' + agent.agent_code + '</span>' +
+                            '</div>' +
+                            '<div class="text-muted small">' + (agent.masked_email || '') + '</div>' +
+                        '</div>' +
+                    '</div>' +
+                    '<span class="badge-select-pill">Select</span>';
+                item.addEventListener('click', function () { selectAgent(agent); });
                 resultsContainer.appendChild(item);
             });
             resultsContainer.classList.remove('d-none');
         } else {
             if (unmatchedNotice) unmatchedNotice.classList.remove('d-none');
-            resultsContainer.innerHTML = \
-                <div class="p-3 text-center text-muted small">
-                    <i class="fa-solid fa-circle-question me-1"></i> No matching agent found.
-                </div>
-            \;
+            resultsContainer.innerHTML = '<div class="p-3 text-center text-muted small"><i class="fa-solid fa-circle-question me-1"></i> No matching agent found.</div>';
             resultsContainer.classList.remove('d-none');
         }
-
     });
 
     // Keyboard Navigation for Autocomplete
