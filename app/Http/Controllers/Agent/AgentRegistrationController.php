@@ -65,14 +65,13 @@ class AgentRegistrationController extends Controller
             ->map(function ($agent) {
                 $name = $agent->full_name ?: trim($agent->first_name . ' ' . $agent->last_name);
 
-                // Mask email: j***@domain.com
+                // For dropdown display (masked)
                 $maskedEmail = $agent->email;
                 if ($agent->email && str_contains($agent->email, '@')) {
                     [$emailUser, $domain] = explode('@', $agent->email, 2);
                     $maskedEmail = (strlen($emailUser) > 1 ? substr($emailUser, 0, 1) : 'a') . '***@' . $domain;
                 }
 
-                // Mask phone: 080****5678
                 $maskedPhone = $agent->phone_number;
                 if ($agent->phone_number && strlen($agent->phone_number) >= 7) {
                     $maskedPhone = substr($agent->phone_number, 0, 3) . '****' . substr($agent->phone_number, -4);
@@ -84,8 +83,10 @@ class AgentRegistrationController extends Controller
                     'first_name' => $agent->first_name,
                     'last_name' => $agent->last_name,
                     'full_name' => $name,
-                    'email' => $maskedEmail,
-                    'phone_number' => $maskedPhone,
+                    'email' => $agent->email, // Sent raw for auto-fill
+                    'phone_number' => $agent->phone_number, // Sent raw for auto-fill
+                    'masked_email' => $maskedEmail,
+                    'masked_phone' => $maskedPhone,
                     'fast_track_eligible' => true,
                 ];
             });

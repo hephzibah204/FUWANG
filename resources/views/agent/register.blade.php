@@ -656,11 +656,11 @@ document.addEventListener('DOMContentLoaded', function () {
             nameInput.value = agent.full_name;
             nameInput.readOnly = true;
         }
-        if (emailInput && !agent.email.includes('***')) {
+        if (emailInput && agent.email) {
             emailInput.value = agent.email;
             emailInput.readOnly = true;
         }
-        if (phoneInput && !agent.phone_number.includes('****')) {
+        if (phoneInput && agent.phone_number) {
             phoneInput.value = agent.phone_number;
             phoneInput.readOnly = true;
         }
@@ -674,7 +674,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // Display Verified Banner
         if (verifiedName) verifiedName.textContent = agent.full_name;
         if (verifiedCode) verifiedCode.textContent = agent.agent_code;
-        if (verifiedMeta) verifiedMeta.textContent = `Phone: ${agent.phone_number} | Email: ${agent.email}`;
+        if (verifiedMeta) verifiedMeta.textContent = `Phone: ${agent.masked_phone} | Email: ${agent.masked_email}`;
         if (verifiedBanner) verifiedBanner.classList.remove('d-none');
         if (unmatchedNotice) unmatchedNotice.classList.add('d-none');
 
@@ -807,7 +807,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                             <strong class="text-white">${agent.full_name}</strong>
                                             <span class="badge-gold font-monospace">${agent.agent_code}</span>
                                         </div>
-                                        <div class="text-muted small">${agent.phone_number} â€¢ ${agent.email}</div>
+                                        <div class="text-muted small"> • </div>
                                     </div>
                                 </div>
                                 <span class="badge-select-pill">Select</span>
