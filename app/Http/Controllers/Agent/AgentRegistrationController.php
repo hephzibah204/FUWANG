@@ -22,7 +22,28 @@ class AgentRegistrationController extends Controller
         $agent = $user ? $user->enrollmentAgent : null;
         $initialType = $request->query('type', 'new');
 
-        return view('agent.register', compact('agent', 'initialType'));
+        $preApprovedAgents = PreApprovedAgent::where('is_claimed', false)
+            ->select('agent_code', 'full_name', 'email', 'phone_number', 'state', 'lga')
+            ->get()
+            ->map(function($a) {
+                $emailUser = explode('@', $a->email)[0] ?? '';
+                $domain = explode('@', $a->email)[1] ?? '';
+                $maskedEmail = (strlen($emailUser) > 1 ? substr($emailUser, 0, 1) : 'a') . '***@' . $domain;
+                $maskedPhone = substr($a->phone_number, 0, 3) . '****' . substr($a->phone_number, -4);
+
+                return [
+                    'agent_code' => $a->agent_code,
+                    'full_name' => $a->full_name,
+                    'email' => $a->email,
+                    'phone_number' => $a->phone_number,
+                    'masked_email' => $maskedEmail,
+                    'masked_phone' => $maskedPhone,
+                    'state' => $a->state,
+                    'lga' => $a->lga,
+                ];
+            });
+
+        return view('agent.register', compact('agent', 'initialType', 'preApprovedAgents'));
     }
 
     public function searchPreApproved(Request $request)
