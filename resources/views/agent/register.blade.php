@@ -279,13 +279,19 @@
 
                     <div class="col-md-6">
                         <label for="residentialAddressInput" class="form-label text-white small fw-bold">Residential Address</label>
-                        <div class="input-wrap align-items-start"><i class="fa-solid fa-house input-icon mt-1"></i></div>
+                        <div class="input-wrap align-items-start">
+                            <i class="fa-solid fa-house input-icon mt-1"></i>
+                            <textarea id="residentialAddressInput" name="residential_address" rows="2" class="form-input @error('residential_address') is-invalid @enderror" required placeholder="Full residential home address" style="resize: none;">{{ old('residential_address') }}</textarea>
+                        </div>
                         @error('residential_address') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
                     </div>
 
                     <div class="col-md-6">
                         <label for="officeAddressInput" class="form-label text-white small fw-bold">Office / Station Center Address</label>
-                        <div class="input-wrap align-items-start"><i class="fa-solid fa-building input-icon mt-1"></i></div>
+                        <div class="input-wrap align-items-start">
+                            <i class="fa-solid fa-building input-icon mt-1"></i>
+                            <textarea id="officeAddressInput" name="office_address" rows="2" class="form-input @error('office_address') is-invalid @enderror" required placeholder="Full station / office location address" style="resize: none;">{{ old('office_address') }}</textarea>
+                        </div>
                         @error('office_address') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
                     </div>
                 </div>
@@ -298,7 +304,13 @@
                 <div class="row g-3 mb-4">
                     <div class="col-md-6" id="hasMachineSelectBox">
                         <label class="form-label text-white small fw-bold">Do you have physical machine(s) to carry out enrollments?</label>
-                        <div class="input-wrap"><i class="fa-solid fa-laptop input-icon"></i></div>
+                        <div class="input-wrap">
+                            <i class="fa-solid fa-laptop input-icon"></i>
+                            <select name="has_machine" id="hasMachineSelect" class="form-input text-white" onchange="toggleMachineIMEI(this.value)" style="background: transparent;">
+                                <option value="1" {{ old('has_machine', '1') === '1' ? 'selected' : '' }} class="text-dark">Yes — I have physical enrollment hardware/terminal</option>
+                                <option value="0" {{ old('has_machine') === '0' ? 'selected' : '' }} class="text-dark">No — I need hardware provisioned by company</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div class="col-md-6" id="imeiBox">
