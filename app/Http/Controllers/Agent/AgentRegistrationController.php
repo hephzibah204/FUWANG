@@ -26,16 +26,14 @@ class AgentRegistrationController extends Controller
             ->select('agent_code', 'full_name', 'email', 'phone_number')
             ->get()
             ->map(function($a) {
-                $emailUser = explode('@', $a->email)[0] ?? '';
-                $domain = explode('@', $a->email)[1] ?? '';
-                $maskedEmail = (strlen($emailUser) > 1 ? substr($emailUser, 0, 1) : 'a') . '***@' . $domain;
-                $maskedPhone = substr($a->phone_number, 0, 3) . '****' . substr($a->phone_number, -4);
+                $maskedEmail = $this->maskEmail($a->email);
+                $maskedPhone = $this->maskPhone($a->phone_number);
 
                 return [
                     'agent_code' => $a->agent_code,
                     'full_name' => $a->full_name,
-                    'email' => $a->email,
-                    'phone_number' => $a->phone_number,
+                    'email' => $maskedEmail,
+                    'phone_number' => $maskedPhone,
                     'masked_email' => $maskedEmail,
                     'masked_phone' => $maskedPhone
                 ];
@@ -83,18 +81,8 @@ class AgentRegistrationController extends Controller
             ->get(['id', 'agent_code', 'first_name', 'last_name', 'full_name', 'email', 'phone_number'])
             ->map(function ($agent) {
                 $name = $agent->full_name ?: trim($agent->first_name . ' ' . $agent->last_name);
-
-                // For dropdown display (masked)
-                $maskedEmail = $agent->email;
-                if ($agent->email && str_contains($agent->email, '@')) {
-                    [$emailUser, $domain] = explode('@', $agent->email, 2);
-                    $maskedEmail = (strlen($emailUser) > 1 ? substr($emailUser, 0, 1) : 'a') . '***@' . $domain;
-                }
-
-                $maskedPhone = $agent->phone_number;
-                if ($agent->phone_number && strlen($agent->phone_number) >= 7) {
-                    $maskedPhone = substr($agent->phone_number, 0, 3) . '****' . substr($agent->phone_number, -4);
-                }
+                $maskedEmail = $this->maskEmail($agent->email);
+                $maskedPhone = $this->maskPhone($agent->phone_number);
 
                 return [
                     'id' => $agent->id,
@@ -102,8 +90,8 @@ class AgentRegistrationController extends Controller
                     'first_name' => $agent->first_name,
                     'last_name' => $agent->last_name,
                     'full_name' => $name,
-                    'email' => $agent->email, // Sent raw for auto-fill
-                    'phone_number' => $agent->phone_number, // Sent raw for auto-fill
+                    'email' => $maskedEmail,
+                    'phone_number' => $maskedPhone,
                     'masked_email' => $maskedEmail,
                     'masked_phone' => $maskedPhone,
                     'fast_track_eligible' => true,
@@ -111,6 +99,34 @@ class AgentRegistrationController extends Controller
             });
 
         return response()->json(['agents' => $agents]);
+    }
+
+    private function maskEmail(?string $email): string
+    {
+        if (empty($email) || !str_contains($email, '@')) {
+            return '***@***.***';
+        }
+        [$user, $domain] = explode('@', $email, 2);
+        $len = strlen($user);
+        if ($len <= 2) {
+            $maskedUser = substr($user, 0, 1) . '***';
+        } else {
+            $maskedUser = substr($user, 0, 1) . '***' . substr($user, -1);
+        }
+        return $maskedUser . '@' . $domain;
+    }
+
+    private function maskPhone(?string $phone): string
+    {
+        if (empty($phone)) {
+            return '**********';
+        }
+        $clean = preg_replace('/\s+/', '', $phone);
+        $len = strlen($clean);
+        if ($len < 7) {
+            return substr($clean, 0, 2) . '****';
+        }
+        return substr($clean, 0, 3) . '****' . substr($clean, -4);
     }
 
     public function sendClaimOtp(Request $request)
@@ -175,6 +191,23 @@ class AgentRegistrationController extends Controller
         }
 
         $agentType = $request->input('agent_type', 'new');
+
+        // If existing agent pre-approved profile is being submitted with masked email or phone,
+        // hydrate them with authentic pre-approved credentials before validation.
+        if ($agentType === 'existing' && $request->filled('company_agent_code')) {
+            $preApprovedLookup = PreApprovedAgent::where('agent_code', $request->input('company_agent_code'))->first();
+            if ($preApprovedLookup) {
+                $submittedEmail = (string)$request->input('email');
+                $submittedPhone = (string)$request->input('phone_number');
+
+                if ((empty($submittedEmail) || str_contains($submittedEmail, '*')) && !empty($preApprovedLookup->email)) {
+                    $request->merge(['email' => $preApprovedLookup->email]);
+                }
+                if ((empty($submittedPhone) || str_contains($submittedPhone, '*')) && !empty($preApprovedLookup->phone_number)) {
+                    $request->merge(['phone_number' => $preApprovedLookup->phone_number]);
+                }
+            }
+        }
         
         $rules = [
             'agent_type' => ['required', 'string', 'in:existing,new'],

@@ -244,7 +244,12 @@
                         <label for="emailInput" class="form-label text-white small fw-bold">Email Address</label>
                         <div class="input-wrap">
                             <i class="fa-regular fa-envelope input-icon"></i>
-                            <input type="email" id="emailInput" name="email" class="form-input @error('email') is-invalid @enderror" value="{{ old('email', Auth::user()?->email) }}" required placeholder="your.email@example.com">
+                            <input type="text" id="emailInput" name="email" class="form-input @error('email') is-invalid @enderror" value="{{ old('email', Auth::user()?->email) }}" required placeholder="your.email@example.com">
+                        </div>
+                        <div id="emailMaskedNotice" class="d-none mt-1">
+                            <span class="badge bg-warning/20 text-warning border border-warning/30 rounded-pill px-2 py-0.5" style="font-size: 0.72rem;">
+                                <i class="fa-solid fa-shield-halved me-1"></i>Partially hidden for privacy (Claimed Profile)
+                            </span>
                         </div>
                         @error('email')
                             <div class="text-danger small mt-1">
@@ -265,6 +270,11 @@
                         <div class="input-wrap">
                             <i class="fa-solid fa-phone input-icon"></i>
                             <input type="text" id="phoneInput" name="phone_number" class="form-input @error('phone_number') is-invalid @enderror" value="{{ old('phone_number', Auth::user()?->number) }}" required placeholder="e.g. 08012345678">
+                        </div>
+                        <div id="phoneMaskedNotice" class="d-none mt-1">
+                            <span class="badge bg-warning/20 text-warning border border-warning/30 rounded-pill px-2 py-0.5" style="font-size: 0.72rem;">
+                                <i class="fa-solid fa-shield-halved me-1"></i>Partially hidden for privacy (Claimed Profile)
+                            </span>
                         </div>
                         @error('phone_number') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
                     </div>
@@ -744,6 +754,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const sendOtpBtn = document.getElementById('sendOtpBtn');
     const otpStatusMsg = document.getElementById('otpStatusMsg');
+    const initialEmail = emailInput ? emailInput.value : '';
+    const initialPhone = phoneInput ? phoneInput.value : '';
 
     function selectAgent(agent) {
         if (codeInput) {
@@ -754,14 +766,19 @@ document.addEventListener('DOMContentLoaded', function () {
             nameInput.value = agent.full_name;
             nameInput.readOnly = true;
         }
-        if (emailInput && agent.email) {
-            emailInput.value = agent.email;
+        if (emailInput) {
+            emailInput.value = agent.masked_email || agent.email || '';
             emailInput.readOnly = true;
         }
-        if (phoneInput && agent.phone_number) {
-            phoneInput.value = agent.phone_number;
+        if (phoneInput) {
+            phoneInput.value = agent.masked_phone || agent.phone_number || '';
             phoneInput.readOnly = true;
         }
+
+        const emailNotice = document.getElementById('emailMaskedNotice');
+        if (emailNotice) emailNotice.classList.remove('d-none');
+        const phoneNotice = document.getElementById('phoneMaskedNotice');
+        if (phoneNotice) phoneNotice.classList.remove('d-none');
 
         if (sendOtpBtn) sendOtpBtn.disabled = false;
         if (otpStatusMsg) {
@@ -787,8 +804,12 @@ document.addEventListener('DOMContentLoaded', function () {
         clearBtn.classList.add('d-none');
         if (codeInput) { codeInput.value = ''; codeInput.readOnly = false; }
         if (nameInput) { nameInput.value = ''; nameInput.readOnly = false; }
-        if (emailInput) { emailInput.value = ''; emailInput.readOnly = false; }
-        if (phoneInput) { phoneInput.value = ''; phoneInput.readOnly = false; }
+        if (emailInput) { emailInput.value = initialEmail; emailInput.readOnly = false; }
+        if (phoneInput) { phoneInput.value = initialPhone; phoneInput.readOnly = false; }
+        const emailNotice = document.getElementById('emailMaskedNotice');
+        if (emailNotice) emailNotice.classList.add('d-none');
+        const phoneNotice = document.getElementById('phoneMaskedNotice');
+        if (phoneNotice) phoneNotice.classList.add('d-none');
         const otpInput = document.getElementById('claimOtpInput');
         if (otpInput) otpInput.value = '';
         if (sendOtpBtn) {

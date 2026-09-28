@@ -359,4 +359,68 @@ class EnrollmentAgentSystemTest extends TestCase
             'fullname' => 'Guest New Agent',
         ]);
     }
+
+    public function test_existing_profile_claim_masks_credentials_and_hydrates_on_submit(): void
+    {
+        $preApproved = \App\Models\PreApprovedAgent::create([
+            'agent_code' => 'FUWA-MASK-001',
+            'full_name' => 'Masked Profile Agent',
+            'email' => 'maskedagent@example.com',
+            'phone_number' => '08012345678',
+            'is_claimed' => false,
+        ]);
+
+        // 1. Verify search autocomplete returns masked credentials
+        $searchResponse = $this->getJson(route('agent.search_preapproved', ['q' => 'Masked']));
+        $searchResponse->assertOk();
+        $agents = $searchResponse->json('agents');
+        $this->assertNotEmpty($agents);
+        $found = collect($agents)->firstWhere('agent_code', 'FUWA-MASK-001');
+        $this->assertNotNull($found);
+        $this->assertStringContainsString('***', $found['email']);
+        $this->assertStringContainsString('****', $found['phone_number']);
+        $this->assertStringNotContainsString('maskedagent@example.com', $found['email']);
+        $this->assertStringNotContainsString('08012345678', $found['phone_number']);
+
+        // 2. Submit registration with the prefilled masked values
+        $user = User::factory()->create([
+            'email_verified_at' => now(),
+            'user_status' => 'active',
+        ]);
+
+        $submitResponse = $this->actingAs($user)->withSession([
+            'claim_otp_code_FUWA-MASK-001' => '998877',
+            'claim_otp_expires_FUWA-MASK-001' => now()->addMinutes(15),
+        ])->post(route('agent.register.submit'), [
+            'agent_type' => 'existing',
+            'company_agent_code' => 'FUWA-MASK-001',
+            'claim_otp' => '998877',
+            'full_name' => 'Masked Profile Agent',
+            'email' => $found['email'], // Masked email prefilled in field
+            'phone_number' => $found['phone_number'], // Masked phone prefilled in field
+            'state' => 'Lagos',
+            'residential_address' => 'Sample Address',
+            'office_address' => 'Sample Office',
+            'bvn' => '12345678901',
+            'nin' => '10987654321',
+            'has_machine' => '1',
+            'machine_imei' => '864201041234567',
+        ]);
+
+        $submitResponse->assertRedirect(route('agent.dashboard'));
+
+        // 3. Confirm enrollment agent has the authentic unmasked details
+        $this->assertDatabaseHas('enrollment_agents', [
+            'user_id' => $user->id,
+            'company_agent_code' => 'FUWA-MASK-001',
+            'phone_number' => '08012345678',
+            'is_fast_tracked' => true,
+        ]);
+
+        $this->assertDatabaseHas('pre_approved_agents', [
+            'agent_code' => 'FUWA-MASK-001',
+            'is_claimed' => true,
+            'claimed_by_user_id' => $user->id,
+        ]);
+    }
 }
