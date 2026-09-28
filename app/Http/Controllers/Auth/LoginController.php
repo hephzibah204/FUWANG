@@ -123,15 +123,22 @@ class LoginController extends Controller
                 session(['url.intended' => route('auction.dashboard')]);
             }
 
-            if (!$service && $user instanceof User && $user->isApprovedEnrollmentAgent()) {
+            // Always check if user is an enrollment agent first
+            $isEnrollmentAgent = $user instanceof User && (bool) $user->enrollmentAgent;
+
+            if ($isEnrollmentAgent && !$service) {
                 session(['active_dashboard_mode' => 'agency']);
             }
 
-            $defaultDashboard = ($user instanceof User && $user->isApprovedEnrollmentAgent())
+            $defaultDashboard = $isEnrollmentAgent
                 ? route('agent.dashboard')
                 : route('dashboard');
 
             $targetRedirect = $request->input('redirect');
+            if ($isEnrollmentAgent && (!$targetRedirect || $targetRedirect === route('dashboard') || $targetRedirect === '/dashboard')) {
+                $targetRedirect = route('agent.dashboard');
+            }
+
             if ($targetRedirect && (str_starts_with($targetRedirect, '/') || str_starts_with($targetRedirect, config('app.url')))) {
                 $redirect = $targetRedirect;
             } else {

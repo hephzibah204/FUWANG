@@ -560,6 +560,14 @@
             </div>
             @endif
             @elseif($webUser)
+            @if($webUser->enrollmentAgent)
+            <div class="nav-section">Agency Operations</div>
+            <div class="nav-item {{ Request::routeIs('agent.*') ? 'active' : '' }}" style="background: rgba(59, 130, 246, 0.12); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 12px; margin: 4px 12px 10px;">
+                <a href="{{ route('agent.dashboard') }}" style="color: #60a5fa; font-weight: 600;">
+                    <i class="fa-solid fa-id-card-clip" style="color: #60a5fa;"></i> <span class="nav-text">Agent Dashboard</span>
+                </a>
+            </div>
+            @endif
             <div class="nav-section">Main Menu</div>
             <div class="nav-item {{ Request::routeIs('dashboard') ? 'active' : '' }}">
                 <a href="{{ route('dashboard') }}"><i class="fa-solid fa-house"></i> <span class="nav-text">Overview</span></a>
@@ -840,6 +848,25 @@
                 Welcome back, <span>{{ explode(' ', $displayUser->fullname ?? $displayUser->username ?? 'User')[0] }}</span>
             </div>
             <div class="header-actions">
+                @if($webUser && $webUser->enrollmentAgent)
+                    @if(Request::routeIs('agent.*'))
+                        <form action="{{ route('agent.switch_mode') }}" method="POST" class="d-none d-sm-inline m-0">
+                            @csrf
+                            <input type="hidden" name="mode" value="user">
+                            <button type="submit" class="btn btn-sm btn-outline-light rounded-pill px-3 py-1 font-weight-bold" style="font-size: 0.8rem;" title="Switch to General User Dashboard">
+                                <i class="fa-solid fa-user me-1"></i> User View
+                            </button>
+                        </form>
+                    @else
+                        <form action="{{ route('agent.switch_mode') }}" method="POST" class="d-none d-sm-inline m-0">
+                            @csrf
+                            <input type="hidden" name="mode" value="agency">
+                            <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3 py-1 font-weight-bold" style="font-size: 0.8rem; background: linear-gradient(135deg, #3b82f6, #1d4ed8); border: none;" title="Switch to Agent Dashboard">
+                                <i class="fa-solid fa-id-card-clip me-1"></i> Agency Mode
+                            </button>
+                        </form>
+                    @endif
+                @endif
                 <button class="action-btn text-decoration-none" id="highContrastToggle" title="Toggle High Contrast Mode" aria-label="High Contrast">
                     <i class="fa-solid fa-circle-half-stroke"></i>
                 </button>

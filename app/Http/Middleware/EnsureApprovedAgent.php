@@ -29,9 +29,7 @@ class EnsureApprovedAgent
             return redirect()->route('agent.register')->with('info', 'Please submit your agent registration first.');
         }
 
-        if (! session()->has('active_dashboard_mode')) {
-            session(['active_dashboard_mode' => 'agency']);
-        }
+        session(['active_dashboard_mode' => 'agency']);
 
         return $next($request);
     }

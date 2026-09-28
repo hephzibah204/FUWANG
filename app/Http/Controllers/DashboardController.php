@@ -14,6 +14,12 @@ class DashboardController extends Controller
     {
         $user = Auth::user();
 
+        // Always check if user is an enrollment agent first: redirect to agent dashboard unless in user mode
+        if ($user && $user->enrollmentAgent && session('active_dashboard_mode') !== 'user') {
+            session(['active_dashboard_mode' => 'agency']);
+            return redirect()->route('agent.dashboard');
+        }
+
         $balance = AccountBalance::where('user_id', $user->id)->first();
         if (! $balance) {
             $balance = AccountBalance::where('email', $user->email)->first();

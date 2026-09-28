@@ -24,6 +24,15 @@
                                 <i class="fa-solid fa-triangle-exclamation"></i> Tier 1 (Verify KYC)
                             </a>
                         @endif
+                        @if(Auth::user()->enrollmentAgent)
+                            <form action="{{ route('agent.switch_mode') }}" method="POST" class="d-inline ml-auto">
+                                @csrf
+                                <input type="hidden" name="mode" value="agency">
+                                <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3 py-1 font-weight-bold" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); border: 1px solid rgba(255,255,255,0.2);">
+                                    <i class="fa-solid fa-id-card-clip mr-1"></i> Switch to Agent Dashboard
+                                </button>
+                            </form>
+                        @endif
                     </div>
                     
                     <h1 class="display-4 font-weight-bold mb-2">Hello, {{ explode(' ', Auth::user()->fullname)[0] ?? Auth::user()->username }}!</h1>

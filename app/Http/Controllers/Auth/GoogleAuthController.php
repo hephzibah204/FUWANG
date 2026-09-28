@@ -129,9 +129,20 @@ class GoogleAuthController extends Controller
         $service = session(self::OAUTH_SERVICE);
         session()->forget(self::OAUTH_SERVICE);
 
+        // Always check if user is an enrollment agent first
+        $isEnrollmentAgent = $user instanceof User && (bool) $user->enrollmentAgent;
+
+        if ($isEnrollmentAgent && !$service) {
+            session(['active_dashboard_mode' => 'agency']);
+        }
+
+        $defaultDashboard = $isEnrollmentAgent
+            ? route('agent.dashboard')
+            : route('dashboard');
+
         $redirect = ($user instanceof \Illuminate\Contracts\Auth\MustVerifyEmail && ! $user->hasVerifiedEmail())
             ? route('verification.notice')
-            : ($service === 'logistics' ? route('logistics.dashboard') : route('dashboard'));
+            : ($service === 'logistics' ? route('logistics.dashboard') : $defaultDashboard);
 
         return redirect()->intended($redirect);
     }

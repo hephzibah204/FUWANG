@@ -254,14 +254,19 @@ class User extends Authenticatable implements CanResetPasswordContract, MustVeri
         return $this->hasOne(\App\Models\EnrollmentAgent::class, 'user_id', 'id');
     }
 
+    public function isEnrollmentAgent(): bool
+    {
+        return (bool) $this->enrollmentAgent;
+    }
+
     public function isApprovedEnrollmentAgent(): bool
     {
-        return $this->enrollmentAgent && $this->enrollmentAgent->isFullyActivated();
+        return $this->enrollmentAgent && ($this->enrollmentAgent->isApproved() || $this->enrollmentAgent->status !== 'rejected');
     }
 
     public function activeDashboardMode(): string
     {
-        if (!$this->isApprovedEnrollmentAgent()) {
+        if (!$this->isEnrollmentAgent()) {
             return 'user';
         }
 

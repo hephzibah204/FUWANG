@@ -48,8 +48,8 @@ class AgentDashboardController extends Controller
         $mode = $request->input('mode');
         $user = Auth::user();
 
-        if ($mode === 'agency' && ! $user->isApprovedEnrollmentAgent()) {
-            return back()->with('error', 'You must be an approved enrollment agent to access Agency mode.');
+        if ($mode === 'agency' && ! $user->enrollmentAgent) {
+            return back()->with('error', 'You must be an enrollment agent to access Agency mode.');
         }
 
         session(['active_dashboard_mode' => $mode]);

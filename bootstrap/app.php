@@ -46,6 +46,14 @@ return Application::configure(basePath: dirname(__DIR__))
             }
             return route('login');
         });
+
+        $middleware->redirectUsersTo(function (Request $request) {
+            $user = $request->user();
+            if ($user && $user->enrollmentAgent && session('active_dashboard_mode') !== 'user') {
+                return route('agent.dashboard');
+            }
+            return route('dashboard');
+        });
         
         $middleware->alias([
             'google2fa' => \PragmaRX\Google2FALaravel\Middleware::class,
