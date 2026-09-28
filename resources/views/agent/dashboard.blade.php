@@ -35,13 +35,9 @@
                 </div>
             </div>
             <div>
-                <form action="{{ route('agent.switch_mode') }}" method="POST" class="d-inline">
-                    @csrf
-                    <input type="hidden" name="mode" value="user">
-                    <button type="submit" class="btn btn-outline-light rounded-pill px-4 py-2">
-                        <i class="fa-solid fa-user me-2"></i>Switch to Ordinary User View
-                    </button>
-                </form>
+                <a href="{{ route('agent.switch_mode', ['mode' => 'user']) }}" class="btn btn-outline-light rounded-pill px-4 py-2 font-weight-bold">
+                    <i class="fa-solid fa-user me-2"></i>Switch to Ordinary User View
+                </a>
             </div>
         </div>
     </div>

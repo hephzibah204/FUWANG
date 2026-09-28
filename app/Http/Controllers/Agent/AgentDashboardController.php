@@ -41,15 +41,39 @@ class AgentDashboardController extends Controller
 
     public function switchMode(Request $request)
     {
-        $request->validate([
-            'mode' => ['required', 'in:agency,user'],
-        ]);
+        $mode = $request->input('mode', $request->query('mode', 'agency'));
 
-        $mode = $request->input('mode');
+        if (! in_array($mode, ['agency', 'user'], true)) {
+            $mode = 'agency';
+        }
+
         $user = Auth::user();
 
-        if ($mode === 'agency' && ! $user->enrollmentAgent) {
-            return back()->with('error', 'You must be an enrollment agent to access Agency mode.');
+        if ($mode === 'agency') {
+            if (! $user->enrollmentAgent) {
+                // Auto-link pre-approved agent record if available
+                $preApproved = \App\Models\PreApprovedAgent::where('claimed_by_user_id', $user->id)
+                    ->orWhere('email', $user->email)
+                    ->first();
+
+                if ($preApproved) {
+                    \App\Models\EnrollmentAgent::firstOrCreate(
+                        ['user_id' => $user->id],
+                        [
+                            'agent_code' => $preApproved->agent_code,
+                            'status' => 'approved',
+                            'state_of_operation' => $preApproved->state ?? 'FCT',
+                            'lga_of_operation' => $preApproved->lga ?? 'Abuja',
+                            'nin' => $preApproved->nin ?? '',
+                        ]
+                    );
+                    $user->load('enrollmentAgent');
+                }
+            }
+
+            if (! $user->enrollmentAgent) {
+                return redirect()->route('dashboard')->with('error', 'You must be an enrollment agent to access Agency mode.');
+            }
         }
 
         session(['active_dashboard_mode' => $mode]);

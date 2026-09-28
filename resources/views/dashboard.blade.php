@@ -5,6 +5,23 @@
 @section('content')
 @include('dashboard_styles')
 <div class="nexus-dashboard">
+    @if(Auth::user()->enrollmentAgent)
+        <div class="alert border-0 rounded-4 p-3 mb-4 d-flex align-items-center justify-content-between flex-wrap gap-3 shadow-sm" style="background: linear-gradient(135deg, rgba(37, 99, 235, 0.22), rgba(30, 64, 175, 0.32)); border: 1px solid rgba(59, 130, 246, 0.45) !important;">
+            <div class="d-flex align-items-center gap-3">
+                <div class="p-2 rounded-circle" style="background: rgba(37, 99, 235, 0.4); width: 42px; height: 42px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fa-solid fa-id-card-clip fa-lg text-primary"></i>
+                </div>
+                <div>
+                    <h6 class="text-white fw-bold mb-0">Enrollment Agent View (Ordinary User Mode)</h6>
+                    <small class="text-white-50">You are logged into Agent <strong>{{ Auth::user()->enrollmentAgent->agent_code }}</strong>. Need your agency tools or enrollment terminals?</small>
+                </div>
+            </div>
+            <a href="{{ route('agent.switch_mode', ['mode' => 'agency']) }}" class="btn btn-sm btn-primary rounded-pill px-4 py-2 font-weight-bold" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); border: none; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.45);">
+                <i class="fa-solid fa-arrow-right-arrow-left me-1"></i> Switch to Agent Dashboard
+            </a>
+        </div>
+    @endif
+
     <!-- Premium Welcome Hero -->
     <div class="welcome-hero mb-4" data-step="1" data-intro="Welcome to your Dashboard! This is your main hub for all activities.">
         <div class="hero-bg-accent"></div>
@@ -25,13 +42,9 @@
                             </a>
                         @endif
                         @if(Auth::user()->enrollmentAgent)
-                            <form action="{{ route('agent.switch_mode') }}" method="POST" class="d-inline ml-auto">
-                                @csrf
-                                <input type="hidden" name="mode" value="agency">
-                                <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3 py-1 font-weight-bold" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); border: 1px solid rgba(255,255,255,0.2);">
-                                    <i class="fa-solid fa-id-card-clip mr-1"></i> Switch to Agent Dashboard
-                                </button>
-                            </form>
+                            <a href="{{ route('agent.switch_mode', ['mode' => 'agency']) }}" class="btn btn-sm btn-primary rounded-pill px-3 py-1 font-weight-bold ml-auto" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); border: 1px solid rgba(255,255,255,0.2);">
+                                <i class="fa-solid fa-id-card-clip mr-1"></i> Switch to Agent Dashboard
+                            </a>
                         @endif
                     </div>
                     

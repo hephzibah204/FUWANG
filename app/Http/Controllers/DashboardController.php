@@ -13,6 +13,13 @@ class DashboardController extends Controller
     public function index()
     {
         $user = Auth::user();
+        $queryMode = request()->query('mode');
+
+        if ($queryMode === 'user') {
+            session(['active_dashboard_mode' => 'user']);
+        } elseif ($queryMode === 'agency') {
+            session(['active_dashboard_mode' => 'agency']);
+        }
 
         // Always check if user is an enrollment agent first: redirect to agent dashboard unless in user mode
         if ($user && $user->enrollmentAgent && session('active_dashboard_mode') !== 'user') {

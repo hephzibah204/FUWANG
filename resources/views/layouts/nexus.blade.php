@@ -850,21 +850,13 @@
             <div class="header-actions">
                 @if($webUser && $webUser->enrollmentAgent)
                     @if(Request::routeIs('agent.*'))
-                        <form action="{{ route('agent.switch_mode') }}" method="POST" class="d-none d-sm-inline m-0">
-                            @csrf
-                            <input type="hidden" name="mode" value="user">
-                            <button type="submit" class="btn btn-sm btn-outline-light rounded-pill px-3 py-1 font-weight-bold" style="font-size: 0.8rem;" title="Switch to General User Dashboard">
-                                <i class="fa-solid fa-user me-1"></i> User View
-                            </button>
-                        </form>
+                        <a href="{{ route('agent.switch_mode', ['mode' => 'user']) }}" class="btn btn-sm btn-outline-light rounded-pill px-2 px-sm-3 py-1 font-weight-bold m-0 d-inline-flex align-items-center" style="font-size: 0.8rem;" title="Switch to Ordinary User View">
+                            <i class="fa-solid fa-user me-sm-1"></i> <span class="d-none d-sm-inline">User View</span>
+                        </a>
                     @else
-                        <form action="{{ route('agent.switch_mode') }}" method="POST" class="d-none d-sm-inline m-0">
-                            @csrf
-                            <input type="hidden" name="mode" value="agency">
-                            <button type="submit" class="btn btn-sm btn-primary rounded-pill px-3 py-1 font-weight-bold" style="font-size: 0.8rem; background: linear-gradient(135deg, #3b82f6, #1d4ed8); border: none;" title="Switch to Agent Dashboard">
-                                <i class="fa-solid fa-id-card-clip me-1"></i> Agency Mode
-                            </button>
-                        </form>
+                        <a href="{{ route('agent.switch_mode', ['mode' => 'agency']) }}" class="btn btn-sm btn-primary rounded-pill px-2 px-sm-3 py-1 font-weight-bold m-0 d-inline-flex align-items-center" style="font-size: 0.8rem; background: linear-gradient(135deg, #3b82f6, #1d4ed8); border: none;" title="Switch to Agent Dashboard">
+                            <i class="fa-solid fa-id-card-clip me-sm-1"></i> <span class="d-none d-sm-inline">Agency Mode</span>
+                        </a>
                     @endif
                 @endif
                 <button class="action-btn text-decoration-none" id="highContrastToggle" title="Toggle High Contrast Mode" aria-label="High Contrast">

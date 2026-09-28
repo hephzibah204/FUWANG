@@ -147,9 +147,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/accept-compliance', [App\Http\Controllers\Agent\AgentOnboardingController::class, 'acceptCompliance'])->name('accept_compliance');
         });
 
+        Route::match(['GET', 'POST'], '/switch-mode', [App\Http\Controllers\Agent\AgentDashboardController::class, 'switchMode'])->name('switch_mode');
+
         Route::middleware([App\Http\Middleware\EnsureApprovedAgent::class])->group(function () {
             Route::get('/dashboard', [App\Http\Controllers\Agent\AgentDashboardController::class, 'index'])->name('dashboard');
-            Route::post('/switch-mode', [App\Http\Controllers\Agent\AgentDashboardController::class, 'switchMode'])->name('switch_mode');
 
             // Agent Issue Resolution Hub
             Route::prefix('issues')->name('issues.')->group(function () {
