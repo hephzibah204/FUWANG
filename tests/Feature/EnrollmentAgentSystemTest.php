@@ -207,12 +207,12 @@ class EnrollmentAgentSystemTest extends TestCase
         $response->assertSessionHasErrors(['machine_imei']);
     }
 
-    public function test_existing_agent_can_claim_preapproved_profile_without_otp(): void
+    public function test_existing_agent_profile_claim_requires_valid_email_otp(): void
     {
         $preApproved = \App\Models\PreApprovedAgent::create([
-            'agent_code' => 'FUWA-NOOTP-001',
-            'full_name' => 'Direct Claim Agent',
-            'email' => 'nootpagent@example.com',
+            'agent_code' => 'FUWA-OTP-001',
+            'full_name' => 'OTP Claim Agent',
+            'email' => 'otpagent@example.com',
             'phone_number' => '08077665544',
             'is_claimed' => false,
         ]);
@@ -222,11 +222,12 @@ class EnrollmentAgentSystemTest extends TestCase
             'user_status' => 'active',
         ]);
 
-        $response = $this->actingAs($user)->post(route('agent.register.submit'), [
+        // Attempt without OTP -> should fail
+        $response = $this->actingAs($user)->from(route('agent.register'))->post(route('agent.register.submit'), [
             'agent_type' => 'existing',
-            'company_agent_code' => 'FUWA-NOOTP-001',
-            'full_name' => 'Direct Claim Agent',
-            'email' => 'nootpagent@example.com',
+            'company_agent_code' => 'FUWA-OTP-001',
+            'full_name' => 'OTP Claim Agent',
+            'email' => 'otpagent@example.com',
             'phone_number' => '08077665544',
             'state' => 'Lagos',
             'residential_address' => 'Address',
@@ -237,10 +238,33 @@ class EnrollmentAgentSystemTest extends TestCase
             'machine_imei' => '864201041234567',
         ]);
 
-        $response->assertRedirect(route('agent.dashboard'));
+        $response->assertRedirect(route('agent.register'));
+        $response->assertSessionHasErrors(['claim_otp']);
+
+        // Now submit with valid OTP in session
+        $responseSuccess = $this->actingAs($user)->withSession([
+            'claim_otp_code_FUWA-OTP-001' => '654321',
+            'claim_otp_expires_FUWA-OTP-001' => now()->addMinutes(15),
+        ])->post(route('agent.register.submit'), [
+            'agent_type' => 'existing',
+            'company_agent_code' => 'FUWA-OTP-001',
+            'claim_otp' => '654321',
+            'full_name' => 'OTP Claim Agent',
+            'email' => 'otpagent@example.com',
+            'phone_number' => '08077665544',
+            'state' => 'Lagos',
+            'residential_address' => 'Address',
+            'office_address' => 'Address',
+            'bvn' => '12345678901',
+            'nin' => '10987654321',
+            'has_machine' => '1',
+            'machine_imei' => '864201041234567',
+        ]);
+
+        $responseSuccess->assertRedirect(route('agent.dashboard'));
         $this->assertDatabaseHas('enrollment_agents', [
             'user_id' => $user->id,
-            'company_agent_code' => 'FUWA-NOOTP-001',
+            'company_agent_code' => 'FUWA-OTP-001',
             'is_fast_tracked' => true,
         ]);
     }

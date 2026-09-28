@@ -169,6 +169,7 @@ class AgentRegistrationController extends Controller
         $rules = [
             'agent_type' => ['required', 'string', 'in:existing,new'],
             'company_agent_code' => ['required_if:agent_type,existing', 'nullable', 'string', 'max:50'],
+            'claim_otp' => ['nullable', 'string', 'digits:6'],
             'full_name' => ['required', 'string', 'max:255'],
             'phone_number' => ['required', 'string', 'max:20'],
             'email' => ['required', 'email', 'max:255'],
@@ -231,6 +232,30 @@ class AgentRegistrationController extends Controller
                         ->withInput()
                         ->withErrors(['company_agent_code' => 'This pre-approved agent profile has already been claimed by another registered user account. Multi-claiming is prohibited.']);
                 }
+            }
+
+            // Verify Email Claim OTP if preApprovedRecord exists
+            if ($preApprovedRecord) {
+                if (empty($validated['claim_otp'])) {
+                    return back()
+                        ->withInput()
+                        ->withErrors(['claim_otp' => 'Profile Claim Verification OTP is required to claim this pre-approved agent profile. Please click "Send Email OTP" to verify account ownership.']);
+                }
+
+                $savedOtp = session('claim_otp_code_' . $preApprovedRecord->agent_code);
+                $expiresAt = session('claim_otp_expires_' . $preApprovedRecord->agent_code);
+
+                if (!$savedOtp || !$expiresAt || now()->greaterThan($expiresAt) || (string)$savedOtp !== (string)$validated['claim_otp']) {
+                    return back()
+                        ->withInput()
+                        ->withErrors(['claim_otp' => 'Invalid or expired email verification OTP. Please click "Send Email OTP" to receive a fresh verification code.']);
+                }
+
+                // Clean up OTP from session upon successful verification
+                session()->forget([
+                    'claim_otp_code_' . $preApprovedRecord->agent_code,
+                    'claim_otp_expires_' . $preApprovedRecord->agent_code,
+                ]);
             }
 
             // Lock prefilled info from preApprovedRecord if found

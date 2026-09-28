@@ -204,6 +204,20 @@
                                         <input type="text" id="companyAgentCodeInput" name="company_agent_code" class="form-input text-white" value="{{ old('company_agent_code') }}" placeholder="e.g. FUWA-LO001">
                                     </div>
                                 </div>
+                                <div class="col-md-6">
+                                    <div class="d-flex align-items-center justify-content-between mb-1">
+                                        <label for="claimOtpInput" class="text-white-50 small fw-bold mb-0">Profile Claim Verification OTP <span class="text-danger">*</span></label>
+                                        <button type="button" id="sendOtpBtn" class="btn btn-link text-gold p-0 text-decoration-none small fw-bold" style="font-size: 0.78rem;" disabled>
+                                            <i class="fa-solid fa-paper-plane me-1"></i> Send Email OTP
+                                        </button>
+                                    </div>
+                                    <div class="input-wrap">
+                                        <i class="fa-solid fa-key input-icon text-gold"></i>
+                                        <input type="text" id="claimOtpInput" name="claim_otp" maxlength="6" class="form-input text-white @error('claim_otp') is-invalid @enderror" value="{{ old('claim_otp') }}" placeholder="6-digit Email OTP">
+                                    </div>
+                                    <span id="otpStatusMsg" class="d-block small mt-1 text-muted" style="font-size: 0.75rem;">Select your profile above to send OTP.</span>
+                                    @error('claim_otp') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -768,7 +782,118 @@ document.addEventListener('DOMContentLoaded', function () {
         resultsContainer.classList.add('d-none');
     }
 
-        if (changeBtn) {     changeBtn.addEventListener('click', function() {
+    function clearSelection() {
+        searchInput.value = '';
+        clearBtn.classList.add('d-none');
+        if (codeInput) { codeInput.value = ''; codeInput.readOnly = false; }
+        if (nameInput) { nameInput.value = ''; nameInput.readOnly = false; }
+        if (emailInput) { emailInput.value = ''; emailInput.readOnly = false; }
+        if (phoneInput) { phoneInput.value = ''; phoneInput.readOnly = false; }
+        const otpInput = document.getElementById('claimOtpInput');
+        if (otpInput) otpInput.value = '';
+        if (sendOtpBtn) {
+            sendOtpBtn.disabled = true;
+            sendOtpBtn.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> Send Email OTP';
+        }
+        if (otpStatusMsg) {
+            otpStatusMsg.className = 'd-block small mt-1 text-muted';
+            otpStatusMsg.textContent = 'Select your profile above to send OTP.';
+        }
+        if (verifiedBanner) verifiedBanner.classList.add('d-none');
+        if (unmatchedNotice) unmatchedNotice.classList.add('d-none');
+        resultsContainer.innerHTML = '';
+        resultsContainer.classList.add('d-none');
+    }
+
+    if (sendOtpBtn) {
+        sendOtpBtn.addEventListener('click', function() {
+            const code = codeInput ? codeInput.value.trim() : '';
+            if (!code) {
+                if (otpStatusMsg) {
+                    otpStatusMsg.className = 'd-block small mt-1 text-danger';
+                    otpStatusMsg.textContent = 'Please enter or select an agent code first.';
+                }
+                return;
+            }
+
+            sendOtpBtn.disabled = true;
+            sendOtpBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Sending...';
+            if (otpStatusMsg) {
+                otpStatusMsg.className = 'd-block small mt-1 text-info';
+                otpStatusMsg.textContent = 'Dispatching verification OTP to your registered email...';
+            }
+
+            fetch(`{{ route('agent.send_claim_otp') }}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ company_agent_code: code })
+            })
+            .then(async res => {
+                let data = {};
+                try {
+                    data = await res.json();
+                } catch (e) {
+                    if (res.status === 419) {
+                        data.message = "Your session has expired. Please refresh the page and try again.";
+                    } else {
+                        data.message = "Server error. Please check your internet connection or contact support.";
+                    }
+                    data.ok = false;
+                }
+                if (!res.ok && data.ok === undefined) data.ok = false;
+                return data;
+            })
+            .then(data => {
+                if (data.ok) {
+                    if (otpStatusMsg) {
+                        otpStatusMsg.className = 'd-block small mt-1 text-emerald';
+                        otpStatusMsg.innerHTML = '<i class="fa-solid fa-circle-check me-1"></i> ' + data.message;
+                    }
+                    sendOtpBtn.disabled = false;
+                    sendOtpBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate me-1"></i> Resend OTP';
+                    const otpInput = document.getElementById('claimOtpInput');
+                    if (otpInput) {
+                        otpInput.focus();
+                    }
+                } else {
+                    if (otpStatusMsg) {
+                        otpStatusMsg.className = 'd-block small mt-1 text-danger';
+                        otpStatusMsg.textContent = data.message || 'Failed to send OTP.';
+                    }
+                    sendOtpBtn.disabled = false;
+                    sendOtpBtn.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> Resend OTP';
+                }
+            })
+            .catch(err => {
+                console.error('OTP send error:', err);
+                if (otpStatusMsg) {
+                    otpStatusMsg.className = 'd-block small mt-1 text-danger';
+                    otpStatusMsg.textContent = 'Network error while sending OTP. Please try again.';
+                }
+                sendOtpBtn.disabled = false;
+                sendOtpBtn.innerHTML = '<i class="fa-solid fa-paper-plane me-1"></i> Send Email OTP';
+            });
+        });
+    }
+
+    if (codeInput) {
+        codeInput.addEventListener('input', function() {
+            if (codeInput.value.trim().length >= 4) {
+                if (sendOtpBtn) sendOtpBtn.disabled = false;
+                if (otpStatusMsg) {
+                    otpStatusMsg.className = 'd-block small mt-1 text-gold';
+                    otpStatusMsg.textContent = 'Click "Send Email OTP" to verify ownership of this code.';
+                }
+            }
+        });
+    }
+
+    if (changeBtn) {
+        changeBtn.addEventListener('click', function() {
             clearSelection();
             searchInput.focus();
         });
