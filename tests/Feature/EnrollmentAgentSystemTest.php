@@ -269,6 +269,72 @@ class EnrollmentAgentSystemTest extends TestCase
         ]);
     }
 
+    public function test_send_claim_otp_endpoint_dispatches_email_and_stores_session(): void
+    {
+        \Illuminate\Support\Facades\Mail::fake();
+
+        $preApproved = \App\Models\PreApprovedAgent::create([
+            'agent_code' => 'FUWA-SEND-999',
+            'full_name' => 'Send OTP Agent',
+            'email' => 'sendotp@example.com',
+            'phone_number' => '08011223344',
+            'is_claimed' => false,
+        ]);
+
+        $response = $this->postJson(route('agent.send_claim_otp'), [
+            'company_agent_code' => 'fuwa-send-999', // test lowercase handling
+        ]);
+
+        $response->assertOk();
+        $response->assertJson([
+            'ok' => true,
+        ]);
+
+        \Illuminate\Support\Facades\Mail::assertSent(\App\Mail\AgentClaimVerificationMail::class, function ($mail) {
+            return $mail->hasTo('sendotp@example.com');
+        });
+
+        $this->assertNotNull(session('claim_otp_code_FUWA-SEND-999'));
+    }
+
+    public function test_expired_claim_otp_fails_verification(): void
+    {
+        $preApproved = \App\Models\PreApprovedAgent::create([
+            'agent_code' => 'FUWA-EXP-001',
+            'full_name' => 'Expired OTP Agent',
+            'email' => 'expired@example.com',
+            'phone_number' => '08099887766',
+            'is_claimed' => false,
+        ]);
+
+        $user = User::factory()->create([
+            'email_verified_at' => now(),
+            'user_status' => 'active',
+        ]);
+
+        $response = $this->actingAs($user)->from(route('agent.register'))->withSession([
+            'claim_otp_code_FUWA-EXP-001' => '112233',
+            'claim_otp_expires_FUWA-EXP-001' => now()->subMinute(), // expired!
+        ])->post(route('agent.register.submit'), [
+            'agent_type' => 'existing',
+            'company_agent_code' => 'FUWA-EXP-001',
+            'claim_otp' => '112233',
+            'full_name' => 'Expired OTP Agent',
+            'email' => 'expired@example.com',
+            'phone_number' => '08099887766',
+            'state' => 'Lagos',
+            'residential_address' => 'Address',
+            'office_address' => 'Address',
+            'bvn' => '12345678901',
+            'nin' => '10987654321',
+            'has_machine' => '1',
+            'machine_imei' => '864201041234567',
+        ]);
+
+        $response->assertRedirect(route('agent.register'));
+        $response->assertSessionHasErrors(['claim_otp']);
+    }
+
     public function test_guest_can_register_as_agent_with_custom_password(): void
     {
         $response = $this->post(route('agent.register.submit'), [

@@ -119,7 +119,9 @@ class AgentRegistrationController extends Controller
             'company_agent_code' => ['required', 'string', 'max:50'],
         ]);
 
-        $preApproved = PreApprovedAgent::where('agent_code', $validated['company_agent_code'])
+        $code = strtoupper(trim($validated['company_agent_code']));
+
+        $preApproved = PreApprovedAgent::where('agent_code', $code)
             ->where('is_claimed', false)
             ->first();
 
@@ -130,7 +132,8 @@ class AgentRegistrationController extends Controller
             ], 422);
         }
 
-        if (empty($preApproved->email)) {
+        $targetEmail = trim((string)$preApproved->email);
+        if (empty($targetEmail)) {
             return response()->json([
                 'ok' => false,
                 'message' => 'This profile does not have a registered email address for OTP dispatch.',
@@ -144,7 +147,7 @@ class AgentRegistrationController extends Controller
         ]);
 
         try {
-            \Illuminate\Support\Facades\Mail::to($preApproved->email)->send(new \App\Mail\AgentClaimVerificationMail($preApproved, $otp));
+            \Illuminate\Support\Facades\Mail::to($targetEmail)->send(new \App\Mail\AgentClaimVerificationMail($preApproved, $otp));
         } catch (\Throwable $e) {
             Log::error('Failed to send claim verification email: ' . $e->getMessage());
             return response()->json([
@@ -153,7 +156,7 @@ class AgentRegistrationController extends Controller
             ], 500);
         }
 
-        [$emailUser, $domain] = explode('@', $preApproved->email, 2);
+        [$emailUser, $domain] = explode('@', $targetEmail, 2);
         $maskedEmail = (strlen($emailUser) > 1 ? substr($emailUser, 0, 1) : 'a') . '***@' . $domain;
 
         return response()->json([
@@ -164,6 +167,13 @@ class AgentRegistrationController extends Controller
 
     public function store(Request $request, AccountKycIdentityService $kycService)
     {
+        if ($request->filled('company_agent_code')) {
+            $request->merge(['company_agent_code' => strtoupper(trim((string)$request->input('company_agent_code')))]);
+        }
+        if ($request->filled('claim_otp')) {
+            $request->merge(['claim_otp' => preg_replace('/\D/', '', (string)$request->input('claim_otp'))]);
+        }
+
         $agentType = $request->input('agent_type', 'new');
         
         $rules = [
@@ -250,12 +260,6 @@ class AgentRegistrationController extends Controller
                         ->withInput()
                         ->withErrors(['claim_otp' => 'Invalid or expired email verification OTP. Please click "Send Email OTP" to receive a fresh verification code.']);
                 }
-
-                // Clean up OTP from session upon successful verification
-                session()->forget([
-                    'claim_otp_code_' . $preApprovedRecord->agent_code,
-                    'claim_otp_expires_' . $preApprovedRecord->agent_code,
-                ]);
             }
 
             // Lock prefilled info from preApprovedRecord if found
@@ -407,6 +411,12 @@ class AgentRegistrationController extends Controller
                     if (empty($agent->company_agent_code)) {
                         $agent->update(['company_agent_code' => $preApproved->agent_code]);
                     }
+
+                    // Clean up OTP from session upon successful claim
+                    session()->forget([
+                        'claim_otp_code_' . $preApproved->agent_code,
+                        'claim_otp_expires_' . $preApproved->agent_code,
+                    ]);
                 }
             });
         }

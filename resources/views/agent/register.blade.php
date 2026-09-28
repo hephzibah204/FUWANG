@@ -890,6 +890,21 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
         });
+
+        if (codeInput.value.trim().length >= 4 && sendOtpBtn) {
+            sendOtpBtn.disabled = false;
+            if (otpStatusMsg && (!otpStatusMsg.textContent || otpStatusMsg.textContent.includes('Select your profile'))) {
+                otpStatusMsg.className = 'd-block small mt-1 text-gold';
+                otpStatusMsg.textContent = 'Click "Send Email OTP" to verify ownership of this code.';
+            }
+        }
+    }
+
+    const otpInput = document.getElementById('claimOtpInput');
+    if (otpInput) {
+        otpInput.addEventListener('input', function() {
+            this.value = this.value.replace(/\D/g, '').slice(0, 6);
+        });
     }
 
     if (changeBtn) {
