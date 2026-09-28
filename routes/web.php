@@ -669,6 +669,14 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
             Route::get('settings/advanced', [App\Http\Controllers\Admin\AdvancedSettingsController::class, 'index'])->name('advanced_settings.index');
             Route::put('settings/advanced', [App\Http\Controllers\Admin\AdvancedSettingsController::class, 'update'])->name('advanced_settings.update');
 
+            // System Deployment & Git Management
+            Route::prefix('settings/deployment')->name('settings.deployment.')->group(function () {
+                Route::get('/status', [App\Http\Controllers\Admin\SystemDeploymentController::class, 'status'])->name('status');
+                Route::post('/pull', [App\Http\Controllers\Admin\SystemDeploymentController::class, 'pull'])->name('pull');
+                Route::post('/clear-cache', [App\Http\Controllers\Admin\SystemDeploymentController::class, 'clearCache'])->name('clear_cache');
+                Route::post('/migrate', [App\Http\Controllers\Admin\SystemDeploymentController::class, 'migrate'])->name('migrate');
+            });
+
             Route::post('/settings/security/verifyme/ips', [App\Http\Controllers\Admin\SettingsController::class, 'updateVerifymeWebhookIps'])
                 ->middleware('admin.security')
                 ->name('settings.security.verifyme_ips');

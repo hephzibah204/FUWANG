@@ -29,6 +29,7 @@
     <button class="s-tab" onclick="switchTab('tab-features', this)"><i class="fa fa-toggle-on mr-2"></i>Service Toggles</button>
     <button class="s-tab" onclick="switchTab('tab-referrals', this)"><i class="fa fa-users mr-2"></i>Referrals & MLM</button>
     <button class="s-tab" onclick="switchTab('tab-auction', this)"><i class="fa fa-gavel mr-2"></i>Auction Settings</button>
+    <button class="s-tab" onclick="switchTab('tab-deployment', this)"><i class="fa-solid fa-cloud-arrow-down mr-2 text-warning"></i>System Update</button>
     <button class="s-tab" onclick="window.location.href='{{ route('admin.settings.whatsapp_widget') }}'"><i class="fa-brands fa-whatsapp mr-2 text-success"></i>WhatsApp Widget</button>
 </div>
 
@@ -1151,6 +1152,67 @@
     </div>
 </div>
 
+{{-- ── 13. System Deployment & Git Update Tab ─────────── --}}
+<div class="s-panel" id="tab-deployment">
+    <div class="card border-0 rounded-4 p-4 mb-4" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.07) !important;">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+            <div>
+                <h5 class="text-white mb-1 fw-bold"><i class="fa-solid fa-code-branch text-warning mr-2"></i>One-Click System Update & Deployment</h5>
+                <p class="text-white-50 small mb-0">Pull latest code changes from GitHub, clear caches, and update the application without using SSH/Terminal.</p>
+            </div>
+            <button type="button" class="btn btn-outline-light rounded-pill px-3 py-1 btn-sm" onclick="fetchDeploymentStatus()">
+                <i class="fa-solid fa-arrows-rotate mr-1"></i> Refresh Status
+            </button>
+        </div>
+
+        {{-- Status Cards --}}
+        <div class="row mb-4">
+            <div class="col-md-4 mb-3">
+                <div class="p-3 rounded-3" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);">
+                    <div class="text-white-50 small text-uppercase font-weight-bold">Active Branch</div>
+                    <div class="text-white fw-bold h5 mt-1 mb-0" id="depBranch">
+                        <span class="badge badge-primary px-2 py-1"><i class="fa-solid fa-code-branch mr-1"></i> Loading...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="p-3 rounded-3" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);">
+                    <div class="text-white-50 small text-uppercase font-weight-bold">Latest Commit</div>
+                    <div class="text-white fw-bold h5 mt-1 mb-0 font-monospace" id="depCommit">--</div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="p-3 rounded-3" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);">
+                    <div class="text-white-50 small text-uppercase font-weight-bold">Commit Info</div>
+                    <div class="text-white-50 small mt-1 mb-0 text-truncate" id="depMessage">--</div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Action Buttons --}}
+        <div class="d-flex flex-wrap gap-3 mb-4">
+            <button type="button" id="btnGitPull" class="btn btn-primary rounded-pill px-4 py-2 font-weight-bold" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); border: none; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);" onclick="triggerGitPull()">
+                <i class="fa-solid fa-cloud-arrow-down mr-2"></i> Pull Latest Code & Clear Cache
+            </button>
+            <button type="button" id="btnClearCache" class="btn btn-outline-warning rounded-pill px-4 py-2 font-weight-bold" onclick="triggerClearCache()">
+                <i class="fa-solid fa-broom mr-2"></i> Clear System Cache
+            </button>
+            <button type="button" id="btnMigrate" class="btn btn-outline-info rounded-pill px-4 py-2 font-weight-bold" onclick="triggerMigrate()">
+                <i class="fa-solid fa-database mr-2"></i> Run Migrations
+            </button>
+        </div>
+
+        {{-- Deployment Terminal / Console Output Box --}}
+        <div>
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <label class="text-white-50 small mb-0"><i class="fa-solid fa-terminal mr-1"></i> Deployment Console Output</label>
+                <button type="button" class="btn btn-link btn-sm text-white-50 p-0 text-decoration-none" onclick="document.getElementById('deployOutput').innerText = 'Ready.'">Clear Log</button>
+            </div>
+            <pre id="deployOutput" class="p-3 rounded-3 text-success font-monospace" style="background: #0b0f19; border: 1px solid rgba(255,255,255,0.1); min-height: 140px; max-height: 320px; overflow-y: auto; font-size: 0.85rem; line-height: 1.5; white-space: pre-wrap;">Ready. Click "Pull Latest Code & Clear Cache" to initiate update.</pre>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @push('styles')
@@ -1220,6 +1282,177 @@ function switchTab(id, btn) {
     document.querySelectorAll('.s-tab').forEach(b => b.classList.remove('active'));
     document.getElementById(id).classList.add('active');
     btn.classList.add('active');
+    if (id === 'tab-deployment') {
+        fetchDeploymentStatus();
+    }
+}
+
+function fetchDeploymentStatus() {
+    const branchEl = document.getElementById('depBranch');
+    const commitEl = document.getElementById('depCommit');
+    const msgEl = document.getElementById('depMessage');
+    if (!branchEl) return;
+
+    branchEl.innerHTML = '<span class="badge badge-secondary px-2 py-1"><i class="fa fa-spinner fa-spin mr-1"></i> Checking...</span>';
+    commitEl.textContent = '...';
+    msgEl.textContent = '...';
+
+    $.ajax({
+        url: '{{ route("admin.settings.deployment.status") }}',
+        method: 'GET',
+        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        success(res) {
+            branchEl.innerHTML = '<span class="badge badge-success px-2 py-1"><i class="fa-solid fa-code-branch mr-1"></i> ' + (res.branch || 'main') + '</span>';
+            commitEl.textContent = res.commit || '--';
+            msgEl.textContent = (res.message || '') + (res.date ? ' (' + res.date + ')' : '');
+        },
+        error() {
+            branchEl.innerHTML = '<span class="badge badge-danger px-2 py-1">Error fetching status</span>';
+        }
+    });
+}
+
+function appendDeployLog(text) {
+    const box = document.getElementById('deployOutput');
+    if (!box) return;
+    const time = new Date().toLocaleTimeString();
+    box.innerText += "\n[" + time + "] " + text;
+    box.scrollTop = box.scrollHeight;
+}
+
+function triggerGitPull() {
+    Swal.fire({
+        title: 'Pull Latest Code?',
+        text: 'This will pull the latest commits from origin/main and clear all application caches.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Pull & Deploy',
+        cancelButtonText: 'Cancel',
+        background: '#141826',
+        color: '#fff',
+        confirmButtonColor: '#2563eb'
+    }).then((result) => {
+        if (!result.isConfirmed) return;
+
+        const btn = document.getElementById('btnGitPull');
+        const originalHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa fa-spinner fa-spin mr-2"></i>Pulling & Clearing Cache...';
+        appendDeployLog("Executing 'git pull origin main' & 'optimize:clear'...");
+
+        $.ajax({
+            url: '{{ route("admin.settings.deployment.pull") }}',
+            method: 'POST',
+            data: { _token: '{{ csrf_token() }}' },
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            success(res) {
+                appendDeployLog(res.output || res.message);
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Deployed Successfully!',
+                    text: res.message,
+                    background: '#141826',
+                    color: '#fff'
+                });
+                fetchDeploymentStatus();
+            },
+            error(xhr) {
+                const msg = xhr.responseJSON?.message || 'Deployment execution failed.';
+                const out = xhr.responseJSON?.output || msg;
+                appendDeployLog("ERROR: " + out);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Deployment Failed',
+                    text: msg,
+                    background: '#141826',
+                    color: '#fff'
+                });
+            },
+            complete() {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
+        });
+    });
+}
+
+function triggerClearCache() {
+    const btn = document.getElementById('btnClearCache');
+    const orig = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa fa-spinner fa-spin mr-1"></i> Clearing...';
+    appendDeployLog("Executing 'php artisan optimize:clear'...");
+
+    $.ajax({
+        url: '{{ route("admin.settings.deployment.clear_cache") }}',
+        method: 'POST',
+        data: { _token: '{{ csrf_token() }}' },
+        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        success(res) {
+            appendDeployLog(res.output || res.message);
+            Swal.fire({
+                icon: 'success',
+                title: 'Cache Cleared',
+                text: res.message,
+                background: '#141826',
+                color: '#fff',
+                timer: 1500,
+                showConfirmButton: false
+            });
+        },
+        error(xhr) {
+            appendDeployLog("Cache clear error: " + (xhr.responseJSON?.message || 'Failed'));
+        },
+        complete() {
+            btn.disabled = false;
+            btn.innerHTML = orig;
+        }
+    });
+}
+
+function triggerMigrate() {
+    Swal.fire({
+        title: 'Run Migrations?',
+        text: 'This will run pending database migrations (php artisan migrate --force).',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Run Migrations',
+        background: '#141826',
+        color: '#fff',
+        confirmButtonColor: '#0284c7'
+    }).then((result) => {
+        if (!result.isConfirmed) return;
+
+        const btn = document.getElementById('btnMigrate');
+        const orig = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa fa-spinner fa-spin mr-1"></i> Migrating...';
+        appendDeployLog("Executing 'php artisan migrate --force'...");
+
+        $.ajax({
+            url: '{{ route("admin.settings.deployment.migrate") }}',
+            method: 'POST',
+            data: { _token: '{{ csrf_token() }}' },
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            success(res) {
+                appendDeployLog(res.output || res.message);
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Migrations Completed',
+                    text: res.message,
+                    background: '#141826',
+                    color: '#fff'
+                });
+            },
+            error(xhr) {
+                appendDeployLog("Migration error: " + (xhr.responseJSON?.message || 'Failed'));
+            },
+            complete() {
+                btn.disabled = false;
+                btn.innerHTML = orig;
+            }
+        });
+    });
 }
 
 function handleSettingsForm(formId, url) {
