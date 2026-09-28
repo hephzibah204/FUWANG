@@ -9,7 +9,12 @@
             <h3 class="text-white fw-bold mb-1"><i class="fa-solid fa-id-card text-primary me-2"></i>Agent Application Details</h3>
             <p class="text-white-50 mb-0">Review identity proof, uploaded KYC documents, NIMC compliance, and grant agency access.</p>
         </div>
-        <a href="{{ route('admin.agents.index') }}" class="btn btn-outline-light rounded-pill btn-sm">Back to Agent List</a>
+        <div class="d-flex gap-2">
+            <a href="{{ route('admin.agents.edit', $agent->id) }}" class="btn btn-primary rounded-pill btn-sm fw-bold">
+                <i class="fa-solid fa-pen-to-square me-1"></i>Edit Profile & Hardware
+            </a>
+            <a href="{{ route('admin.agents.index') }}" class="btn btn-outline-light rounded-pill btn-sm">Back to Agent List</a>
+        </div>
     </div>
 
     @if (session('success'))

@@ -690,11 +690,32 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
             // NIN Enrollment Agents Management
             Route::prefix('agents')->name('agents.')->group(function () {
                 Route::get('/', [App\Http\Controllers\Admin\AdminAgentController::class, 'index'])->name('index');
+                Route::get('/overview', [App\Http\Controllers\Admin\AdminAgentController::class, 'overview'])->name('overview');
                 Route::get('/leaderboard', [App\Http\Controllers\Admin\AdminAgentController::class, 'leaderboard'])->name('leaderboard');
                 Route::post('/leaderboard/publish', [App\Http\Controllers\Admin\AdminAgentController::class, 'publishLeaderboard'])->name('leaderboard.publish');
                 Route::get('/upload-preapproved', [App\Http\Controllers\Admin\AdminAgentController::class, 'showUploadPreApproved'])->name('upload_preapproved');
                 Route::post('/upload-preapproved', [App\Http\Controllers\Admin\AdminAgentController::class, 'processUploadPreApproved'])->name('upload_preapproved.process');
+
+                // Notifications & Broadcasts
+                Route::prefix('notifications')->name('notifications.')->group(function () {
+                    Route::get('/', [App\Http\Controllers\Admin\AdminAgentNotificationController::class, 'index'])->name('index');
+                    Route::post('/', [App\Http\Controllers\Admin\AdminAgentNotificationController::class, 'store'])->name('store');
+                    Route::delete('/{id}', [App\Http\Controllers\Admin\AdminAgentNotificationController::class, 'destroy'])->name('destroy');
+                });
+
+                // Master Roster Management
+                Route::prefix('roster')->name('roster.')->group(function () {
+                    Route::get('/', [App\Http\Controllers\Admin\AdminAgentRosterController::class, 'index'])->name('index');
+                    Route::post('/', [App\Http\Controllers\Admin\AdminAgentRosterController::class, 'store'])->name('store');
+                    Route::put('/{id}', [App\Http\Controllers\Admin\AdminAgentRosterController::class, 'update'])->name('update');
+                    Route::post('/{id}/unclaim', [App\Http\Controllers\Admin\AdminAgentRosterController::class, 'unclaim'])->name('unclaim');
+                    Route::delete('/{id}', [App\Http\Controllers\Admin\AdminAgentRosterController::class, 'destroy'])->name('destroy');
+                });
+
+                // Specific Agent operations
                 Route::get('/{id}', [App\Http\Controllers\Admin\AdminAgentController::class, 'show'])->name('show');
+                Route::get('/{id}/edit', [App\Http\Controllers\Admin\AdminAgentController::class, 'edit'])->name('edit');
+                Route::put('/{id}', [App\Http\Controllers\Admin\AdminAgentController::class, 'update'])->name('update');
                 Route::post('/{id}/approve', [App\Http\Controllers\Admin\AdminAgentController::class, 'approve'])->name('approve');
                 Route::post('/{id}/reject', [App\Http\Controllers\Admin\AdminAgentController::class, 'reject'])->name('reject');
                 Route::post('/{id}/suspend', [App\Http\Controllers\Admin\AdminAgentController::class, 'suspend'])->name('suspend');

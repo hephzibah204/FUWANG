@@ -40,6 +40,90 @@ class AdminAgentController extends Controller
         return view('admin.agents.index', compact('agents', 'counts', 'status'));
     }
 
+    public function overview()
+    {
+        $totalAgents = EnrollmentAgent::count();
+        $approvedAgents = EnrollmentAgent::where('status', 'approved')->count();
+        $pendingAgents = EnrollmentAgent::where('status', 'pending')->count();
+        $suspendedAgents = EnrollmentAgent::where('status', 'suspended')->count();
+        $rejectedAgents = EnrollmentAgent::where('status', 'rejected')->count();
+
+        $totalEnrollments = EnrollmentAgent::sum('total_enrollments');
+        $monthlyEnrollments = EnrollmentAgent::sum('monthly_enrollments');
+        $totalTerminals = EnrollmentAgent::whereNotNull('machine_imei')->where('machine_imei', '!=', '')->count();
+
+        $openIssuesCount = \App\Models\Ticket::whereNotNull('agent_id')->where('status', 'open')->count();
+        $inProgressIssuesCount = \App\Models\Ticket::whereNotNull('agent_id')->where('status', 'in_progress')->count();
+
+        $rosterTotal = \App\Models\PreApprovedAgent::count();
+        $rosterClaimed = \App\Models\PreApprovedAgent::where('is_claimed', true)->count();
+        $rosterUnclaimed = \App\Models\PreApprovedAgent::where('is_claimed', false)->count();
+
+        $recentAgents = EnrollmentAgent::with('user')->latest()->take(6)->get();
+        $recentIssues = \App\Models\Ticket::with(['agent', 'user'])->whereNotNull('agent_id')->latest()->take(5)->get();
+        $topAgents = EnrollmentAgent::where('status', 'approved')->orderByDesc('monthly_enrollments')->orderByDesc('total_enrollments')->take(5)->get();
+        $mva = EnrollmentAgent::where('is_mva_of_month', true)->first();
+
+        return view('admin.agents.overview', compact(
+            'totalAgents',
+            'approvedAgents',
+            'pendingAgents',
+            'suspendedAgents',
+            'rejectedAgents',
+            'totalEnrollments',
+            'monthlyEnrollments',
+            'totalTerminals',
+            'openIssuesCount',
+            'inProgressIssuesCount',
+            'rosterTotal',
+            'rosterClaimed',
+            'rosterUnclaimed',
+            'recentAgents',
+            'recentIssues',
+            'topAgents',
+            'mva'
+        ));
+    }
+
+    public function edit($id)
+    {
+        $agent = EnrollmentAgent::with('user')->findOrFail($id);
+
+        return view('admin.agents.edit', compact('agent'));
+    }
+
+    public function update(Request $request, $id)
+    {
+        $agent = EnrollmentAgent::findOrFail($id);
+
+        $validated = $request->validate([
+            'full_name' => ['required', 'string', 'max:255'],
+            'phone_number' => ['required', 'string', 'max:30'],
+            'state' => ['nullable', 'string', 'max:100'],
+            'residential_address' => ['nullable', 'string', 'max:500'],
+            'office_address' => ['nullable', 'string', 'max:500'],
+            'machine_imei' => ['nullable', 'string', 'max:100'],
+            'has_machine' => ['nullable', 'boolean'],
+            'company_agent_code' => ['nullable', 'string', 'max:100'],
+            'status' => ['required', 'in:pending,approved,rejected,suspended'],
+            'rejection_reason' => ['nullable', 'string', 'max:1000'],
+            'monthly_enrollments' => ['nullable', 'integer', 'min:0'],
+            'total_enrollments' => ['nullable', 'integer', 'min:0'],
+            'is_mva_of_month' => ['nullable', 'boolean'],
+        ]);
+
+        $validated['has_machine'] = $request->boolean('has_machine');
+        $validated['is_mva_of_month'] = $request->boolean('is_mva_of_month');
+
+        if ($validated['status'] === 'approved' && $agent->status !== 'approved' && !$agent->approved_at) {
+            $validated['approved_at'] = now();
+        }
+
+        $agent->update($validated);
+
+        return redirect()->route('admin.agents.show', $agent->id)->with('success', "Agent profile for {$agent->full_name} updated successfully.");
+    }
+
     public function show($id)
     {
         $agent = EnrollmentAgent::with('user')->findOrFail($id);

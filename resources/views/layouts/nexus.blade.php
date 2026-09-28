@@ -450,14 +450,57 @@
                 <button type="button" class="submenu-toggle" aria-expanded="false"><i class="fa-solid fa-users"></i> <span class="nav-text">Users & Access</span> <i class="fa-solid fa-chevron-down ml-auto small submenu-arrow"></i></button>
                 <div class="submenu" role="region">
                     <a href="{{ route('admin.users.index') }}" class="{{ Request::routeIs('admin.users.*') ? 'active' : '' }}">Users</a>
-                    <a href="{{ route('admin.agents.index') }}" class="{{ Request::routeIs('admin.agents.*') ? 'active' : '' }}">Enrollment Agents</a>
-                    <a href="{{ route('admin.agents.upload_preapproved') }}" class="{{ Request::routeIs('admin.agents.upload_preapproved') ? 'active' : '' }}">Agent Master Roster</a>
                     @if(Auth::guard('admin')->user()?->hasPermission('manage_admins'))
                     <a href="{{ route('admin.admins.index') }}" class="{{ Request::routeIs('admin.admins.*') ? 'active' : '' }}">System Admins</a>
                     @endif
                     @if(Auth::guard('admin')->user()?->hasPermission('manage_roles'))
                     <a href="{{ route('admin.roles.index') }}" class="{{ Request::routeIs('admin.roles.*') ? 'active' : '' }}">Roles & Permissions</a>
                     @endif
+                </div>
+            </div>
+
+            @php
+                $sidebarPendingAgents = \App\Models\EnrollmentAgent::where('status', 'pending')->count();
+                $sidebarOpenAgentIssues = \App\Models\Ticket::whereNotNull('agent_id')->where('status', 'open')->count();
+                $sidebarAgentAttentionCount = $sidebarPendingAgents + $sidebarOpenAgentIssues;
+            @endphp
+            <div class="nav-item has-submenu {{ Request::routeIs('admin.agents.*') ? 'open' : '' }}">
+                <button type="button" class="submenu-toggle {{ Request::routeIs('admin.agents.*') ? 'active' : '' }}" aria-expanded="{{ Request::routeIs('admin.agents.*') ? 'true' : 'false' }}">
+                    <i class="fa-solid fa-id-card-clip text-emerald-400"></i>
+                    <span class="nav-text font-medium">Agency Network</span>
+                    @if($sidebarAgentAttentionCount > 0)
+                        <span class="badge bg-danger rounded-pill px-1.5 py-0.5 text-2xs ms-1" title="{{ $sidebarPendingAgents }} pending approvals, {{ $sidebarOpenAgentIssues }} open tickets">{{ $sidebarAgentAttentionCount }}</span>
+                    @endif
+                    <i class="fa-solid fa-chevron-down ml-auto small submenu-arrow"></i>
+                </button>
+                <div class="submenu" role="region">
+                    <a href="{{ route('admin.agents.overview') }}" class="{{ Request::routeIs('admin.agents.overview') ? 'active' : '' }}">
+                        <i class="fa-solid fa-chart-pie me-2 text-xs opacity-75"></i> Command Center
+                    </a>
+                    <a href="{{ route('admin.agents.index') }}" class="{{ Request::routeIs('admin.agents.index') || Request::routeIs('admin.agents.show') || Request::routeIs('admin.agents.edit') ? 'active' : '' }}">
+                        <i class="fa-solid fa-users-gear me-2 text-xs opacity-75"></i> Agent Directory
+                        @if($sidebarPendingAgents > 0)
+                            <span class="badge bg-warning text-dark rounded-pill text-2xs ms-auto">{{ $sidebarPendingAgents }}</span>
+                        @endif
+                    </a>
+                    <a href="{{ route('admin.agents.notifications.index') }}" class="{{ Request::routeIs('admin.agents.notifications.*') ? 'active' : '' }}">
+                        <i class="fa-solid fa-bullhorn me-2 text-xs opacity-75"></i> Broadcast & Alerts
+                    </a>
+                    <a href="{{ route('admin.agents.roster.index') }}" class="{{ Request::routeIs('admin.agents.roster.*') ? 'active' : '' }}">
+                        <i class="fa-solid fa-clipboard-user me-2 text-xs opacity-75"></i> Master Roster
+                    </a>
+                    <a href="{{ route('admin.agents.leaderboard') }}" class="{{ Request::routeIs('admin.agents.leaderboard*') ? 'active' : '' }}">
+                        <i class="fa-solid fa-trophy me-2 text-xs opacity-75"></i> Leaderboard & MVA
+                    </a>
+                    <a href="{{ route('admin.agents.issues.index') }}" class="{{ Request::routeIs('admin.agents.issues.*') ? 'active' : '' }}">
+                        <i class="fa-solid fa-headset me-2 text-xs opacity-75"></i> Hardware & Issues
+                        @if($sidebarOpenAgentIssues > 0)
+                            <span class="badge bg-danger rounded-pill text-2xs ms-auto">{{ $sidebarOpenAgentIssues }}</span>
+                        @endif
+                    </a>
+                    <a href="{{ route('admin.agents.upload_preapproved') }}" class="{{ Request::routeIs('admin.agents.upload_preapproved*') ? 'active' : '' }}">
+                        <i class="fa-solid fa-file-import me-2 text-xs opacity-75"></i> Import Roster (CSV)
+                    </a>
                 </div>
             </div>
 

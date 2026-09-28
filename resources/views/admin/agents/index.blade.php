@@ -6,15 +6,25 @@
 <div class="container-fluid py-4">
     <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
         <div>
-            <h3 class="text-white fw-bold mb-1"><i class="fa-solid fa-users-gear text-primary me-2"></i>NIN Enrollment Agents Management</h3>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <a href="{{ route('admin.agents.overview') }}" class="text-white-50 text-xs text-decoration-none">
+                    <i class="fa-solid fa-arrow-left me-1"></i> Command Center
+                </a>
+                <span class="text-white-50 text-xs">/</span>
+                <span class="text-emerald-400 text-xs fw-semibold">Agent Directory</span>
+            </div>
+            <h3 class="text-white fw-bold mb-1"><i class="fa-solid fa-users-gear text-primary me-2"></i>NIN Enrollment Agents Directory</h3>
             <p class="text-white-50 mb-0">Review agent applications, verify credentials, manage approvals, and track performance.</p>
         </div>
-        <div class="d-flex gap-2">
-            <a href="{{ route('admin.agents.upload_preapproved') }}" class="btn btn-outline-warning rounded-pill fw-bold">
-                <i class="fa-solid fa-file-excel me-2"></i>Upload Excel Roster
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="{{ route('admin.agents.notifications.index') }}" class="btn btn-primary rounded-pill fw-bold">
+                <i class="fa-solid fa-bullhorn me-1"></i>Broadcast
             </a>
-            <a href="{{ route('admin.agents.leaderboard') }}" class="btn btn-warning rounded-pill fw-bold text-dark">
-                <i class="fa-solid fa-trophy me-2"></i>Leaderboard & MVA
+            <a href="{{ route('admin.agents.roster.index') }}" class="btn btn-outline-warning rounded-pill fw-bold">
+                <i class="fa-solid fa-clipboard-user me-1"></i>Master Roster
+            </a>
+            <a href="{{ route('admin.agents.leaderboard') }}" class="btn btn-outline-light rounded-pill fw-bold">
+                <i class="fa-solid fa-trophy me-1"></i>Leaderboard
             </a>
         </div>
     </div>
@@ -116,14 +126,23 @@
                                 <small class="text-white-50">({{ number_format($agent->monthly_enrollments) }}/mo)</small>
                             </td>
                             <td class="text-end">
-                                <a href="{{ route('admin.agents.show', $agent->id) }}" class="btn btn-sm btn-outline-info rounded-pill px-3">View</a>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{{ route('admin.agents.show', $agent->id) }}" class="btn btn-sm btn-outline-info rounded-pill px-2.5" title="View Dossier">
+                                        <i class="fa-solid fa-eye"></i>
+                                    </a>
+                                    <a href="{{ route('admin.agents.edit', $agent->id) }}" class="btn btn-sm btn-outline-light rounded-pill px-2.5 ms-1" title="Edit Profile & Hardware">
+                                        <i class="fa-solid fa-pen-to-square"></i>
+                                    </a>
 
-                                @if($agent->isPending())
-                                    <form action="{{ route('admin.agents.approve', $agent->id) }}" method="POST" class="d-inline">
-                                        @csrf
-                                        <button type="submit" class="btn btn-sm btn-success rounded-pill px-3">Approve</button>
-                                    </form>
-                                @endif
+                                    @if($agent->isPending())
+                                        <form action="{{ route('admin.agents.approve', $agent->id) }}" method="POST" class="d-inline ms-1">
+                                            @csrf
+                                            <button type="submit" class="btn btn-sm btn-success rounded-pill px-2.5" title="Approve">
+                                                <i class="fa-solid fa-check"></i>
+                                            </button>
+                                        </form>
+                                    @endif
+                                </div>
                             </td>
                         </tr>
                     @empty
