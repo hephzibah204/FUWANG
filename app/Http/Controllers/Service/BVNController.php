@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Service;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\ApiCenter;
+use App\Models\BvnRetrievalRequest;
 use App\Models\CustomApi;
 use App\Models\VerificationPrice;
 use App\Models\VerificationResult;
@@ -32,11 +33,16 @@ class BVNController extends Controller
 
         // 3. Load Verification History (Vault) for all BVN mode types
         $myResults = VerificationResult::where('user_id', Auth::id())
-            ->whereIn('service_type', ['bvn_verification', 'bvn_matching', 'bvn_nin_phone_verification'])
+            ->whereIn('service_type', ['bvn_verification', 'bvn_matching', 'bvn_nin_phone_verification', 'bvn_retrieval'])
             ->latest()
             ->get();
 
-        // 4. Load Pricing Setup
+        // 4. Load BVN Retrieval Requests
+        $retrievalRequests = BvnRetrievalRequest::where('user_id', Auth::id())
+            ->latest()
+            ->get();
+
+        // 5. Load Pricing Setup
         $legacyPrice = VerificationPrice::first();
         $prices = [
             'bvn_by_bvn' => $bvnProviders->first()->price ?? ($legacyPrice->bvn_by_bvn ?? 100),
@@ -44,11 +50,12 @@ class BVNController extends Controller
             'premium' => \App\Models\SystemSetting::get('bvn_premium_price', 500),
             'match' => \App\Models\SystemSetting::get('bvn_match_price', 150),
             'combined' => \App\Models\SystemSetting::get('bvn_nin_phone_price', 250),
+            'retrieval' => \App\Models\SystemSetting::get('bvn_retrieval_price', 800),
         ];
 
         return view('services.identity.bvn', compact(
             'bvnProviders', 'matchProviders', 'combinedProviders', 
-            'apiCenter', 'myResults', 'prices'
+            'apiCenter', 'myResults', 'retrievalRequests', 'prices'
         ));
     }
 
@@ -462,5 +469,228 @@ class BVNController extends Controller
         }
 
         return substr($value, 0, 3) . str_repeat('*', $len - 6) . substr($value, -3);
+    }
+
+    /**
+     * Submit BVN Retrieval Request (Async 24h SLA)
+     */
+    public function submitRetrieval(Request $request)
+    {
+        $expectsJson = $request->expectsJson() || $request->ajax() || $request->wantsJson();
+
+        $request->validate([
+            'phone' => ['required', 'string', 'min:10', 'max:20'],
+            'full_name' => ['required', 'string', 'min:3', 'max:190'],
+            'dob' => ['nullable', 'string', 'max:30'],
+        ]);
+
+        $user = Auth::user();
+        $phone = trim((string) $request->input('phone'));
+        $fullName = trim((string) $request->input('full_name'));
+        $dob = $request->filled('dob') ? trim((string) $request->input('dob')) : null;
+
+        $price = (float) \App\Models\SystemSetting::get('bvn_retrieval_price', 800);
+        $orderType = 'BVN Retrieval Request';
+        $txReference = 'BVNRET';
+
+        $paid = app(PaidActionService::class)->run(
+            $user,
+            $price,
+            $orderType,
+            $txReference,
+            function ($txId) use ($phone, $fullName, $dob, $user, $price) {
+                // Find custom provider if any, else default DataVerifyClient
+                $provider = CustomApi::where('service_type', 'bvn_retrieval')->where('status', true)->first()
+                    ?? CustomApi::where('provider_identifier', 'like', '%dataverify%')->where('status', true)->first();
+
+                $client = new DataVerifyClient($provider);
+                $submitRes = $client->submitBvnRetrieval($phone, $fullName, $dob);
+
+                if (!$submitRes['ok']) {
+                    throw new \Exception($submitRes['message'] ?? 'BVN Retrieval submission failed.');
+                }
+
+                $retrieval = BvnRetrievalRequest::create([
+                    'user_id' => $user->id,
+                    'phone_number' => $phone,
+                    'full_name' => $fullName,
+                    'dob' => $dob,
+                    'transaction_id' => $txId,
+                    'provider_transaction_id' => $submitRes['provider_transaction_id'] ?? null,
+                    'provider' => 'dataverify',
+                    'amount' => $price,
+                    'status' => 'pending',
+                    'provider_response' => $submitRes['data'] ?? [],
+                ]);
+
+                return [
+                    'retrieval_id' => $retrieval->id,
+                    'transaction_id' => $txId,
+                    'provider_transaction_id' => $retrieval->provider_transaction_id,
+                    'phone_number' => $phone,
+                    'full_name' => $fullName,
+                    'message' => 'BVN Retrieval request submitted successfully! Most requests are completed within 24 hours. Check back anytime to view your result.',
+                ];
+            }
+        );
+
+        if (!$paid['ok']) {
+            Log::error('BVN Retrieval Submission Failed: ' . $paid['message'], [
+                'user' => $user->id,
+                'phone' => $phone,
+                'full_name' => $fullName,
+            ]);
+
+            if ($expectsJson) {
+                return response()->json(['status' => false, 'message' => $paid['message']]);
+            }
+
+            return back()
+                ->withErrors(['bvn_retrieval' => $paid['message']])
+                ->withInput();
+        }
+
+        if ($expectsJson) {
+            return response()->json([
+                'status' => true,
+                'message' => $paid['result']['message'],
+                'data' => $paid['result'],
+            ]);
+        }
+
+        return redirect()
+            ->route('services.bvn')
+            ->with('status', $paid['result']['message'])
+            ->with('bvn_active_panel', 'retrieve');
+    }
+
+    /**
+     * Check Status of a BVN Retrieval Request
+     */
+    public function checkRetrievalStatus(Request $request, $id)
+    {
+        $expectsJson = $request->expectsJson() || $request->ajax() || $request->wantsJson();
+        $user = Auth::user();
+
+        $retrieval = BvnRetrievalRequest::where('user_id', $user->id)->findOrFail($id);
+
+        if ($retrieval->isCompleted()) {
+            $msg = 'BVN Retrieval already completed: ' . $retrieval->retrieved_bvn;
+            if ($expectsJson) {
+                return response()->json(['status' => true, 'state' => 'completed', 'bvn' => $retrieval->retrieved_bvn, 'message' => $msg]);
+            }
+            return back()->with('status', $msg)->with('bvn_active_panel', 'retrieve');
+        }
+
+        if ($retrieval->isRefunded()) {
+            $msg = 'This request was resolved as not found and your wallet has been refunded.';
+            if ($expectsJson) {
+                return response()->json(['status' => false, 'state' => 'refunded', 'message' => $msg]);
+            }
+            return back()->with('status', $msg)->with('bvn_active_panel', 'retrieve');
+        }
+
+        $providerTxId = $retrieval->provider_transaction_id ?: $retrieval->transaction_id;
+        $provider = CustomApi::where('service_type', 'bvn_retrieval')->where('status', true)->first()
+            ?? CustomApi::where('provider_identifier', 'like', '%dataverify%')->where('status', true)->first();
+
+        $client = new DataVerifyClient($provider);
+        $statusRes = $client->checkBvnRetrievalStatus($providerTxId);
+
+        if ($statusRes['status'] === 'completed' && !empty($statusRes['bvn'])) {
+            $bvn = $statusRes['bvn'];
+            $retrieval->update([
+                'status' => 'completed',
+                'retrieved_bvn' => $bvn,
+                'completed_at' => now(),
+                'provider_response' => $statusRes['data'] ?? [],
+            ]);
+
+            // Save to Vault
+            try {
+                app(VerificationResultService::class)->create(
+                    $user,
+                    'bvn_retrieval',
+                    $bvn,
+                    'DataVerify BVN Retrieval',
+                    array_merge((array) ($statusRes['data'] ?? []), [
+                        'phone_number' => $retrieval->phone_number,
+                        'full_name' => $retrieval->full_name,
+                        'dob' => $retrieval->dob,
+                        'bvn' => $bvn,
+                    ]),
+                    'success',
+                    'BVNRET'
+                );
+            } catch (\Throwable $e) {
+                Log::warning('Failed creating vault record for BVN retrieval: ' . $e->getMessage());
+            }
+
+            $successMsg = "BVN successfully retrieved: {$bvn}! It has also been saved to your vault.";
+            if ($expectsJson) {
+                return response()->json([
+                    'status' => true,
+                    'state' => 'completed',
+                    'bvn' => $bvn,
+                    'message' => $successMsg,
+                ]);
+            }
+
+            return redirect()
+                ->route('services.bvn')
+                ->with('status', $successMsg)
+                ->with('bvn_active_panel', 'retrieve');
+        }
+
+        if ($statusRes['status'] === 'not_found' || !empty($statusRes['refund'])) {
+            // Auto refund
+            $refundTxId = 'RF-' . $retrieval->transaction_id;
+            try {
+                app(\App\Services\WalletService::class)->credit(
+                    $user,
+                    (float) $retrieval->amount,
+                    'Refund – BVN Retrieval Not Found (' . $retrieval->phone_number . ')',
+                    $refundTxId
+                );
+            } catch (\Throwable $e) {
+                Log::error('Auto-refund failed for BVN retrieval #' . $retrieval->id . ': ' . $e->getMessage());
+            }
+
+            $retrieval->update([
+                'status' => 'refunded',
+                'failure_reason' => $statusRes['message'] ?? 'BVN record not found for this phone and name.',
+                'refunded_at' => now(),
+                'provider_response' => $statusRes['data'] ?? [],
+            ]);
+
+            $refundMsg = "BVN record was not found for this phone and name. ₦" . number_format($retrieval->amount, 2) . " has been automatically refunded to your wallet.";
+            if ($expectsJson) {
+                return response()->json([
+                    'status' => false,
+                    'state' => 'refunded',
+                    'message' => $refundMsg,
+                ]);
+            }
+
+            return redirect()
+                ->route('services.bvn')
+                ->with('status', $refundMsg)
+                ->with('bvn_active_panel', 'retrieve');
+        }
+
+        // Still pending
+        $pendingMsg = 'Your BVN retrieval request is still being processed by the provider (usually completed within 24 hours). Please check back soon.';
+        if ($expectsJson) {
+            return response()->json([
+                'status' => true,
+                'state' => 'pending',
+                'message' => $pendingMsg,
+            ]);
+        }
+
+        return redirect()
+            ->route('services.bvn')
+            ->with('status', $pendingMsg)
+            ->with('bvn_active_panel', 'retrieve');
     }
 }

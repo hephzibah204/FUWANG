@@ -107,6 +107,10 @@
                     <label class="text-white-50 small mb-2">Personalization (₦)</label>
                     <input type="number" name="personalization_price" class="form-control text-white rounded-3" value="{{ $vp->personalization_price ?? 100 }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
                 </div>
+                <div class="col-md-4 mb-4">
+                    <label class="text-white-50 small mb-2">BVN Retrieval (Phone + Name) (₦)</label>
+                    <input type="number" name="bvn_retrieval_price" class="form-control text-white rounded-3" value="{{ $bvnRetrievalPrice ?? 800 }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                </div>
             </div>
             <button type="submit" class="btn btn-primary rounded-pill px-4"><i class="fa fa-floppy-disk mr-2"></i>Save Pricing</button>
         </form>
@@ -317,6 +321,18 @@
                 <div class="col-md-4 mb-4">
                     <label class="text-white-50 small mb-2">vNIN Slip Endpoint</label>
                     <input type="text" name="dataverify_endpoint_vnin_slip" class="form-control text-white rounded-3 font-monospace" value="{{ $ac->dataverify_endpoint_vnin_slip ?? '' }}" placeholder="Paste DataVerify vNIN slip endpoint" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                </div>
+                <div class="col-md-4 mb-4">
+                    <label class="text-white-50 small mb-2">BVN Verification Endpoint</label>
+                    <input type="text" name="dataverify_endpoint_bvn" class="form-control text-white rounded-3 font-monospace" value="{{ $ac->dataverify_endpoint_bvn ?? 'https://dataverify.com.ng/developers/bvn_slip/bvn_premium.php' }}" placeholder="https://dataverify.com.ng/developers/bvn_slip/bvn_premium.php" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                </div>
+                <div class="col-md-4 mb-4">
+                    <label class="text-white-50 small mb-2">BVN Retrieval Endpoint (Submit)</label>
+                    <input type="text" name="dataverify_endpoint_bvn_retrieval" class="form-control text-white rounded-3 font-monospace" value="{{ $ac->dataverify_endpoint_bvn_retrieval ?? 'https://dataverify.com.ng/api/developers/bvn_retrieval.php' }}" placeholder="https://dataverify.com.ng/api/developers/bvn_retrieval.php" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                </div>
+                <div class="col-md-4 mb-4">
+                    <label class="text-white-50 small mb-2">BVN Retrieval Status Endpoint (Check)</label>
+                    <input type="text" name="dataverify_endpoint_bvn_retrieval_status" class="form-control text-white rounded-3 font-monospace" value="{{ $ac->dataverify_endpoint_bvn_retrieval_status ?? 'https://dataverify.com.ng/api/developers/bvn_retrieval_status.php' }}" placeholder="https://dataverify.com.ng/api/developers/bvn_retrieval_status.php" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
                 </div>
                 <div class="col-12 mb-4">
                     <div class="custom-control custom-switch">

@@ -45,6 +45,8 @@ class SettingsController extends Controller
             ->limit(30)
             ->get();
 
+        $bvnRetrievalPrice = (float) SystemSetting::get('bvn_retrieval_price', 800);
+
         return view('admin.settings.index', compact(
             'apiSettings', 'apiCenter', 'notification',
             'verifyPrices', 'manualFunding', 'notaryDocs',
@@ -53,7 +55,8 @@ class SettingsController extends Controller
             'verifymeWebhookIps',
             'verifymeWebhookSecretSet',
             'verifymeWebhookSecretUpdatedAt',
-            'securityAuditLogs'
+            'securityAuditLogs',
+            'bvnRetrievalPrice'
         ));
     }
 
@@ -88,6 +91,7 @@ class SettingsController extends Controller
             'validation_price'          => 'required|numeric|min:0',
             'ipe_clearance_price'       => 'required|numeric|min:0',
             'personalization_price'     => 'required|numeric|min:0',
+            'bvn_retrieval_price'       => 'nullable|numeric|min:0',
         ]);
 
         DB::table('verification_prices')->where('id', 1)->update([
@@ -101,6 +105,10 @@ class SettingsController extends Controller
             'ipe_clearance_price'     => $request->ipe_clearance_price,
             'personalization_price'   => $request->personalization_price,
         ]);
+
+        if ($request->filled('bvn_retrieval_price')) {
+            SystemSetting::set('bvn_retrieval_price', (float) $request->bvn_retrieval_price, 'pricing');
+        }
 
         return response()->json(['status' => true, 'message' => 'Pricing updated successfully.']);
     }
@@ -154,6 +162,9 @@ class SettingsController extends Controller
         $allowed = [
             'dataverify_api_key',
             'dataverify_endpoint_nin',
+            'dataverify_endpoint_bvn',
+            'dataverify_endpoint_bvn_retrieval',
+            'dataverify_endpoint_bvn_retrieval_status',
             'dataverify_endpoint_phone',
             'dataverify_endpoint_tid',
             'dataverify_endpoint_premium_slip',

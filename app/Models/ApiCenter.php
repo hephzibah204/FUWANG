@@ -13,6 +13,8 @@ class ApiCenter extends Model
         'dataverify_api_key',
         'dataverify_endpoint_nin',
         'dataverify_endpoint_bvn',
+        'dataverify_endpoint_bvn_retrieval',
+        'dataverify_endpoint_bvn_retrieval_status',
         'dataverify_endpoint_data',
         'dataverify_endpoint_phone',
         'dataverify_endpoint_tid',

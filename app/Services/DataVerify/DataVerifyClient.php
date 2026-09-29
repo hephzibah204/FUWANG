@@ -9,12 +9,16 @@ use Illuminate\Support\Facades\Log;
 
 class DataVerifyClient
 {
-    public function __construct(private readonly CustomApi $provider)
+    public function __construct(private readonly ?CustomApi $provider = null)
     {
     }
 
-    public static function isDataVerifyProvider(CustomApi $provider): bool
+    public static function isDataVerifyProvider(?CustomApi $provider): bool
     {
+        if (!$provider) {
+            return false;
+        }
+
         $identifier = strtolower((string) ($provider->provider_identifier ?? ''));
         if (str_contains($identifier, 'dataverify')) {
             return true;
@@ -54,6 +58,9 @@ class DataVerifyClient
         $payload = ['api_key' => $apiKey];
         if ($mode === 'nin') {
             $payload['nin'] = trim((string) ($input['number'] ?? ''));
+            if (!empty($input['validation_type'])) {
+                $payload['validation_type'] = trim((string) $input['validation_type']);
+            }
         } elseif ($mode === 'phone') {
             $payload['phone'] = trim((string) ($input['number'] ?? ''));
         } else {
@@ -178,6 +185,281 @@ class DataVerifyClient
         ];
     }
 
+    /**
+     * Submit a BVN Retrieval request to DataVerify
+     *
+     * @param string $phone
+     * @param string $fullName
+     * @param string|null $dob
+     * @return array{ok: bool, provider_transaction_id: ?string, message: string, data: array, terminal?: bool}
+     */
+    public function submitBvnRetrieval(string $phone, string $fullName, ?string $dob = null): array
+    {
+        $url = $this->resolveBvnRetrievalEndpoint();
+        $apiKey = $this->apiKey();
+        if ($apiKey === '') {
+            return [
+                'ok' => false,
+                'provider_transaction_id' => null,
+                'message' => 'DataVerify API key is missing.',
+                'data' => [],
+            ];
+        }
+
+        $headers = is_array($this->provider?->headers) ? $this->provider->headers : [];
+        $headers['Content-Type'] = $headers['Content-Type'] ?? 'application/json';
+
+        $payload = [
+            'api_key' => $apiKey,
+            'phone' => trim($phone),
+            'phone_number' => trim($phone),
+            'name' => trim($fullName),
+            'owner_name' => trim($fullName),
+            'full_name' => trim($fullName),
+        ];
+
+        if (!empty($dob)) {
+            $payload['dob'] = $this->formatDob($dob);
+        }
+
+        $timeout = (int) ($this->provider?->timeout_seconds ?: 60);
+
+        try {
+            $res = Http::timeout($timeout)
+                ->acceptJson()
+                ->asJson()
+                ->withHeaders($headers)
+                ->post($url, $payload);
+        } catch (\Throwable $e) {
+            Log::error('DataVerify BVN Retrieval submission network error', [
+                'url' => $url,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'ok' => false,
+                'provider_transaction_id' => null,
+                'message' => 'Network error connecting to DataVerify BVN Retrieval service: ' . $e->getMessage(),
+                'data' => [],
+            ];
+        }
+
+        $json = $res->json();
+
+        if (!$res->successful()) {
+            $message = (is_array($json) ? ($json['message'] ?? $json['detail'] ?? null) : null)
+                ?: 'DataVerify BVN retrieval submission failed with HTTP status ' . $res->status();
+
+            Log::warning('DataVerify BVN retrieval submission HTTP failed', [
+                'status' => $res->status(),
+                'url' => $url,
+                'body' => $res->body(),
+            ]);
+
+            return [
+                'ok' => false,
+                'provider_transaction_id' => null,
+                'message' => $message,
+                'data' => is_array($json) ? $json : [],
+                'terminal' => $this->isTerminalProviderError($message),
+            ];
+        }
+
+        if (!is_array($json)) {
+            return [
+                'ok' => false,
+                'provider_transaction_id' => null,
+                'message' => 'DataVerify returned an invalid response.',
+                'data' => [],
+            ];
+        }
+
+        $statusVal = strtolower((string) ($json['status'] ?? ''));
+        $responseCode = (string) ($json['response_code'] ?? '');
+        $looksSuccessful = in_array($statusVal, ['success', 'true', 'pending', 'processing', 'ok', 'queued'], true)
+            || in_array($responseCode, ['00', '0', '01'], true);
+
+        if (!$looksSuccessful) {
+            $message = (string) ($json['message'] ?? 'DataVerify BVN retrieval submission failed.');
+
+            return [
+                'ok' => false,
+                'provider_transaction_id' => null,
+                'message' => $message,
+                'data' => $json,
+                'terminal' => $this->isTerminalProviderError($message),
+            ];
+        }
+
+        $providerTxId = $json['transaction_id'] 
+            ?? $json['reference'] 
+            ?? $json['data']['transaction_id'] 
+            ?? $json['data']['reference'] 
+            ?? $json['id'] 
+            ?? null;
+
+        return [
+            'ok' => true,
+            'provider_transaction_id' => $providerTxId ? (string) $providerTxId : null,
+            'message' => (string) ($json['message'] ?? 'BVN retrieval request submitted successfully.'),
+            'data' => is_array($json['data'] ?? null) ? $json['data'] : $json,
+        ];
+    }
+
+    /**
+     * Check BVN Retrieval status on DataVerify
+     *
+     * @param string $transactionId
+     * @return array{ok: bool, status: string, bvn: ?string, message: string, data: array, refund?: bool}
+     */
+    public function checkBvnRetrievalStatus(string $transactionId): array
+    {
+        $url = $this->resolveBvnRetrievalStatusEndpoint();
+        $apiKey = $this->apiKey();
+        if ($apiKey === '') {
+            return [
+                'ok' => false,
+                'status' => 'error',
+                'bvn' => null,
+                'message' => 'DataVerify API key is missing.',
+                'data' => [],
+            ];
+        }
+
+        $headers = is_array($this->provider?->headers) ? $this->provider->headers : [];
+        $headers['Content-Type'] = $headers['Content-Type'] ?? 'application/json';
+
+        $payload = [
+            'api_key' => $apiKey,
+            'transaction_id' => trim($transactionId),
+            'reference' => trim($transactionId),
+        ];
+
+        $timeout = (int) ($this->provider?->timeout_seconds ?: 60);
+
+        try {
+            $res = Http::timeout($timeout)
+                ->acceptJson()
+                ->asJson()
+                ->withHeaders($headers)
+                ->post($url, $payload);
+        } catch (\Throwable $e) {
+            Log::error('DataVerify BVN Retrieval status check network error', [
+                'url' => $url,
+                'tx_id' => $transactionId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'ok' => false,
+                'status' => 'pending',
+                'bvn' => null,
+                'message' => 'Unable to reach provider to check status: ' . $e->getMessage(),
+                'data' => [],
+            ];
+        }
+
+        $json = $res->json();
+
+        if (!$res->successful() || !is_array($json)) {
+            Log::warning('DataVerify BVN retrieval status check non-success response', [
+                'status' => $res->status(),
+                'url' => $url,
+                'body' => $res->body(),
+            ]);
+
+            return [
+                'ok' => false,
+                'status' => 'pending',
+                'bvn' => null,
+                'message' => is_array($json) ? ($json['message'] ?? 'Failed to check status') : 'Invalid response from provider',
+                'data' => is_array($json) ? $json : [],
+            ];
+        }
+
+        $statusVal = strtolower((string) ($json['status'] ?? $json['data']['status'] ?? ''));
+        $message = (string) ($json['message'] ?? $json['detail'] ?? '');
+        $data = is_array($json['data'] ?? null) ? $json['data'] : (is_array($json['user_data'] ?? null) ? $json['user_data'] : $json);
+
+        $retrievedBvn = $data['bvn'] 
+            ?? $data['bvn_number'] 
+            ?? $data['response']['bvn'] 
+            ?? $json['bvn'] 
+            ?? null;
+
+        // Check for Completed / Success
+        if (
+            in_array($statusVal, ['completed', 'successful', 'success', 'resolved'], true) 
+            || (!empty($retrievedBvn) && strlen(trim((string)$retrievedBvn)) === 11)
+        ) {
+            return [
+                'ok' => true,
+                'status' => 'completed',
+                'bvn' => (string) $retrievedBvn,
+                'message' => $message ?: 'BVN retrieved successfully.',
+                'data' => $data,
+            ];
+        }
+
+        // Check for Not Found / Failed / Refundable condition
+        $lowerMsg = strtolower($message);
+        $isNotFound = in_array($statusVal, ['not_found', 'not found', 'failed', 'declined', 'rejected', 'unresolved'], true)
+            || str_contains($lowerMsg, 'not found')
+            || str_contains($lowerMsg, 'no record')
+            || str_contains($lowerMsg, 'cannot find')
+            || str_contains($lowerMsg, 'could not be retrieved');
+
+        if ($isNotFound) {
+            return [
+                'ok' => false,
+                'status' => 'not_found',
+                'bvn' => null,
+                'message' => $message ?: 'BVN record not found.',
+                'data' => $data,
+                'refund' => true,
+            ];
+        }
+
+        // Still pending / processing
+        return [
+            'ok' => true,
+            'status' => 'pending',
+            'bvn' => null,
+            'message' => $message ?: 'BVN retrieval is currently in progress.',
+            'data' => $data,
+        ];
+    }
+
+    public function resolveBvnRetrievalEndpoint(): string
+    {
+        $configured = trim((string) (
+            \App\Models\SystemSetting::get('dataverify_endpoint_bvn_retrieval')
+            ?? ApiCenter::query()->value('dataverify_endpoint_bvn_retrieval')
+            ?? ''
+        ));
+
+        if ($configured !== '') {
+            return $configured;
+        }
+
+        return 'https://dataverify.com.ng/api/developers/bvn_retrieval.php';
+    }
+
+    public function resolveBvnRetrievalStatusEndpoint(): string
+    {
+        $configured = trim((string) (
+            \App\Models\SystemSetting::get('dataverify_endpoint_bvn_retrieval_status')
+            ?? ApiCenter::query()->value('dataverify_endpoint_bvn_retrieval_status')
+            ?? ''
+        ));
+
+        if ($configured !== '') {
+            return $configured;
+        }
+
+        return 'https://dataverify.com.ng/api/developers/bvn_retrieval_status.php';
+    }
+
     private function resolvePath(string $mode, ?string $requestedType): string
     {
         $pathMap = [
@@ -192,7 +474,7 @@ class DataVerifyClient
             return $path;
         }
 
-        $type = $this->provider->verificationTypes()->where('type_key', $typeKey)->first();
+        $type = $this->provider?->verificationTypes()->where('type_key', $typeKey)->first();
         $suffix = trim((string) data_get($type, 'meta.path_suffix', ''));
         if ($suffix !== '') {
             return $this->normalizePhpPathSuffix($suffix);
@@ -207,7 +489,7 @@ class DataVerifyClient
      */
     private function apiKey(): string
     {
-        $apiKey = trim((string) ($this->provider->api_key ?? ''));
+        $apiKey = trim((string) ($this->provider?->api_key ?? ''));
         if ($apiKey !== '') {
             return $apiKey;
         }
@@ -234,7 +516,7 @@ class DataVerifyClient
             return $path;
         }
 
-        $type = $this->provider->verificationTypes()->where('type_key', $typeKey)->first();
+        $type = $this->provider?->verificationTypes()->where('type_key', $typeKey)->first();
         $suffix = trim((string) data_get($type, 'meta.path_suffix', ''));
         if ($suffix !== '') {
             return $this->normalizeBvnPathSuffix($suffix);

@@ -322,6 +322,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('feature:bvn_verification')->group(function () {
         Route::get('/services/bvn',    [App\Http\Controllers\Service\BVNController::class, 'index'])->name('services.bvn');
         Route::post('/services/bvn/verify', [App\Http\Controllers\Service\BVNController::class, 'verify'])->middleware('kyc.enforce')->name('services.bvn.verify');
+        Route::post('/services/bvn/retrieve', [App\Http\Controllers\Service\BVNController::class, 'submitRetrieval'])->middleware('kyc.enforce')->name('services.bvn.retrieve');
+        Route::post('/services/bvn/retrieve/{id}/check', [App\Http\Controllers\Service\BVNController::class, 'checkRetrievalStatus'])->name('services.bvn.retrieve.check');
     });
 
     // â”€â”€ VTU Services (Airtime, Data, Cable, Electricity, Education) â”€â”€â”€â”€â”€â”€â”€

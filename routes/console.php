@@ -11,3 +11,4 @@ Artisan::command('inspire', function () {
 Schedule::command('app:aggregate-metrics')->everyTenMinutes();
 Schedule::command('agent:retry-pending-nin')->everyFifteenMinutes();
 Schedule::command('auction:process-status')->everyMinute();
+Schedule::command('bvn:poll-retrievals')->everyFifteenMinutes();

@@ -23,6 +23,7 @@
     <!-- Tab Navigation -->
     <div class="tab-strip mb-4">
         <button class="s-tab active" onclick="switchMainPanel('verify', this)"><i class="fa-solid fa-search mr-1"></i> BVN Lookup</button>
+        <button class="s-tab" onclick="switchMainPanel('retrieve', this)"><i class="fa-solid fa-clock-rotate-left mr-1 text-primary"></i> BVN Retrieval <span class="badge badge-primary py-0 px-1 ml-1" style="font-size: 10px; letter-spacing: 0.5px;">NEW</span></button>
         <button class="s-tab" onclick="switchMainPanel('match', this)"><i class="fa-solid fa-equals mr-1"></i> Identity Match</button>
         <button class="s-tab" onclick="switchMainPanel('combi', this)"><i class="fa-solid fa-layer-group mr-1"></i> Combined Search</button>
         <button class="s-tab ml-auto border-left border-white-5" onclick="switchMainPanel('vault', this)"><i class="fa-solid fa-vault text-warning mr-1"></i> Vault ({{ $myResults->count() }})</button>
@@ -111,6 +112,166 @@
         </div>
     </div>
 
+    <!-- PANEL: BVN Retrieval (Phone + Owner's Name) -->
+    <div id="panel-retrieve" class="main-panel">
+        <div class="row">
+            <div class="col-lg-12">
+                <!-- Info / Banner -->
+                <div class="panel-card p-4 mb-4" style="background: linear-gradient(135deg, rgba(79, 70, 229, 0.12), rgba(16, 185, 129, 0.08)); border: 1px solid rgba(79, 70, 229, 0.25);">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between">
+                        <div class="d-flex align-items-center mb-2 mb-md-0">
+                            <div class="rounded-circle p-3 mr-3 text-center" style="background: rgba(79, 70, 229, 0.2); width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;">
+                                <i class="fa-solid fa-wand-magic-sparkles text-primary font-size-lg"></i>
+                            </div>
+                            <div>
+                                <h5 class="h6 font-weight-bold text-white mb-1">Lost or Forgotten BVN Retrieval</h5>
+                                <p class="text-white-50 small mb-0">Send a phone number with the account owner's full name to retrieve the linked BVN. Most requests resolve within 24 hours.</p>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="text-right mr-3">
+                                <span class="badge badge-success-soft text-success px-2 py-1 small"><i class="fa-solid fa-shield-check mr-1"></i> 100% Refund Guarantee</span>
+                                <div class="text-muted small mt-1">Automatic wallet refund if not found</div>
+                            </div>
+                            <span class="badge badge-info-soft text-info py-2 px-3 font-weight-bold" style="font-size: 15px;">₦{{ number_format($prices['retrieval'] ?? 800, 2) }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form Card -->
+                <div class="panel-card p-4 mb-4">
+                    <div class="d-flex align-items-center mb-4 pb-3 border-bottom border-white-5">
+                        <h2 class="h6 font-weight-bold m-0"><i class="fa-solid fa-paper-plane mr-2 text-primary"></i> Submit BVN Retrieval Request</h2>
+                    </div>
+
+                    <form id="retrievalForm" action="{{ route('services.bvn.retrieve') }}" method="POST">
+                        @csrf
+                        <div class="row">
+                            <div class="col-md-4 mb-4">
+                                <label class="font-weight-600 mb-2 small text-muted">Phone Number <span class="text-danger">*</span></label>
+                                <div class="input-wrap">
+                                    <i class="fa-solid fa-phone"></i>
+                                    <input type="tel" name="phone" class="form-control" placeholder="08012345678" required maxlength="15" value="{{ old('phone') }}">
+                                </div>
+                                <small class="text-muted">Phone number linked to the lost BVN profile.</small>
+                            </div>
+                            <div class="col-md-5 mb-4">
+                                <label class="font-weight-600 mb-2 small text-muted">Account Owner's Full Name <span class="text-danger">*</span></label>
+                                <div class="input-wrap">
+                                    <i class="fa-solid fa-user"></i>
+                                    <input type="text" name="full_name" class="form-control" placeholder="e.g. MOHAMMED IBRAHIM YUSUF" required maxlength="190" value="{{ old('full_name') }}">
+                                </div>
+                                <small class="text-muted">Exact full name associated with the bank account.</small>
+                            </div>
+                            <div class="col-md-3 mb-4">
+                                <label class="font-weight-600 mb-2 small text-muted">Date of Birth <span class="text-muted small">(Optional)</span></label>
+                                <div class="input-wrap">
+                                    <i class="fa-solid fa-calendar"></i>
+                                    <input type="text" name="dob" class="form-control" placeholder="DD-MM-YYYY" value="{{ old('dob') }}">
+                                </div>
+                                <small class="text-muted">Optional: Speeds up identity matching.</small>
+                            </div>
+                        </div>
+
+                        <div class="d-flex flex-wrap justify-content-between align-items-center pt-3 border-top border-white-5 gap-2">
+                            <div class="text-white-50 small">
+                                <i class="fa-solid fa-clock mr-1 text-warning"></i> Turnaround: <strong>Within 24 Hours</strong> (Available daily including weekends)
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-lg px-4" id="btn-submit-retrieval">
+                                <i class="fa-solid fa-paper-plane mr-2"></i> Submit Request (₦{{ number_format($prices['retrieval'] ?? 800) }})
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Retrieval Requests Tracker -->
+                <div class="panel-card p-4">
+                    <div class="d-flex align-items-center justify-content-between mb-4">
+                        <h3 class="h6 font-weight-bold m-0"><i class="fa-solid fa-list-check mr-2 text-warning"></i> My Retrieval Requests</h3>
+                        <span class="badge badge-outline-secondary">{{ $retrievalRequests->count() }} Total</span>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table admin-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Ticket Ref</th>
+                                    <th>Phone & Name</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                    <th>Result / BVN</th>
+                                    <th>Date</th>
+                                    <th class="text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($retrievalRequests as $req)
+                                    <tr>
+                                        <td>
+                                            <code class="text-primary font-weight-bold">{{ $req->transaction_id }}</code>
+                                            @if($req->provider_transaction_id)
+                                                <div class="text-muted" style="font-size: 11px;">Ext: {{ $req->provider_transaction_id }}</div>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            <div class="font-weight-600 text-white">{{ $req->full_name }}</div>
+                                            <div class="small text-muted"><i class="fa-solid fa-phone mr-1"></i>{{ $req->phone_number }}</div>
+                                        </td>
+                                        <td>₦{{ number_format($req->amount, 2) }}</td>
+                                        <td>
+                                            @if($req->isCompleted())
+                                                <span class="badge badge-success px-2 py-1"><i class="fa-solid fa-circle-check mr-1"></i> Completed</span>
+                                            @elseif($req->isRefunded())
+                                                <span class="badge badge-info px-2 py-1" title="{{ $req->failure_reason }}"><i class="fa-solid fa-arrow-rotate-left mr-1"></i> Refunded</span>
+                                            @elseif($req->isFailed())
+                                                <span class="badge badge-danger px-2 py-1"><i class="fa-solid fa-circle-xmark mr-1"></i> Failed</span>
+                                            @else
+                                                <span class="badge badge-warning px-2 py-1"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Processing</span>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            @if($req->isCompleted() && $req->retrieved_bvn)
+                                                <div class="d-flex align-items-center">
+                                                    <span class="font-weight-bold text-success mr-2 font-monospace" style="letter-spacing: 1px; font-size: 14px;">{{ $req->retrieved_bvn }}</span>
+                                                    <button type="button" class="btn btn-xs btn-outline-success" onclick="navigator.clipboard.writeText('{{ $req->retrieved_bvn }}'); alert('BVN copied to clipboard!');" title="Copy BVN">
+                                                        <i class="fa-solid fa-copy"></i>
+                                                    </button>
+                                                </div>
+                                            @elseif($req->isRefunded())
+                                                <span class="small text-muted">Not Found (Refunded)</span>
+                                            @else
+                                                <span class="small text-white-50"><i class="fa-regular fa-clock mr-1"></i> Pending provider...</span>
+                                            @endif
+                                        </td>
+                                        <td>{{ $req->created_at->format('M d, Y h:i A') }}</td>
+                                        <td class="text-right">
+                                            @if($req->isPending())
+                                                <form action="{{ route('services.bvn.retrieve.check', $req->id) }}" method="POST" class="d-inline">
+                                                    @csrf
+                                                    <button type="submit" class="btn btn-xs btn-outline-warning">
+                                                        <i class="fa-solid fa-arrows-rotate mr-1"></i> Check Status
+                                                    </button>
+                                                </form>
+                                            @elseif($req->isCompleted())
+                                                <span class="badge badge-outline-success"><i class="fa-solid fa-check mr-1"></i> Saved to Vault</span>
+                                            @else
+                                                <span class="text-muted small">-</span>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="7" class="text-center py-4 text-muted small">No BVN retrieval requests found.</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Additional panels (match, combi, vault) would go here, simplified for this migration -->
     <div id="panel-vault" class="main-panel">
         <div class="panel-card p-4">
@@ -156,24 +317,27 @@
 <script>
     function switchMainPanel(panel, btn) {
         document.querySelectorAll('.main-panel').forEach(p => p.classList.remove('active'));
-        document.getElementById('panel-' + panel).classList.add('active');
+        const target = document.getElementById('panel-' + panel);
+        if (target) {
+            target.classList.add('active');
+        }
         document.querySelectorAll('.s-tab').forEach(t => t.classList.remove('active'));
-        btn.classList.add('active');
+        if (btn) {
+            btn.classList.add('active');
+        }
     }
 
     document.addEventListener('DOMContentLoaded', function () {
         const defaultPanel = @json(session('bvn_active_panel'));
-        if (defaultPanel !== 'vault') {
-            return;
-        }
+        if (defaultPanel) {
+            const panelBtn = Array.from(document.querySelectorAll('.s-tab')).find((btn) => {
+                const onclick = btn.getAttribute('onclick') || '';
+                return onclick.includes("switchMainPanel('" + defaultPanel + "'");
+            });
 
-        const vaultBtn = Array.from(document.querySelectorAll('.s-tab')).find((btn) => {
-            const onclick = btn.getAttribute('onclick') || '';
-            return onclick.includes("switchMainPanel('vault'");
-        });
-
-        if (vaultBtn) {
-            switchMainPanel('vault', vaultBtn);
+            if (panelBtn) {
+                switchMainPanel(defaultPanel, panelBtn);
+            }
         }
     });
 </script>
