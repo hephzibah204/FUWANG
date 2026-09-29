@@ -48,7 +48,7 @@ class AdminSandboxController extends Controller
             }
 
             $apiKey = $apiCenter->dataverify_api_key;
-            $endpoint = 'https://dataverify.com.ng/developers/nin_slips/nin_premium';
+            $endpoint = 'https://dataverify.org/developers/nin_slips/nin_premium';
         }
 
         try {
@@ -108,7 +108,9 @@ class AdminSandboxController extends Controller
                 return response()->json(['status' => false, 'message' => 'Service currently unavailable']);
             }
             $apiKey = $apiCenter->dataverify_api_key;
-            $endpoint = $apiCenter->dataverify_endpoint_bvn ?? 'https://dataverify.com.ng/developers/bvn_slip/bvn_premium.php';
+            $endpoint = $apiCenter->dataverify_endpoint_bvn
+                ? \App\Services\DataVerify\DataVerifyClient::normalizeDomain($apiCenter->dataverify_endpoint_bvn)
+                : 'https://dataverify.org/developers/bvn_slip/bvn_premium.php';
         }
 
         try {

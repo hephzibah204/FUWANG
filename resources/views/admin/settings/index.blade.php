@@ -292,31 +292,31 @@
                 </div>
                 <div class="col-md-4 mb-4">
                     <label class="text-white-50 small mb-2">NIN Endpoint</label>
-                    <input type="text" name="dataverify_endpoint_nin" class="form-control text-white rounded-3 font-monospace" value="{{ $ac->dataverify_endpoint_nin ?? 'https://dataverify.com.ng/developers/nin_slips/nin_premium' }}" placeholder="https://dataverify.com.ng/developers/nin_slips/nin_premium" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                    <input type="text" name="dataverify_endpoint_nin" class="form-control text-white rounded-3 font-monospace" value="{{ $ac->dataverify_endpoint_nin ?? 'https://dataverify.org/developers/nin_slips/nin_premium' }}" placeholder="https://dataverify.org/developers/nin_slips/nin_premium" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
                 </div>
                 <div class="col-md-4 mb-4">
                     <label class="text-white-50 small mb-2">Phone Endpoint</label>
-                    <input type="text" name="dataverify_endpoint_phone" class="form-control text-white rounded-3 font-monospace" value="{{ $ac->dataverify_endpoint_phone ?? 'https://dataverify.com.ng/developers/nin_slips/nin_premium_phone' }}" placeholder="https://dataverify.com.ng/developers/nin_slips/nin_premium_phone" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                    <input type="text" name="dataverify_endpoint_phone" class="form-control text-white rounded-3 font-monospace" value="{{ $ac->dataverify_endpoint_phone ?? 'https://dataverify.org/developers/nin_slips/nin_premium_phone' }}" placeholder="https://dataverify.org/developers/nin_slips/nin_premium_phone" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
                 </div>
                 <div class="col-md-4 mb-4">
                     <label class="text-white-50 small mb-2">Tracking ID Endpoint</label>
-                    <input type="text" name="dataverify_endpoint_tid" class="form-control text-white rounded-3 font-monospace" value="{{ $ac->dataverify_endpoint_tid ?? 'https://dataverify.com.ng/developers/nin_api/fetch_by_tid' }}" placeholder="https://dataverify.com.ng/developers/nin_api/fetch_by_tid" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                    <input type="text" name="dataverify_endpoint_tid" class="form-control text-white rounded-3 font-monospace" value="{{ $ac->dataverify_endpoint_tid ?? 'https://dataverify.org/developers/nin_api/fetch_by_tid' }}" placeholder="https://dataverify.org/developers/nin_api/fetch_by_tid" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
                 </div>
                 <div class="col-md-4 mb-4">
                     <label class="text-white-50 small mb-2">Premium Slip Endpoint</label>
-                    <input type="text" name="dataverify_endpoint_premium_slip" class="form-control text-white rounded-3 font-monospace" value="{{ $ac->dataverify_endpoint_premium_slip ?? 'https://dataverify.com.ng/developers/nin_slips/nin_premium' }}" placeholder="https://dataverify.com.ng/developers/nin_slips/nin_premium" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                    <input type="text" name="dataverify_endpoint_premium_slip" class="form-control text-white rounded-3 font-monospace" value="{{ $ac->dataverify_endpoint_premium_slip ?? 'https://dataverify.org/developers/nin_slips/nin_premium' }}" placeholder="https://dataverify.org/developers/nin_slips/nin_premium" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
                 </div>
                 <div class="col-md-4 mb-4">
                     <label class="text-white-50 small mb-2">Premium Slip (Phone) Endpoint</label>
-                    <input type="text" name="dataverify_endpoint_premium_slip_phone" class="form-control text-white rounded-3 font-monospace" value="{{ $ac->dataverify_endpoint_premium_slip_phone ?? 'https://dataverify.com.ng/developers/nin_slips/nin_premium_phone' }}" placeholder="https://dataverify.com.ng/developers/nin_slips/nin_premium_phone" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                    <input type="text" name="dataverify_endpoint_premium_slip_phone" class="form-control text-white rounded-3 font-monospace" value="{{ $ac->dataverify_endpoint_premium_slip_phone ?? 'https://dataverify.org/developers/nin_slips/nin_premium_phone' }}" placeholder="https://dataverify.org/developers/nin_slips/nin_premium_phone" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
                 </div>
                 <div class="col-md-4 mb-4">
                     <label class="text-white-50 small mb-2">Standard Slip Endpoint</label>
-                    <input type="text" name="dataverify_endpoint_standard_slip" class="form-control text-white rounded-3 font-monospace" value="{{ $ac->dataverify_endpoint_standard_slip ?? 'https://dataverify.com.ng/developers/nin_slips/nin_standard' }}" placeholder="https://dataverify.com.ng/developers/nin_slips/nin_standard" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                    <input type="text" name="dataverify_endpoint_standard_slip" class="form-control text-white rounded-3 font-monospace" value="{{ $ac->dataverify_endpoint_standard_slip ?? 'https://dataverify.org/developers/nin_slips/nin_standard' }}" placeholder="https://dataverify.org/developers/nin_slips/nin_standard" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
                 </div>
                 <div class="col-md-4 mb-4">
                     <label class="text-white-50 small mb-2">Regular Slip Endpoint</label>
-                    <input type="text" name="dataverify_endpoint_regular_slip" class="form-control text-white rounded-3 font-monospace" value="{{ $ac->dataverify_endpoint_regular_slip ?? 'https://dataverify.com.ng/developers/nin_slips/nin_regular' }}" placeholder="https://dataverify.com.ng/developers/nin_slips/nin_regular" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                    <input type="text" name="dataverify_endpoint_regular_slip" class="form-control text-white rounded-3 font-monospace" value="{{ $ac->dataverify_endpoint_regular_slip ?? 'https://dataverify.org/developers/nin_slips/nin_regular' }}" placeholder="https://dataverify.org/developers/nin_slips/nin_regular" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
                 </div>
                 <div class="col-md-4 mb-4">
                     <label class="text-white-50 small mb-2">vNIN Slip Endpoint</label>
@@ -324,15 +324,15 @@
                 </div>
                 <div class="col-md-4 mb-4">
                     <label class="text-white-50 small mb-2">BVN Verification Endpoint</label>
-                    <input type="text" name="dataverify_endpoint_bvn" class="form-control text-white rounded-3 font-monospace" value="{{ $ac->dataverify_endpoint_bvn ?? 'https://dataverify.com.ng/developers/bvn_slip/bvn_premium.php' }}" placeholder="https://dataverify.com.ng/developers/bvn_slip/bvn_premium.php" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                    <input type="text" name="dataverify_endpoint_bvn" class="form-control text-white rounded-3 font-monospace" value="{{ $ac->dataverify_endpoint_bvn ?? 'https://dataverify.org/developers/bvn_slip/bvn_premium.php' }}" placeholder="https://dataverify.org/developers/bvn_slip/bvn_premium.php" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
                 </div>
                 <div class="col-md-4 mb-4">
                     <label class="text-white-50 small mb-2">BVN Retrieval Endpoint (Submit)</label>
-                    <input type="text" name="dataverify_endpoint_bvn_retrieval" class="form-control text-white rounded-3 font-monospace" value="{{ $ac->dataverify_endpoint_bvn_retrieval ?? 'https://dataverify.com.ng/api/developers/bvn_retrieval.php' }}" placeholder="https://dataverify.com.ng/api/developers/bvn_retrieval.php" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                    <input type="text" name="dataverify_endpoint_bvn_retrieval" class="form-control text-white rounded-3 font-monospace" value="{{ $ac->dataverify_endpoint_bvn_retrieval ?? 'https://dataverify.org/api/developers/bvn_retrieval.php' }}" placeholder="https://dataverify.org/api/developers/bvn_retrieval.php" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
                 </div>
                 <div class="col-md-4 mb-4">
                     <label class="text-white-50 small mb-2">BVN Retrieval Status Endpoint (Check)</label>
-                    <input type="text" name="dataverify_endpoint_bvn_retrieval_status" class="form-control text-white rounded-3 font-monospace" value="{{ $ac->dataverify_endpoint_bvn_retrieval_status ?? 'https://dataverify.com.ng/api/developers/bvn_retrieval_status.php' }}" placeholder="https://dataverify.com.ng/api/developers/bvn_retrieval_status.php" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                    <input type="text" name="dataverify_endpoint_bvn_retrieval_status" class="form-control text-white rounded-3 font-monospace" value="{{ $ac->dataverify_endpoint_bvn_retrieval_status ?? 'https://dataverify.org/api/developers/bvn_retrieval_status.php' }}" placeholder="https://dataverify.org/api/developers/bvn_retrieval_status.php" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
                 </div>
                 <div class="col-12 mb-4">
                     <div class="custom-control custom-switch">

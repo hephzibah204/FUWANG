@@ -29,8 +29,8 @@ class BvnRetrievalTest extends TestCase
 
         ApiCenter::create([
             'dataverify_api_key' => 'test-api-key',
-            'dataverify_endpoint_bvn_retrieval' => 'https://dataverify.com.ng/api/developers/bvn_retrieval.php',
-            'dataverify_endpoint_bvn_retrieval_status' => 'https://dataverify.com.ng/api/developers/bvn_retrieval_status.php',
+            'dataverify_endpoint_bvn_retrieval' => 'https://dataverify.org/api/developers/bvn_retrieval.php',
+            'dataverify_endpoint_bvn_retrieval_status' => 'https://dataverify.org/api/developers/bvn_retrieval_status.php',
         ]);
 
         SystemSetting::set('bvn_retrieval_price', 800);
@@ -58,7 +58,7 @@ class BvnRetrievalTest extends TestCase
         ]);
 
         Http::fake([
-            'https://dataverify.com.ng/api/developers/bvn_retrieval.php' => Http::response([
+            'https://dataverify.org/api/developers/bvn_retrieval.php' => Http::response([
                 'status' => 'success',
                 'transaction_id' => 'DV-TX-998877',
                 'message' => 'BVN Retrieval request received and queued.',
@@ -99,7 +99,7 @@ class BvnRetrievalTest extends TestCase
         ]);
 
         Http::fake([
-            'https://dataverify.com.ng/api/developers/bvn_retrieval.php' => Http::response([
+            'https://dataverify.org/api/developers/bvn_retrieval.php' => Http::response([
                 'status' => 'error',
                 'message' => 'Service temporarily unavailable',
             ], 500),
@@ -141,7 +141,7 @@ class BvnRetrievalTest extends TestCase
         ]);
 
         Http::fake([
-            'https://dataverify.com.ng/api/developers/bvn_retrieval_status.php' => Http::response([
+            'https://dataverify.org/api/developers/bvn_retrieval_status.php' => Http::response([
                 'status' => 'completed',
                 'message' => 'BVN found',
                 'data' => [
@@ -190,7 +190,7 @@ class BvnRetrievalTest extends TestCase
         ]);
 
         Http::fake([
-            'https://dataverify.com.ng/api/developers/bvn_retrieval_status.php' => Http::response([
+            'https://dataverify.org/api/developers/bvn_retrieval_status.php' => Http::response([
                 'status' => 'not_found',
                 'message' => 'No BVN record found for the provided details',
             ], 200),
@@ -249,7 +249,7 @@ class BvnRetrievalTest extends TestCase
         ]);
 
         Http::fake([
-            'https://dataverify.com.ng/api/developers/bvn_retrieval_status.php' => function ($request) {
+            'https://dataverify.org/api/developers/bvn_retrieval_status.php' => function ($request) {
                 $data = $request->data();
                 if (($data['transaction_id'] ?? '') === 'DV-CMD-001') {
                     return Http::response([

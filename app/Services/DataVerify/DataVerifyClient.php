@@ -13,6 +13,21 @@ class DataVerifyClient
     {
     }
 
+    public static function normalizeDomain(string $url): string
+    {
+        $url = trim($url);
+        if ($url === '') {
+            return '';
+        }
+
+        // Migrate all requests from legacy dataverify domains to dataverify.org
+        return (string) preg_replace(
+            '#https?://(?:api\.)?dataverify\.(?:com\.ng|ng)#i',
+            'https://dataverify.org',
+            $url
+        );
+    }
+
     public static function isDataVerifyProvider(?CustomApi $provider): bool
     {
         if (!$provider) {
@@ -24,7 +39,11 @@ class DataVerifyClient
             return true;
         }
 
-        return str_contains(strtolower((string) ($provider->endpoint ?? '')), 'dataverify.com.ng');
+        $endpoint = strtolower((string) ($provider->endpoint ?? ''));
+
+        return str_contains($endpoint, 'dataverify.org')
+            || str_contains($endpoint, 'dataverify.com.ng')
+            || str_contains($endpoint, 'dataverify.ng');
     }
 
     /**
@@ -439,10 +458,10 @@ class DataVerifyClient
         ));
 
         if ($configured !== '') {
-            return $configured;
+            return self::normalizeDomain($configured);
         }
 
-        return 'https://dataverify.com.ng/api/developers/bvn_retrieval.php';
+        return 'https://dataverify.org/api/developers/bvn_retrieval.php';
     }
 
     public function resolveBvnRetrievalStatusEndpoint(): string
@@ -454,10 +473,68 @@ class DataVerifyClient
         ));
 
         if ($configured !== '') {
-            return $configured;
+            return self::normalizeDomain($configured);
         }
 
-        return 'https://dataverify.com.ng/api/developers/bvn_retrieval_status.php';
+        return 'https://dataverify.org/api/developers/bvn_retrieval_status.php';
+    }
+
+    /**
+     * Check wallet balance on DataVerify (free inquiry)
+     *
+     * @return array{ok: bool, balance: ?float, message: string, data: array}
+     */
+    public function checkBalance(): array
+    {
+        $url = 'https://dataverify.org/api/developers/balance.php';
+        $apiKey = $this->apiKey();
+        if ($apiKey === '') {
+            return [
+                'ok' => false,
+                'balance' => null,
+                'message' => 'DataVerify API key is missing.',
+                'data' => [],
+            ];
+        }
+
+        $headers = is_array($this->provider?->headers) ? $this->provider->headers : [];
+        $headers['Authorization'] = 'Bearer ' . $apiKey;
+        $headers['Content-Type'] = $headers['Content-Type'] ?? 'application/json';
+
+        try {
+            $res = Http::timeout((int) ($this->provider?->timeout_seconds ?: 30))
+                ->acceptJson()
+                ->withHeaders($headers)
+                ->get($url, [
+                    'api_key' => $apiKey,
+                ]);
+        } catch (\Throwable $e) {
+            return [
+                'ok' => false,
+                'balance' => null,
+                'message' => 'Failed to reach DataVerify balance endpoint: ' . $e->getMessage(),
+                'data' => [],
+            ];
+        }
+
+        $json = $res->json();
+        if (!$res->successful() || !is_array($json)) {
+            return [
+                'ok' => false,
+                'balance' => null,
+                'message' => is_array($json) ? ($json['message'] ?? 'Failed to check balance') : 'Invalid response from DataVerify',
+                'data' => is_array($json) ? $json : [],
+            ];
+        }
+
+        $balance = $json['balance'] ?? $json['data']['balance'] ?? $json['wallet_balance'] ?? null;
+
+        return [
+            'ok' => true,
+            'balance' => is_numeric($balance) ? (float) $balance : null,
+            'message' => (string) ($json['message'] ?? 'Balance fetched successfully.'),
+            'data' => $json,
+        ];
     }
 
     private function resolvePath(string $mode, ?string $requestedType): string
@@ -527,19 +604,21 @@ class DataVerifyClient
 
     private function resolveEndpoint(string $configured, string $path): string
     {
-        $configured = trim($configured);
+        $configured = self::normalizeDomain(trim($configured));
         $suffix = ltrim($path, '/');
         if (str_starts_with(strtolower($suffix), 'nin_slips/')) {
             $suffix = substr($suffix, strlen('nin_slips/'));
         }
 
         if ($configured === '') {
-            return 'https://dataverify.com.ng/developers/nin_slips/' . $suffix;
+            return 'https://dataverify.org/developers/nin_slips/' . $suffix;
         }
 
         $configuredHost = strtolower((string) parse_url($configured, PHP_URL_HOST));
-        if (in_array($configuredHost, ['api.dataverify.com.ng', 'api.dataverify.ng'], true)) {
-            return 'https://dataverify.com.ng/developers/nin_slips/' . $suffix;
+        if (in_array($configuredHost, ['api.dataverify.org', 'dataverify.org', 'api.dataverify.com.ng', 'api.dataverify.ng', 'dataverify.com.ng', 'dataverify.ng'], true)) {
+            if ($configured === 'https://dataverify.org' || $configured === 'https://dataverify.org/nin' || str_ends_with($configured, '/nin')) {
+                return 'https://dataverify.org/developers/nin_slips/' . $suffix;
+            }
         }
 
         $trimmed = rtrim($configured, '/');
@@ -549,7 +628,7 @@ class DataVerifyClient
                 $base = (string) preg_replace('#/nin_api\.php$#i', '', $trimmed);
                 return rtrim($base, '/') . '/nin_slips/' . $suffix;
             }
-            return preg_replace('#/[^/]+\.php$#i', '/' . $suffix, $trimmed) ?? ('https://dataverify.com.ng/developers/nin_slips/' . $suffix);
+            return preg_replace('#/[^/]+\.php$#i', '/' . $suffix, $trimmed) ?? ('https://dataverify.org/developers/nin_slips/' . $suffix);
         }
 
         $last = strtolower((string) basename($trimmed));
@@ -595,16 +674,16 @@ class DataVerifyClient
 
     private function resolveBvnEndpoint(string $configured, string $path): string
     {
-        $configured = trim($configured);
+        $configured = self::normalizeDomain(trim($configured));
         $suffix = ltrim($path, '/');
 
         if ($configured === '') {
-            return 'https://dataverify.com.ng/developers/bvn_slip/' . $suffix;
+            return 'https://dataverify.org/developers/bvn_slip/' . $suffix;
         }
 
         $trimmed = rtrim($configured, '/');
         if (str_ends_with(strtolower($trimmed), '.php')) {
-            return preg_replace('#/[^/]+\.php$#i', '/' . $suffix, $trimmed) ?? ('https://dataverify.com.ng/developers/bvn_slip/' . $suffix);
+            return preg_replace('#/[^/]+\.php$#i', '/' . $suffix, $trimmed) ?? ('https://dataverify.org/developers/bvn_slip/' . $suffix);
         }
 
         $last = strtolower((string) basename($trimmed));

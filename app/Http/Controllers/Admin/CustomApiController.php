@@ -127,7 +127,7 @@ class CustomApiController extends Controller
                 'name' => 'DataVerify (NIN)',
                 'provider_identifier' => 'dataverify',
                 'service_type' => 'nin_verification',
-                'endpoint' => 'https://dataverify.com.ng/developers/nin_slips/nin_premium',
+                'endpoint' => 'https://dataverify.org/developers/nin_slips/nin_premium',
                 'headers' => [],
                 'config' => [],
                 'price' => 200,

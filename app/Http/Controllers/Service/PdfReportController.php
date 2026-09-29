@@ -68,24 +68,24 @@ class PdfReportController extends Controller
                     if ($preferPhone && $isPhoneMode) {
                         $endpoint = trim((string) ($apiCenter->dataverify_endpoint_premium_slip_phone ?? ''));
                         if ($endpoint === '') {
-                            $endpoint = 'https://dataverify.com.ng/developers/nin_slips/nin_premium_phone';
+                            $endpoint = 'https://dataverify.org/developers/nin_slips/nin_premium_phone';
                         }
                         $expectsPhone = true;
                     } else {
                         $endpoint = trim((string) ($apiCenter->dataverify_endpoint_premium_slip ?? ''));
                         if ($endpoint === '') {
-                            $endpoint = 'https://dataverify.com.ng/developers/nin_slips/nin_premium';
+                            $endpoint = 'https://dataverify.org/developers/nin_slips/nin_premium';
                         }
                     }
                 } elseif ($type === 'standard_slip') {
                     $endpoint = trim((string) ($apiCenter->dataverify_endpoint_standard_slip ?? ''));
                     if ($endpoint === '' || str_contains($endpoint, '/developers/standard_slip')) {
-                        $endpoint = 'https://dataverify.com.ng/developers/nin_slips/nin_standard';
+                        $endpoint = 'https://dataverify.org/developers/nin_slips/nin_standard';
                     }
                 } elseif ($type === 'regular_slip') {
                     $endpoint = trim((string) ($apiCenter->dataverify_endpoint_regular_slip ?? ''));
                     if ($endpoint === '' || str_contains($endpoint, '/developers/regular_slip')) {
-                        $endpoint = 'https://dataverify.com.ng/developers/nin_slips/nin_regular';
+                        $endpoint = 'https://dataverify.org/developers/nin_slips/nin_regular';
                     }
                 } elseif ($type === 'vnin_slip') {
                     $endpoint = trim((string) ($apiCenter->dataverify_endpoint_vnin_slip ?? ''));
@@ -100,6 +100,10 @@ class PdfReportController extends Controller
                 && (str_contains((string) $apiCenter->dataverify_endpoint_premium_slip, 'nin_premium_demo') || str_contains((string) $apiCenter->dataverify_endpoint_premium_slip, 'nin_premium_demo.php'));
             if (!$endpoint && $isPremiumDemoEndpoint && is_array($demoLookup)) {
                 $endpoint = $apiCenter->dataverify_endpoint_premium_slip;
+            }
+
+            if ($endpoint) {
+                $endpoint = \App\Services\DataVerify\DataVerifyClient::normalizeDomain($endpoint);
             }
 
             Log::info('NIN slip endpoint decision', [
