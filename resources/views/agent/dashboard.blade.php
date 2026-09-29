@@ -135,6 +135,89 @@
         </div>
     </div>
 
+    <!-- Performance Target & Account Health Status -->
+    <div class="row g-3 mb-4">
+        <!-- Monthly Target & Quota Progress -->
+        <div class="col-lg-7">
+            <div class="card border-0 rounded-4 p-4 h-100" style="background: linear-gradient(135deg, rgba(30, 58, 138, 0.25), rgba(15, 23, 42, 0.4)); border: 1px solid rgba(59, 130, 246, 0.25) !important;">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <div>
+                        <span class="badge {{ $tierInfo['badge'] }} px-3 py-1 font-monospace mb-1">{{ $tierInfo['name'] }}</span>
+                        <h5 class="text-white fw-bold mb-0"><i class="fa-solid fa-bullseye text-primary me-2"></i>Monthly Target Progress</h5>
+                    </div>
+                    <div class="text-end">
+                        <span class="fs-4 fw-bold text-white">{{ number_format($agent->monthly_enrollments ?? 0) }}</span>
+                        <span class="text-white-50">/ {{ number_format($monthlyTarget) }} Target</span>
+                    </div>
+                </div>
+
+                <div class="progress rounded-pill mb-2" style="height: 12px; background: rgba(255,255,255,0.1);">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary rounded-pill" role="progressbar" style="width: {{ $targetProgress }}%;" aria-valuenow="{{ $targetProgress }}" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+
+                <div class="d-flex align-items-center justify-content-between text-white-50 small">
+                    <span><i class="fa-solid fa-award text-warning me-1"></i>Active Perk: <strong>{{ $tierInfo['bonus'] }}</strong></span>
+                    @if($tierInfo['needed'] > 0)
+                        <span><strong>{{ $tierInfo['needed'] }}</strong> more to reach {{ $tierInfo['next'] }}</span>
+                    @else
+                        <span class="text-success"><i class="fa-solid fa-check-circle me-1"></i>Peak Tier Achieved!</span>
+                    @endif
+                </div>
+            </div>
+        </div>
+
+        <!-- Account Health & Compliance Status -->
+        <div class="col-lg-5">
+            <div class="card border-0 rounded-4 p-4 h-100" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08) !important;">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h5 class="text-white fw-bold mb-0"><i class="fa-solid fa-shield-heart text-danger me-2"></i>Account Compliance Health</h5>
+                    <span class="badge {{ $healthScore >= 90 ? 'bg-success' : ($healthScore >= 70 ? 'bg-warning text-dark' : 'bg-danger') }} px-3 py-1 font-monospace">
+                        {{ $healthScore }}% Health
+                    </span>
+                </div>
+
+                <div class="row g-2 small">
+                    <div class="col-6">
+                        <div class="p-2 rounded-3 text-start" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05);">
+                            <span class="text-white-50 d-block" style="font-size: 11px;">Profile Portrait</span>
+                            @if($agent->picture_path)
+                                <span class="text-success fw-bold"><i class="fa-solid fa-circle-check me-1"></i>Uploaded</span>
+                            @else
+                                <span class="text-danger fw-bold"><i class="fa-solid fa-circle-exclamation me-1"></i>Missing</span>
+                            @endif
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-2 rounded-3 text-start" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05);">
+                            <span class="text-white-50 d-block" style="font-size: 11px;">NIN Identity</span>
+                            @if($agent->nin_verified)
+                                <span class="text-success fw-bold"><i class="fa-solid fa-circle-check me-1"></i>Verified</span>
+                            @else
+                                <span class="text-warning fw-bold"><i class="fa-solid fa-clock me-1"></i>Pending</span>
+                            @endif
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-2 rounded-3 text-start" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05);">
+                            <span class="text-white-50 d-block" style="font-size: 11px;">Terminal Linked</span>
+                            @if($agent->machine_imei)
+                                <span class="text-success fw-bold"><i class="fa-solid fa-circle-check me-1"></i>Online</span>
+                            @else
+                                <span class="text-white-50"><i class="fa-solid fa-minus me-1"></i>None</span>
+                            @endif
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-2 rounded-3 text-start" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05);">
+                            <span class="text-white-50 d-block" style="font-size: 11px;">NIMC Accredit</span>
+                            <span class="text-success fw-bold"><i class="fa-solid fa-circle-check me-1"></i>Authorized</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Quick Tools & NIN Suite -->
     <div class="row g-3 mb-4">
         <div class="col-md-12">
@@ -175,6 +258,49 @@
                                 <span class="text-white-50 small">Report fault & upload proof</span>
                             </div>
                             <i class="fa-solid fa-arrow-right"></i>
+                        </a>
+                    </div>
+
+                    {{-- Digital Agent ID Card (Backend & UI ready; kept hidden from display for future rollout as requested)
+                    <div class="col-md-3">
+                        <a href="{{ route('agent.id_card') }}" class="btn btn-outline-light rounded-3 w-100 p-3 text-start d-flex align-items-center justify-content-between">
+                            <div>
+                                <h6 class="text-white fw-bold mb-1">Official ID Card</h6>
+                                <span class="text-white-50 small">Printable Digital Credential</span>
+                            </div>
+                            <i class="fa-solid fa-arrow-right"></i>
+                        </a>
+                    </div>
+                    --}}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Regional Coordinator & Field Operations Desk (Getting in touch) -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-12">
+            <div class="card border-0 rounded-4 p-4" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(15, 23, 42, 0.6)); border: 1px solid rgba(16, 185, 129, 0.3) !important;">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="rounded-circle p-3 text-center" style="background: rgba(16, 185, 129, 0.2); width: 56px; height: 56px; display: flex; align-items: center; justify-content: center;">
+                            <i class="fa-solid fa-headset text-success fa-xl"></i>
+                        </div>
+                        <div>
+                            <span class="badge bg-success text-white mb-1 small text-uppercase font-monospace"><i class="fa-solid fa-satellite-dish me-1"></i>Field Operations Desk</span>
+                            <h5 class="text-white fw-bold mb-1">{{ $coordinatorName }}</h5>
+                            <p class="text-white-50 small mb-0">Direct line for hardware issues, biometric sync exceptions, and LGA/State coordinator assistance.</p>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center flex-wrap gap-2">
+                        <a href="{{ $whatsappUrl }}" target="_blank" class="btn btn-success rounded-pill px-4 py-2 fw-bold">
+                            <i class="fa-brands fa-whatsapp me-2"></i>WhatsApp Desk
+                        </a>
+                        <a href="tel:{{ preg_replace('/[^0-9+]/', '', $supportPhone) }}" class="btn btn-outline-light rounded-pill px-3 py-2">
+                            <i class="fa-solid fa-phone me-1"></i>Call Support
+                        </a>
+                        <a href="{{ route('agent.issues.create') }}" class="btn btn-outline-warning rounded-pill px-3 py-2">
+                            <i class="fa-solid fa-ticket me-1"></i>Log Issue Ticket
                         </a>
                     </div>
                 </div>

@@ -115,6 +115,9 @@ Route::get('/email/unsubscribe/{user}/{scope}', [\App\Http\Controllers\EmailPref
     ->middleware('signed')
     ->name('email.unsubscribe');
 
+// Public QR Verification for Agent Digital ID Card
+Route::get('/agent/id-card/verify/{code}', [\App\Http\Controllers\Agent\AgentIdCardController::class, 'verify'])->name('agent.id_card.verify');
+
 // Password Reset Routes
 Route::middleware('guest')->group(function () {
     Route::get('/forgot-password', [App\Http\Controllers\Auth\ForgotPasswordController::class, 'showLinkRequestForm'])->name('password.request');
@@ -151,6 +154,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::middleware([App\Http\Middleware\EnsureApprovedAgent::class])->group(function () {
             Route::get('/dashboard', [App\Http\Controllers\Agent\AgentDashboardController::class, 'index'])->name('dashboard');
+
+            // Digital Agent ID Card (Backend & UI ready for rollout)
+            Route::get('/id-card', [App\Http\Controllers\Agent\AgentIdCardController::class, 'show'])->name('id_card');
+            Route::get('/id-card/download', [App\Http\Controllers\Agent\AgentIdCardController::class, 'downloadPdf'])->name('id_card.download');
 
             // Agent Issue Resolution Hub
             Route::prefix('issues')->name('issues.')->group(function () {

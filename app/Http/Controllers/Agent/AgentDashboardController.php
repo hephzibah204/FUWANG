@@ -36,7 +36,27 @@ class AgentDashboardController extends Controller
             ->take(5)
             ->get();
 
-        return view('agent.dashboard', compact('agent', 'leaderboard', 'mvaAgent', 'broadcasts'));
+        // 1. Performance Quotas & Tier Incentives
+        $monthlyTarget = (int) \App\Models\SystemSetting::get('agent_monthly_target', 100);
+        $monthlyCount = (int) ($agent->monthly_enrollments ?? 0);
+        $targetProgress = min(100, round(($monthlyCount / max(1, $monthlyTarget)) * 100));
+        $tierInfo = $agent->getCurrentTier();
+
+        // 2. Health & Compliance Score
+        $healthScore = $agent->getHealthScore();
+
+        // 3. Operational Support & Regional Coordinator Desk
+        $supportPhone = (string) (\App\Models\SystemSetting::get('agent_support_phone') ?: \App\Models\SystemSetting::get('whatsapp_number') ?: '2348000000000');
+        $supportEmail = (string) \App\Models\SystemSetting::get('agent_support_email', 'support@fuwa.ng');
+        $coordinatorName = data_get($agent->meta, 'coordinator_name') ?: ($agent->state ? $agent->state . ' State Desk Coordinator' : 'National Operations Desk');
+        $prefilledText = "Hello Fuwa Agency Desk, my name is {$agent->full_name} (Code: " . ($agent->company_agent_code ?: 'AG-' . $agent->id) . ", IMEI: {$agent->machine_imei}). I need operational assistance with: ";
+        $whatsappUrl = 'https://wa.me/' . preg_replace('/[^0-9]/', '', $supportPhone) . '?text=' . urlencode($prefilledText);
+
+        return view('agent.dashboard', compact(
+            'agent', 'leaderboard', 'mvaAgent', 'broadcasts',
+            'monthlyTarget', 'targetProgress', 'tierInfo', 'healthScore',
+            'supportPhone', 'supportEmail', 'coordinatorName', 'whatsappUrl'
+        ));
     }
 
     public function switchMode(Request $request)

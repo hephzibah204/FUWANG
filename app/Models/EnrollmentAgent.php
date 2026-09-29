@@ -109,4 +109,37 @@ class EnrollmentAgent extends Model
         $this->increment('total_enrollments', $count);
         $this->increment('monthly_enrollments', $count);
     }
+
+    public function getHealthScore(): int
+    {
+        $score = 0;
+        if ($this->isApproved()) {
+            $score += 40;
+        }
+        if (!empty($this->picture_path)) {
+            $score += 25;
+        }
+        if ($this->nin_verified) {
+            $score += 25;
+        }
+        if (!empty($this->machine_imei)) {
+            $score += 10;
+        }
+        return $score;
+    }
+
+    public function getCurrentTier(): array
+    {
+        $count = (int) $this->monthly_enrollments;
+        if ($count >= 120) {
+            return ['name' => 'Platinum Tier', 'badge' => 'bg-danger', 'color' => '#f43f5e', 'bonus' => '15% Bonus + MVA Nominee', 'next' => 'Max Level', 'needed' => 0];
+        }
+        if ($count >= 75) {
+            return ['name' => 'Gold Tier', 'badge' => 'bg-warning text-dark', 'color' => '#eab308', 'bonus' => '10% Commission Bonus', 'next' => 'Platinum Tier', 'needed' => 120 - $count];
+        }
+        if ($count >= 30) {
+            return ['name' => 'Silver Tier', 'badge' => 'bg-info text-dark', 'color' => '#06b6d4', 'bonus' => '5% Commission Bonus', 'next' => 'Gold Tier', 'needed' => 75 - $count];
+        }
+        return ['name' => 'Bronze Tier', 'badge' => 'bg-secondary', 'color' => '#94a3b8', 'bonus' => 'Standard Commission', 'next' => 'Silver Tier', 'needed' => 30 - $count];
+    }
 }
