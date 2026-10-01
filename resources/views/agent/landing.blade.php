@@ -134,38 +134,38 @@
                     in Nigeria.
                 </h1>
                 <p class="lead text-white-50 mb-5 me-lg-4" style="max-width: 600px;">
-                    Join thousands of verified agents powering Nigeria's digital identity network. Enjoy instant approvals, high-speed biometric synchronization, and unparalleled 24/7 technical support.
+                    Join over 250+ verified agents powering Nigeria's digital identity network. Enjoy instant approvals, high-speed biometric synchronization, and unparalleled 24/7 technical support.
                 </p>
                 
-                <div class="d-flex flex-wrap align-items-center gap-3 mb-4">
+                <div class="d-flex flex-column flex-sm-row flex-wrap align-items-stretch align-items-sm-center gap-2 gap-sm-3 mb-4">
                     @auth
                         @if($agent && $agent->isApproved())
-                            <a href="{{ route('agent.dashboard') }}" class="btn btn-primary btn-lg rounded-pill px-4 py-3 fw-bold hover-translate-up shadow-lg">
+                            <a href="{{ route('agent.dashboard') }}" class="btn btn-primary rounded-pill px-3 px-md-4 py-2 py-md-2.5 fw-semibold hover-translate-up shadow-sm d-inline-flex align-items-center justify-content-center">
                                 <i class="fa-solid fa-gauge-high me-2"></i>Enter Workspace
                             </a>
                         @elseif($agent)
-                            <a href="{{ route('agent.onboarding.index') }}" class="btn btn-primary btn-lg rounded-pill px-4 py-3 fw-bold hover-translate-up shadow-lg">
+                            <a href="{{ route('agent.onboarding.index') }}" class="btn btn-primary rounded-pill px-3 px-md-4 py-2 py-md-2.5 fw-semibold hover-translate-up shadow-sm d-inline-flex align-items-center justify-content-center">
                                 <i class="fa-solid fa-list-check me-2"></i>Resume Onboarding
                             </a>
                         @else
-                            <a href="{{ route('agent.register', ['type' => 'new']) }}" class="btn btn-primary btn-lg rounded-pill px-4 py-3 fw-bold hover-translate-up shadow-lg">
+                            <a href="{{ route('agent.register', ['type' => 'new']) }}" class="btn btn-primary rounded-pill px-3 px-md-4 py-2 py-md-2.5 fw-semibold hover-translate-up shadow-sm d-inline-flex align-items-center justify-content-center">
                                 <i class="fa-solid fa-user-plus me-2"></i>Register as New Agent
                             </a>
-                            <a href="{{ route('agent.register', ['type' => 'existing']) }}" class="btn btn-outline-warning btn-lg rounded-pill px-4 py-3 fw-bold hover-translate-up">
+                            <a href="{{ route('agent.register', ['type' => 'existing']) }}" class="btn btn-outline-warning rounded-pill px-3 px-md-4 py-2 py-md-2.5 fw-semibold hover-translate-up d-inline-flex align-items-center justify-content-center">
                                 <i class="fa-solid fa-building-user me-2"></i>Claim Existing Profile
                             </a>
                         @endif
-                        <a href="{{ route('login') }}" class="btn btn-outline-light btn-lg rounded-pill px-4 py-3 hover-translate-up">
+                        <a href="{{ route('login') }}" class="btn btn-outline-light rounded-pill px-3 px-md-4 py-2 py-md-2.5 fw-semibold hover-translate-up d-inline-flex align-items-center justify-content-center">
                             <i class="fa-solid fa-right-to-bracket me-2"></i>Agent Login
                         </a>
                     @else
-                        <a href="{{ route('agent.register', ['type' => 'new']) }}" class="btn btn-primary btn-lg rounded-pill px-4 py-3 fw-bold hover-translate-up shadow-lg">
+                        <a href="{{ route('agent.register', ['type' => 'new']) }}" class="btn btn-primary rounded-pill px-3 px-md-4 py-2 py-md-2.5 fw-semibold hover-translate-up shadow-sm d-inline-flex align-items-center justify-content-center">
                             <i class="fa-solid fa-user-plus me-2"></i>Start Enrollment Business
                         </a>
-                        <a href="{{ route('agent.register', ['type' => 'existing']) }}" class="btn btn-outline-warning btn-lg rounded-pill px-4 py-3 fw-bold hover-translate-up">
+                        <a href="{{ route('agent.register', ['type' => 'existing']) }}" class="btn btn-outline-warning rounded-pill px-3 px-md-4 py-2 py-md-2.5 fw-semibold hover-translate-up d-inline-flex align-items-center justify-content-center">
                             <i class="fa-solid fa-building-user me-2"></i>Claim Existing Profile
                         </a>
-                        <a href="{{ route('login') }}" class="btn btn-outline-light btn-lg rounded-pill px-4 py-3 hover-translate-up">
+                        <a href="{{ route('login') }}" class="btn btn-outline-light rounded-pill px-3 px-md-4 py-2 py-md-2.5 fw-semibold hover-translate-up d-inline-flex align-items-center justify-content-center">
                             <i class="fa-solid fa-right-to-bracket me-2"></i>Sign In
                         </a>
                     @endauth
@@ -223,30 +223,19 @@
 
         <!-- Quick Stats -->
         <div class="row g-4 mb-5 pb-4 border-bottom border-secondary border-opacity-25">
-            <div class="col-md-3 col-6">
-                <div class="glass-card p-4 text-center text-lg-start d-flex flex-column flex-lg-row align-items-center gap-3">
+            <div class="col-12 col-md-4">
+                <div class="glass-card p-4 text-center text-md-start d-flex flex-column flex-md-row align-items-center gap-3">
                     <div class="bg-primary bg-opacity-10 p-3 rounded-circle text-primary fs-3">
                         <i class="fa-solid fa-users"></i>
                     </div>
                     <div>
-                        <h3 class="text-white fw-bold mb-0">15,000+</h3>
+                        <h3 class="text-white fw-bold mb-0">250+</h3>
                         <p class="text-white-50 small mb-0 text-uppercase tracking-wider">Active Agents</p>
                     </div>
                 </div>
             </div>
-            <div class="col-md-3 col-6">
-                <div class="glass-card p-4 text-center text-lg-start d-flex flex-column flex-lg-row align-items-center gap-3">
-                    <div class="bg-success bg-opacity-10 p-3 rounded-circle text-success fs-3">
-                        <i class="fa-solid fa-file-invoice"></i>
-                    </div>
-                    <div>
-                        <h3 class="text-white fw-bold mb-0">2M+</h3>
-                        <p class="text-white-50 small mb-0 text-uppercase tracking-wider">Slips Printed</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3 col-6">
-                <div class="glass-card p-4 text-center text-lg-start d-flex flex-column flex-lg-row align-items-center gap-3">
+            <div class="col-12 col-md-4">
+                <div class="glass-card p-4 text-center text-md-start d-flex flex-column flex-md-row align-items-center gap-3">
                     <div class="bg-warning bg-opacity-10 p-3 rounded-circle text-warning fs-3">
                         <i class="fa-solid fa-bolt"></i>
                     </div>
@@ -256,8 +245,8 @@
                     </div>
                 </div>
             </div>
-            <div class="col-md-3 col-6">
-                <div class="glass-card p-4 text-center text-lg-start d-flex flex-column flex-lg-row align-items-center gap-3">
+            <div class="col-12 col-md-4">
+                <div class="glass-card p-4 text-center text-md-start d-flex flex-column flex-md-row align-items-center gap-3">
                     <div class="bg-info bg-opacity-10 p-3 rounded-circle text-info fs-3">
                         <i class="fa-solid fa-shield-check"></i>
                     </div>
@@ -458,11 +447,11 @@
                         <h2 class="text-white fw-extrabold display-5 mb-4">Ready to Start Your Registration Center?</h2>
                         <p class="text-white-50 lead mb-5 mx-auto" style="max-width: 700px;">Join the most advanced and robust digital identity verification network in Nigeria today. Create your account in minutes.</p>
                         
-                        <div class="d-flex justify-content-center gap-3 flex-wrap">
-                            <a href="{{ route('agent.register', ['type' => 'new']) }}" class="btn btn-light text-primary btn-lg rounded-pill px-5 py-3 fw-bold hover-translate-up shadow">
+                        <div class="d-flex flex-column flex-sm-row justify-content-center gap-2 gap-sm-3 flex-wrap">
+                            <a href="{{ route('agent.register', ['type' => 'new']) }}" class="btn btn-light text-primary rounded-pill px-4 py-2.5 fw-bold hover-translate-up shadow-sm d-inline-flex align-items-center justify-content-center">
                                 <i class="fa-solid fa-user-plus me-2"></i>Create Agent Account
                             </a>
-                            <a href="{{ route('login') }}" class="btn btn-outline-light btn-lg rounded-pill px-5 py-3 fw-bold hover-translate-up">
+                            <a href="{{ route('login') }}" class="btn btn-outline-light rounded-pill px-4 py-2.5 fw-bold hover-translate-up d-inline-flex align-items-center justify-content-center">
                                 <i class="fa-solid fa-right-to-bracket me-2"></i>Sign In
                             </a>
                         </div>
