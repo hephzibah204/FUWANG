@@ -832,7 +832,7 @@
                     @endif
                     <span style="letter-spacing: 1px;">{{ $siteName }}</span>
                 </a>
-                <button class="navbar-toggler border-0" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <button class="navbar-toggler border-0" id="publicNavbarToggle" type="button" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                     <i class="fa-solid fa-bars-staggered"></i>
                 </button>
                 <div class="collapse navbar-collapse" id="navbarNav">
@@ -1075,9 +1075,17 @@
     @stack('scripts')
     <script nonce="{{ $cspNonce ?? '' }}">
         window.__toggleNexusSidebar = function (event) {
-            if (event && typeof event.preventDefault === 'function') {
-                event.preventDefault();
+            if (event) {
+                if (typeof event.preventDefault === 'function') event.preventDefault();
+                if (typeof event.stopPropagation === 'function') event.stopPropagation();
+                if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
             }
+            var now = Date.now();
+            if (window.__lastSidebarToggleTs && (now - window.__lastSidebarToggleTs) < 300) {
+                return false;
+            }
+            window.__lastSidebarToggleTs = now;
+
             var sidebar = document.getElementById('sidebar');
             var mobileToggle = document.getElementById('sidebarToggle');
             if (!sidebar || !mobileToggle) {
@@ -1094,13 +1102,30 @@
         document.addEventListener('DOMContentLoaded', () => {
             const sidebarHandledByExternalJs = !!window.__NEXUS_SIDEBAR_HANDLED;
 
-            // Public mobile navbar toggle fallback (independent of Bootstrap JS)
-            const publicToggle = document.querySelector('.public-nav .navbar-toggler[data-target="#navbarNav"]');
+            // Public mobile navbar toggle (prevents Bootstrap double-collapse conflict)
+            const publicToggle = document.getElementById('publicNavbarToggle') || document.querySelector('.public-nav .navbar-toggler');
             const publicNav = document.getElementById('navbarNav');
             if (publicToggle && publicNav) {
-                publicToggle.addEventListener('click', () => {
+                let lastPublicToggleTs = 0;
+                publicToggle.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    const now = Date.now();
+                    if (now - lastPublicToggleTs < 300) return;
+                    lastPublicToggleTs = now;
+
+                    publicNav.classList.remove('collapsing');
+                    publicNav.style.height = '';
                     const isOpen = publicNav.classList.toggle('show');
                     publicToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+                });
+
+                document.addEventListener('click', (e) => {
+                    if (window.innerWidth < 992 && publicNav.classList.contains('show') && !publicNav.contains(e.target) && e.target !== publicToggle && !publicToggle.contains(e.target)) {
+                        publicNav.classList.remove('show');
+                        publicToggle.setAttribute('aria-expanded', 'false');
+                    }
                 });
             }
 
@@ -1171,8 +1196,8 @@
             // Mobile Sidebar Toggle
             const mobileToggle = document.getElementById('sidebarToggle');
             if (mobileToggle && sidebar && !sidebarHandledByExternalJs) {
-                mobileToggle.addEventListener('click', () => {
-                    window.__toggleNexusSidebar();
+                mobileToggle.addEventListener('click', (e) => {
+                    window.__toggleNexusSidebar(e);
                 });
                 
                 // Close sidebar when clicking outside on mobile

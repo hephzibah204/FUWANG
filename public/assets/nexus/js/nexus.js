@@ -1,3 +1,5 @@
+window.__NEXUS_SIDEBAR_HANDLED = true;
+
 document.addEventListener('DOMContentLoaded', () => {
     const sidebar = document.getElementById('sidebar');
     const sidebarToggleBtn = document.getElementById('sidebarToggle');
@@ -34,6 +36,13 @@ document.addEventListener('DOMContentLoaded', () => {
         window.__NEXUS_SIDEBAR_HANDLED = true;
         sidebarToggleBtn.addEventListener('click', (e) => {
             e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            const now = Date.now();
+            if (window.__lastSidebarToggleTs && (now - window.__lastSidebarToggleTs) < 300) {
+                return;
+            }
+            window.__lastSidebarToggleTs = now;
             syncSidebarViewportState();
             const isOpen = sidebar.classList.toggle('open');
             sidebarToggleBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');

@@ -265,9 +265,20 @@
             var sidebarToggle = document.getElementById('sidebarToggle');
             var navbarCollapse = document.getElementById('navbarNav');
 
-            if (sidebarToggle && sidebar) {
-                sidebarToggle.addEventListener('click', function () {
-                    sidebar.classList.toggle('open');
+            if (sidebarToggle) {
+                sidebarToggle.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    var now = Date.now();
+                    if (window.__lastSidebarToggleTs && (now - window.__lastSidebarToggleTs) < 300) {
+                        return;
+                    }
+                    window.__lastSidebarToggleTs = now;
+
+                    if (sidebar) {
+                        sidebar.classList.toggle('open');
+                    }
                     if (navbarCollapse) {
                         navbarCollapse.classList.toggle('show');
                     }
