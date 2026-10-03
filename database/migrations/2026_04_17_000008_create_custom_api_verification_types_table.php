@@ -1,0 +1,30 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        if (!Schema::hasTable('custom_api_verification_types')) {
+            Schema::create('custom_api_verification_types', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('custom_api_id')->constrained('custom_apis')->cascadeOnDelete();
+                $table->string('type_key')->index();
+                $table->string('label')->nullable();
+                $table->decimal('price', 18, 2)->default(0);
+                $table->boolean('status')->default(true);
+                $table->integer('sort_order')->default(0);
+                $table->json('meta')->nullable();
+                $table->timestamps();
+            });
+        }
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('custom_api_verification_types');
+    }
+};

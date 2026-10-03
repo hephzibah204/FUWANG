@@ -24,14 +24,12 @@
 *.sqlite
 *.sql
 *.dump
-/Database
 /gsoft_laravel
 /pdf
 Homestead.json
 Homestead.yaml
 Thumbs.db
 
-first()))
 generate.php
 playwright-report/
 test-results/

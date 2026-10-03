@@ -750,4 +750,18 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
     });
 // ── End of admin group ───────────────────────────────────
 
+// ── Webhooks (no auth guard) ─────────────────────────────
+Route::post('/webhooks/verifyme/address', [App\Http\Controllers\Service\VerificationController::class, 'handleAddressWebhook'])->name('webhooks.verifyme.address');
+
+// ── Payment Webhooks (no auth guard) ─────────────────────
+Route::post('/webhooks/payvessel', [App\Http\Controllers\WebhookController::class, 'handlePayvessel'])->name('webhooks.payvessel');
+Route::post('/webhooks/palmpay',   [App\Http\Controllers\WebhookController::class, 'handlePalmpay'])->name('webhooks.palmpay');
+Route::post('/webhooks/paymentpoint',   [App\Http\Controllers\WebhookController::class, 'handlePaymentpoint'])->name('webhooks.paymentpoint');
+Route::post('/webhooks/monnify',  [App\Http\Controllers\WebhookController::class, 'handleMonnify'])->name('webhooks.monnify');
+Route::post('/webhooks/paystack',  [App\Http\Controllers\WebhookController::class, 'handlePaystack'])->name('webhooks.paystack');
+Route::post('/webhooks/flutterwave',  [App\Http\Controllers\WebhookController::class, 'handleFlutterwave'])->name('webhooks.flutterwave');
+Route::post('/payvessel_webhook.php', [App\Http\Controllers\WebhookController::class, 'handlePayvessel']);
+Route::post('/palmpay_webhook.php',   [App\Http\Controllers\WebhookController::class, 'handlePalmpay']);
+
+
 

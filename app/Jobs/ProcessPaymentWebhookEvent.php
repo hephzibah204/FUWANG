@@ -3,9 +3,11 @@
 namespace App\Jobs;
 
 use App\Models\ApiCenter;
+use App\Models\BankDetail;
 use App\Models\PaymentIntent;
 use App\Models\PaymentWebhookEvent;
 use App\Models\User;
+use App\Models\VirtualAccount;
 use App\Services\WalletService;
 use App\Support\DbTable;
 use App\Support\PaymentProviderCredentials;
@@ -142,6 +144,95 @@ class ProcessPaymentWebhookEvent implements ShouldQueue
         }
     }
 
+    private function findUserForPayment(
+        ?string $email,
+        ?string $accountNumber = null,
+        ?string $accountReference = null,
+        ?string $phone = null
+    ): ?User {
+        $email = trim((string) $email);
+        if ($email !== '') {
+            $user = User::query()->whereRaw('LOWER(email) = ?', [strtolower($email)])->first();
+            if ($user) {
+                return $user;
+            }
+        }
+
+        $accountNumber = trim((string) $accountNumber);
+        if ($accountNumber !== '') {
+            if (Schema::hasTable('bank_details')) {
+                $detail = BankDetail::query()
+                    ->where('psb9', $accountNumber)
+                    ->orWhere('palmpay', $accountNumber)
+                    ->orWhere('Wema_account', $accountNumber)
+                    ->orWhere('Moniepoint_account', $accountNumber)
+                    ->orWhere('Sterling_account', $accountNumber)
+                    ->orWhere('GTBank_account', $accountNumber)
+                    ->first();
+
+                if ($detail && !empty($detail->email)) {
+                    $user = User::query()->whereRaw('LOWER(email) = ?', [strtolower($detail->email)])->first();
+                    if ($user) {
+                        return $user;
+                    }
+                }
+            }
+
+            if (Schema::hasTable('virtual_accounts')) {
+                $va = VirtualAccount::query()->where('account_number', $accountNumber)->first();
+                if ($va && $va->user_id) {
+                    $user = User::query()->find($va->user_id);
+                    if ($user) {
+                        return $user;
+                    }
+                }
+            }
+        }
+
+        $accountReference = trim((string) $accountReference);
+        if ($accountReference !== '') {
+            if (Schema::hasTable('bank_details')) {
+                $detail = BankDetail::query()->where('account_reference', $accountReference)->first();
+                if ($detail && !empty($detail->email)) {
+                    $user = User::query()->whereRaw('LOWER(email) = ?', [strtolower($detail->email)])->first();
+                    if ($user) {
+                        return $user;
+                    }
+                }
+            }
+
+            if (Schema::hasTable('virtual_accounts')) {
+                $va = VirtualAccount::query()
+                    ->where('reference', $accountReference)
+                    ->orWhere('provider_account_reference', $accountReference)
+                    ->first();
+                if ($va && $va->user_id) {
+                    $user = User::query()->find($va->user_id);
+                    if ($user) {
+                        return $user;
+                    }
+                }
+            }
+        }
+
+        $phone = trim((string) $phone);
+        if ($phone !== '') {
+            $digits = preg_replace('/\D/', '', $phone);
+            if (strlen($digits) >= 10) {
+                $tail = substr($digits, -10);
+                $user = User::query()
+                    ->where('number', $digits)
+                    ->orWhere('number', 'like', "%{$tail}")
+                    ->first();
+                if ($user) {
+                    return $user;
+                }
+            }
+        }
+
+        return null;
+    }
+
     private function updateIntent(string $reference, string $gateway): void
     {
         $intent = PaymentIntent::query()->where('reference', $reference)->lockForUpdate()->first();
@@ -159,22 +250,22 @@ class ProcessPaymentWebhookEvent implements ShouldQueue
             return;
         }
 
-        $payload = $event->payload;
+        $payload = (array) $event->payload;
         $evt = (string) ($payload['event'] ?? '');
         if ($evt !== 'charge.success') {
             $this->markIgnored($event, 'Ignored event');
             return;
         }
 
-        $obj = $payload['data'] ?? [];
+        $obj = (array) ($payload['data'] ?? []);
         $reference = trim((string) ($obj['reference'] ?? ''));
         $status = Str::lower((string) ($obj['status'] ?? ''));
         $currency = Str::upper((string) ($obj['currency'] ?? ''));
         $amountKobo = (int) ($obj['amount'] ?? 0);
-        $email = Str::lower((string) ($obj['customer']['email'] ?? ''));
+        $email = Str::lower(trim((string) ($obj['customer']['email'] ?? '')));
         $amount = round($amountKobo / 100, 2);
 
-        if ($reference === '' || $email === '' || $status !== 'success' || $currency !== 'NGN' || $amount <= 0) {
+        if ($reference === '' || $status !== 'success' || $currency !== 'NGN' || $amount <= 0) {
             $this->markIgnored($event, 'Invalid payload');
             return;
         }
@@ -185,9 +276,9 @@ class ProcessPaymentWebhookEvent implements ShouldQueue
         }
 
         DB::transaction(function () use ($email, $amount, $reference) {
-            $user = User::query()->whereRaw('LOWER(email) = ?', [$email])->first();
+            $user = $this->findUserForPayment($email, null, $reference);
             if (!$user) {
-                throw new \RuntimeException('User not found');
+                throw new \RuntimeException("User not found for Paystack payment (email: '{$email}')");
             }
 
             $intent = PaymentIntent::query()->where('reference', $reference)->lockForUpdate()->first();
@@ -204,14 +295,14 @@ class ProcessPaymentWebhookEvent implements ShouldQueue
 
     private function processFlutterwave(PaymentWebhookEvent $event): void
     {
-        $payload = $event->payload;
+        $payload = (array) $event->payload;
         $evt = (string) ($payload['event'] ?? '');
         if ($evt !== 'charge.completed') {
             $this->markIgnored($event, 'Ignored event');
             return;
         }
 
-        $obj = $payload['data'] ?? [];
+        $obj = (array) ($payload['data'] ?? []);
         $txId = trim((string) ($obj['id'] ?? ''));
         $txRef = trim((string) ($obj['tx_ref'] ?? ''));
 
@@ -235,10 +326,10 @@ class ProcessPaymentWebhookEvent implements ShouldQueue
         $status = Str::lower((string) ($vd['status'] ?? ''));
         $currency = Str::upper((string) ($vd['currency'] ?? ''));
         $amount = round((float) ($vd['amount'] ?? 0), 2);
-        $email = Str::lower((string) ($vd['customer']['email'] ?? ''));
+        $email = Str::lower(trim((string) ($vd['customer']['email'] ?? '')));
         $reference = trim((string) ($vd['tx_ref'] ?? $txRef ?: $txId));
 
-        if ($status !== 'successful' || $currency !== 'NGN' || $reference === '' || $email === '' || $amount <= 0) {
+        if ($status !== 'successful' || $currency !== 'NGN' || $reference === '' || $amount <= 0) {
             $this->markIgnored($event, 'Invalid verification data');
             return;
         }
@@ -249,9 +340,9 @@ class ProcessPaymentWebhookEvent implements ShouldQueue
         }
 
         DB::transaction(function () use ($email, $amount, $reference) {
-            $user = User::query()->whereRaw('LOWER(email) = ?', [$email])->first();
+            $user = $this->findUserForPayment($email, null, $reference);
             if (!$user) {
-                throw new \RuntimeException('User not found');
+                throw new \RuntimeException("User not found for Flutterwave payment (email: '{$email}')");
             }
 
             $intent = PaymentIntent::query()->where('reference', $reference)->lockForUpdate()->first();
@@ -273,12 +364,25 @@ class ProcessPaymentWebhookEvent implements ShouldQueue
             return;
         }
 
-        $payload = $event->payload;
-        $reference = trim((string) ($payload['transaction']['reference'] ?? ''));
-        $settlementAmount = (float) ($payload['order']['settlement_amount'] ?? 0);
-        $email = Str::lower((string) ($payload['customer']['email'] ?? ''));
+        $payload = (array) $event->payload;
+        $reference = trim((string) ($payload['transaction']['reference'] ?? $payload['reference'] ?? ''));
+        $settlementAmount = (float) (
+            $payload['order']['settlement_amount']
+            ?? $payload['transaction']['amount']
+            ?? $payload['order']['amount']
+            ?? $payload['amount']
+            ?? 0
+        );
+        $email = Str::lower(trim((string) ($payload['customer']['email'] ?? $payload['email'] ?? '')));
+        $accountNumber = trim((string) (
+            $payload['order']['bank_account']
+            ?? $payload['order']['account_number']
+            ?? $payload['transaction']['bank_account']
+            ?? $payload['bank_account']
+            ?? ''
+        ));
 
-        if ($reference === '' || $email === '' || $settlementAmount <= 0) {
+        if ($reference === '' || $settlementAmount <= 0) {
             $this->markIgnored($event, 'Invalid payload');
             return;
         }
@@ -288,16 +392,29 @@ class ProcessPaymentWebhookEvent implements ShouldQueue
             return;
         }
 
-        DB::transaction(function () use ($email, $settlementAmount, $reference) {
-            $psbAmount = DB::table('charges')->where('id', 1)->value('psb_amount') ?? 50;
-            $netAmount = (float) $settlementAmount - (float) $psbAmount;
-            if ($netAmount <= 0) {
-                throw new \RuntimeException('Invalid net amount');
+        DB::transaction(function () use ($email, $accountNumber, $settlementAmount, $reference) {
+            $user = $this->findUserForPayment($email, $accountNumber, $reference);
+            if (!$user) {
+                throw new \RuntimeException("User not found for PayVessel payment (email: '{$email}', acct: '{$accountNumber}')");
             }
 
-            $user = User::query()->whereRaw('LOWER(email) = ?', [$email])->first();
-            if (!$user) {
-                throw new \RuntimeException('User balance record not found');
+            $psbAmount = 50.0;
+            if (Schema::hasTable('charges')) {
+                $val = DB::table('charges')->where('id', 1)->value('psb_amount');
+                if ($val !== null) {
+                    $psbAmount = (float) $val;
+                }
+            } elseif (Schema::hasTable('bank_details')) {
+                $detail = BankDetail::where('email', $user->email)->first();
+                if ($detail && $detail->psb_amount !== null && (float) $detail->psb_amount > 0) {
+                    $psbAmount = (float) $detail->psb_amount;
+                }
+            }
+
+            $netAmount = round($settlementAmount - $psbAmount, 2);
+            if ($netAmount <= 0) {
+                // If deposit is smaller than deduction, credit settlement amount directly
+                $netAmount = round($settlementAmount, 2);
             }
 
             $this->creditWallet($user, (float) $netAmount, $reference, 'Wallet Funding – Automatic Funding');
@@ -320,18 +437,25 @@ class ProcessPaymentWebhookEvent implements ShouldQueue
             return;
         }
 
-        $payload = $event->payload;
-        $reference = trim((string) ($payload['transaction_id'] ?? ''));
-        $settlementAmount = (float) ($payload['settlement_amount'] ?? 0);
-        $email = Str::lower((string) ($payload['customer']['email'] ?? ''));
-        $status = (string) ($payload['transaction_status'] ?? '');
+        $payload = (array) $event->payload;
+        $reference = trim((string) ($payload['transaction_id'] ?? $payload['reference'] ?? ''));
+        $settlementAmount = (float) ($payload['settlement_amount'] ?? $payload['amount'] ?? 0);
+        $email = Str::lower(trim((string) ($payload['customer']['email'] ?? $payload['email'] ?? '')));
+        $accountNumber = trim((string) (
+            $payload['account_number']
+            ?? $payload['bank_account_number']
+            ?? $payload['recipient_account_number']
+            ?? ''
+        ));
+        $phone = trim((string) ($payload['customer']['phone'] ?? $payload['phone'] ?? ''));
+        $status = (string) ($payload['transaction_status'] ?? $payload['status'] ?? '');
 
-        if ($status !== '' && !in_array($status, ['success', 'successful', 'SUCCESS'], true)) {
+        if ($status !== '' && !in_array(strtolower($status), ['success', 'successful', 'completed'], true)) {
             $this->markIgnored($event, 'Ignored non-success transaction');
             return;
         }
 
-        if ($reference === '' || $email === '' || $settlementAmount <= 0) {
+        if ($reference === '' || $settlementAmount <= 0) {
             $this->markIgnored($event, 'Invalid payload');
             return;
         }
@@ -341,23 +465,23 @@ class ProcessPaymentWebhookEvent implements ShouldQueue
             return;
         }
 
-        DB::transaction(function () use ($email, $settlementAmount, $reference) {
-            $deduction = (float) $settlementAmount * 0.01;
-            $netAmount = (float) $settlementAmount - (float) $deduction;
-            if ($netAmount <= 0) {
-                throw new \RuntimeException('Invalid net amount');
+        DB::transaction(function () use ($email, $accountNumber, $phone, $settlementAmount, $reference) {
+            $user = $this->findUserForPayment($email, $accountNumber, null, $phone);
+            if (!$user) {
+                throw new \RuntimeException("User not found for PalmPay payment (email: '{$email}', acct: '{$accountNumber}')");
             }
 
-            $user = User::query()->whereRaw('LOWER(email) = ?', [$email])->first();
-            if (!$user) {
-                throw new \RuntimeException('User record not found');
+            $deduction = round((float) $settlementAmount * 0.01, 2);
+            $netAmount = round((float) $settlementAmount - $deduction, 2);
+            if ($netAmount <= 0) {
+                $netAmount = round((float) $settlementAmount, 2);
             }
 
             $this->creditWallet($user, (float) $netAmount, $reference, 'Wallet Funding – Automatic Funding');
 
             if (Schema::hasTable('fundings')) {
                 DB::table('fundings')->where('reference', $reference)->update([
-                    'fullname' => 'paymentpoint',
+                    'fullname' => 'PalmPay',
                     'funding_type' => 'Automatic Funding',
                 ]);
             }
@@ -373,17 +497,23 @@ class ProcessPaymentWebhookEvent implements ShouldQueue
             return;
         }
 
-        $payload = $event->payload;
+        $payload = (array) $event->payload;
         $eventType = (string) ($payload['eventType'] ?? '');
         if ($eventType !== 'SUCCESSFUL_TRANSACTION') {
-            $this->markIgnored($event, 'Ignored event');
+            $this->markIgnored($event, 'Ignored event: ' . $eventType);
             return;
         }
 
         $data = (array) ($payload['eventData'] ?? []);
         $reference = trim((string) ($data['transactionReference'] ?? $data['paymentReference'] ?? ''));
         $currency = Str::upper((string) ($data['currency'] ?? 'NGN'));
-        $email = Str::lower((string) ($data['customer']['email'] ?? $data['customerEmailAddress'] ?? ''));
+        $email = Str::lower(trim((string) ($data['customer']['email'] ?? $data['customerEmailAddress'] ?? '')));
+        $accountNumber = trim((string) (
+            $data['destinationAccountInformation']['accountNumber']
+            ?? $data['accountDetails']['accountNumber']
+            ?? ''
+        ));
+        $accountReference = trim((string) ($data['accountReference'] ?? ''));
 
         $amount = null;
         if (isset($data['settlementAmount'])) {
@@ -393,7 +523,7 @@ class ProcessPaymentWebhookEvent implements ShouldQueue
         }
         $amount = $amount !== null ? round((float) $amount, 2) : 0.0;
 
-        if ($reference === '' || $email === '' || $currency !== 'NGN' || $amount <= 0) {
+        if ($reference === '' || $currency !== 'NGN' || $amount <= 0) {
             $this->markIgnored($event, 'Invalid payload');
             return;
         }
@@ -403,10 +533,10 @@ class ProcessPaymentWebhookEvent implements ShouldQueue
             return;
         }
 
-        DB::transaction(function () use ($email, $amount, $reference) {
-            $user = User::query()->whereRaw('LOWER(email) = ?', [$email])->first();
+        DB::transaction(function () use ($email, $accountNumber, $accountReference, $amount, $reference) {
+            $user = $this->findUserForPayment($email, $accountNumber, $accountReference);
             if (!$user) {
-                throw new \RuntimeException('User not found');
+                throw new \RuntimeException("User not found for Monnify payment (email: '{$email}', acct: '{$accountNumber}')");
             }
 
             $this->creditWallet($user, (float) $amount, $reference, 'Wallet Funding – Monnify');

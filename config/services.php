@@ -69,8 +69,16 @@ return [
 
     'payvessel' => [
         'api_key' => env('PAYVESSEL_API_KEY'),
+        'secret_key' => env('PAYVESSEL_SECRET_KEY'),
         'endpoint' => env('PAYVESSEL_ENDPOINT'),
         'business_id' => env('PAYVESSEL_BUSINESS_ID'),
+    ],
+
+    'paymentpoint' => [
+        'api_key' => env('PAYPOINT_API_KEY'),
+        'secret_key' => env('PAYPOINT_SECRET_KEY'),
+        'business_id' => env('PAYPOINT_BUSINESS_ID'),
+        'endpoint' => env('PAYPOINT_ENDPOINT'),
     ],
 
     'openai' => [

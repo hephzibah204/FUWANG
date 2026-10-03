@@ -121,7 +121,7 @@ final class PaymentProviderCredentials
     }
 
     /**
-     * @return array{api_key: ?string, endpoint: ?string, business_id: ?string}
+     * @return array{api_key: ?string, secret_key: ?string, endpoint: ?string, business_id: ?string}
      */
     public static function payvessel(?ApiCenter $apiCenter = null): array
     {
@@ -131,6 +131,10 @@ final class PaymentProviderCredentials
         $apiKey = self::nonEmpty($apiCenter?->payvessel_api_key)
             ?? self::nonEmpty($gwc['api_key'] ?? null)
             ?? self::nonEmpty(config('services.payvessel.api_key'));
+
+        $secretKey = self::nonEmpty($apiCenter?->payvessel_secret_key)
+            ?? self::nonEmpty($gwc['secret_key'] ?? null)
+            ?? self::nonEmpty(config('services.payvessel.secret_key'));
 
         $endpoint = self::nonEmpty($apiCenter?->payvessel_endpoint)
             ?? self::nonEmpty($gwc['endpoint'] ?? null)
@@ -142,8 +146,41 @@ final class PaymentProviderCredentials
 
         return [
             'api_key' => $apiKey,
+            'secret_key' => $secretKey,
             'endpoint' => $endpoint,
             'business_id' => $businessId,
+        ];
+    }
+
+    /**
+     * @return array{api_key: ?string, secret_key: ?string, business_id: ?string, endpoint: ?string}
+     */
+    public static function paymentpoint(?ApiCenter $apiCenter = null): array
+    {
+        $apiCenter ??= ApiCenter::first();
+        $gwc = self::gatewayConfig('paymentpoint');
+
+        $apiKey = self::nonEmpty($apiCenter?->paypoint_api_key)
+            ?? self::nonEmpty($gwc['api_key'] ?? null)
+            ?? self::nonEmpty(config('services.paymentpoint.api_key'));
+
+        $secretKey = self::nonEmpty($apiCenter?->paypoint_secret_key)
+            ?? self::nonEmpty($gwc['secret_key'] ?? null)
+            ?? self::nonEmpty(config('services.paymentpoint.secret_key'));
+
+        $businessId = self::nonEmpty($apiCenter?->paypoint_businessid)
+            ?? self::nonEmpty($gwc['business_id'] ?? null)
+            ?? self::nonEmpty(config('services.paymentpoint.business_id'));
+
+        $endpoint = self::nonEmpty($apiCenter?->paypoint_endpoint)
+            ?? self::nonEmpty($gwc['endpoint'] ?? null)
+            ?? self::nonEmpty(config('services.paymentpoint.endpoint'));
+
+        return [
+            'api_key' => $apiKey,
+            'secret_key' => $secretKey,
+            'business_id' => $businessId,
+            'endpoint' => $endpoint,
         ];
     }
 }

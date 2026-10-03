@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Support\DbTable;
 use App\Support\PaymentProviderCredentials;
 use App\Jobs\ProcessPaymentWebhookEvent;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
@@ -58,9 +59,45 @@ class WebhookController extends Controller
         return false;
     }
 
+    private function ensureWebhookEventsTable(): void
+    {
+        if (!Schema::hasTable('payment_webhook_events')) {
+            try {
+                Schema::create('payment_webhook_events', function (Blueprint $table) {
+                    $table->id();
+                    $table->string('provider', 50)->index();
+                    $table->string('event_type', 100)->nullable();
+                    $table->string('provider_event_id', 191)->nullable()->index();
+                    $table->string('reference', 191)->nullable()->index();
+                    $table->string('email', 191)->nullable()->index();
+                    $table->decimal('amount', 18, 2)->nullable();
+                    $table->string('currency', 10)->nullable();
+                    $table->boolean('signature_valid')->default(false);
+                    $table->text('signature')->nullable();
+                    $table->json('payload')->nullable();
+                    $table->string('processing_status', 50)->default('pending')->index();
+                    $table->text('processing_error')->nullable();
+                    $table->timestamp('processed_at')->nullable();
+                    $table->timestamps();
+
+                    $table->index(['provider', 'provider_event_id'], 'idx_pwe_provider_event');
+                });
+            } catch (\Throwable $e) {
+                Log::warning('Unable to auto-create payment_webhook_events table: ' . $e->getMessage());
+            }
+        }
+    }
+
     private function enqueueEvent(PaymentWebhookEvent $event): void
     {
-        ProcessPaymentWebhookEvent::dispatch($event->id);
+        try {
+            ProcessPaymentWebhookEvent::dispatchSync($event->id);
+        } catch (\Throwable $e) {
+            Log::error('Synchronous payment processing encountered error, falling back to background queue: ' . $e->getMessage(), [
+                'event_id' => $event->id,
+            ]);
+            ProcessPaymentWebhookEvent::dispatch($event->id);
+        }
     }
 
     private function eventAlreadyLogged(string $provider, ?string $providerEventId): bool
@@ -68,6 +105,7 @@ class WebhookController extends Controller
         if (!$providerEventId) {
             return false;
         }
+        $this->ensureWebhookEventsTable();
         return PaymentWebhookEvent::where('provider', $provider)
             ->where('provider_event_id', $providerEventId)
             ->exists();
@@ -85,6 +123,8 @@ class WebhookController extends Controller
         ?string $signature,
         array $payload
     ): PaymentWebhookEvent {
+        $this->ensureWebhookEventsTable();
+
         $status = 'pending';
         if ($this->eventAlreadyLogged($provider, $providerEventId)) {
             $status = 'ignored';
@@ -147,29 +187,46 @@ class WebhookController extends Controller
     public function handlePayvessel(Request $request)
     {
         $payload = $request->getContent();
-        $signature = $this->getHeaderValue($request, 'PAYVESSEL_HTTP_SIGNATURE');
-        $ip = (string) $request->server('REMOTE_ADDR', $request->ip());
-        $trustedIps = ['3.255.23.38', '162.246.254.36'];
+        $signature = $this->getHeaderValue($request, 'PAYVESSEL_HTTP_SIGNATURE')
+            ?: $this->getHeaderValue($request, 'payvessel-http-signature')
+            ?: $request->header('payvessel-http-signature')
+            ?: $request->header('PAYVESSEL_HTTP_SIGNATURE');
 
         $apiCenter = ApiCenter::first();
-        if (!$apiCenter || !$apiCenter->payvessel_secret_key) {
-             return response()->json(['message' => 'API credentials not found'], 400);
+        $pv = PaymentProviderCredentials::payvessel($apiCenter);
+        $secret = $pv['secret_key'] ?? ($apiCenter?->payvessel_secret_key ?: config('services.payvessel.secret_key'));
+        if (!$secret && Schema::hasTable('payvessel_details')) {
+            $secret = DB::table('payvessel_details')->value('payvessel_secret_key');
         }
 
-        $hash = hash_hmac('sha512', $payload, $apiCenter->payvessel_secret_key);
+        if (!$secret) {
+            Log::error('Payvessel credentials not found in ApiCenter or services config');
+            return response()->json(['message' => 'API credentials not found'], 400);
+        }
 
-        if (!$signature || !hash_equals((string) $hash, (string) $signature) || !in_array($ip, $trustedIps, true)) {
-            Log::warning("Payvessel signature validation failed");
+        $hash = hash_hmac('sha512', $payload, $secret);
+        $signatureValid = $signature && hash_equals(strtolower((string) $hash), strtolower((string) $signature));
+
+        if (!$signatureValid) {
+            Log::warning('Payvessel signature validation failed', [
+                'expected' => $hash,
+                'received' => $signature,
+            ]);
             return response()->json(['message' => 'Permission denied'], 403);
         }
 
-        $data = json_decode($payload, true);
-        $reference = $data['transaction']['reference'] ?? null;
-        $settlementAmount = floatval($data['order']['settlement_amount'] ?? 0);
-        $email = $data['customer']['email'] ?? null;
+        $data = json_decode($payload, true) ?: [];
+        $reference = $data['transaction']['reference'] ?? $data['reference'] ?? null;
+        $settlementAmount = floatval($data['order']['settlement_amount'] ?? $data['transaction']['amount'] ?? $data['order']['amount'] ?? $data['amount'] ?? 0);
+        $email = $data['customer']['email'] ?? $data['email'] ?? null;
+        $accountNumber = $data['order']['bank_account'] ?? $data['order']['account_number'] ?? $data['transaction']['bank_account'] ?? $data['bank_account'] ?? null;
 
-        if (!$reference || !$email) {
-            return response()->json(['message' => 'Invalid payload'], 400);
+        if (!$email && $accountNumber && Schema::hasTable('bank_details')) {
+            $email = DB::table('bank_details')->where('psb9', $accountNumber)->value('email');
+        }
+
+        if (!$reference) {
+            return response()->json(['message' => 'Invalid payload: missing reference'], 400);
         }
 
         $event = $this->storeEvent(
@@ -177,13 +234,14 @@ class WebhookController extends Controller
             (string) ($data['event'] ?? 'transfer.success'),
             (string) ($data['transaction']['id'] ?? $reference),
             (string) $reference,
-            (string) $email,
+            $email ? (string) $email : null,
             (float) $settlementAmount,
             (string) ($data['order']['currency'] ?? 'NGN'),
             true,
             (string) $signature,
             (array) $data
         );
+
         if ($event->processing_status === 'pending') {
             $this->enqueueEvent($event);
         }
@@ -194,12 +252,18 @@ class WebhookController extends Controller
     private function handlePaymentpointLike(Request $request, string $provider)
     {
         $payload = $request->getContent();
-        $signature = $this->getHeaderValue($request, 'PAYMENTPOINT_SIGNATURE');
+        $signature = $this->getHeaderValue($request, 'PAYMENTPOINT_SIGNATURE')
+            ?: $this->getHeaderValue($request, 'paymentpoint-signature')
+            ?: $request->header('paymentpoint-signature')
+            ?: $request->header('PAYMENTPOINT_SIGNATURE');
         
         $apiCenter = ApiCenter::first();
-        $secret = $apiCenter->paypoint_secret_key ?? null;
+        $secret = $apiCenter?->paypoint_secret_key;
         if (!$secret && Schema::hasTable('paypoint_details')) {
             $secret = DB::table('paypoint_details')->value('paypoint_secret_key');
+        }
+        if (!$secret) {
+            $secret = config('services.paymentpoint.secret_key') ?: config('services.palmpay.secret_key');
         }
         if (!$secret) {
             return response()->json(['message' => 'API credentials not found'], 400);
@@ -207,21 +271,26 @@ class WebhookController extends Controller
 
         $hash = hash_hmac('sha256', $payload, $secret);
 
-        if (!$signature || !hash_equals($hash, $signature)) {
+        if (!$signature || !hash_equals(strtolower((string) $hash), strtolower((string) $signature))) {
             return response()->json(['message' => 'Invalid signature'], 403);
         }
 
-        $data = json_decode($payload, true);
-        $reference = $data['transaction_id'] ?? null;
-        $settlementAmount = floatval($data['settlement_amount'] ?? 0);
-        $email = $data['customer']['email'] ?? null;
-        $status = $data['transaction_status'] ?? null;
+        $data = json_decode($payload, true) ?: [];
+        $reference = $data['transaction_id'] ?? $data['reference'] ?? null;
+        $settlementAmount = floatval($data['settlement_amount'] ?? $data['amount'] ?? 0);
+        $email = $data['customer']['email'] ?? $data['email'] ?? null;
+        $status = $data['transaction_status'] ?? $data['status'] ?? null;
+        $accountNumber = $data['account_number'] ?? $data['bank_account_number'] ?? $data['recipient_account_number'] ?? null;
 
-        if (!$reference || !$email) {
-            return response()->json(['message' => 'Invalid payload'], 400);
+        if (!$email && $accountNumber && Schema::hasTable('bank_details')) {
+            $email = DB::table('bank_details')->where('palmpay', $accountNumber)->value('email');
         }
 
-        if ($status && !in_array((string) $status, ['success', 'successful', 'SUCCESS'], true)) {
+        if (!$reference) {
+            return response()->json(['message' => 'Invalid payload: missing reference'], 400);
+        }
+
+        if ($status && !in_array(strtolower((string) $status), ['success', 'successful', 'completed'], true)) {
             return response()->json(['message' => 'Ignored non-success transaction'], 200);
         }
 
@@ -230,13 +299,14 @@ class WebhookController extends Controller
             (string) ($data['event'] ?? 'transfer.success'),
             (string) ($data['transaction_id'] ?? $reference),
             (string) $reference,
-            (string) $email,
+            $email ? (string) $email : null,
             (float) $settlementAmount,
             (string) ($data['currency'] ?? 'NGN'),
             true,
             (string) $signature,
             (array) $data
         );
+
         if ($event->processing_status === 'pending') {
             $this->enqueueEvent($event);
         }
@@ -354,7 +424,9 @@ class WebhookController extends Controller
     public function handleMonnify(Request $request)
     {
         $payload = $request->getContent();
-        $sig = $this->getHeaderValue($request, 'monnify-signature');
+        $sig = $this->getHeaderValue($request, 'monnify-signature')
+            ?: $this->getHeaderValue($request, 'MONNIFY_SIGNATURE')
+            ?: $request->header('monnify-signature');
 
         $apiCenter = ApiCenter::first();
         $clientSecret = PaymentProviderCredentials::monnify($apiCenter)['secret_key'];
@@ -363,7 +435,7 @@ class WebhookController extends Controller
         }
 
         $calc = hash_hmac('sha512', $payload, $clientSecret);
-        if (!$sig || !hash_equals((string) $calc, (string) $sig)) {
+        if (!$sig || !hash_equals(strtolower((string) $calc), strtolower((string) $sig))) {
             $data = json_decode($payload, true) ?: [];
             $this->storeEvent('monnify', (string) ($data['eventType'] ?? ''), null, null, null, null, null, false, $sig, (array) $data);
             return response()->json(['message' => 'Invalid signature'], 403);
@@ -375,6 +447,16 @@ class WebhookController extends Controller
 
         $reference = (string) ($eventData['transactionReference'] ?? $eventData['paymentReference'] ?? '');
         $email = (string) (($eventData['customer']['email'] ?? $eventData['customerEmailAddress'] ?? '') ?: '');
+
+        $accountNumber = $eventData['destinationAccountInformation']['accountNumber'] ?? null;
+        if ($email === '' && $accountNumber && Schema::hasTable('bank_details')) {
+            $email = (string) (DB::table('bank_details')
+                ->where('Wema_account', $accountNumber)
+                ->orWhere('Moniepoint_account', $accountNumber)
+                ->orWhere('Sterling_account', $accountNumber)
+                ->orWhere('GTBank_account', $accountNumber)
+                ->value('email') ?? '');
+        }
 
         $amount = null;
         if (isset($eventData['settlementAmount'])) {
