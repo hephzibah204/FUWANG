@@ -75,6 +75,9 @@ Route::post('/ab/event', [\App\Http\Controllers\AbEventController::class, 'store
 Route::post('/webhooks/verifyme/address', [App\Http\Controllers\Service\VerificationController::class, 'handleAddressWebhook'])->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class])->name('webhooks.verifyme.address');
 
 Route::get('/explore', [\App\Http\Controllers\PublicServiceController::class, 'index'])->middleware('track.view:explore_index')->name('public.services.index');
+Route::get('/explore/services', function () {
+    return redirect('/explore', 301);
+});
 Route::get('/explore/auctions', function () {
     return redirect('/auction', 301);
 })->middleware('feature:auctions')->name('public.auctions.index_legacy');

@@ -16,6 +16,9 @@ class PublicServiceDiscoveryTest extends TestCase
         $this->get('/explore')
             ->assertOk()
             ->assertSee('Explore Services', false);
+
+        $this->get('/explore/services')
+            ->assertRedirect('/explore');
     }
 
     public function test_explore_service_page_is_public(): void
