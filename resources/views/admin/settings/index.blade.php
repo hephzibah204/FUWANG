@@ -503,35 +503,35 @@
                 <div class="col-md-12 mb-4">
                     <label class="text-white-50 small mb-2">Active Mailer Configuration</label>
                     <select name="active_mailer" class="form-control text-white rounded-3" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
-                        <option value="hostinger" {{ (->active_mailer ?? 'hostinger') == 'hostinger' ? 'selected' : '' }}>Hostinger (from .env)</option>
-                        <option value="resend" {{ (->active_mailer ?? '') == 'resend' ? 'selected' : '' }}>Resend (Live Sending)</option>
-                        <option value="mailtrap" {{ (->active_mailer ?? '') == 'mailtrap' ? 'selected' : '' }}>Mailtrap (Sandbox / Testing)</option>
-                        <option value="failover" {{ (->active_mailer ?? '') == 'failover' ? 'selected' : '' }}>Smart Failover (Try Resend -> Mailtrap -> Hostinger)</option>
-                        <option value="roundrobin" {{ (->active_mailer ?? '') == 'roundrobin' ? 'selected' : '' }}>Smart Load Balancer (Alternate Resend & Mailtrap)</option>
+                        <option value="hostinger" {{ ($ac->active_mailer ?? 'hostinger') == 'hostinger' ? 'selected' : '' }}>Hostinger (from .env)</option>
+                        <option value="resend" {{ ($ac->active_mailer ?? '') == 'resend' ? 'selected' : '' }}>Resend (Live Sending)</option>
+                        <option value="mailtrap" {{ ($ac->active_mailer ?? '') == 'mailtrap' ? 'selected' : '' }}>Mailtrap (Sandbox / Testing)</option>
+                        <option value="failover" {{ ($ac->active_mailer ?? '') == 'failover' ? 'selected' : '' }}>Smart Failover (Try Resend -> Mailtrap -> Hostinger)</option>
+                        <option value="roundrobin" {{ ($ac->active_mailer ?? '') == 'roundrobin' ? 'selected' : '' }}>Smart Load Balancer (Alternate Resend & Mailtrap)</option>
                     </select>
                 </div>
 
                 <div class="col-md-8 mb-4">
                     <label class="text-white-50 small mb-2">Resend API Key</label>
-                    <input type="text" name="resend_api_key" class="form-control text-white rounded-3 font-monospace" value="{{ ->resend_api_key ?? '' }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);" placeholder="Enter your Resend API Key (re_...)">
+                    <input type="text" name="resend_api_key" class="form-control text-white rounded-3 font-monospace" value="{{ $ac->resend_api_key ?? '' }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);" placeholder="Enter your Resend API Key (re_...)">
                 </div>
                 <div class="col-md-4 mb-4"></div>
 
                 <div class="col-md-3 mb-4">
                     <label class="text-white-50 small mb-2">Mailtrap Host</label>
-                    <input type="text" name="mailtrap_host" class="form-control text-white rounded-3 font-monospace" value="{{ ->mailtrap_host ?? 'sandbox.smtp.mailtrap.io' }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                    <input type="text" name="mailtrap_host" class="form-control text-white rounded-3 font-monospace" value="{{ $ac->mailtrap_host ?? 'sandbox.smtp.mailtrap.io' }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
                 </div>
                 <div class="col-md-2 mb-4">
                     <label class="text-white-50 small mb-2">Port</label>
-                    <input type="text" name="mailtrap_port" class="form-control text-white rounded-3 font-monospace" value="{{ ->mailtrap_port ?? '2525' }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                    <input type="text" name="mailtrap_port" class="form-control text-white rounded-3 font-monospace" value="{{ $ac->mailtrap_port ?? '2525' }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
                 </div>
                 <div class="col-md-3 mb-4">
                     <label class="text-white-50 small mb-2">Mailtrap Username</label>
-                    <input type="text" name="mailtrap_username" class="form-control text-white rounded-3 font-monospace" value="{{ ->mailtrap_username ?? '' }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                    <input type="text" name="mailtrap_username" class="form-control text-white rounded-3 font-monospace" value="{{ $ac->mailtrap_username ?? '' }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
                 </div>
                 <div class="col-md-4 mb-4">
                     <label class="text-white-50 small mb-2">Mailtrap Password</label>
-                    <input type="text" name="mailtrap_password" class="form-control text-white rounded-3 font-monospace" value="{{ ->mailtrap_password ?? '' }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                    <input type="text" name="mailtrap_password" class="form-control text-white rounded-3 font-monospace" value="{{ $ac->mailtrap_password ?? '' }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
                 </div>
                 
                 <div class="col-12 mb-3">
