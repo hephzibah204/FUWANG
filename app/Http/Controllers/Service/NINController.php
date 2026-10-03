@@ -480,7 +480,14 @@ class NINController extends Controller
                     return ['status' => false, 'message' => 'Selected mode is not supported by VUVAA.'];
                 }
             }
-            return ['status' => $result['ok'], 'message' => $result['message'], 'data' => $result['data'], 'provider' => $provider->name];
+            $vuvaaData = $result['data'];
+            if (is_array($vuvaaData) && isset($vuvaaData['data']) && is_array($vuvaaData['data'])) {
+                $vuvaaData = array_merge($vuvaaData, $vuvaaData['data']);
+            }
+            if (is_array($vuvaaData) && empty($vuvaaData['nin']) && in_array($mode, ['nin', 'selfie'], true) && $request->filled('number')) {
+                $vuvaaData['nin'] = (string) $request->input('number');
+            }
+            return ['status' => $result['ok'], 'message' => $result['message'], 'data' => $vuvaaData, 'provider' => $provider->name];
         }
         if (strtolower((string) $provider->provider_identifier) === 'robosttech') {
             return $this->callRobostTechProvider($provider, $request, $mode);
@@ -809,7 +816,18 @@ class NINController extends Controller
                 'name' => 'VUVAA Identity API',
                 'service_type' => 'nin_verification',
                 'provider_identifier' => 'vuvaa',
-                'endpoint' => 'https://api.vuvaa.com/v1',
+                'endpoint' => 'https://premiere.vuvaa.com/demo/NIN_Validation_LIVE',
+                'config' => [
+                    'username' => 'fuwa_demo_0417190741',
+                    'password' => 'Password',
+                    'encryption_key' => 'FD!-F=15B46BAD21',
+                    'encryption_iv' => '0123456789012345',
+                    'verify_nin_path' => 'verify_nin',
+                    'in_person_path' => 'in_person_verification',
+                    'share_code_path' => 'share_code',
+                    'requery_path' => 'requery',
+                    'reason' => 'nyscCheck',
+                ],
                 'status' => true,
                 'priority' => 30,
                 'supported_modes' => ['nin', 'selfie', 'share_code', 'requery'],
