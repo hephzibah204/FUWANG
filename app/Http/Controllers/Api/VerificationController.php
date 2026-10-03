@@ -64,12 +64,27 @@ class VerificationController extends Controller
                     }
                     $errors[] = $provider->name . ': ' . ($result['message'] ?? 'Unknown error');
                 } catch (\Throwable $e) {
-                    $errors[] = $provider->name . ': ' . $e->getMessage();
+                    $msg = $e->getMessage();
+                    $lower = strtolower($msg);
+                    if (str_contains($lower, 'curl error') || str_contains($lower, 'could not resolve host') || str_contains($lower, 'connection timed out') || str_contains($lower, 'failed to connect')) {
+                        $msg = 'Provider service temporarily unavailable.';
+                    }
+                    $errors[] = $provider->name . ': ' . $msg;
                     Log::warning("API Provider failover: {$provider->name} failed.", ['error' => $e->getMessage()]);
                 }
             }
 
-            throw new \RuntimeException('All verification providers failed: ' . implode(' | ', $errors));
+            // Prioritize user/data errors if present
+            $prioritized = null;
+            foreach ($errors as $err) {
+                $lowerErr = strtolower($err);
+                if (str_contains($lowerErr, 'invalid nin') || str_contains($lowerErr, 'not found') || str_contains($lowerErr, 'no record')) {
+                    $prioritized = str_contains($err, ': ') ? explode(': ', $err, 2)[1] : $err;
+                    break;
+                }
+            }
+
+            throw new \RuntimeException($prioritized ?: ('All verification providers failed: ' . implode(' | ', $errors)));
         });
 
         if (!$paid['ok']) {

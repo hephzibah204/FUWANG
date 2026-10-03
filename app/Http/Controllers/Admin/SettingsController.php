@@ -7,6 +7,7 @@ use App\Models\Admin;
 use App\Models\AdminAuditLog;
 use App\Models\PaymentGateway;
 use App\Models\SystemSetting;
+use App\Services\DataVerify\DataVerifyClient;
 use App\Services\ImageOptimizer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -209,6 +210,12 @@ class SettingsController extends Controller
             $request->only($allowed),
             fn ($value) => $value !== null && $value !== ''
         );
+
+        foreach ($data as $key => $val) {
+            if (str_starts_with($key, 'dataverify_endpoint_') && is_string($val)) {
+                $data[$key] = DataVerifyClient::normalizeDomain($val);
+            }
+        }
 
         $vuvaaData = array_filter(
             $request->only($vuvaaKeys),

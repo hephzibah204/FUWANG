@@ -63,8 +63,8 @@ class ServiceRouter
                     return $response;
                 }
                 $errors[] = "{$provider->name}: " . ($response['message'] ?? 'Unknown error');
-            } catch (\Exception $e) {
-                $errors[] = "{$provider->name}: " . $e->getMessage();
+            } catch (\Throwable $e) {
+                $errors[] = "{$provider->name}: Service temporarily unavailable";
                 Log::error("Provider Failover: {$provider->name} failed.", ['error' => $e->getMessage()]);
             }
         }
@@ -95,7 +95,21 @@ class ServiceRouter
             $http = $http->withHeaders($headers);
         }
 
-        $response = $http->post($endpoint, $payload);
+        try {
+            $response = $http->post($endpoint, $payload);
+        } catch (\Throwable $e) {
+            Log::warning("Provider {$provider->name} network failure", [
+                'endpoint' => $endpoint,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'status' => false,
+                'message' => 'Verification provider service unavailable.',
+                'provider' => $provider->name,
+                'provider_id' => $provider->id,
+            ];
+        }
 
         if ($response->successful()) {
             try {

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\DataVerify\DataVerifyClient;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -49,5 +50,21 @@ class CustomApi extends Model
     public function verificationTypes()
     {
         return $this->hasMany(CustomApiVerificationType::class);
+    }
+
+    public function getEndpointAttribute(?string $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return $value;
+        }
+
+        return DataVerifyClient::normalizeDomain($value);
+    }
+
+    public function setEndpointAttribute(?string $value): void
+    {
+        $this->attributes['endpoint'] = ($value !== null && $value !== '')
+            ? DataVerifyClient::normalizeDomain($value)
+            : $value;
     }
 }

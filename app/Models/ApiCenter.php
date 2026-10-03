@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\DataVerify\DataVerifyClient;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
@@ -60,4 +61,24 @@ class ApiCenter extends Model
         'sms_ai_endpoint',
         'sms_ai_sender',
     ];
+
+    public function getAttribute($key)
+    {
+        $value = parent::getAttribute($key);
+
+        if (is_string($key) && str_starts_with($key, 'dataverify_endpoint_') && is_string($value)) {
+            return DataVerifyClient::normalizeDomain($value);
+        }
+
+        return $value;
+    }
+
+    public function setAttribute($key, $value)
+    {
+        if (is_string($key) && str_starts_with($key, 'dataverify_endpoint_') && is_string($value)) {
+            $value = DataVerifyClient::normalizeDomain($value);
+        }
+
+        return parent::setAttribute($key, $value);
+    }
 }

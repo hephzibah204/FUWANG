@@ -169,12 +169,15 @@ class NINController extends Controller
                     return back()->withErrors(['nin' => $msg])->withInput();
                 }
             } catch (\Throwable $e) {
-                $msg = 'Wallet check failed: ' . $e->getMessage();
+                Log::warning('Vuvaa wallet check failed: ' . $e->getMessage());
+                $msg = $this->isTechnicalError($e->getMessage())
+                    ? 'Verification provider temporarily unavailable. Please try again shortly.'
+                    : ('Wallet check failed: ' . $e->getMessage());
                 if ($wantsJsonResponse) {
                     return response()->json([
                         'status' => false,
                         'message' => $msg,
-                    ], 500);
+                    ], 503);
                 }
                 return back()->withErrors(['nin' => $msg])->withInput();
             }
@@ -340,9 +343,20 @@ class NINController extends Controller
                 return $payload;
             }
 
-            $finalMessage = !empty($errors) ? implode(' | ', $errors) : ($response['message'] ?? 'Verification failed.');
+            if (!empty($errors)) {
+                Log::warning('NIN verification providers failed', [
+                    'user_id' => $user->id,
+                    'mode' => $mode,
+                    'errors' => $errors,
+                ]);
+            }
+
+            $finalMessage = $this->formatVerificationError($errors, (string) ($response['message'] ?? 'Verification failed.'));
             if ($request->filled('api_provider_id') && count($errors) === 1 && str_contains($errors[0], ': ')) {
-                $finalMessage = explode(': ', $errors[0], 2)[1];
+                $candidate = explode(': ', $errors[0], 2)[1];
+                if (!$this->isTechnicalError($candidate)) {
+                    $finalMessage = $candidate;
+                }
             }
             throw new \Exception($finalMessage);
         });
@@ -494,7 +508,14 @@ class NINController extends Controller
             if (is_array($vuvaaData) && empty($vuvaaData['nin']) && in_array($mode, ['nin', 'selfie'], true) && $request->filled('number')) {
                 $vuvaaData['nin'] = (string) $request->input('number');
             }
-            return ['status' => $result['ok'], 'message' => $result['message'], 'data' => $vuvaaData, 'provider' => $provider->name];
+            $isTerminal = $this->isTerminalIdentityError((string) ($result['message'] ?? ''));
+            return [
+                'status' => $result['ok'],
+                'message' => $result['message'],
+                'data' => $vuvaaData,
+                'provider' => $provider->name,
+                'terminal' => $isTerminal,
+            ];
         }
         if (strtolower((string) $provider->provider_identifier) === 'robosttech') {
             return $this->callRobostTechProvider($provider, $request, $mode);
@@ -514,7 +535,7 @@ class NINController extends Controller
                 'message' => $result['message'],
                 'data' => $result['data'],
                 'provider' => $provider->name,
-                'terminal' => $result['terminal'] ?? false,
+                'terminal' => ($result['terminal'] ?? false) || $this->isTerminalIdentityError((string) ($result['message'] ?? '')),
             ];
         }
         if (!empty($provider->endpoint)) {
@@ -615,9 +636,11 @@ class NINController extends Controller
                     $msg = $m;
                 }
             }
+            $finalMsg = $msg ?: 'RobostTech verification failed.';
             return [
                 'status' => false,
-                'message' => $msg ?: 'RobostTech verification failed.',
+                'message' => $finalMsg,
+                'terminal' => $this->isTerminalIdentityError($finalMsg),
             ];
         }
 
@@ -628,9 +651,11 @@ class NINController extends Controller
         $statusVal = strtolower((string) ($json['status'] ?? ''));
         $looksSuccessful = $statusVal === 'success' || $statusVal === 'true' || $statusVal === 'ok';
         if (! $looksSuccessful && isset($json['status']) && $json['status'] !== true) {
+            $failureMsg = is_string($json['message'] ?? null) ? (string) $json['message'] : 'RobostTech verification was not successful.';
             return [
                 'status' => false,
-                'message' => is_string($json['message'] ?? null) ? (string) $json['message'] : 'RobostTech verification was not successful.',
+                'message' => $failureMsg,
+                'terminal' => $this->isTerminalIdentityError($failureMsg),
             ];
         }
 
@@ -709,15 +734,27 @@ class NINController extends Controller
     // Legacy Dataverify NIN: JSON body + Content-Type: application/json (per provider docs).
     private function callLegacyApi(ApiCenter $apiCenter, Request $request, string $mode): array
     {
-        $endpoint = $apiCenter->dataverify_endpoint_nin;
+        $endpoint = DataVerifyClient::normalizeDomain((string) $apiCenter->dataverify_endpoint_nin);
         if (! $endpoint || ! $apiCenter->dataverify_api_key) {
             return ['status' => false, 'message' => 'Legacy NIN endpoint or API key not configured.'];
         }
 
-        $response = Http::timeout(45)->asJson()->post($endpoint, [
-            'api_key' => $apiCenter->dataverify_api_key,
-            'nin' => $request->number,
-        ]);
+        try {
+            $response = Http::timeout(45)->asJson()->post($endpoint, [
+                'api_key' => $apiCenter->dataverify_api_key,
+                'nin' => $request->number,
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('Legacy NIN API call failed', [
+                'endpoint' => $endpoint,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'status' => false,
+                'message' => 'Legacy verification provider unavailable.',
+            ];
+        }
 
         if (! $response->successful()) {
             return [
@@ -887,5 +924,94 @@ class NINController extends Controller
                 Log::warning('NINController: failed ensuring provider ' . ($data['provider_identifier'] ?? 'unknown') . ': ' . $e->getMessage());
             }
         }
+    }
+
+    private function isTerminalIdentityError(string $message): bool
+    {
+        $lower = strtolower($message);
+
+        $terminalPhrases = [
+            'invalid nin',
+            'nin not found',
+            'record not found',
+            'no record found',
+            'record does not exist',
+            'identity not found',
+            'invalid bvn',
+            'bvn not found',
+            'invalid vnin',
+            'vnin not found',
+            'invalid phone',
+            'phone not found',
+            'face mismatch',
+            'selfie does not match',
+            'photo mismatch',
+            'facial match failed',
+            'face verification failed',
+            'demographic mismatch',
+            'unmatched demographic',
+            'tracking id not found',
+            'invalid tracking id',
+        ];
+
+        foreach ($terminalPhrases as $phrase) {
+            if (str_contains($lower, $phrase)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function isTechnicalError(string $message): bool
+    {
+        $lower = strtolower($message);
+
+        return str_contains($lower, 'curl error')
+            || str_contains($lower, 'could not resolve host')
+            || str_contains($lower, 'connection timed out')
+            || str_contains($lower, 'failed to connect')
+            || str_contains($lower, 'sqlstate')
+            || str_contains($lower, 'exception');
+    }
+
+    private function formatVerificationError(array $errors, string $fallback = 'Verification failed.'): string
+    {
+        if (empty($errors)) {
+            return $fallback;
+        }
+
+        // 1. Separate provider prefix and message
+        $cleaned = [];
+        foreach ($errors as $err) {
+            $msg = $err;
+            if (str_contains($err, ': ')) {
+                $msg = explode(': ', $err, 2)[1];
+            }
+            $cleaned[] = trim($msg);
+        }
+
+        // 2. Prioritize explicit user/identity errors over technical/infrastructure messages
+        foreach ($cleaned as $msg) {
+            if ($this->isTerminalIdentityError($msg)) {
+                return $msg;
+            }
+        }
+
+        // 3. Filter out technical network/cURL/SQL errors from being displayed to users
+        $cleanMessages = [];
+        foreach ($cleaned as $msg) {
+            if ($this->isTechnicalError($msg)) {
+                continue;
+            }
+            $cleanMessages[] = $msg;
+        }
+
+        if (!empty($cleanMessages)) {
+            $unique = array_unique($cleanMessages);
+            return implode(' | ', $unique);
+        }
+
+        return 'Verification service is temporarily unavailable. Please try again shortly.';
     }
 }

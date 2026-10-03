@@ -171,7 +171,12 @@ class BVNController extends Controller
                 ];
             }
 
-            throw new \Exception($response['message'] ?? 'Identity record not found.');
+            $rawMsg = (string) ($response['message'] ?? 'Identity record not found.');
+            $lower = strtolower($rawMsg);
+            if (str_contains($lower, 'curl error') || str_contains($lower, 'could not resolve host') || str_contains($lower, 'connection timed out') || str_contains($lower, 'failed to connect') || str_contains($lower, 'sqlstate')) {
+                $rawMsg = 'Verification service is temporarily unavailable. Please try again shortly.';
+            }
+            throw new \Exception($rawMsg);
         });
 
         if (!$paid['ok']) {
@@ -368,7 +373,7 @@ class BVNController extends Controller
         }
 
         $apiKey = $apiCenter->dataverify_api_key;
-        $endpoint = $apiCenter->dataverify_endpoint_bvn;
+        $endpoint = DataVerifyClient::normalizeDomain((string) $apiCenter->dataverify_endpoint_bvn);
 
         if (!$endpoint || !$apiKey) {
             return ['status' => false, 'message' => 'Legacy BVN endpoint not configured.'];
@@ -404,7 +409,16 @@ class BVNController extends Controller
             ]),
         ]);
 
-        $http = Http::timeout(45)->asJson()->post($endpoint, $payload);
+        try {
+            $http = Http::timeout(45)->asJson()->post($endpoint, $payload);
+        } catch (\Throwable $e) {
+            Log::warning('Legacy BVN API call failed', [
+                'endpoint' => $endpoint,
+                'error' => $e->getMessage(),
+            ]);
+
+            return ['status' => false, 'message' => 'Legacy verification provider unavailable.'];
+        }
 
         Log::info('Legacy BVN upstream response', [
             'mode' => $mode,

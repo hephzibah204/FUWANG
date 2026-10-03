@@ -44,6 +44,31 @@ class DataVerifyClientEndpointTest extends TestCase
         );
     }
 
+    public function test_api_center_model_normalizes_dataverify_endpoints(): void
+    {
+        $center = new \App\Models\ApiCenter([
+            'dataverify_endpoint_nin' => 'https://dataverify.com.ng/developers/nin_api/',
+            'dataverify_endpoint_bvn' => 'https://dataverify.ng/developers/bvn/',
+            'dataverify_endpoint_premium_slip' => 'https://api.dataverify.com.ng/developers/nin_slips/nin_premium',
+        ]);
+
+        $this->assertSame('https://dataverify.org/developers/nin_api/', $center->dataverify_endpoint_nin);
+        $this->assertSame('https://dataverify.org/developers/bvn/', $center->dataverify_endpoint_bvn);
+        $this->assertSame('https://dataverify.org/developers/nin_slips/nin_premium', $center->dataverify_endpoint_premium_slip);
+    }
+
+    public function test_custom_api_model_normalizes_endpoint(): void
+    {
+        $customApi = new CustomApi([
+            'endpoint' => 'https://dataverify.com.ng/api/nin',
+        ]);
+
+        $this->assertSame('https://dataverify.org/api/nin', $customApi->endpoint);
+
+        $customApi->endpoint = 'https://dataverify.ng/api/other';
+        $this->assertSame('https://dataverify.org/api/other', $customApi->endpoint);
+    }
+
     public function test_insufficient_balance_is_a_terminal_provider_error(): void
     {
         Http::fake([
