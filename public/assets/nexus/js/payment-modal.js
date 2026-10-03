@@ -396,8 +396,34 @@
                 amount: Math.round(amount * 100),
                 currency: 'NGN',
                 ref: intentRef,
-                callback: function () {},
-                onClose: function () {},
+                callback: function (response) {
+                  // Payment completed — verify with server
+                  btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Verifying…`;
+                  btn.disabled = true;
+                  verifyOnServer('/payment/verify/paystack', { reference: response.reference || intentRef })
+                    .then(function (vRes) {
+                      if (vRes && vRes.status) {
+                        handleSuccess(response.reference || intentRef, 'Paystack');
+                        document.querySelectorAll('.pay-panel').forEach(p => p.classList.remove('active'));
+                        const suc = document.getElementById('pm-success');
+                        if (suc) suc.classList.add('active');
+                      } else {
+                        showToast('Verification Failed', (vRes && vRes.message) ? vRes.message : 'Could not verify payment. Contact support.', 'error');
+                      }
+                    })
+                    .catch(function () {
+                      showToast('Error', 'Unable to verify payment. Please contact support.', 'error');
+                    })
+                    .finally(function () {
+                      btn.innerHTML = orig;
+                      btn.disabled = false;
+                    });
+                },
+                onClose: function () {
+                  btn.innerHTML = orig;
+                  btn.disabled = false;
+                  showToast('Payment Cancelled', 'You closed the payment window.', 'error');
+                },
               });
               handler.openIframe();
             } else if (gatewayName === 'flutterwave') {
@@ -409,8 +435,37 @@
                 currency: 'NGN',
                 customer: { email: email },
                 customizations: { title: window._payCtx.service || 'Payment', description: window._payCtx.description || '' },
-                callback: function () {},
-                onclose: function () {},
+                callback: function (data) {
+                  // Payment completed — verify with server
+                  btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Verifying…`;
+                  btn.disabled = true;
+                  verifyOnServer('/payment/verify/flutterwave', {
+                    transaction_id: String(data.transaction_id || ''),
+                    tx_ref: String(data.tx_ref || intentRef),
+                  })
+                    .then(function (vRes) {
+                      if (vRes && vRes.status) {
+                        handleSuccess(data.tx_ref || intentRef, 'Flutterwave');
+                        document.querySelectorAll('.pay-panel').forEach(p => p.classList.remove('active'));
+                        const suc = document.getElementById('pm-success');
+                        if (suc) suc.classList.add('active');
+                      } else {
+                        showToast('Verification Failed', (vRes && vRes.message) ? vRes.message : 'Could not verify payment. Contact support.', 'error');
+                      }
+                    })
+                    .catch(function () {
+                      showToast('Error', 'Unable to verify payment. Please contact support.', 'error');
+                    })
+                    .finally(function () {
+                      btn.innerHTML = orig;
+                      btn.disabled = false;
+                    });
+                },
+                onclose: function () {
+                  btn.innerHTML = orig;
+                  btn.disabled = false;
+                  showToast('Payment Cancelled', 'You closed the payment window.', 'error');
+                },
               });
             } else if (gatewayName === 'monnify') {
               if (!window.MonnifySDK) throw new Error('Monnify SDK not loaded');
@@ -423,9 +478,36 @@
                 apiKey: gatewayConfig.api_key || '',
                 contractCode: gatewayConfig.contract_code || '',
                 paymentDescription: window._payCtx.service || 'Payment',
-                isTestMode: true,
-                onComplete: function () {},
-                onClose: function () {},
+                isTestMode: false,
+                onComplete: function (response) {
+                  btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Verifying…`;
+                  btn.disabled = true;
+                  verifyOnServer('/payment/verify/monnify', {
+                    reference: String(response.transactionReference || response.paymentReference || intentRef),
+                  })
+                    .then(function (vRes) {
+                      if (vRes && vRes.status) {
+                        handleSuccess(response.transactionReference || intentRef, 'Monnify');
+                        document.querySelectorAll('.pay-panel').forEach(p => p.classList.remove('active'));
+                        const suc = document.getElementById('pm-success');
+                        if (suc) suc.classList.add('active');
+                      } else {
+                        showToast('Verification Failed', (vRes && vRes.message) ? vRes.message : 'Could not verify payment. Contact support.', 'error');
+                      }
+                    })
+                    .catch(function () {
+                      showToast('Error', 'Unable to verify payment. Please contact support.', 'error');
+                    })
+                    .finally(function () {
+                      btn.innerHTML = orig;
+                      btn.disabled = false;
+                    });
+                },
+                onClose: function () {
+                  btn.innerHTML = orig;
+                  btn.disabled = false;
+                  showToast('Payment Cancelled', 'You closed the payment window.', 'error');
+                },
               });
             } else {
               throw new Error('Selected provider does not support a native web modal.');
