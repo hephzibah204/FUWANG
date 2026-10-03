@@ -11,10 +11,22 @@
 @section('og_type', 'website')
 
 @section('public_wrapper_class', 'none')
+@section('is_public_page', 'true')
 
 @section('content')
 @php
-    $primaryCtaHref = route('register');
+    $adminUser = Auth::guard('admin')->user();
+    $webUser = Auth::guard('web')->user();
+    if ($adminUser) {
+        $primaryCtaHref = route('admin.dashboard');
+        $primaryCtaText = 'Go to Admin Dashboard';
+    } elseif ($webUser) {
+        $primaryCtaHref = route('dashboard');
+        $primaryCtaText = 'Go to Dashboard';
+    } else {
+        $primaryCtaHref = route('register');
+        $primaryCtaText = 'Create free account';
+    }
     $secondaryCtaHref = route('login');
     $waNumber = \App\Models\SystemSetting::get('support_whatsapp');
     $cleanWa = $waNumber ? preg_replace('/[^0-9]/', '', $waNumber) : null;
@@ -33,7 +45,7 @@
                 </p>
 
                 <div class="home-sales__cta" role="group" aria-label="Primary actions">
-                    <a class="btn btn-primary" href="{{ $primaryCtaHref }}">Create free account</a>
+                    <a class="btn btn-primary" href="{{ $primaryCtaHref }}">{{ $primaryCtaText }}</a>
                     <a class="btn btn-outline" href="{{ $salesHref }}" target="_blank" rel="noopener noreferrer">Talk to sales</a>
                 </div>
 

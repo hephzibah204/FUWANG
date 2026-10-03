@@ -1,8 +1,9 @@
-@extends('layouts.app')
+@extends('layouts.nexus')
 
 @section('title', $page->seo_title ?: $page->title)
 @section('meta_description', $page->seo_description ?: \Illuminate\Support\Str::limit(strip_tags($page->content), 160))
 @section('meta_keywords', $page->seo_keywords ?: \App\Models\SystemSetting::get('seo_keywords', ''))
+@section('is_public_page', 'true')
 
 @section('content')
 <div class="mb-4">

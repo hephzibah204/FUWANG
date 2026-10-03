@@ -8,6 +8,7 @@
 @section('og_title', 'Fuwa.NG Blog | Insights on Identity Verification, Business Growth & Tech in Nigeria')
 @section('og_description', 'Explore the Fuwa.NG blog for expert guides on identity verification (NIN, BVN), business growth strategies, and technology trends in Nigeria.')
 @section('og_type', 'blog')
+@section('is_public_page', 'true')
 
 @section('content')
 <div class="d-flex justify-content-between align-items-center mb-4">

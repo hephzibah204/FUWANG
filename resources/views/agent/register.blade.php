@@ -2,6 +2,7 @@
 
 @section('title', 'NIN Enrollment Agent Registration | ' . config('app.name'))
 @section('public_wrapper_class', 'none')
+@section('is_public_page', 'true')
 
 @section('content')
 <div class="agent-register-wrapper">

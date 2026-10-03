@@ -402,8 +402,35 @@
     $showFullAdminSidebar = (bool) $adminUser && $onAdminArea;
     $displayUser = ($onAdminArea && $adminUser) ? $adminUser : ($authUser ?? null);
     $webUnreadCount = ($webUser && method_exists($webUser, 'unreadNotifications')) ? (int) $webUser->unreadNotifications()->count() : 0;
-    $isAuthPage = request()->routeIs('login', 'register', 'password.*', 'admin.login', 'admin.2fa.*', 'logistics.ops.login');
-    $showDashboardChrome = $isAuthed && ! $isAuthPage;
+    $isAuthPage = request()->routeIs(
+        'login', 'register', 'password.*', 'admin.login', 'admin.2fa.*',
+        'logistics.ops.login', 'auction.login', 'auction.register',
+        '2fa.*', 'auth.google.*', 'verification.*'
+    );
+
+    $isPublicRoute = request()->routeIs(
+        'home',
+        'blog.*',
+        'pages.*',
+        'public.*',
+        'agent.landing',
+        'agent.register',
+        'agent.search_preapproved',
+        'agent.send_claim_otp',
+        'agent.register.submit',
+        'agent.id_card.verify',
+        'logistics.home',
+        'logistics.track',
+        'logistics.states',
+        'logistics.centers',
+        'logistics.pricing.*',
+        'email.unsubscribe'
+    ) || request()->is('/');
+
+    $isExplicitPublicPage = trim($__env->yieldContent('is_public_page')) === 'true';
+    $isPublicPage = ($isPublicRoute || $isExplicitPublicPage) && ! $onAdminArea;
+
+    $showDashboardChrome = $isAuthed && ! $isAuthPage && ! $isPublicPage;
 @endphp
 <body class="{{ $showDashboardChrome ? 'dashboard-body' : '' }}">
     <!-- Background Elements -->
@@ -861,9 +888,35 @@
                         <li class="nav-item mx-2"><a class="nav-link text-white small font-weight-bold {{ Request::routeIs('logistics.*') ? 'text-primary' : '' }}" href="{{ route('logistics.home') }}">Logistics</a></li>
                         <li class="nav-item mx-2"><a class="nav-link text-white small font-weight-bold {{ Request::routeIs('blog.*') ? 'text-primary' : '' }}" href="{{ route('blog.index') }}">Blog</a></li>
                     </ul>
-                    <div class="nav-actions d-flex align-items-center gap-3">
-                        <a href="{{ route('login') }}" class="btn btn-link text-white text-decoration-none font-weight-bold small">Login</a>
-                        <a href="{{ route('register') }}" class="btn btn-primary px-4 py-2 small font-weight-bold" style="border-radius: 10px;">Get Started</a>
+                    <div class="nav-actions d-flex align-items-center gap-2">
+                        @if($adminUser)
+                            <a href="{{ route('admin.dashboard') }}" class="btn btn-primary px-3 py-2 small font-weight-bold d-inline-flex align-items-center" style="border-radius: 10px;">
+                                <i class="fa-solid fa-gauge-high mr-2"></i> Admin Dashboard
+                            </a>
+                            <form method="POST" action="{{ route('admin.logout') }}" class="d-inline m-0">
+                                @csrf
+                                <button type="submit" class="btn btn-outline-secondary px-3 py-2 small font-weight-bold text-white" style="border-radius: 10px; border-color: rgba(255,255,255,0.2);" title="Sign Out">
+                                    <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                                </button>
+                            </form>
+                        @elseif($webUser)
+                            <a href="{{ route('dashboard') }}" class="btn btn-primary px-3 py-2 small font-weight-bold d-inline-flex align-items-center" style="border-radius: 10px;">
+                                <i class="fa-solid fa-house mr-2"></i> Dashboard
+                            </a>
+                            <form method="POST" action="{{ route('logout') }}" class="d-inline m-0">
+                                @csrf
+                                <button type="submit" class="btn btn-outline-secondary px-3 py-2 small font-weight-bold text-white" style="border-radius: 10px; border-color: rgba(255,255,255,0.2);" title="Sign Out">
+                                    <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                                </button>
+                            </form>
+                        @elseif($logisticsStaffUser)
+                            <a href="{{ route('logistics.ops.dashboard') }}" class="btn btn-primary px-3 py-2 small font-weight-bold" style="border-radius: 10px;">Ops Dashboard</a>
+                        @elseif($auctionAdminUser)
+                            <a href="{{ route('auction.admin.dashboard') }}" class="btn btn-primary px-3 py-2 small font-weight-bold" style="border-radius: 10px;">Auction Admin</a>
+                        @else
+                            <a href="{{ route('login') }}" class="btn btn-link text-white text-decoration-none font-weight-bold small">Login</a>
+                            <a href="{{ route('register') }}" class="btn btn-primary px-4 py-2 small font-weight-bold" style="border-radius: 10px;">Get Started</a>
+                        @endif
                     </div>
                 </div>
             </div>

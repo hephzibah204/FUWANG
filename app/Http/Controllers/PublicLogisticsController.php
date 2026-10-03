@@ -6,6 +6,14 @@ use App\Models\LogisticsRequest;
 
 class PublicLogisticsController extends Controller
 {
+    /**
+     * Logistics Hub Landing Page
+     */
+    public function index()
+    {
+        return view('public.logistics.index');
+    }
+
     public function track(Request $request)
     {
         $request->validate([

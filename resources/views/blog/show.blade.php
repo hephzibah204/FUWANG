@@ -9,6 +9,7 @@
 @section('og_description', $post->seo_description ?: ($post->excerpt ?: \Illuminate\Support\Str::limit(strip_tags($post->content), 160)))
 @section('og_image', (string) ($post->featured_image ? url($post->featured_image) : \App\Models\SystemSetting::get('seo_default_image_url', '')))
 @section('og_type', 'article')
+@section('is_public_page', 'true')
 
 @section('content')
 <div class="mb-4">
