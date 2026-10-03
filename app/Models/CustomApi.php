@@ -10,6 +10,7 @@ class CustomApi extends Model
     use HasFactory;
 
     protected $fillable = [
+        'id',
         'name',
         'provider_identifier',
         'service_type',
@@ -26,6 +27,16 @@ class CustomApi extends Model
         'retry_count',
         'retry_delay_ms',
     ];
+
+    protected static function booted()
+    {
+        static::creating(function ($model) {
+            if (empty($model->id)) {
+                $maxId = static::max('id');
+                $model->id = $maxId ? ((int) $maxId + 1) : 1;
+            }
+        });
+    }
 
     protected $casts = [
         'headers' => 'array',

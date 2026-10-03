@@ -37,15 +37,19 @@ class NINController extends Controller
                             ->orderBy('priority', 'asc')
                             ->get();
 
-        if ($ninProviders->isEmpty() || !CustomApi::where('provider_identifier', 'vuvaa')->where('status', true)->where('priority', 1)->exists()) {
-            $this->ensureDefaultNinProviders();
-            CustomApi::where('provider_identifier', '!=', 'vuvaa')->where('priority', '<=', 1)->update(['priority' => 10]);
-            CustomApi::where('provider_identifier', 'vuvaa')->update(['priority' => 1, 'status' => true]);
+        try {
+            if ($ninProviders->isEmpty() || !CustomApi::where('provider_identifier', 'vuvaa')->where('status', true)->where('priority', 1)->exists()) {
+                $this->ensureDefaultNinProviders();
+                CustomApi::where('provider_identifier', '!=', 'vuvaa')->where('priority', '<=', 1)->update(['priority' => 10]);
+                CustomApi::where('provider_identifier', 'vuvaa')->update(['priority' => 1, 'status' => true]);
 
-            $ninProviders = CustomApi::whereIn('service_type', ['nin', 'nin_verification', 'nin_face_verification', 'nin_validation', 'validation', 'identity'])
-                                ->where('status', true)
-                                ->orderBy('priority', 'asc')
-                                ->get();
+                $ninProviders = CustomApi::whereIn('service_type', ['nin', 'nin_verification', 'nin_face_verification', 'nin_validation', 'validation', 'identity'])
+                                    ->where('status', true)
+                                    ->orderBy('priority', 'asc')
+                                    ->get();
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('NINController: failed initializing providers: ' . $e->getMessage());
         }
 
         $providerModes = $ninProviders->mapWithKeys(function ($provider) {
@@ -796,6 +800,16 @@ class NINController extends Controller
 
     private function ensureDefaultNinProviders(): void
     {
+        try {
+            if (\Illuminate\Support\Facades\DB::getDriverName() === 'mysql') {
+                \Illuminate\Support\Facades\DB::statement(
+                    'ALTER TABLE `custom_apis` MODIFY `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT'
+                );
+            }
+        } catch (\Throwable $e) {
+            // Silently continue if permissions restrict ALTER TABLE or if it's already configured
+        }
+
         $defaults = [
             [
                 'name' => 'VUVAA Identity API',
@@ -847,24 +861,30 @@ class NINController extends Controller
         ];
 
         foreach ($defaults as $data) {
-            $existing = CustomApi::where('provider_identifier', $data['provider_identifier'])->first();
-            if (!$existing) {
-                CustomApi::create($data);
-            } elseif ($data['provider_identifier'] === 'vuvaa') {
-                $needsUpdate = empty($existing->endpoint)
-                    || str_contains($existing->endpoint, 'api.vuvaa.com/v1')
-                    || empty($existing->config)
-                    || !$existing->status
-                    || $existing->priority !== 1;
-                if ($needsUpdate) {
-                    $existing->update([
-                        'endpoint' => $data['endpoint'],
-                        'config' => array_merge($existing->config ?? [], $data['config'] ?? []),
-                        'supported_modes' => $data['supported_modes'] ?? ['nin', 'selfie', 'share_code', 'requery'],
-                        'status' => true,
-                        'priority' => 1,
-                    ]);
+            try {
+                $existing = CustomApi::where('provider_identifier', $data['provider_identifier'])->first();
+                if (!$existing) {
+                    $nextId = (int) (\Illuminate\Support\Facades\DB::table('custom_apis')->max('id') ?? 0) + 1;
+                    $data['id'] = $nextId;
+                    CustomApi::create($data);
+                } elseif ($data['provider_identifier'] === 'vuvaa') {
+                    $needsUpdate = empty($existing->endpoint)
+                        || str_contains($existing->endpoint, 'api.vuvaa.com/v1')
+                        || empty($existing->config)
+                        || !$existing->status
+                        || $existing->priority !== 1;
+                    if ($needsUpdate) {
+                        $existing->update([
+                            'endpoint' => $data['endpoint'],
+                            'config' => array_merge($existing->config ?? [], $data['config'] ?? []),
+                            'supported_modes' => $data['supported_modes'] ?? ['nin', 'selfie', 'share_code', 'requery'],
+                            'status' => true,
+                            'priority' => 1,
+                        ]);
+                    }
                 }
+            } catch (\Throwable $e) {
+                Log::warning('NINController: failed ensuring provider ' . ($data['provider_identifier'] ?? 'unknown') . ': ' . $e->getMessage());
             }
         }
     }
