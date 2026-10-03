@@ -154,4 +154,24 @@ class AgentDashboardManagementAndIdCardTest extends TestCase
         $response = $this->actingAs($user)->get(route('agent.id_card'));
         $response->assertStatus(403);
     }
+
+    public function test_agent_landing_promo_section_displays_during_promo_and_hides_after_promo_date(): void
+    {
+        // During promo window (e.g., 5 October 2026)
+        \Carbon\Carbon::setTestNow(\Carbon\Carbon::create(2026, 10, 5, 12, 0, 0, 'Africa/Lagos'));
+        $activeResponse = $this->get(route('agent.landing'));
+        $activeResponse->assertStatus(200);
+        $activeResponse->assertSee('fuwaLaunchPromoSection');
+        $activeResponse->assertSee('FUWA.NG LAUNCH PROMO');
+        $activeResponse->assertSee('https://chat.whatsapp.com/D1NJKVpjqhg6T8wOaLyvOf');
+
+        // After promo end date (e.g., 11 October 2026)
+        \Carbon\Carbon::setTestNow(\Carbon\Carbon::create(2026, 10, 11, 0, 0, 1, 'Africa/Lagos'));
+        $expiredResponse = $this->get(route('agent.landing'));
+        $expiredResponse->assertStatus(200);
+        $expiredResponse->assertDontSee('fuwaLaunchPromoSection');
+
+        \Carbon\Carbon::setTestNow();
+    }
 }
+

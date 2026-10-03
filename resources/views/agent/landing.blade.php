@@ -8,6 +8,8 @@
 @section('og_title', 'Become a Licensed NIN Registration Agent in Nigeria - Fuwa.NG Agent Portal')
 @section('og_description', 'Start your own profitable NIN registration agency in Nigeria. Easy onboarding, verified hardware support, and NIMC compliance.')
 @section('og_type', 'website')
+@section('public_wrapper_class', 'none')
+@section('is_public_page', 'true')
 
 @section('content')
 <style>
@@ -116,7 +118,72 @@
     .hover-translate-up:hover {
         transform: translateY(-3px);
     }
+    .promo-section-card {
+        background: linear-gradient(135deg, rgba(6, 78, 59, 0.85) 0%, rgba(15, 23, 42, 0.95) 55%, rgba(20, 83, 45, 0.85) 100%);
+        border: 2px solid rgba(250, 204, 21, 0.45);
+        border-radius: 1.5rem;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45), 0 0 40px rgba(16, 185, 129, 0.15);
+        position: relative;
+        overflow: hidden;
+    }
+    .promo-price-box {
+        background: linear-gradient(135deg, #065f46 0%, #047857 100%);
+        border: 2px solid rgba(250, 204, 21, 0.6);
+        border-radius: 1.25rem;
+        position: relative;
+    }
+    .promo-discount-badge {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: #fff;
+        border: 3px solid #facc15;
+        border-radius: 1rem;
+        transform: rotate(-6deg);
+        box-shadow: 0 10px 25px rgba(220, 38, 38, 0.45);
+    }
+    .promo-req-card {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        border-radius: 1rem;
+        transition: all 0.25s ease;
+    }
+    .promo-req-card:hover {
+        background: rgba(16, 185, 129, 0.1);
+        border-color: rgba(250, 204, 21, 0.5);
+        transform: translateY(-3px);
+    }
+    .promo-flyer-img {
+        border-radius: 1.25rem;
+        border: 3px solid rgba(250, 204, 21, 0.5);
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+        transition: transform 0.3s ease;
+    }
+    .promo-flyer-img:hover {
+        transform: scale(1.015);
+    }
+    .whatsapp-promo-btn {
+        background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+        color: #fff !important;
+        border: none;
+        box-shadow: 0 8px 20px rgba(37, 211, 102, 0.3);
+    }
+    .whatsapp-promo-btn:hover {
+        background: linear-gradient(135deg, #22c35e 0%, #0f766e 100%);
+        color: #fff !important;
+    }
+    .countdown-box {
+        min-width: 58px;
+        background: rgba(15, 23, 42, 0.75);
+        border: 1px solid rgba(250, 204, 21, 0.4);
+        border-radius: 0.75rem;
+        padding: 0.4rem 0.6rem;
+        text-align: center;
+    }
 </style>
+
+@php
+    $promoEndsAt = \Carbon\Carbon::create(2026, 10, 10, 23, 59, 59, 'Africa/Lagos');
+    $isPromoActive = now('Africa/Lagos')->lte($promoEndsAt);
+@endphp
 
 <div class="hero-section py-5">
     <div class="container-fluid px-lg-5">
@@ -124,9 +191,17 @@
         <!-- Hero Section -->
         <div class="row align-items-center mb-5 py-lg-4 g-5">
             <div class="col-lg-7">
-                <div class="d-inline-flex align-items-center badge bg-primary bg-opacity-25 text-primary border border-primary border-opacity-25 px-3 py-2 rounded-pill mb-4 shadow-sm">
-                    <span class="spinner-grow spinner-grow-sm me-2" role="status" aria-hidden="true" style="animation-duration: 2s;"></span>
-                    <i class="fa-solid fa-id-card me-2 d-none"></i> NIMC Accredited Ecosystem Partner
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-4">
+                    <div class="d-inline-flex align-items-center badge bg-primary bg-opacity-25 text-primary border border-primary border-opacity-25 px-3 py-2 rounded-pill shadow-sm">
+                        <span class="spinner-grow spinner-grow-sm me-2" role="status" aria-hidden="true" style="animation-duration: 2s;"></span>
+                        <i class="fa-solid fa-id-card me-2 d-none"></i> NIMC Accredited Ecosystem Partner
+                    </div>
+                    @if($isPromoActive)
+                        <a href="#fuwaLaunchPromoSection" id="fuwaHeroPromoBadge" class="d-inline-flex align-items-center badge bg-danger text-white border border-warning px-3 py-2 rounded-pill text-decoration-none shadow-sm hover-translate-up">
+                            <i class="fa-solid fa-bullhorn text-warning me-2"></i>
+                            <span>LAUNCH PROMO: 50% OFF LICENCE (4–10 OCT)</span>
+                        </a>
+                    @endif
                 </div>
                 <h1 class="display-4 text-white fw-extrabold mb-4 lh-sm">
                     Build a Profitable <br>
@@ -257,6 +332,193 @@
                 </div>
             </div>
         </div>
+
+        @if($isPromoActive)
+        <!-- FUWA.NG Launch Promo Section (Auto-hidden after 10 October 2026) -->
+        <div id="fuwaLaunchPromoSection" class="mb-5 pb-3" data-promo-end="2026-10-10T23:59:59+01:00">
+            <div class="promo-section-card p-4 p-lg-5">
+                <div class="row align-items-center g-4 g-lg-5">
+                    <!-- Left Column: Promo Details & CTAs -->
+                    <div class="col-lg-7">
+                        <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                            <span class="badge bg-danger text-white px-3 py-2 rounded-pill fw-bold fs-6 shadow-sm">
+                                <i class="fa-solid fa-bullhorn text-warning me-2"></i>FUWA.NG LAUNCH PROMO
+                            </span>
+                            <span class="badge bg-success text-white border border-warning px-3 py-2 rounded-pill fw-bold fs-6 shadow-sm">
+                                <i class="fa-regular fa-calendar-check text-warning me-2"></i>4 – 10 OCTOBER 2026 ONLY
+                            </span>
+                        </div>
+
+                        <h2 class="text-white fw-extrabold display-6 mb-2">
+                            BECOME A <span class="text-warning">FUWA.NG</span> AGENT
+                        </h2>
+                        <p class="text-white-50 fs-5 mb-4">
+                            Offer <strong class="text-white">NIN &amp; BVN enrolment services</strong> in your location and be part of a growing network.
+                        </p>
+
+                        <!-- Pricing Box -->
+                        <div class="promo-price-box p-4 mb-4 shadow-lg">
+                            <div class="row align-items-center g-3">
+                                <div class="col-sm-8 text-center text-sm-start">
+                                    <span class="badge bg-warning text-dark fw-extrabold px-3 py-1 rounded-pill text-uppercase mb-2">
+                                        Licence Price
+                                    </span>
+                                    <div class="d-flex align-items-baseline justify-content-center justify-content-sm-start gap-3 flex-wrap">
+                                        <span class="text-white-50 fs-3 fw-bold text-decoration-line-through" style="text-decoration-color: #ef4444 !important; text-decoration-thickness: 3px !important;">
+                                            &#8358;200,000
+                                        </span>
+                                        <span class="badge bg-dark bg-opacity-50 text-warning small text-uppercase">Now Only</span>
+                                    </div>
+                                    <div class="display-4 fw-extrabold text-warning lh-1 mt-1">
+                                        &#8358;100,000
+                                    </div>
+                                </div>
+                                <div class="col-sm-4 text-center">
+                                    <div class="promo-discount-badge d-inline-block px-4 py-3">
+                                        <div class="display-5 fw-extrabold lh-1">50<small class="fs-4">%</small></div>
+                                        <div class="fw-bold text-warning text-uppercase small tracking-wider">OFF</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 3 Promo Pillars -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-4">
+                                <div class="promo-req-card p-3 h-100 text-center text-md-start">
+                                    <div class="d-inline-flex align-items-center justify-content-center bg-success bg-opacity-25 text-success rounded-circle mb-2" style="width: 42px; height: 42px;">
+                                        <i class="fa-solid fa-fingerprint fs-5"></i>
+                                    </div>
+                                    <h6 class="text-white fw-bold mb-1">Have an Enrolment Device</h6>
+                                    <p class="text-white-50 small mb-0">You should already have an enrolment device.</p>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="promo-req-card p-3 h-100 text-center text-md-start">
+                                    <div class="d-inline-flex align-items-center justify-content-center bg-success bg-opacity-25 text-success rounded-circle mb-2" style="width: 42px; height: 42px;">
+                                        <i class="fa-solid fa-users fs-5"></i>
+                                    </div>
+                                    <h6 class="text-white fw-bold mb-1">Ready for Mass Enrolment</h6>
+                                    <p class="text-white-50 small mb-0">Be ready to carry out at least <strong class="text-white">500 enrolments per month</strong>.</p>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="promo-req-card p-3 h-100 text-center text-md-start">
+                                    <div class="d-inline-flex align-items-center justify-content-center bg-success bg-opacity-25 text-success rounded-circle mb-2" style="width: 42px; height: 42px;">
+                                        <i class="fa-solid fa-user-plus fs-5"></i>
+                                    </div>
+                                    <h6 class="text-white fw-bold mb-1">No Existing Users? No Problem.</h6>
+                                    <p class="text-white-50 small mb-0">We will support you with users to help you get started.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Countdown & Promo End Bar -->
+                        <div class="d-flex flex-column flex-md-row align-items-center justify-content-between bg-dark bg-opacity-50 border border-secondary border-opacity-25 rounded-4 p-3 mb-4 gap-3">
+                            <div class="d-flex align-items-center gap-2 text-center text-md-start">
+                                <i class="fa-solid fa-clock text-danger fs-3"></i>
+                                <div>
+                                    <div class="text-white-50 small text-uppercase fw-bold">Promo Ends</div>
+                                    <div class="text-warning fw-extrabold fs-5">10 OCTOBER 2026</div>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center gap-2" id="promoCountdownTimer">
+                                <div class="countdown-box">
+                                    <div class="text-warning fw-bold fs-5 lh-1" id="promoDays">--</div>
+                                    <small class="text-white-50" style="font-size: 0.65rem;">DAYS</small>
+                                </div>
+                                <div class="countdown-box">
+                                    <div class="text-warning fw-bold fs-5 lh-1" id="promoHours">--</div>
+                                    <small class="text-white-50" style="font-size: 0.65rem;">HRS</small>
+                                </div>
+                                <div class="countdown-box">
+                                    <div class="text-warning fw-bold fs-5 lh-1" id="promoMinutes">--</div>
+                                    <small class="text-white-50" style="font-size: 0.65rem;">MINS</small>
+                                </div>
+                                <div class="countdown-box">
+                                    <div class="text-warning fw-bold fs-5 lh-1" id="promoSeconds">--</div>
+                                    <small class="text-white-50" style="font-size: 0.65rem;">SECS</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="d-flex flex-column flex-sm-row align-items-stretch align-items-sm-center gap-2 gap-sm-3">
+                            <a href="https://chat.whatsapp.com/D1NJKVpjqhg6T8wOaLyvOf" target="_blank" rel="noopener noreferrer" class="btn whatsapp-promo-btn rounded-pill px-4 py-2.5 fw-bold hover-translate-up d-inline-flex align-items-center justify-content-center">
+                                <i class="fa-brands fa-whatsapp fs-5 me-2"></i>Join Promo WhatsApp Group
+                            </a>
+                            <a href="{{ route('agent.register', ['type' => 'new']) }}" class="btn btn-warning text-dark rounded-pill px-4 py-2.5 fw-bold hover-translate-up shadow-sm d-inline-flex align-items-center justify-content-center">
+                                <i class="fa-solid fa-bolt me-2"></i>Claim 50% Off Licence Now
+                            </a>
+                        </div>
+
+                        <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-sm-start gap-3 mt-3 pt-2 text-white-50 small">
+                            <span><i class="fa-solid fa-handshake text-success me-1"></i>Get Licensed.</span>
+                            <span>•</span>
+                            <span><i class="fa-solid fa-chart-simple text-warning me-1"></i>Get Started.</span>
+                            <span>•</span>
+                            <span><i class="fa-solid fa-users text-info me-1"></i>Get Enrolling.</span>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Official Flyer & QR Code Link -->
+                    <div class="col-lg-5 text-center">
+                        <div class="position-relative d-inline-block">
+                            <a href="https://chat.whatsapp.com/D1NJKVpjqhg6T8wOaLyvOf" target="_blank" rel="noopener noreferrer" title="Click to join the FUWA.NG Launch Promo WhatsApp Group">
+                                <img src="{{ asset('images/fuwa-launch-promo-oct-2026.jpg') }}" alt="FUWA.NG Launch Promo - 50% Off Agent Licence (4 - 10 October 2026)" class="img-fluid promo-flyer-img">
+                            </a>
+                            <div class="mt-3 bg-dark bg-opacity-75 border border-success border-opacity-50 rounded-pill px-3 py-2 d-inline-flex align-items-center gap-2">
+                                <i class="fa-brands fa-whatsapp text-success fs-5"></i>
+                                <a href="https://chat.whatsapp.com/D1NJKVpjqhg6T8wOaLyvOf" target="_blank" rel="noopener noreferrer" class="text-white text-decoration-none small fw-semibold">
+                                    Scan QR code on flyer or <span class="text-warning text-decoration-underline">tap here to join group</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            (function () {
+                const promoSection = document.getElementById('fuwaLaunchPromoSection');
+                const heroBadge = document.getElementById('fuwaHeroPromoBadge');
+                if (!promoSection) return;
+
+                const endIso = promoSection.getAttribute('data-promo-end');
+                const endTime = new Date(endIso).getTime();
+
+                function updatePromoTimer() {
+                    const now = Date.now();
+                    const diff = endTime - now;
+
+                    if (diff <= 0) {
+                        promoSection.remove();
+                        if (heroBadge) heroBadge.remove();
+                        return;
+                    }
+
+                    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+                    const minutes = Math.floor((diff / 1000 / 60) % 60);
+                    const seconds = Math.floor((diff / 1000) % 60);
+
+                    const dEl = document.getElementById('promoDays');
+                    const hEl = document.getElementById('promoHours');
+                    const mEl = document.getElementById('promoMinutes');
+                    const sEl = document.getElementById('promoSeconds');
+
+                    if (dEl) dEl.textContent = String(days).padStart(2, '0');
+                    if (hEl) hEl.textContent = String(hours).padStart(2, '0');
+                    if (mEl) mEl.textContent = String(minutes).padStart(2, '0');
+                    if (sEl) sEl.textContent = String(seconds).padStart(2, '0');
+                }
+
+                updatePromoTimer();
+                setInterval(updatePromoTimer, 1000);
+            })();
+        </script>
+        @endif
 
         <!-- Features Matrix -->
         <div class="row mb-5 py-5">
