@@ -54,6 +54,23 @@ class FundingController extends Controller
             }
 
             $gateway->config = $publicConfig;
+
+            $gwKey = strtolower((string) $gateway->name);
+            $knownLogos = [
+                'paystack' => '/images/gateways/paystack.svg',
+                'flutterwave' => '/images/gateways/flutterwave.svg',
+                'monnify' => '/images/gateways/monnify.svg',
+                'payvessel' => '/images/gateways/payvessel.svg',
+                'palmpay' => '/images/gateways/palmpay.svg',
+            ];
+            if (isset($knownLogos[$gwKey])) {
+                $gateway->logo_url = asset($knownLogos[$gwKey]);
+            } elseif (empty($gateway->logo_url)) {
+                $gateway->logo_url = asset('images/gateways/' . $gwKey . '.svg');
+            } else {
+                $gateway->logo_url = asset(ltrim((string) $gateway->logo_url, '/'));
+            }
+
             return $gateway;
         });
 

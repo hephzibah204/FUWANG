@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 36" fill="none">
+  <!-- Flutterwave Waves Icon -->
+  <g transform="translate(4, 4)">
+    <path d="M14 0C6.268 0 0 6.268 0 14c0 7.732 6.268 14 14 14 3.866 0 7.366-1.567 9.9-4.1-2.6 0-5.1-1.05-6.9-2.85-3.8-3.8-3.8-9.95 0-13.75C18.9 5.4 21.4 4.35 24 4.35 21.466 1.667 17.966 0 14 0z" fill="#F5A623"/>
+    <path d="M19.5 5.5c-3.1 3.1-3.1 8.1 0 11.2 1.45 1.45 3.4 2.25 5.45 2.25-1.95 3.3-5.55 5.5-9.7 5.5-4.5 0-8.3-2.65-10-6.5 1.7-3.85 5.5-6.5 10-6.5 1.5 0 2.95.3 4.25.85z" fill="#FF5722"/>
+    <path d="M22 8c-2 2-2 5.2 0 7.2 1.4 1.4 3.3 2.1 5.2 2-1 3.2-3.9 5.5-7.4 5.5-3.1 0-5.8-1.7-7.2-4.2 1.4-2.5 4.1-4.2 7.2-4.2.8 0 1.5.15 2.2.45z" fill="#007AFF"/>
+  </g>
+  <!-- Flutterwave Wordmark -->
+  <text x="38" y="24" fill="#FFFFFF" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="700" letter-spacing="-0.3px">Flutterwave</text>
+</svg>

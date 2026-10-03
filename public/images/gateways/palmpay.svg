@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 36" fill="none">
+  <!-- PalmPay Icon -->
+  <g transform="translate(4, 5)">
+    <rect width="26" height="26" rx="6" fill="#7B2CBF"/>
+    <path d="M13 7v12M9 11c2-2 6-2 8 0M7 15c3-3 9-3 12 0" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/>
+  </g>
+  <!-- PalmPay Wordmark -->
+  <text x="36" y="24" fill="#FFFFFF" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-size="18" font-weight="700" letter-spacing="-0.3px">PalmPay</text>
+</svg>

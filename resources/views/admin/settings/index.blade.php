@@ -932,11 +932,12 @@
                     <tr class="border-bottom border-white-10">
                         <td class="py-3">
                             <div class="d-flex align-items-center">
-                                @if($gateway->logo_url)
-                                    <img src="{{ $gateway->logo_url }}" alt="{{ $gateway->display_name }}" style="height: 24px; width: 24px; object-fit: contain; margin-right: 12px;">
-                                @else
-                                    <div style="width: 24px; height: 24px; background: rgba(255,255,255,0.1); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 0.6rem; margin-right: 12px;">{{ substr($gateway->display_name, 0, 1) }}</div>
-                                @endif
+                                @php
+                                    $gwKey = strtolower((string) ($gateway->name ?? ''));
+                                    $gwLogo = $gateway->logo_url ?: asset('images/gateways/' . $gwKey . '.svg');
+                                @endphp
+                                <img src="{{ $gwLogo }}" alt="{{ $gateway->display_name }}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" style="height: 24px; width: 24px; object-fit: contain; margin-right: 12px;">
+                                <div style="display: none; width: 24px; height: 24px; background: rgba(255,255,255,0.1); border-radius: 4px; align-items: center; justify-content: center; font-size: 0.6rem; margin-right: 12px;">{{ substr($gateway->display_name, 0, 1) }}</div>
                                 <div>
                                     <div class="fw-bold">{{ $gateway->display_name }}</div>
                                     <div class="text-white-50 x-small font-monospace">{{ strtoupper($gateway->name) }}</div>

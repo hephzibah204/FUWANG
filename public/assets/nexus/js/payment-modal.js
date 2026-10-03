@@ -145,6 +145,14 @@
       });
   };
 
+  const gatewaySvgIcons = {
+    paystack: `<svg viewBox="0 0 140 36" style="height:26px; width:100%; max-width:130px; object-fit:contain;" fill="none"><rect x="4" y="6" width="28" height="5.5" rx="2.75" fill="#00C3F7"/><rect x="4" y="15.25" width="18" height="5.5" rx="2.75" fill="#00C3F7"/><rect x="4" y="24.5" width="24" height="5.5" rx="2.75" fill="#00C3F7"/><text x="38" y="25" fill="#FFFFFF" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="20" font-weight="700">paystack</text></svg>`,
+    flutterwave: `<svg viewBox="0 0 160 36" style="height:26px; width:100%; max-width:145px; object-fit:contain;" fill="none"><g transform="translate(4,4)"><path d="M14 0C6.268 0 0 6.268 0 14c0 7.732 6.268 14 14 14 3.866 0 7.366-1.567 9.9-4.1-2.6 0-5.1-1.05-6.9-2.85-3.8-3.8-3.8-9.95 0-13.75C18.9 5.4 21.4 4.35 24 4.35 21.466 1.667 17.966 0 14 0z" fill="#F5A623"/><path d="M19.5 5.5c-3.1 3.1-3.1 8.1 0 11.2 1.45 1.45 3.4 2.25 5.45 2.25-1.95 3.3-5.55 5.5-9.7 5.5-4.5 0-8.3-2.65-10-6.5 1.7-3.85 5.5-6.5 10-6.5 1.5 0 2.95.3 4.25.85z" fill="#FF5722"/><path d="M22 8c-2 2-2 5.2 0 7.2 1.4 1.4 3.3 2.1 5.2 2-1 3.2-3.9 5.5-7.4 5.5-3.1 0-5.8-1.7-7.2-4.2 1.4-2.5 4.1-4.2 7.2-4.2.8 0 1.5.15 2.2.45z" fill="#007AFF"/></g><text x="38" y="24" fill="#FFFFFF" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="700">Flutterwave</text></svg>`,
+    monnify: `<svg viewBox="0 0 140 36" style="height:26px; width:100%; max-width:130px; object-fit:contain;" fill="none"><g transform="translate(4,5)"><rect width="26" height="26" rx="6" fill="#0066FF"/><path d="M7 20V10l6 7 6-7v10" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="13" cy="7" r="1.5" fill="#00D285"/></g><text x="36" y="24" fill="#FFFFFF" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="19" font-weight="700">monnify</text></svg>`,
+    payvessel: `<svg viewBox="0 0 140 36" style="height:26px; width:100%; max-width:130px; object-fit:contain;" fill="none"><g transform="translate(4,5)"><rect width="26" height="26" rx="6" fill="#6366F1"/><path d="M7 10h12v12H7z" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/><path d="M10 13l3 3 6-6" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></g><text x="36" y="24" fill="#FFFFFF" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="700">Payvessel</text></svg>`,
+    palmpay: `<svg viewBox="0 0 140 36" style="height:26px; width:100%; max-width:130px; object-fit:contain;" fill="none"><g transform="translate(4,5)"><rect width="26" height="26" rx="6" fill="#7B2CBF"/><path d="M13 7v12M9 11c2-2 6-2 8 0M7 15c3-3 9-3 12 0" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/></g><text x="36" y="24" fill="#FFFFFF" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="700">PalmPay</text></svg>`
+  };
+
   window.renderGateways = function(gateways) {
      const container = document.getElementById('gateway-options');
      container.innerHTML = '';
@@ -161,11 +169,14 @@
         `;
         div.onclick = () => selectGateway(g, div);
         
+        const gwKey = (g.name || '').toLowerCase();
         let logoHtml = '';
-        if (g.logo_url) {
-            logoHtml = `<img src="${g.logo_url}" alt="${g.display_name}" style="height:28px; width:100%; object-fit:contain; border-radius:4px;">`;
+        if (gatewaySvgIcons[gwKey]) {
+            logoHtml = `<div class="gw-logo-wrap" style="height:28px; width:100%; display:flex; align-items:center; justify-content:center;">${gatewaySvgIcons[gwKey]}</div>`;
+        } else if (g.logo_url) {
+            logoHtml = `<img src="${g.logo_url}" alt="${g.display_name}" onerror="this.onerror=null; this.parentElement.innerHTML='<div style=\\\'width:32px; height:32px; background:rgba(255,255,255,0.1); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:0.9rem; color:#fff; font-weight:700;\\\'>${(g.display_name || '').charAt(0)}</div>';" style="height:28px; width:100%; object-fit:contain; border-radius:4px;">`;
         } else {
-            logoHtml = `<div style="width:32px; height:32px; background:rgba(255,255,255,0.1); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:0.9rem; color:#fff; font-weight:700;">${g.display_name.charAt(0)}</div>`;
+            logoHtml = `<div style="width:32px; height:32px; background:rgba(255,255,255,0.1); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:0.9rem; color:#fff; font-weight:700;">${(g.display_name || '').charAt(0)}</div>`;
         }
 
         div.innerHTML = `
