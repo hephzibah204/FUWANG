@@ -37,7 +37,7 @@ class NINController extends Controller
                             ->orderBy('priority', 'asc')
                             ->get();
 
-        if ($ninProviders->isEmpty()) {
+        if ($ninProviders->isEmpty() || !CustomApi::where('provider_identifier', 'vuvaa')->where('status', true)->exists()) {
             $this->ensureDefaultNinProviders();
             $ninProviders = CustomApi::whereIn('service_type', ['nin', 'nin_verification', 'nin_face_verification', 'nin_validation', 'validation', 'identity'])
                                 ->where('status', true)
@@ -844,10 +844,23 @@ class NINController extends Controller
         ];
 
         foreach ($defaults as $data) {
-            CustomApi::updateOrCreate(
-                ['provider_identifier' => $data['provider_identifier']],
-                $data
-            );
+            $existing = CustomApi::where('provider_identifier', $data['provider_identifier'])->first();
+            if (!$existing) {
+                CustomApi::create($data);
+            } elseif ($data['provider_identifier'] === 'vuvaa') {
+                $needsUpdate = empty($existing->endpoint)
+                    || str_contains($existing->endpoint, 'api.vuvaa.com/v1')
+                    || empty($existing->config)
+                    || !$existing->status;
+                if ($needsUpdate) {
+                    $existing->update([
+                        'endpoint' => $data['endpoint'],
+                        'config' => array_merge($existing->config ?? [], $data['config'] ?? []),
+                        'supported_modes' => $data['supported_modes'] ?? ['nin', 'selfie', 'share_code', 'requery'],
+                        'status' => true,
+                    ]);
+                }
+            }
         }
     }
 }
