@@ -239,9 +239,11 @@
                                         <div class="input-wrap">
                                             <i class="fa-solid fa-server"></i>
                                             <select id="api_provider_id" name="api_provider_id" class="form-control" onchange="updateVerificationTypes()">
-                                                <option value="">-- Auto-select (Default) --</option>
+                                                <option value="">-- Auto-select (Default: VUVAA) --</option>
                                                 @foreach($ninProviders as $provider)
-                                                    <option value="{{ $provider->id }}" data-provider="{{ $provider->provider_identifier }}" data-types="{{ json_encode($provider->verificationTypes->where('status', true)) }}">{{ $provider->name }}</option>
+                                                    <option value="{{ $provider->id }}" data-provider="{{ $provider->provider_identifier }}" data-types="{{ json_encode($provider->verificationTypes->where('status', true)) }}" {{ $provider->provider_identifier === 'vuvaa' ? 'selected' : '' }}>
+                                                        {{ $provider->name }}{{ $provider->provider_identifier === 'vuvaa' ? ' (Provider 1 - Primary)' : '' }}
+                                                    </option>
                                                 @endforeach
                                             </select>
                                         </div>
@@ -503,6 +505,15 @@
                 if (availableOption) {
                     providerSelect.value = availableOption.value;
                 }
+            }
+
+            // Always select VUVAA as Provider 1 for modes it supports (nin, selfie, share_code, requery)
+            const vuvaaOption = Array.from(providerSelect.options).find(opt => {
+                if (opt.value === '' || opt.style.display === 'none') return false;
+                return (opt.getAttribute('data-provider') || '').toLowerCase() === 'vuvaa';
+            });
+            if (vuvaaOption && ['nin', 'selfie', 'share_code', 'requery'].includes(mode)) {
+                providerSelect.value = vuvaaOption.value;
             }
 
             if (mode === 'validation' || mode === 'validation_status') {

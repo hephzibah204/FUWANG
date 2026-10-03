@@ -37,8 +37,11 @@ class NINController extends Controller
                             ->orderBy('priority', 'asc')
                             ->get();
 
-        if ($ninProviders->isEmpty() || !CustomApi::where('provider_identifier', 'vuvaa')->where('status', true)->exists()) {
+        if ($ninProviders->isEmpty() || !CustomApi::where('provider_identifier', 'vuvaa')->where('status', true)->where('priority', 1)->exists()) {
             $this->ensureDefaultNinProviders();
+            CustomApi::where('provider_identifier', '!=', 'vuvaa')->where('priority', '<=', 1)->update(['priority' => 10]);
+            CustomApi::where('provider_identifier', 'vuvaa')->update(['priority' => 1, 'status' => true]);
+
             $ninProviders = CustomApi::whereIn('service_type', ['nin', 'nin_verification', 'nin_face_verification', 'nin_validation', 'validation', 'identity'])
                                 ->where('status', true)
                                 ->orderBy('priority', 'asc')
@@ -795,6 +798,26 @@ class NINController extends Controller
     {
         $defaults = [
             [
+                'name' => 'VUVAA Identity API',
+                'service_type' => 'nin_verification',
+                'provider_identifier' => 'vuvaa',
+                'endpoint' => 'https://premiere.vuvaa.com/demo/NIN_Validation_LIVE',
+                'config' => [
+                    'username' => 'fuwa_demo_0417190741',
+                    'password' => 'Password',
+                    'encryption_key' => 'FD!-F=15B46BAD21',
+                    'encryption_iv' => '0123456789012345',
+                    'verify_nin_path' => 'verify_nin',
+                    'in_person_path' => 'in_person_verification',
+                    'share_code_path' => 'share_code',
+                    'requery_path' => 'requery',
+                    'reason' => 'nyscCheck',
+                ],
+                'status' => true,
+                'priority' => 1,
+                'supported_modes' => ['nin', 'selfie', 'share_code', 'requery'],
+            ],
+            [
                 'name' => 'Dataverify API',
                 'service_type' => 'nin_verification',
                 'provider_identifier' => 'dataverify',
@@ -813,32 +836,12 @@ class NINController extends Controller
                 'supported_modes' => ['nin', 'phone', 'validation', 'validation_status', 'clearance'],
             ],
             [
-                'name' => 'VUVAA Identity API',
-                'service_type' => 'nin_verification',
-                'provider_identifier' => 'vuvaa',
-                'endpoint' => 'https://premiere.vuvaa.com/demo/NIN_Validation_LIVE',
-                'config' => [
-                    'username' => 'fuwa_demo_0417190741',
-                    'password' => 'Password',
-                    'encryption_key' => 'FD!-F=15B46BAD21',
-                    'encryption_iv' => '0123456789012345',
-                    'verify_nin_path' => 'verify_nin',
-                    'in_person_path' => 'in_person_verification',
-                    'share_code_path' => 'share_code',
-                    'requery_path' => 'requery',
-                    'reason' => 'nyscCheck',
-                ],
-                'status' => true,
-                'priority' => 30,
-                'supported_modes' => ['nin', 'selfie', 'share_code', 'requery'],
-            ],
-            [
                 'name' => 'VerifyMe NG',
                 'service_type' => 'nin_verification',
                 'provider_identifier' => 'verifyme',
                 'endpoint' => 'https://v2.verifyme.ng/api/v1/verifications/identities/nin',
                 'status' => true,
-                'priority' => 40,
+                'priority' => 30,
                 'supported_modes' => ['nin', 'phone', 'demographic'],
             ],
         ];
@@ -851,13 +854,15 @@ class NINController extends Controller
                 $needsUpdate = empty($existing->endpoint)
                     || str_contains($existing->endpoint, 'api.vuvaa.com/v1')
                     || empty($existing->config)
-                    || !$existing->status;
+                    || !$existing->status
+                    || $existing->priority !== 1;
                 if ($needsUpdate) {
                     $existing->update([
                         'endpoint' => $data['endpoint'],
                         'config' => array_merge($existing->config ?? [], $data['config'] ?? []),
                         'supported_modes' => $data['supported_modes'] ?? ['nin', 'selfie', 'share_code', 'requery'],
                         'status' => true,
+                        'priority' => 1,
                     ]);
                 }
             }
