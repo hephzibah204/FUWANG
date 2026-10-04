@@ -38,16 +38,14 @@ class NINController extends Controller
                             ->get();
 
         try {
-            if ($ninProviders->isEmpty() || !CustomApi::where('provider_identifier', 'vuvaa')->where('status', true)->where('priority', 1)->exists()) {
-                $this->ensureDefaultNinProviders();
-                CustomApi::where('provider_identifier', '!=', 'vuvaa')->where('priority', '<=', 1)->update(['priority' => 10]);
-                CustomApi::where('provider_identifier', 'vuvaa')->update(['priority' => 1, 'status' => true]);
+            $this->ensureDefaultNinProviders();
+            CustomApi::where('provider_identifier', '!=', 'vuvaa')->where('priority', '<=', 1)->update(['priority' => 10]);
+            CustomApi::where('provider_identifier', 'vuvaa')->update(['priority' => 1, 'status' => true]);
 
-                $ninProviders = CustomApi::whereIn('service_type', ['nin', 'nin_verification', 'nin_face_verification', 'nin_validation', 'validation', 'identity'])
-                                    ->where('status', true)
-                                    ->orderBy('priority', 'asc')
-                                    ->get();
-            }
+            $ninProviders = CustomApi::whereIn('service_type', ['nin', 'nin_verification', 'nin_face_verification', 'nin_validation', 'validation', 'identity'])
+                                ->where('status', true)
+                                ->orderBy('priority', 'asc')
+                                ->get();
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning('NINController: failed initializing providers: ' . $e->getMessage());
         }
@@ -115,6 +113,22 @@ class NINController extends Controller
         $user = Auth::user();
         $mode = $request->input('mode', 'nin');
 
+        // Sanitize input number: strip non-digits for nin, phone, and selfie modes
+        if ($request->filled('number')) {
+            if (in_array($mode, ['nin', 'phone', 'selfie'], true)) {
+                $cleanedNumber = preg_replace('/\D/', '', (string) $request->input('number'));
+                $request->merge(['number' => $cleanedNumber]);
+            } else {
+                $request->merge(['number' => trim((string) $request->input('number'))]);
+            }
+        }
+
+        try {
+            $this->ensureDefaultNinProviders();
+        } catch (\Throwable $e) {
+            Log::warning('NINController verify: failed ensuring providers: ' . $e->getMessage());
+        }
+
         // Do not treat `_nin_verify_json` alone as "wants JSON": a normal form POST includes
         // that hidden field and would otherwise render the JSON body as a full HTML page.
         $xhr = strtolower((string) $request->header('X-Requested-With', '')) === 'xmlhttprequest';
@@ -140,46 +154,49 @@ class NINController extends Controller
                 $client = new VuvaaClient($provider);
                 $walletResp = $client->getWalletDetails();
                 
-                if (!$walletResp['ok']) {
-                    $msg = 'Failed to check wallet balance. ' . $walletResp['message'];
-                    if ($wantsJsonResponse) {
-                        return response()->json([
-                            'status' => false,
-                            'message' => $msg,
-                        ], 402);
-                    }
-                    return back()->withErrors(['nin' => $msg])->withInput();
-                }
-                
                 $unitsAvailable = (int) (
                     $walletResp['data']['wallet_units']
                     ?? $walletResp['data']['data'][0]['validation_units']
                     ?? $walletResp['data']['data']['validation_units']
                     ?? 0
                 );
-                if ($unitsAvailable < 1) {
-                    $msg = 'Insufficient units — please top up wallet';
+
+                if (!$walletResp['ok'] || $unitsAvailable < 1) {
+                    $walletMsg = !$walletResp['ok']
+                        ? ('Wallet check failed: ' . ($walletResp['message'] ?? 'Unknown error'))
+                        : 'Insufficient units — please top up wallet';
+
+                    if ($request->filled('api_provider_id')) {
+                        if ($wantsJsonResponse) {
+                            return response()->json([
+                                'status' => false,
+                                'message' => $walletMsg,
+                                'units_available' => $unitsAvailable,
+                            ], 402);
+                        }
+                        return back()->withErrors(['nin' => $walletMsg])->withInput();
+                    }
+
+                    // Auto-select mode: bypass Vuvaa and failover to next provider
+                    Log::warning("Vuvaa bypassed due to wallet status: {$walletMsg}");
+                    $provider = null;
+                }
+            } catch (\Throwable $e) {
+                Log::warning('Vuvaa wallet check failed: ' . $e->getMessage());
+                if ($request->filled('api_provider_id')) {
+                    $msg = $this->isTechnicalError($e->getMessage())
+                        ? 'Verification provider temporarily unavailable. Please try again shortly.'
+                        : ('Wallet check failed: ' . $e->getMessage());
                     if ($wantsJsonResponse) {
                         return response()->json([
                             'status' => false,
                             'message' => $msg,
-                            'units_available' => $unitsAvailable,
-                        ], 402);
+                        ], 503);
                     }
                     return back()->withErrors(['nin' => $msg])->withInput();
                 }
-            } catch (\Throwable $e) {
-                Log::warning('Vuvaa wallet check failed: ' . $e->getMessage());
-                $msg = $this->isTechnicalError($e->getMessage())
-                    ? 'Verification provider temporarily unavailable. Please try again shortly.'
-                    : ('Wallet check failed: ' . $e->getMessage());
-                if ($wantsJsonResponse) {
-                    return response()->json([
-                        'status' => false,
-                        'message' => $msg,
-                    ], 503);
-                }
-                return back()->withErrors(['nin' => $msg])->withInput();
+                // Auto-select mode: proceed with failover
+                $provider = null;
             }
         }
 
@@ -228,55 +245,57 @@ class NINController extends Controller
             }
 
             // --- SMART ROUTING LOGIC ---
-            $activeProviders = [];
+            $query = CustomApi::whereIn('service_type', ['nin', 'nin_verification', 'nin_face_verification', 'nin_validation', 'validation', 'identity'])
+                ->where('status', true)
+                ->orderBy('priority', 'asc');
+
+            if (in_array($mode, ['validation', 'validation_status'], true)) {
+                $query->where('provider_identifier', 'robosttech');
+            }
+
+            $allActiveProviders = $query->get()
+                ->filter(fn (CustomApi $candidate) => $this->providerSupportsMode($candidate, $mode))
+                ->values();
+
             if ($provider) {
-                // If user specifically picked a provider, try it first
-                $activeProviders = [$provider];
-            } else {
-                // Otherwise, get all active providers for this mode
-                $query = CustomApi::whereIn('service_type', ['nin', 'nin_verification', 'nin_face_verification'])
-                    ->where('status', true)
-                    ->orderBy('priority', 'asc');
-
-                if (in_array($mode, ['validation', 'validation_status'], true)) {
-                    $query->where('provider_identifier', 'robosttech');
-                }
-
-                $activeProviders = $query->get()
-                    ->filter(fn (CustomApi $candidate) => $this->providerSupportsMode($candidate, $mode))
+                // If user specifically picked a provider, try it first, followed by others as failover
+                $activeProviders = collect([$provider])
+                    ->concat($allActiveProviders->reject(fn (CustomApi $c) => $c->id === $provider->id))
                     ->values();
+            } else {
+                $activeProviders = $allActiveProviders;
             }
 
             $response = ['status' => false, 'message' => 'No active verification provider is configured.'];
             $errors = [];
-            $terminalFailure = false;
 
             // Try each custom provider in order
             foreach ($activeProviders as $p) {
                 try {
-                    $response = $this->callCustomProvider($p, $request, $mode, $selfieMeta);
-                    if ($response['status']) {
+                    $res = $this->callCustomProvider($p, $request, $mode, $selfieMeta);
+                    if (!empty($res['status'])) {
+                        $response = $res;
                         break; // Success!
                     }
-                    $errors[] = $p->name . ': ' . ($response['message'] ?? 'Unknown error');
-                    if (!empty($response['terminal'])) {
-                        $terminalFailure = true;
-                        break;
-                    }
+                    $errMsg = $res['message'] ?? 'Verification failed';
+                    $errors[] = $p->name . ': ' . $errMsg;
+                    Log::info("Provider {$p->name} unsuccessful for NIN mode {$mode}: {$errMsg}");
                 } catch (\Throwable $e) {
                     $errors[] = $p->name . ': ' . $e->getMessage();
                     Log::warning("Provider failover: {$p->name} failed.", ['error' => $e->getMessage()]);
                 }
             }
 
-            // Fallback to Legacy API if all custom providers failed and no specific provider was requested
-            if (!$response['status'] && !$terminalFailure && !$request->filled('api_provider_id') && !in_array($mode, ['validation', 'validation_status'], true)) {
+            // Fallback to Legacy API if all custom providers failed and mode is supported by Legacy API
+            if (!$response['status'] && !in_array($mode, ['validation', 'validation_status', 'selfie', 'share_code', 'requery'], true)) {
                 $apiCenter = ApiCenter::first();
-                if ($apiCenter) {
+                if ($apiCenter && ($apiCenter->dataverify_api_key || $apiCenter->dataverify_endpoint_nin || env('DATAVERIFY_API_KEY') || \App\Models\SystemSetting::get('dataverify_api_key'))) {
                     try {
-                        $response = $this->callLegacyApi($apiCenter, $request, $mode);
-                        if (!$response['status']) {
-                            $errors[] = 'Legacy API: ' . ($response['message'] ?? 'Unknown error');
+                        $legacyRes = $this->callLegacyApi($apiCenter, $request, $mode);
+                        if (!empty($legacyRes['status'])) {
+                            $response = $legacyRes;
+                        } else {
+                            $errors[] = 'Legacy API: ' . ($legacyRes['message'] ?? 'Unknown error');
                         }
                     } catch (\Throwable $e) {
                         $errors[] = 'Legacy API: ' . $e->getMessage();
@@ -735,13 +754,17 @@ class NINController extends Controller
     private function callLegacyApi(ApiCenter $apiCenter, Request $request, string $mode): array
     {
         $endpoint = DataVerifyClient::normalizeDomain((string) $apiCenter->dataverify_endpoint_nin);
-        if (! $endpoint || ! $apiCenter->dataverify_api_key) {
+        if (! $endpoint) {
+            $endpoint = 'https://dataverify.org/developers/nin_api/';
+        }
+        $apiKey = $apiCenter->dataverify_api_key ?: env('DATAVERIFY_API_KEY') ?: \App\Models\SystemSetting::get('dataverify_api_key');
+        if (! $apiKey) {
             return ['status' => false, 'message' => 'Legacy NIN endpoint or API key not configured.'];
         }
 
         try {
             $response = Http::timeout(45)->asJson()->post($endpoint, [
-                'api_key' => $apiCenter->dataverify_api_key,
+                'api_key' => $apiKey,
                 'nin' => $request->number,
             ]);
         } catch (\Throwable $e) {
@@ -918,6 +941,11 @@ class NINController extends Controller
                             'status' => true,
                             'priority' => 1,
                         ]);
+                    }
+                } elseif ($data['provider_identifier'] === 'dataverify') {
+                    $normalized = DataVerifyClient::normalizeDomain((string) $existing->endpoint);
+                    if ($normalized !== $existing->endpoint) {
+                        $existing->update(['endpoint' => $normalized]);
                     }
                 }
             } catch (\Throwable $e) {

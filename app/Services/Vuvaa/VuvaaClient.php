@@ -31,14 +31,14 @@ class VuvaaClient
     {
         $this->cfg = is_array($provider->config) ? $provider->config : [];
 
-        $endpoint = $provider->endpoint ?: env('VUVAA_LIVE_URL') ?: SystemSetting::get('vuvaa_endpoint', 'https://premiere.vuvaa.com/demo/NIN_Validation_LIVE');
+        $endpoint = SystemSetting::get('vuvaa_endpoint') ?: env('VUVAA_LIVE_URL') ?: ($provider->endpoint ?: 'https://premiere.vuvaa.com/demo/NIN_Validation_LIVE');
         if (str_contains($endpoint, 'api.vuvaa.com/v1')) {
-            $endpoint = env('VUVAA_LIVE_URL') ?: SystemSetting::get('vuvaa_endpoint', 'https://premiere.vuvaa.com/demo/NIN_Validation_LIVE');
+            $endpoint = SystemSetting::get('vuvaa_endpoint') ?: env('VUVAA_LIVE_URL') ?: 'https://premiere.vuvaa.com/demo/NIN_Validation_LIVE';
         }
         $this->endpoint = $endpoint;
 
-        $key = trim((string) ($this->cfg['encryption_key'] ?? env('VUVAA_ENCRYPTION_KEY') ?? SystemSetting::get('vuvaa_encryption_key', 'FD!-F=15B46BAD21')));
-        $iv = trim((string) ($this->cfg['encryption_iv'] ?? env('VUVAA_ENCRYPTION_IV') ?? SystemSetting::get('vuvaa_encryption_iv', '0123456789012345')));
+        $key = trim((string) (SystemSetting::get('vuvaa_encryption_key') ?: env('VUVAA_ENCRYPTION_KEY') ?: ($this->cfg['encryption_key'] ?? 'FD!-F=15B46BAD21')));
+        $iv = trim((string) (SystemSetting::get('vuvaa_encryption_iv') ?: env('VUVAA_ENCRYPTION_IV') ?: ($this->cfg['encryption_iv'] ?? '0123456789012345')));
 
         if ($key === '' || $iv === '') {
             throw new \RuntimeException('VUVAA encryption key/IV not configured.');
@@ -49,6 +49,7 @@ class VuvaaClient
 
     public function verifyNin(string $nin, ?string $referenceId = null): array
     {
+        $nin = preg_replace('/\D/', '', $nin);
         $referenceId = $referenceId ?: $this->generateReferenceId();
 
         $data = [
@@ -63,6 +64,7 @@ class VuvaaClient
 
     public function verifyBvn(string $bvn, ?string $referenceId = null): array
     {
+        $bvn = preg_replace('/\D/', '', $bvn);
         $referenceId = $referenceId ?: $this->generateReferenceId();
 
         $data = [
@@ -76,6 +78,7 @@ class VuvaaClient
 
     public function verifyInPerson(string $nin, string $selfieBase64, ?string $referenceId = null): array
     {
+        $nin = preg_replace('/\D/', '', $nin);
         $referenceId = $referenceId ?: $this->generateReferenceId();
         $selfieBase64 = $this->normalizeBase64($selfieBase64);
 
@@ -295,12 +298,28 @@ class VuvaaClient
 
     private function username(): string
     {
-        return trim((string) ($this->cfg['username'] ?? $this->provider->api_key ?? env('VUVAA_USERNAME') ?? SystemSetting::get('vuvaa_username', 'fuwa_demo_0417190741')));
+        $setting = trim((string) SystemSetting::get('vuvaa_username', ''));
+        if ($setting !== '') {
+            return $setting;
+        }
+        $env = trim((string) env('VUVAA_USERNAME', ''));
+        if ($env !== '') {
+            return $env;
+        }
+        return trim((string) ($this->cfg['username'] ?? $this->provider->api_key ?? 'fuwa_demo_0417190741'));
     }
 
     private function password(): string
     {
-        return trim((string) ($this->cfg['password'] ?? $this->provider->secret_key ?? env('VUVAA_PASSWORD') ?? SystemSetting::get('vuvaa_password', 'Password')));
+        $setting = trim((string) SystemSetting::get('vuvaa_password', ''));
+        if ($setting !== '') {
+            return $setting;
+        }
+        $env = trim((string) env('VUVAA_PASSWORD', ''));
+        if ($env !== '') {
+            return $env;
+        }
+        return trim((string) ($this->cfg['password'] ?? $this->provider->secret_key ?? 'Password'));
     }
 
     private function normalizeBase64(string $value): string

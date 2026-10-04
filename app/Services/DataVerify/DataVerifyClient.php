@@ -76,12 +76,12 @@ class DataVerifyClient
 
         $payload = ['api_key' => $apiKey];
         if ($mode === 'nin') {
-            $payload['nin'] = trim((string) ($input['number'] ?? ''));
+            $payload['nin'] = preg_replace('/\D/', '', (string) ($input['number'] ?? ''));
             if (!empty($input['validation_type'])) {
                 $payload['validation_type'] = trim((string) $input['validation_type']);
             }
         } elseif ($mode === 'phone') {
-            $payload['phone'] = trim((string) ($input['number'] ?? ''));
+            $payload['phone'] = preg_replace('/\D/', '', (string) ($input['number'] ?? ''));
         } else {
             $payload['firstname'] = strtoupper(trim((string) ($input['firstname'] ?? '')));
             $payload['lastname'] = strtoupper(trim((string) ($input['lastname'] ?? '')));
@@ -571,7 +571,12 @@ class DataVerifyClient
             return $apiKey;
         }
 
-        return trim((string) (ApiCenter::query()->value('dataverify_api_key') ?? ''));
+        $apiCenterKey = trim((string) (ApiCenter::query()->value('dataverify_api_key') ?? ''));
+        if ($apiCenterKey !== '') {
+            return $apiCenterKey;
+        }
+
+        return trim((string) (env('DATAVERIFY_API_KEY') ?: \App\Models\SystemSetting::get('dataverify_api_key', '')));
     }
 
     private function isTerminalProviderError(string $message): bool

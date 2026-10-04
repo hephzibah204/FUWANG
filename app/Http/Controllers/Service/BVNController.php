@@ -73,6 +73,9 @@ class BVNController extends Controller
             'api_provider_id' => ['nullable', 'exists:custom_apis,id']
         ]);
 
+        $cleanedNumber = preg_replace('/\D/', '', (string) $request->input('number'));
+        $request->merge(['number' => $cleanedNumber]);
+
         $mode = $request->input('mode');
         $user = Auth::user();
         $providerContext = [
@@ -137,6 +140,13 @@ class BVNController extends Controller
             if ($provider) {
                 // Call Modern Custom Provider
                 $response = $this->callCustomProvider($provider, $request, $mode);
+                if (!$response['status']) {
+                    Log::warning("Custom BVN provider {$provider->name} failed, attempting legacy fallback: " . ($response['message'] ?? ''));
+                    $legacyResponse = $this->callLegacyApi($request, $mode);
+                    if ($legacyResponse['status']) {
+                        $response = $legacyResponse;
+                    }
+                }
             } else {
                 // Call Legacy Fallback (cURL mirror to BVN script)
                 $response = $this->callLegacyApi($request, $mode);

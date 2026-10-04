@@ -66,14 +66,68 @@ class NINProviderE2ETest extends TestCase
         ]);
     }
 
-    public function test_terminal_invalid_nin_from_provider_halts_failover_and_returns_clean_message(): void
+    public function test_vuvaa_invalid_nin_fails_over_to_backup_provider_and_verifies_valid_nin(): void
     {
         $this->setupVuvaaProvider();
 
-        // Configure legacy API with old dead domain
+        // Configure legacy API as backup
         ApiCenter::create([
             'dataverify_api_key' => 'legacy-key',
             'dataverify_endpoint_nin' => 'https://dataverify.com.ng/developers/nin_api/',
+        ]);
+
+        $loginB64 = $this->crypto->encryptToBase64(['code' => '00', 'accessToken' => 'token123']);
+        // VUVAA in demo mode returns "Invalid NIN" for live citizen NIN
+        $invalidNinB64 = $this->crypto->encryptToBase64([
+            'code' => '99',
+            'statusCode' => '99',
+            'message' => 'Verification failed: Invalid NIN',
+        ]);
+
+        $backupCalled = false;
+        $receivedNin = null;
+
+        Http::fake([
+            'https://premiere.vuvaa.com/*/login' => Http::response(['payload' => $loginB64], 200),
+            'https://premiere.vuvaa.com/*/get_wallet_details' => Http::response(['payload' => $this->walletB64], 200),
+            'https://premiere.vuvaa.com/*/verify_nin' => Http::response(['payload' => $invalidNinB64], 200),
+            'https://dataverify.org/*' => function ($request) use (&$backupCalled, &$receivedNin) {
+                $backupCalled = true;
+                $receivedNin = $request['nin'] ?? null;
+                return Http::response([
+                    'status' => 'success',
+                    'response_code' => '00',
+                    'data' => [
+                        'nin' => '12345678901',
+                        'firstname' => 'Abiodun',
+                        'lastname' => 'Gbadamosi',
+                    ],
+                ], 200);
+            },
+        ]);
+
+        // Test with spaces in the NIN to verify input sanitization as well
+        $res = $this->actingAs($this->user)->post(route('services.nin.verify'), [
+            'mode' => 'nin',
+            'number' => '1234 5678 901',
+        ], ['Accept' => 'application/json']);
+
+        $res->assertOk();
+        $res->assertJson([
+            'status' => true,
+        ]);
+
+        $this->assertTrue($backupCalled, 'Backup provider must be called when primary reports Invalid NIN on a valid citizen NIN');
+        $this->assertEquals('12345678901', $receivedNin, 'NIN with spaces must be sanitized to pure digits');
+    }
+
+    public function test_all_providers_failing_with_invalid_nin_returns_clean_error(): void
+    {
+        $this->setupVuvaaProvider();
+
+        ApiCenter::create([
+            'dataverify_api_key' => 'legacy-key',
+            'dataverify_endpoint_nin' => 'https://dataverify.org/developers/nin_api/',
         ]);
 
         $loginB64 = $this->crypto->encryptToBase64(['code' => '00', 'accessToken' => 'token123']);
@@ -83,16 +137,14 @@ class NINProviderE2ETest extends TestCase
             'message' => 'Verification failed: Invalid NIN',
         ]);
 
-        $legacyCalled = false;
-
         Http::fake([
             'https://premiere.vuvaa.com/*/login' => Http::response(['payload' => $loginB64], 200),
             'https://premiere.vuvaa.com/*/get_wallet_details' => Http::response(['payload' => $this->walletB64], 200),
             'https://premiere.vuvaa.com/*/verify_nin' => Http::response(['payload' => $invalidNinB64], 200),
-            '*dataverify*' => function () use (&$legacyCalled) {
-                $legacyCalled = true;
-                return Http::response(['status' => 'error', 'message' => 'Should not be called'], 500);
-            },
+            'https://dataverify.org/*' => Http::response([
+                'status' => 'error',
+                'message' => 'Verification failed: Invalid NIN',
+            ], 400),
         ]);
 
         $res = $this->actingAs($this->user)->post(route('services.nin.verify'), [
@@ -100,15 +152,11 @@ class NINProviderE2ETest extends TestCase
             'number' => '12345678901',
         ], ['Accept' => 'application/json']);
 
-        // Assert: response gives clean message without concatenating legacy error or provider prefix
         $res->assertOk();
         $res->assertJson([
             'status' => false,
             'message' => 'Verification failed: Invalid NIN',
         ]);
-
-        // Assert: Legacy failover was not invoked because "Invalid NIN" is terminal
-        $this->assertFalse($legacyCalled, 'Legacy API should not have been called for a terminal Invalid NIN error.');
     }
 
     public function test_legacy_api_domain_is_normalized_to_org_when_failover_occurs(): void

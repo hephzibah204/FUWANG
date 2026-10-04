@@ -239,10 +239,10 @@
                                         <div class="input-wrap">
                                             <i class="fa-solid fa-server"></i>
                                             <select id="api_provider_id" name="api_provider_id" class="form-control" onchange="updateVerificationTypes()">
-                                                <option value="">-- Auto-select (Default: VUVAA) --</option>
+                                                <option value="">-- Auto-select (Smart Routing & Failover) --</option>
                                                 @foreach($ninProviders as $provider)
-                                                    <option value="{{ $provider->id }}" data-provider="{{ $provider->provider_identifier }}" data-types="{{ json_encode($provider->verificationTypes->where('status', true)) }}" {{ $provider->provider_identifier === 'vuvaa' ? 'selected' : '' }}>
-                                                        {{ $provider->name }}{{ $provider->provider_identifier === 'vuvaa' ? ' (Provider 1 - Primary)' : '' }}
+                                                    <option value="{{ $provider->id }}" data-provider="{{ $provider->provider_identifier }}" data-types="{{ json_encode($provider->verificationTypes->where('status', true)) }}">
+                                                        {{ $provider->name }}{{ $provider->provider_identifier === 'vuvaa' ? ' (Primary)' : '' }}
                                                     </option>
                                                 @endforeach
                                             </select>
@@ -507,15 +507,7 @@
                 }
             }
 
-            // Always select VUVAA as Provider 1 for modes it supports (nin, selfie, share_code, requery)
-            const vuvaaOption = Array.from(providerSelect.options).find(opt => {
-                if (opt.value === '' || opt.style.display === 'none') return false;
-                return (opt.getAttribute('data-provider') || '').toLowerCase() === 'vuvaa';
-            });
-            if (vuvaaOption && ['nin', 'selfie', 'share_code', 'requery'].includes(mode)) {
-                providerSelect.value = vuvaaOption.value;
-            }
-
+            // If validation mode, RobostTech is specifically needed
             if (mode === 'validation' || mode === 'validation_status') {
                 const robost = Array.from(providerSelect.options).find(opt => {
                     if (opt.value === '' || opt.style.display === 'none') return false;
@@ -523,6 +515,12 @@
                 });
                 if (robost) {
                     providerSelect.value = robost.value;
+                }
+            } else {
+                // If currently selected option is hidden for this mode, reset to auto-select
+                const currentOpt = providerSelect.selectedOptions[0];
+                if (currentOpt && currentOpt.style.display === 'none') {
+                    providerSelect.value = '';
                 }
             }
         }

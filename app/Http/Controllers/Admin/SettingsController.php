@@ -200,6 +200,7 @@ class SettingsController extends Controller
         ];
 
         $vuvaaKeys = [
+            'vuvaa_endpoint',
             'vuvaa_username',
             'vuvaa_password',
             'vuvaa_encryption_key',
@@ -236,6 +237,29 @@ class SettingsController extends Controller
         if (!empty($vuvaaData)) {
             foreach ($vuvaaData as $k => $v) {
                 SystemSetting::set($k, (string) $v, 'integrations');
+            }
+
+            $vuvaaApi = \App\Models\CustomApi::where('provider_identifier', 'vuvaa')->first();
+            if ($vuvaaApi) {
+                $cfg = is_array($vuvaaApi->config) ? $vuvaaApi->config : [];
+                if (!empty($vuvaaData['vuvaa_username'])) {
+                    $cfg['username'] = $vuvaaData['vuvaa_username'];
+                }
+                if (!empty($vuvaaData['vuvaa_password'])) {
+                    $cfg['password'] = $vuvaaData['vuvaa_password'];
+                }
+                if (!empty($vuvaaData['vuvaa_encryption_key'])) {
+                    $cfg['encryption_key'] = $vuvaaData['vuvaa_encryption_key'];
+                }
+                if (!empty($vuvaaData['vuvaa_encryption_iv'])) {
+                    $cfg['encryption_iv'] = $vuvaaData['vuvaa_encryption_iv'];
+                }
+
+                $updates = ['config' => $cfg];
+                if (!empty($vuvaaData['vuvaa_endpoint'])) {
+                    $updates['endpoint'] = $vuvaaData['vuvaa_endpoint'];
+                }
+                $vuvaaApi->update($updates);
             }
         }
 

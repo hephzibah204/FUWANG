@@ -377,6 +377,11 @@
                     <hr style="border-color: rgba(255,255,255,0.07);">
                     <p class="text-white-50 text-uppercase small font-weight-bold mb-2" style="letter-spacing: 1px;">Vuvaa</p>
                 </div>
+                <div class="col-12 mb-4">
+                    <label class="text-white-50 small mb-2">Endpoint URL</label>
+                    <input type="text" name="vuvaa_endpoint" class="form-control text-white rounded-3 font-monospace" value="{{ \App\Models\SystemSetting::get('vuvaa_endpoint', '') }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);" placeholder="https://verificationservice.vuvaa.com/NIN_Validation (Leave blank for default)">
+                    <small class="text-white-50">Set to your live production endpoint when switching from demo.</small>
+                </div>
                 <div class="col-md-6 mb-4">
                     <label class="text-white-50 small mb-2">Username</label>
                     <input type="text" name="vuvaa_username" class="form-control text-white rounded-3 font-monospace" value="{{ \App\Models\SystemSetting::get('vuvaa_username', '') }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);" placeholder="Vuvaa username">
