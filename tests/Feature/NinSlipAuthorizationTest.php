@@ -255,4 +255,17 @@ class NinSlipAuthorizationTest extends TestCase
 
         $response->assertOk();
     }
+
+    public function test_owner_can_view_html_print_preview_of_slip(): void
+    {
+        $user = $this->createSampleUser();
+        $result = $this->createSampleNinResult($user);
+
+        $response = $this->actingAs($user)
+            ->get(route('services.nin.slip', ['id' => $result->id, 'type' => 'premium_slip', 'html' => 1, 'print' => 1]));
+
+        $response->assertOk()
+            ->assertSee('NIN Premium Slip Print Preview')
+            ->assertSee('window.print()', false);
+    }
 }
