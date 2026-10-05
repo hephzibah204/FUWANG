@@ -2,7 +2,7 @@
 
 namespace App\Support;
 
-use chillerlan\QRCode\Output\QRGdImage;
+use chillerlan\QRCode\Output\QRGdImagePNG;
 use chillerlan\QRCode\QRCode;
 use chillerlan\QRCode\QROptions;
 
@@ -20,7 +20,7 @@ class QrCodeDataUri
             $scale = max(2, (int) ceil($size / 23));
 
             return (new QRCode(new QROptions([
-                'outputInterface' => QRGdImage::class,
+                'outputInterface' => QRGdImagePNG::class,
                 'outputBase64' => true,
                 'scale' => $scale,
                 'addQuietzone' => false,
