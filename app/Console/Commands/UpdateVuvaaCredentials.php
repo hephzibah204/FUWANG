@@ -11,8 +11,8 @@ class UpdateVuvaaCredentials extends Command
      * The name and signature of the console command.
      */
     protected $signature = 'update:vuvaa-credentials'
-        . ' {--username= : New VUVAA username (default: pink)}'
-        . ' {--password= : New VUVAA password (default: Password)}';
+        . ' {--username= : New VUVAA username (default: fuwalive)}'
+        . ' {--password= : New VUVAA password (default: FuwaLive2026!Secure)}';
 
     /**
      * The console command description.
@@ -24,8 +24,8 @@ class UpdateVuvaaCredentials extends Command
      */
     public function handle(): int
     {
-        $username = $this->option('username') ?? 'pink';
-        $password = $this->option('password') ?? 'Password';
+        $username = $this->option('username') ?? 'fuwalive';
+        $password = $this->option('password') ?? 'FuwaLive2026!Secure';
 
         $provider = CustomApi::where('provider_identifier', 'vuvaa')->first();
         if (! $provider) {

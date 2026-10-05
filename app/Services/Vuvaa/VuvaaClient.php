@@ -31,13 +31,13 @@ class VuvaaClient
     {
         $this->cfg = is_array($provider->config) ? $provider->config : [];
 
-        $endpoint = SystemSetting::get('vuvaa_endpoint') ?: env('VUVAA_LIVE_URL') ?: ($provider->endpoint ?: 'https://premiere.vuvaa.com/demo/NIN_Validation_LIVE');
+        $endpoint = SystemSetting::get('vuvaa_endpoint') ?: env('VUVAA_LIVE_URL') ?: ($provider->endpoint ?: 'https://verificationservice.vuvaa.com/NIN_Validation');
         if (str_contains($endpoint, 'api.vuvaa.com/v1')) {
-            $endpoint = SystemSetting::get('vuvaa_endpoint') ?: env('VUVAA_LIVE_URL') ?: 'https://premiere.vuvaa.com/demo/NIN_Validation_LIVE';
+            $endpoint = SystemSetting::get('vuvaa_endpoint') ?: env('VUVAA_LIVE_URL') ?: 'https://verificationservice.vuvaa.com/NIN_Validation';
         }
         $this->endpoint = $endpoint;
 
-        $key = trim((string) (SystemSetting::get('vuvaa_encryption_key') ?: env('VUVAA_ENCRYPTION_KEY') ?: ($this->cfg['encryption_key'] ?? 'FD!-F=15B46BAD21')));
+        $key = trim((string) (SystemSetting::get('vuvaa_encryption_key') ?: env('VUVAA_ENCRYPTION_KEY') ?: ($this->cfg['encryption_key'] ?? 'JQvbJNbRHGYOMmFR9iTgLwakXKjGti8bmsglWKyKP7o=')));
         $iv = trim((string) (SystemSetting::get('vuvaa_encryption_iv') ?: env('VUVAA_ENCRYPTION_IV') ?: ($this->cfg['encryption_iv'] ?? '0123456789012345')));
 
         if ($key === '' || $iv === '') {
