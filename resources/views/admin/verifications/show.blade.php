@@ -5,12 +5,16 @@
 @section('content')
 <div class="dashboard-wrapper fade-in">
     <div class="row align-items-center mb-4">
-        <div class="col-md-8">
+        <div class="col-md-5">
             <h1 class="h3 font-weight-bold mb-1">Verification Details</h1>
             <p class="text-muted mb-0">Reference: <code class="text-primary">{{ $result->reference_id }}</code></p>
         </div>
-        <div class="col-md-4 text-md-right mt-3 mt-md-0">
+        <div class="col-md-7 text-md-right mt-3 mt-md-0">
             <a href="{{ route('admin.verifications.index') }}" class="btn btn-outline-primary mr-2">Back</a>
+            @if(in_array($result->service_type, ['nin', 'nin_verification', 'vuvaa_verify_nin', 'vuvaa_in_person', 'vuvaa_share_code']))
+                <a href="{{ route('services.nin.slip', ['id' => $result->id, 'type' => 'premium_slip']) }}" target="_blank" class="btn btn-outline-info mr-2"><i class="fa fa-id-card mr-1"></i>Premium Slip</a>
+                <a href="{{ route('services.nin.slip', ['id' => $result->id, 'type' => 'standard_slip']) }}" target="_blank" class="btn btn-outline-secondary mr-2"><i class="fa fa-id-card mr-1"></i>Standard Slip</a>
+            @endif
             <a href="{{ route('admin.verifications.report', $result->id) }}" class="btn btn-success"><i class="fa fa-file-pdf mr-2"></i>Download PDF</a>
         </div>
     </div>

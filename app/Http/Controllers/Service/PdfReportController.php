@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Service;
 use App\Http\Controllers\Controller;
 use App\Models\VerificationResult;
 use App\Models\ApiCenter;
+use App\Models\ApiToken;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -13,12 +15,12 @@ use Illuminate\Support\Facades\Storage;
 
 class PdfReportController extends Controller
 {
-    public function verificationReport(int $id)
+    public function verificationReport(Request $request, int $id)
     {
         $result = VerificationResult::findOrFail($id);
 
-        if ($result->user_id !== Auth::id()) {
-            abort(403);
+        if (!$this->authorizeResultAccess($request, $result)) {
+            abort(403, 'Unauthorized access to verification report.');
         }
 
         $pdf = Pdf::loadView('pdf.verification_report', compact('result'));
@@ -26,11 +28,11 @@ class PdfReportController extends Controller
         return $pdf->download('Verification_Report_' . $result->reference_id . '.pdf');
     }
 
-    public function ninSlip(int $id, string $type)
+    public function ninSlip(Request $request, int $id, string $type)
     {
         $result = VerificationResult::findOrFail($id);
-        if ($result->user_id !== Auth::id()) {
-            abort(403);
+        if (!$this->authorizeResultAccess($request, $result)) {
+            abort(403, 'Unauthorized access to verification slip.');
         }
         if (!in_array($type, ['standard_slip', 'regular_slip', 'premium_slip', 'vnin_slip'])) {
             abort(404);
@@ -40,6 +42,17 @@ class PdfReportController extends Controller
         $fallbackReason = 'unknown';
 
         $result->response_data = $this->normalizeNinSlipPayload($result->response_data, (string) $result->identifier);
+
+        if (request()->boolean('html') || request()->boolean('print')) {
+            $view = match ($type) {
+                'premium_slip' => 'pdf.nin_premium_slip',
+                'regular_slip' => 'pdf.nin_regular_slip',
+                'vnin_slip' => 'pdf.nin_vnin_slip',
+                default => 'pdf.nin_standard_slip',
+            };
+            $autoPrint = request()->boolean('print');
+            return response()->view($view, compact('result', 'autoPrint'));
+        }
 
         $cachedResponse = $this->serveCachedNinSlip($result, $type);
         if ($cachedResponse !== null) {
@@ -431,10 +444,77 @@ class PdfReportController extends Controller
     private function buildPdfResponse(string $bin, string $type, string $referenceId)
     {
         $name = strtoupper($type) . '_' . $referenceId . '.pdf';
+        $disposition = request()->boolean('download') ? 'attachment' : 'inline';
 
         return response($bin, 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'attachment; filename="' . $name . '"',
+            'Content-Disposition' => $disposition . '; filename="' . $name . '"',
         ]);
+    }
+
+    private function authorizeResultAccess(Request $request, VerificationResult $result): bool
+    {
+        // 1. Signed URL (URL::temporarySignedRoute / URL::signedRoute)
+        if ($request->hasValidSignature()) {
+            return true;
+        }
+
+        // 2. Admin guard authentication (admin panel session)
+        if (Auth::guard('admin')->check() || Auth::guard('auction_admin')->check()) {
+            return true;
+        }
+
+        // 3. Authenticated Web User / Default Guard
+        $user = Auth::user() ?? Auth::guard('web')->user() ?? $request->user();
+        if ($user) {
+            // Admin or super_admin role
+            if (in_array($user->role ?? '', ['admin', 'super_admin'], true) || !empty($user->is_admin)) {
+                return true;
+            }
+
+            // Direct owner
+            if ((int) $result->user_id === (int) $user->id) {
+                return true;
+            }
+
+            // Approved enrollment agent
+            if (isset($user->enrollmentAgent) && $user->enrollmentAgent?->status === 'approved') {
+                if ((int) $result->user_id === (int) $user->id) {
+                    return true;
+                }
+            }
+        }
+
+        // 4. API Token check (Bearer token, X-Api-Token header, or api_token / token query parameter)
+        $rawToken = $request->bearerToken()
+            ?? $request->header('X-Api-Token')
+            ?? $request->header('X-API-Token')
+            ?? $request->query('api_token')
+            ?? $request->query('token');
+
+        if ($rawToken && is_string($rawToken)) {
+            $cleanToken = trim($rawToken);
+            if (str_starts_with($cleanToken, 'nx_')) {
+                $cleanToken = substr($cleanToken, 3);
+            }
+            $tokenHash = hash('sha256', $cleanToken);
+            $apiToken = ApiToken::where('token_hash', $tokenHash)
+                ->whereNull('revoked_at')
+                ->where(function ($q) {
+                    $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+                })
+                ->first();
+
+            if ($apiToken && $apiToken->user) {
+                $tokenUser = $apiToken->user;
+                if ((int) $tokenUser->id === (int) $result->user_id
+                    || in_array($tokenUser->role ?? '', ['admin', 'super_admin'], true)
+                    || !empty($tokenUser->is_admin)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 }

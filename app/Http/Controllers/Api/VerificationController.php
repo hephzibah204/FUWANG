@@ -12,6 +12,7 @@ use App\Services\VerificationResultService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\URL;
 
 class VerificationController extends Controller
 {
@@ -119,6 +120,7 @@ class VerificationController extends Controller
                 'message' => 'NIN verified',
                 'result_id' => $vr->id,
                 'reference_id' => $vr->reference_id,
+                'slip_url' => URL::temporarySignedRoute('services.nin.slip', now()->addDays(7), ['id' => $vr->id, 'type' => 'premium_slip']),
                 'data' => $data,
             ];
         }
@@ -134,6 +136,7 @@ class VerificationController extends Controller
                     'message' => $robost['message'] ?? 'NIN verified',
                     'result_id' => $vr->id,
                     'reference_id' => $vr->reference_id,
+                    'slip_url' => URL::temporarySignedRoute('services.nin.slip', now()->addDays(7), ['id' => $vr->id, 'type' => 'premium_slip']),
                     'data' => $data,
                 ];
             }
@@ -158,6 +161,7 @@ class VerificationController extends Controller
                     'message' => $dataverify['message'] ?? 'NIN verified',
                     'result_id' => $vr->id,
                     'reference_id' => $vr->reference_id,
+                    'slip_url' => URL::temporarySignedRoute('services.nin.slip', now()->addDays(7), ['id' => $vr->id, 'type' => 'premium_slip']),
                     'data' => $data,
                 ];
             }
@@ -188,6 +192,7 @@ class VerificationController extends Controller
                 'message' => 'NIN verified',
                 'result_id' => $vr->id,
                 'reference_id' => $vr->reference_id,
+                'slip_url' => URL::temporarySignedRoute('services.nin.slip', now()->addDays(7), ['id' => $vr->id, 'type' => 'premium_slip']),
                 'data' => $data,
             ];
         }

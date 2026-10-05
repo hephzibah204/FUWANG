@@ -333,9 +333,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/services/address-verify/details/{id}', [App\Http\Controllers\Service\VerificationController::class, 'viewAddressDetails'])->name('services.address_verify.details');
         Route::delete('/services/address-verify/cancel/{id}', [App\Http\Controllers\Service\VerificationController::class, 'cancelAddressVerification'])->name('services.address_verify.cancel');
         Route::post('/services/address-verify/marketplace', [App\Http\Controllers\Service\VerificationController::class, 'fetchAddressByIdentity'])->name('services.address_verify.marketplace');
-        Route::get('/services/identity/report/{id}', [App\Http\Controllers\Service\PdfReportController::class, 'verificationReport'])->name('services.identity.report');
-            Route::get('/services/identity/nin/slip/{id}/{type}', [App\Http\Controllers\Service\PdfReportController::class, 'ninSlip'])->name('services.nin.slip');
-        Route::get('/services/verification/report/{id}', [App\Http\Controllers\Service\PdfReportController::class, 'verificationReport'])->name('services.verification.report');
     });
 
     // â”€â”€ Legal Hub â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -483,9 +480,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::post('/tour/complete', [TourController::class, 'complete'])->name('tour.complete');
 
-}); // â”€â”€ End of user auth middleware group â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+});
 
-// â”€â”€ Admin â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Verification Slips & PDF Reports
+// Access control is handled directly inside PdfReportController:
+// Supports Owner Session, Admin Guard Session, Valid Signed URLs, and API Tokens.
+Route::get('/services/identity/nin/slip/{id}/{type}', [App\Http\Controllers\Service\PdfReportController::class, 'ninSlip'])->name('services.nin.slip');
+Route::get('/services/nin/slip/{id}/{type}', [App\Http\Controllers\Service\PdfReportController::class, 'ninSlip'])->name('services.nin.slip.alias');
+Route::get('/services/identity/report/{id}', [App\Http\Controllers\Service\PdfReportController::class, 'verificationReport'])->name('services.identity.report');
+Route::get('/services/verification/report/{id}', [App\Http\Controllers\Service\PdfReportController::class, 'verificationReport'])->name('services.verification.report');
+
 // IMPORTANT (C-3): Admin prefix is OUTSIDE the user auth middleware.
 // Admin login must be reachable by unauthenticated visitors.
 Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function () {

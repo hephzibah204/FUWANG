@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 
 class NINController extends Controller
 {
@@ -347,11 +348,16 @@ class NINController extends Controller
                     'reference_id' => $result->reference_id,
                 ];
 
-                if ($wantsSlip && !in_array($mode, ['validation', 'validation_status'], true)) {
-                    $payload['slip_url'] = route('services.nin.slip', ['id' => $result->id, 'type' => $outputType]);
-                    // Full record stays in DB; omit huge base64 from JSON so responses stay parseable.
-                    $payload['data'] = $this->stripLargeMediaFromNinPayload($data);
-                    $payload['photo'] = null;
+                if (!in_array($mode, ['validation', 'validation_status'], true)) {
+                    $selectedSlip = $wantsSlip ? $outputType : 'premium_slip';
+                    $payload['slip_url'] = route('services.nin.slip', ['id' => $result->id, 'type' => $selectedSlip]);
+                    $payload['premium_slip_url'] = route('services.nin.slip', ['id' => $result->id, 'type' => 'premium_slip']);
+                    $payload['standard_slip_url'] = route('services.nin.slip', ['id' => $result->id, 'type' => 'standard_slip']);
+                    if ($wantsSlip) {
+                        // Full record stays in DB; omit huge base64 from JSON so responses stay parseable.
+                        $payload['data'] = $this->stripLargeMediaFromNinPayload($data);
+                        $payload['photo'] = null;
+                    }
                 }
 
                 if ($mode === 'validation') {
@@ -397,7 +403,7 @@ class NINController extends Controller
                 return redirect()
                     ->route('services.nin')
                     ->with('status', $result['message'] ?? 'Verification successful.')
-                    ->with('nin_slip_download_url', route('services.nin.slip', ['id' => $result['result_id'], 'type' => $outputType]))
+                    ->with('nin_slip_download_url', URL::temporarySignedRoute('services.nin.slip', now()->addDays(7), ['id' => $result['result_id'], 'type' => $outputType]))
                     ->with('nin_result', $result['data'] ?? null)
                     ->with('nin_result_id', $result['result_id'] ?? null)
                     ->with('nin_reference_id', $result['reference_id'] ?? null);

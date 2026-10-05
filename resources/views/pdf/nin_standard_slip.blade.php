@@ -4,8 +4,15 @@
     <meta charset="utf-8">
     <title>NIN Standard Slip - {{ $result->reference_id }}</title>
     <style>
-        @page { margin: 0; }
-        body { font-family: 'Helvetica', 'Arial', sans-serif; margin: 0; padding: 0; background: #ffffff; }
+        @page { margin: 12mm auto; size: A4 portrait; }
+        body { 
+            font-family: 'Helvetica', 'Arial', sans-serif; 
+            margin: 0; 
+            padding: 0; 
+            background: #ffffff; 
+            -webkit-print-color-adjust: exact; 
+            print-color-adjust: exact; 
+        }
         .sheet { width: 500px; margin: 0 auto; }
         .card { width: 500px; height: 300px; position: relative; overflow: hidden; border: 1px solid #111827; background: #ffffff; }
         .watermark {
@@ -155,6 +162,31 @@
     </style>
 </head>
 <body>
+    @if(request()->boolean('html') || !empty($autoPrint))
+        <div class="no-print" style="text-align: center; padding: 12px; background: #f0fdf4; border-bottom: 2px solid #22c55e; margin-bottom: 20px;">
+            <span style="font-weight: bold; color: #15803d; margin-right: 15px; font-size: 14px;">NIN Standard Slip Print Preview</span>
+            <button onclick="window.print()" style="padding: 8px 20px; background: #16a34a; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 14px; margin-right: 10px;">
+                🖨️ Print Slip
+            </button>
+            <button onclick="window.close()" style="padding: 8px 16px; background: #64748b; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 14px;">
+                ✕ Close
+            </button>
+        </div>
+        <style>
+            @media print {
+                .no-print { display: none !important; }
+            }
+        </style>
+        @if(!empty($autoPrint))
+            <script>
+                window.addEventListener('load', function() {
+                    setTimeout(function() {
+                        window.print();
+                    }, 400);
+                });
+            </script>
+        @endif
+    @endif
     <div class="sheet">
         <div class="card">
             <div class="watermark">NIGERIA</div>

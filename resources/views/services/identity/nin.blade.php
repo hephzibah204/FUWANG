@@ -180,7 +180,7 @@
                                     <label class="font-weight-600 mb-2 small text-muted">Output Type</label>
                                     <div class="d-flex align-items-center flex-wrap" style="gap: 12px;">
                                         <div class="custom-control custom-radio">
-                                            <input type="radio" id="ot_info" name="output_type" value="info_page" class="custom-control-input" checked>
+                                            <input type="radio" id="ot_info" name="output_type" value="info_page" class="custom-control-input">
                                             <label class="custom-control-label" for="ot_info" title="View details on screen only"><i class="fa-solid fa-display text-muted mr-1"></i> Information Page</label>
                                         </div>
                                         <div class="custom-control custom-radio">
@@ -192,7 +192,7 @@
                                             <label class="custom-control-label" for="ot_regular" title="Generate regular slip"><i class="fa-regular fa-id-card text-muted mr-1"></i> Regular Slip</label>
                                         </div>
                                         <div class="custom-control custom-radio">
-                                            <input type="radio" id="ot_premium" name="output_type" value="premium_slip" class="custom-control-input">
+                                            <input type="radio" id="ot_premium" name="output_type" value="premium_slip" class="custom-control-input" checked>
                                             <label class="custom-control-label" for="ot_premium" title="Generate plastic-ready premium card"><i class="fa-solid fa-address-card text-warning mr-1"></i> Premium Slip</label>
                                         </div>
                                         <div class="custom-control custom-radio">
@@ -363,7 +363,7 @@
                                         <td><span class="badge badge-outline-primary">{{ $res->provider_name }}</span></td>
                                         <td>{{ $res->created_at->format('M d, Y') }}</td>
                                         <td class="text-right">
-                                            <button class="btn btn-xs btn-outline-primary" onclick='viewVaultResult(@json($res->response_data))'>
+                                            <button class="btn btn-xs btn-outline-primary" onclick='viewVaultResult(@json($res->response_data), {{ $res->id }})'>
                                                 <i class="fa fa-eye"></i> View
                                             </button>
                                             @if($res->id)
@@ -446,6 +446,48 @@
     .nin-slip-success-banner { background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.35); border-radius: 14px; padding: 16px 18px; }
     .badge-outline-primary { border: 1px solid rgba(59, 130, 246, 0.3); color: #3b82f6; background: transparent; font-size: 0.7rem; padding: 3px 8px; border-radius: 6px; }
     .mode-info { padding: 10px 12px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 10px; }
+
+    /* ── Print Media Optimization ── */
+    @media print {
+        body, html {
+            background: #ffffff !important;
+            color: #000000 !important;
+        }
+        nav, header, footer, .sidebar, .navbar, .topbar,
+        .service-header-card, .tab-strip, .nin-tabs,
+        #searchPanel, #skeletonLoader, .alert, #noProviderWarning,
+        .btn, button, a.btn, .border-top {
+            display: none !important;
+        }
+        .container, .container-fluid, #panel-verify, #resultContainer, #resultContent {
+            display: block !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+        .result-card-nexus {
+            background: #ffffff !important;
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 12px !important;
+            padding: 20px !important;
+            color: #000000 !important;
+            box-shadow: none !important;
+        }
+        .result-card-nexus h4, .result-card-nexus strong {
+            color: #000000 !important;
+        }
+        .result-card-nexus p, .result-card-nexus span {
+            color: #475569 !important;
+        }
+        .rg-cell {
+            background: #f8fafc !important;
+            border: 1px solid #e2e8f0 !important;
+        }
+        .badge-accent {
+            display: none !important;
+        }
+    }
 </style>
 @endpush
 
@@ -807,9 +849,9 @@
         }
     }
 
-    function viewVaultResult(data) {
+    function viewVaultResult(data, id) {
         switchMainPanel('verify', document.querySelector('.s-tab'));
-        displayResultWrapper({ status: true, data: data });
+        displayResultWrapper({ status: true, data: data, result_id: id });
     }
 
     function ninExtractAjaxErrorMessage(xhr) {
@@ -886,19 +928,32 @@
         addCell('Employment Status', data.emplymentstatus || data.employment_status);
         addCell('Religion', data.religion);
         addCell('Nationality', data.nationality);
-        let actionButtons = `
-            <button class="btn btn-outline flex-grow-1" onclick="window.print()">
-                <i class="fa-solid fa-print mr-2"></i> Print
-            </button>
+        const resultId = res.result_id || (res.data ? (res.data.id || res.data.result_id) : null);
+        const slipType = (res.output_type && ['standard_slip', 'regular_slip', 'premium_slip', 'vnin_slip'].includes(res.output_type)) ? res.output_type : 'premium_slip';
+        const slipUrl = res.slip_url || (resultId ? `/services/identity/nin/slip/${resultId}/${slipType}` : null);
+
+        let actionButtons = '';
+        if (resultId || slipUrl) {
+            actionButtons += `
+                <button class="btn btn-success flex-grow-1" onclick="ninPrintSlip('${resultId || ''}', '${slipType}')">
+                    <i class="fa-solid fa-print mr-2"></i> Print Slip
+                </button>
+                <a class="btn btn-outline-light flex-grow-1" href="${slipUrl || ('/services/identity/nin/slip/' + resultId + '/' + slipType)}?download=1" target="_blank">
+                    <i class="fa-solid fa-file-pdf mr-2"></i> Download Slip (PDF)
+                </a>`;
+        } else {
+            actionButtons += `
+                <button class="btn btn-outline flex-grow-1" onclick="window.print()">
+                    <i class="fa-solid fa-print mr-2"></i> Print
+                </button>`;
+        }
+        if (res.report_url) {
+            actionButtons += `<a class="btn btn-outline-light flex-grow-1" href="${res.report_url}"><i class="fa fa-file-pdf mr-2"></i> Download Report</a>`;
+        }
+        actionButtons += `
             <button class="btn btn-primary flex-grow-1" onclick="window.location.reload()">
                 <i class="fa-solid fa-magnifying-glass mr-2"></i> New Search
             </button>`;
-        if (res.slip_url) {
-            actionButtons = `<a class="btn btn-outline-light flex-grow-1" href="${res.slip_url}"><i class="fa fa-file-pdf mr-2"></i> Download Slip</a>` + actionButtons;
-        }
-        if (res.report_url) {
-            actionButtons = `<a class="btn btn-outline-light flex-grow-1" href="${res.report_url}"><i class="fa fa-file-pdf mr-2"></i> Download Report</a>` + actionButtons;
-        }
         const slipBanner = res.slip_url
             ? `<div class="nin-slip-success-banner mb-4">
                     <div class="d-flex align-items-start gap-3">
@@ -932,6 +987,19 @@
         document.getElementById('skeletonLoader').style.display = 'none';
         document.getElementById('resultContent').innerHTML = html;
         document.getElementById('resultContent').style.display = 'block';
+    }
+
+    function ninPrintSlip(resultId, type) {
+        if (!resultId) {
+            window.print();
+            return;
+        }
+        type = type || 'premium_slip';
+        const printUrl = `/services/identity/nin/slip/${resultId}/${type}?html=1&print=1`;
+        const win = window.open(printUrl, '_blank', 'width=850,height=950,menubar=no,toolbar=no,location=no,status=no');
+        if (!win || win.closed || typeof win.closed === 'undefined') {
+            window.open(`/services/identity/nin/slip/${resultId}/${type}?inline=1`, '_blank');
+        }
     }
 
     function ninShowSlipReadyModal(slipUrl, thenCallback) {

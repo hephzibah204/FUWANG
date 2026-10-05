@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\CustomApi;
+use App\Models\VerificationResult;
 use App\Services\VerificationResultService;
 use App\Services\Vuvaa\VuvaaClient;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\URL;
 
 class VuvaaController extends Controller
 {
@@ -84,7 +86,7 @@ class VuvaaController extends Controller
         $client = new VuvaaClient($provider);
         $result = $client->verifyNin((string) $payload['nin'], $payload['reference_id'] ?? null);
 
-        $this->store($request, 'vuvaa_verify_nin', (string) $payload['nin'], $provider->name, $result['data'] ?? $result, $result['ok'] ? 'success' : 'failed');
+        $saved = $this->store($request, 'vuvaa_verify_nin', (string) $payload['nin'], $provider->name, $result['data'] ?? $result, $result['ok'] ? 'success' : 'failed');
 
         if (!$result['ok']) {
             \Illuminate\Support\Facades\Log::warning('Vuvaa API Error Response', [
@@ -95,7 +97,20 @@ class VuvaaController extends Controller
             return response()->json(['status' => false, 'message' => $result['message'] ?? 'Verification failed.', 'data' => $result['data'] ?? null], 502);
         }
 
-        return response()->json(['status' => true, 'message' => 'OK', 'data' => $result['data'] ?? null]);
+        $slipUrl = $saved ? URL::temporarySignedRoute(
+            'services.nin.slip',
+            now()->addDays(7),
+            ['id' => $saved->id, 'type' => 'premium_slip']
+        ) : null;
+
+        return response()->json([
+            'status' => true,
+            'message' => 'OK',
+            'result_id' => $saved?->id,
+            'reference_id' => $saved?->reference_id,
+            'slip_url' => $slipUrl,
+            'data' => $result['data'] ?? null,
+        ]);
     }
 
     public function inPersonVerification(Request $request)
@@ -115,13 +130,26 @@ class VuvaaController extends Controller
         $client = new VuvaaClient($provider);
         $result = $client->verifyInPerson((string) $payload['nin'], (string) $payload['image'], $payload['reference_id'] ?? null);
 
-        $this->store($request, 'vuvaa_in_person', (string) $payload['nin'], $provider->name, $result['data'] ?? $result, $result['ok'] ? 'success' : 'failed');
+        $saved = $this->store($request, 'vuvaa_in_person', (string) $payload['nin'], $provider->name, $result['data'] ?? $result, $result['ok'] ? 'success' : 'failed');
 
         if (!$result['ok']) {
             return response()->json(['status' => false, 'message' => $result['message'] ?? 'Verification failed.', 'data' => $result['data'] ?? null], 502);
         }
 
-        return response()->json(['status' => true, 'message' => 'OK', 'data' => $result['data'] ?? null]);
+        $slipUrl = $saved ? URL::temporarySignedRoute(
+            'services.nin.slip',
+            now()->addDays(7),
+            ['id' => $saved->id, 'type' => 'premium_slip']
+        ) : null;
+
+        return response()->json([
+            'status' => true,
+            'message' => 'OK',
+            'result_id' => $saved?->id,
+            'reference_id' => $saved?->reference_id,
+            'slip_url' => $slipUrl,
+            'data' => $result['data'] ?? null,
+        ]);
     }
 
     public function shareCode(Request $request)
@@ -141,13 +169,26 @@ class VuvaaController extends Controller
         $client = new VuvaaClient($provider);
         $result = $client->verifyShareCode((string) $payload['share_code'], $payload['reference_id'] ?? null, $payload['reason'] ?? null);
 
-        $this->store($request, 'vuvaa_share_code', (string) $payload['share_code'], $provider->name, $result['data'] ?? $result, $result['ok'] ? 'success' : 'failed');
+        $saved = $this->store($request, 'vuvaa_share_code', (string) $payload['share_code'], $provider->name, $result['data'] ?? $result, $result['ok'] ? 'success' : 'failed');
 
         if (!$result['ok']) {
             return response()->json(['status' => false, 'message' => $result['message'] ?? 'Verification failed.', 'data' => $result['data'] ?? null], 502);
         }
 
-        return response()->json(['status' => true, 'message' => 'OK', 'data' => $result['data'] ?? null]);
+        $slipUrl = $saved ? URL::temporarySignedRoute(
+            'services.nin.slip',
+            now()->addDays(7),
+            ['id' => $saved->id, 'type' => 'premium_slip']
+        ) : null;
+
+        return response()->json([
+            'status' => true,
+            'message' => 'OK',
+            'result_id' => $saved?->id,
+            'reference_id' => $saved?->reference_id,
+            'slip_url' => $slipUrl,
+            'data' => $result['data'] ?? null,
+        ]);
     }
 
     public function requery(Request $request)
@@ -265,9 +306,9 @@ class VuvaaController extends Controller
             ->first();
     }
 
-    private function store(Request $request, string $serviceType, string $identifier, string $providerName, mixed $data, string $status): void
+    private function store(Request $request, string $serviceType, string $identifier, string $providerName, mixed $data, string $status): ?VerificationResult
     {
-        app(VerificationResultService::class)->create(
+        return app(VerificationResultService::class)->create(
             $request->user(),
             $serviceType,
             $identifier,
