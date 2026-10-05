@@ -524,8 +524,19 @@ class NINController extends Controller
             if (is_array($vuvaaData) && isset($vuvaaData['data']) && is_array($vuvaaData['data'])) {
                 $vuvaaData = array_merge($vuvaaData, $vuvaaData['data']);
             }
-            if (is_array($vuvaaData) && empty($vuvaaData['nin']) && in_array($mode, ['nin', 'selfie'], true) && $request->filled('number')) {
-                $vuvaaData['nin'] = (string) $request->input('number');
+            if (is_array($vuvaaData)) {
+                // Normalize field keys so they align with the frontend and slip generator
+                $vuvaaData['firstname'] = $vuvaaData['firstname'] ?? $vuvaaData['firstName'] ?? null;
+                $vuvaaData['surname'] = $vuvaaData['surname'] ?? $vuvaaData['lastName'] ?? null;
+                $vuvaaData['middlename'] = $vuvaaData['middlename'] ?? $vuvaaData['middleName'] ?? null;
+                $vuvaaData['telephoneno'] = $vuvaaData['telephoneno'] ?? $vuvaaData['phone1'] ?? $vuvaaData['phone'] ?? null;
+                $vuvaaData['birthdate'] = $vuvaaData['birthdate'] ?? $vuvaaData['dateOfBirth'] ?? null;
+                $vuvaaData['residence_address'] = $vuvaaData['residence_address'] ?? $vuvaaData['residence_AdressLine1'] ?? $vuvaaData['residenceAddressLine1'] ?? null;
+                $vuvaaData['residence_state'] = $vuvaaData['residence_state'] ?? $vuvaaData['residenceTown'] ?? null;
+                $vuvaaData['gender'] = !empty($vuvaaData['gender']) ? strtoupper((string) $vuvaaData['gender']) : null;
+                if (empty($vuvaaData['nin']) && in_array($mode, ['nin', 'selfie'], true) && $request->filled('number')) {
+                    $vuvaaData['nin'] = (string) $request->input('number');
+                }
             }
             $isTerminal = $this->isTerminalIdentityError((string) ($result['message'] ?? ''));
             return [

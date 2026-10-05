@@ -857,21 +857,22 @@
         const photoSrc = photo
             ? (photo.startsWith('http') || photo.startsWith('data:') ? photo : 'data:image/jpeg;base64,' + photo)
             : 'https://ui-avatars.com/api/?name=' + (data.firstname || 'N') + '+' + (data.lastname || data.surname || 'A') + '&background=3b82f6&color=fff';
-        const name = [data.firstname, data.middlename, data.lastname || data.surname].filter(Boolean).join(' ') || 'N/A';
-        const nin = data.nin || data.number || 'N/A';
+        const name = [data.firstname || data.firstName, data.middlename || data.middleName, data.lastname || data.surname || data.lastName].filter(Boolean).join(' ') || 'N/A';
+        const nin = data.nin || data.number || data.NIN || 'N/A';
         let cells = '';
         const addCell = (label, val) => {
             if (val && val !== 'N/A' && val !== '' && val !== 'null') {
                 cells += `<div class="rg-cell"><span>${label}</span><strong>${val}</strong></div>`;
             }
         };
-        addCell('Gender', data.gender);
-        addCell('Birth Date', data.birthdate || data.dob);
-        addCell('Phone', data.telephoneno || data.phone);
-        addCell('Middle Name', data.middlename);
+        addCell('Gender', data.gender ? (data.gender === 'm' || data.gender === 'M' ? 'Male' : (data.gender === 'f' || data.gender === 'F' ? 'Female' : data.gender)) : null);
+        addCell('Birth Date', data.birthdate || data.dob || data.dateOfBirth);
+        addCell('Phone', data.telephoneno || data.phone1 || data.phone);
+        addCell('Middle Name', data.middlename || data.middleName);
+        addCell('Address', data.residence_address || data.residence_AdressLine1 || data.residenceAddressLine1 || data.address);
         addCell('State of Origin', data.self_origin_state || data.state);
         addCell('LGA of Origin', data.self_origin_lga || data.lga);
-        addCell('Residence State', data.residence_state);
+        addCell('Residence State', data.residence_state || data.residenceTown);
         addCell('Residence LGA', data.residence_lga);
         addCell('Marital Status', data.maritalstatus);
         addCell('Employment Status', data.emplymentstatus || data.employment_status);
