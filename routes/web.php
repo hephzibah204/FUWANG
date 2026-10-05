@@ -728,10 +728,10 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
                 Route::get('/{id}', [App\Http\Controllers\Admin\AdminAgentController::class, 'show'])->name('show');
                 Route::get('/{id}/edit', [App\Http\Controllers\Admin\AdminAgentController::class, 'edit'])->name('edit');
                 Route::put('/{id}', [App\Http\Controllers\Admin\AdminAgentController::class, 'update'])->name('update');
-                Route::post('/{id}/approve', [App\Http\Controllers\Admin\AdminAgentController::class, 'approve'])->name('approve');
-                Route::post('/{id}/reject', [App\Http\Controllers\Admin\AdminAgentController::class, 'reject'])->name('reject');
-                Route::post('/{id}/suspend', [App\Http\Controllers\Admin\AdminAgentController::class, 'suspend'])->name('suspend');
-                Route::post('/{id}/reactivate', [App\Http\Controllers\Admin\AdminAgentController::class, 'reactivate'])->name('reactivate');
+                Route::match(['GET', 'POST'], '/{id}/approve', [App\Http\Controllers\Admin\AdminAgentController::class, 'approve'])->name('approve');
+                Route::match(['GET', 'POST'], '/{id}/reject', [App\Http\Controllers\Admin\AdminAgentController::class, 'reject'])->name('reject');
+                Route::match(['GET', 'POST'], '/{id}/suspend', [App\Http\Controllers\Admin\AdminAgentController::class, 'suspend'])->name('suspend');
+                Route::match(['GET', 'POST'], '/{id}/reactivate', [App\Http\Controllers\Admin\AdminAgentController::class, 'reactivate'])->name('reactivate');
 
                 // Agent Issues Management
                 Route::prefix('issues')->name('issues.')->group(function () {
