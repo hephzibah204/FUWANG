@@ -170,7 +170,15 @@
                     <div style="display: table-cell; width: 50%;">
                         <div class="field">
                             <div class="label">Date of Birth</div>
-                            <div class="value">{{ $result->response_data['birthdate'] ?? $result->response_data['dob'] ?? '' }}</div>
+                            @php
+                                $dob = $result->response_data['birthdate'] ?? $result->response_data['dob'] ?? '';
+                                try {
+                                    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $dob)) {
+                                        $dob = date('d M Y', strtotime($dob));
+                                    }
+                                } catch (\Exception $e) {}
+                            @endphp
+                            <div class="value">{{ strtoupper($dob ?: '—') }}</div>
                         </div>
                     </div>
                     <div style="display: table-cell; width: 50%;">
@@ -194,7 +202,7 @@
                     <img src="{{ $qrCode }}" style="width: 100%; height: 100%;">
                 @endif
             </div>
-            <div class="issue-date">ISSUE DATE<br><strong>{{ $result->created_at->format('d M Y') }}</strong></div>
+            <div class="issue-date">ISSUE DATE<br><strong>{{ strtoupper(optional($result->created_at)->format('d M Y') ?? date('d M Y')) }}</strong></div>
         </div>
 
         <div class="nin-container">
