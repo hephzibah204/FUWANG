@@ -31,6 +31,24 @@ if (app()->environment(['local', 'testing'])) {
 
 // Debug routes removed for production
 
+// Storage file route: serves files from storage/app/public in case the public/storage symlink is missing, unconfigured, or blocked by server options.
+Route::get('/storage/{path}', function (string $path) {
+    // Prevent directory traversal
+    $cleanPath = str_replace(['..', "\0"], '', $path);
+    $fullPath = storage_path('app/public/' . $cleanPath);
+
+    if (!file_exists($fullPath) || is_dir($fullPath)) {
+        abort(404);
+    }
+
+    $mime = mime_content_type($fullPath) ?: 'application/octet-stream';
+
+    return response()->file($fullPath, [
+        'Content-Type' => $mime,
+        'Cache-Control' => 'public, max-age=86400',
+    ]);
+})->where('path', '.*')->name('storage.local');
+
 // Temporary static landing: set TEMPORARY_STATIC_HOME=false in .env to restore the Laravel home.
 $__staticLanding = public_path('index.html');
 if (is_file($__staticLanding) && filter_var(env('TEMPORARY_STATIC_HOME', false), FILTER_VALIDATE_BOOL)) {
