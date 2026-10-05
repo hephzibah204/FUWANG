@@ -239,12 +239,15 @@
                                         <div class="input-wrap">
                                             <i class="fa-solid fa-server"></i>
                                             <select id="api_provider_id" name="api_provider_id" class="form-control" onchange="updateVerificationTypes()">
-                                                <option value="">-- Auto-select (Smart Routing & Failover) --</option>
                                                 @foreach($ninProviders as $provider)
-                                                    <option value="{{ $provider->id }}" data-provider="{{ $provider->provider_identifier }}" data-types="{{ json_encode($provider->verificationTypes->where('status', true)) }}">
+                                                    <option value="{{ $provider->id }}" 
+                                                            data-provider="{{ $provider->provider_identifier }}" 
+                                                            data-types="{{ json_encode($provider->verificationTypes->where('status', true)) }}"
+                                                            {{ $provider->provider_identifier === 'vuvaa' ? 'selected' : '' }}>
                                                         {{ $provider->name }}{{ $provider->provider_identifier === 'vuvaa' ? ' (Primary)' : '' }}
                                                     </option>
                                                 @endforeach
+                                                <option value="">-- Auto-select (Smart Routing & Failover) --</option>
                                             </select>
                                         </div>
                                         <p class="small text-muted mt-2 mb-0" id="provider-hint"><i class="fa-solid fa-circle-info mr-1"></i> Please select the API provider you want to use for this verification.</p>
@@ -469,8 +472,7 @@
 
         let availableCount = 0;
         
-        // Reset selection
-        providerSelect.value = '';
+        const previousVal = providerSelect.value;
         
         Array.from(providerSelect.options).forEach(option => {
             if (option.value === '') return; // Skip placeholder
@@ -499,14 +501,6 @@
                 submitBtn.innerHTML = ninSubmitLabel(mode);
             }
             
-            // Auto-select if only one provider is available
-            if (availableCount === 1) {
-                const availableOption = Array.from(providerSelect.options).find(opt => opt.style.display !== 'none' && opt.value !== '');
-                if (availableOption) {
-                    providerSelect.value = availableOption.value;
-                }
-            }
-
             // If validation mode, RobostTech is specifically needed
             if (mode === 'validation' || mode === 'validation_status') {
                 const robost = Array.from(providerSelect.options).find(opt => {
@@ -517,9 +511,23 @@
                     providerSelect.value = robost.value;
                 }
             } else {
-                // If currently selected option is hidden for this mode, reset to auto-select
-                const currentOpt = providerSelect.selectedOptions[0];
-                if (currentOpt && currentOpt.style.display === 'none') {
+                // Prioritize Vuvaa (Primary / Provider 1) if supported for this mode
+                const vuvaa = Array.from(providerSelect.options).find(opt => {
+                    if (opt.value === '' || opt.style.display === 'none') return false;
+                    return (opt.getAttribute('data-provider') || '').toLowerCase() === 'vuvaa';
+                });
+
+                const currentOpt = previousVal ? providerSelect.querySelector(`option[value="${previousVal}"]`) : null;
+                if (previousVal && currentOpt && currentOpt.style.display !== 'none') {
+                    providerSelect.value = previousVal;
+                } else if (vuvaa) {
+                    providerSelect.value = vuvaa.value;
+                } else if (availableCount === 1) {
+                    const availableOption = Array.from(providerSelect.options).find(opt => opt.style.display !== 'none' && opt.value !== '');
+                    if (availableOption) {
+                        providerSelect.value = availableOption.value;
+                    }
+                } else {
                     providerSelect.value = '';
                 }
             }
