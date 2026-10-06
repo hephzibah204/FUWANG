@@ -1109,7 +1109,7 @@ class VerificationController extends Controller
                         ->latest()
                         ->get();
 
-        $price = VerificationPrice::first()->ipe_clearance_price ?? 400;
+        $price = VerificationPrice::first()->ipe_clearance_price ?? 700;
 
         return view('services.identity.clearance', compact('history', 'price'));
     }
@@ -1121,6 +1121,7 @@ class VerificationController extends Controller
     {
         $request->validate([
             'number' => ['required', 'string', 'max:120'],
+            'category' => ['nullable', 'string', 'max:150'],
             'mode' => ['nullable', 'string', 'in:submit,status'],
             'remarks' => ['nullable', 'string', 'max:1000'],
         ]);
@@ -1128,6 +1129,7 @@ class VerificationController extends Controller
         $mode = $request->input('mode', 'submit');
         $user = Auth::user();
         $trackingId = trim((string) $request->number);
+        $category = trim((string) $request->input('category', 'Improcessing Error'));
 
         // Status check mode: retrieve existing review record
         if ($mode === 'status') {
@@ -1161,7 +1163,8 @@ class VerificationController extends Controller
                     'reference_id' => $existing->reference_id,
                     'status' => $existing->status,
                     'status_label' => $readableStatus,
-                    'admin_note' => $existing->admin_note ?: 'Your application is currently being vetted by an administrator. Check back shortly.',
+                    'category' => $existing->response_data['category'] ?? 'Improcessing Error',
+                    'admin_note' => $existing->admin_note ?: 'Your application is currently being vetted by an administrator. Check back within an hour.',
                     'submitted_at' => $existing->created_at->format('M d, Y H:i:s'),
                     'updated_at' => $existing->updated_at->format('M d, Y H:i:s'),
                     'details' => $existing->response_data ?? [],
@@ -1171,7 +1174,7 @@ class VerificationController extends Controller
         }
 
         // Mode: Submit new clearance request
-        $price = VerificationPrice::first()->ipe_clearance_price ?? 400;
+        $price = VerificationPrice::first()->ipe_clearance_price ?? 700;
         $wallet = app(WalletService::class);
         $debit = $wallet->debit($user, (float) $price, 'IPE Clearance Submission (' . $trackingId . ')', 'CLEAR');
         if (!$debit['ok']) {
@@ -1183,6 +1186,7 @@ class VerificationController extends Controller
 
             $payload = [
                 'tracking_id' => $trackingId,
+                'category' => $category,
                 'user_name' => $user->fullname,
                 'user_email' => $user->email,
                 'user_phone' => $user->phone,
@@ -1198,7 +1202,7 @@ class VerificationController extends Controller
                 'provider_name' => 'ADMIN_MANUAL',
                 'status' => 'waiting_for_review',
                 'reference_id' => $referenceId,
-                'admin_note' => 'Awaiting admin vetting and clearance.',
+                'admin_note' => 'Awaiting admin vetting and clearance. Results typically available within an hour.',
                 'response_data' => $payload,
             ]);
 
@@ -1206,13 +1210,14 @@ class VerificationController extends Controller
 
             return response()->json([
                 'status' => true,
-                'message' => 'Clearance request submitted successfully. Our team will vet and process your clearance shortly.',
+                'message' => 'Clearance request submitted successfully. You will see results under IPE Results within an hour.',
                 'data' => [
                     'tracking_id' => $trackingId,
                     'reference_id' => $referenceId,
+                    'category' => $category,
                     'status' => 'waiting_for_review',
                     'status_label' => 'Under Review by Admin',
-                    'admin_note' => 'Awaiting admin vetting and clearance.',
+                    'admin_note' => 'Awaiting admin vetting and clearance. Results typically available within an hour.',
                 ],
                 'result_id' => $result->id
             ]);

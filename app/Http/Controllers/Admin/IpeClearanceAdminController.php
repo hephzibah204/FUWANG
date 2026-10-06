@@ -61,11 +61,13 @@ class IpeClearanceAdminController extends Controller
 
         // Handle failure and refund if necessary
         if ($request->status === 'failed' && $oldStatus !== 'failed') {
-            $price = \App\Models\VerificationPrice::first()->ipe_clearance_price ?? 400;
+            $price = (float) ($verification->response_data['amount_paid'] 
+                ?? \App\Models\VerificationPrice::first()->ipe_clearance_price 
+                ?? 700);
             $wallet = app(WalletService::class);
             $wallet->failAndRefund(
                 $user,
-                (float) $price,
+                $price,
                 'IPE Clearance Rejected: ' . ($request->admin_note ?: 'Request unsuccessful'),
                 $verification->reference_id
             );

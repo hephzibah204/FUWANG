@@ -11,149 +11,178 @@
         </div>
         <div class="sh-text">
             <h1 class="h4 font-weight-bold mb-1">IPE Clearance</h1>
-            <p class="text-muted small">Official background vetting and clearance verification manually processed by our administrative desk.</p>
+            <p class="text-muted small mb-0">
+                Select IPEs Category and Enter the Tracking ID in the form below. The IPE Result are shown under the form below. You will get the Result within <strong class="text-success font-weight-bold">An Hour</strong>.
+            </p>
         </div>
     </div>
 
-    <div class="row">
-        <div class="col-lg-12">
-            <div class="tab-strip mb-4">
-                <button class="s-tab active" onclick="switchMainPanel('verify', this)">Submit / Check Clearance</button>
-                <button class="s-tab" onclick="switchMainPanel('vault', this)">Clearance Vault ({{ $history->count() }})</button>
-            </div>
+    <!-- Main Clearance Submission Card -->
+    <div class="panel-card p-4 mb-4" id="submissionCard">
+        <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom border-white-5">
+            <h2 class="h5 font-weight-bold m-0 text-white">
+                <i class="fa-solid fa-id-badge mr-2 text-warning"></i> Select IPEs Category
+            </h2>
+            <span class="badge badge-warning py-2 px-3 text-dark font-weight-bold" id="priceBadge" style="font-size: 0.95rem;">
+                Fee: ₦{{ number_format($price ?? 700, 2) }}
+            </span>
+        </div>
 
-            <div id="panel-verify" class="main-panel active">
-                <div class="panel-card p-4 mb-4" id="searchPanel">
-                    <div class="d-flex align-items-center mb-4 pb-3 border-bottom border-white-5">
-                        <h2 class="h6 font-weight-bold m-0"><i class="fa-solid fa-file-signature mr-2 text-primary"></i> IPE Clearance Processing</h2>
-                        <span class="ml-auto badge badge-primary py-2 px-3" id="priceBadge">₦{{ number_format($price ?? 400, 2) }}</span>
-                    </div>
+        <form id="clearanceForm" action="{{ route('services.clearance.verify') }}" method="POST">
+            @csrf
+            <input type="hidden" name="mode" id="formMode" value="submit">
 
-                    <div class="alert alert-info border-0 small mb-4" style="background: rgba(59, 130, 246, 0.1); color: #93c5fd;">
-                        <i class="fa-solid fa-circle-info mr-2"></i>
-                        Clearance requests are manually vetted by Fuwa compliance officers. Once submitted, your tracking ID will remain under review until verified. You can track status anytime.
-                    </div>
-
-                    <form id="clearanceForm" action="{{ route('services.clearance.verify') }}" method="POST">
-                        @csrf
-                        <div class="row">
-                            <div class="col-md-4 mb-3">
-                                <label for="mode" class="font-weight-600 mb-2 small text-muted">Action Mode</label>
-                                <select id="mode" name="mode" class="form-control" onchange="updateUI(this.value)">
-                                    <option value="submit">Submit New Clearance Request</option>
-                                    <option value="status">Track Request Status</option>
-                                </select>
-                            </div>
-                            <div class="col-md-8 mb-3">
-                                <label for="number" class="font-weight-600 mb-2 small text-muted">Tracking ID / Clearance Identifier</label>
-                                <div class="input-wrap">
-                                    <i class="fa-solid fa-hashtag"></i>
-                                    <input type="text" id="number" name="number" class="form-control" placeholder="Enter Tracking ID or Reference Number" required>
-                                </div>
-                            </div>
-
-                            <div class="col-md-12 mb-3" id="remarksWrap">
-                                <label for="remarks" class="font-weight-600 mb-2 small text-muted">Additional Information / Remarks (Optional)</label>
-                                <textarea id="remarks" name="remarks" class="form-control" rows="2" placeholder="Provide any relevant details or applicant notes for admin vetting..."></textarea>
-                            </div>
-
-                            <div class="col-md-12 text-right mt-2 d-flex justify-content-end">
-                                <button type="submit" class="btn btn-primary btn-lg px-5" id="submit-btn" style="height: 50px; min-width: 250px;">
-                                    <i class="fa-solid fa-bolt mr-2"></i> <span id="btnText">Submit Request</span>
-                                </button>
-                            </div>
-                        </div>
-                    </form>
+            <div class="row">
+                <!-- Select IPEs Category -->
+                <div class="col-12 mb-3">
+                    <label for="category" class="font-weight-600 mb-2 small text-muted">Select IPEs Category</label>
+                    <select id="category" name="category" class="form-control form-control-lg custom-select-styled" required>
+                        <option value="">--Select IPE Category--</option>
+                        <option value="New Enrollment for ID Retrieval">New Enrollment for ID Retrieval</option>
+                        <option value="Improcessing Error" selected>Improcessing Error</option>
+                        <option value="Enrollment Is still Being Processed">Enrollment Is still Being Processed</option>
+                    </select>
                 </div>
-            </div>
 
-            <!-- Result Area -->
-            <div class="col-lg-12" id="resultArea" style="display: none;">
-                <div class="panel-card p-4">
-                    <div class="d-flex align-items-center justify-content-between mb-3 border-bottom border-white-5 pb-3">
-                        <h4 class="h6 font-weight-bold m-0"><i class="fa-solid fa-clipboard-check text-warning mr-2"></i> Clearance Status Card</h4>
-                        <span id="resultStatusBadge" class="badge py-2 px-3"></span>
-                    </div>
-
-                    <div id="resultCard" class="text-white">
-                        <div class="row g-3 mb-3">
-                            <div class="col-md-6 mb-2">
-                                <small class="text-muted d-block">Tracking ID</small>
-                                <strong id="resTrackingId" class="text-warning font-monospace"></strong>
-                            </div>
-                            <div class="col-md-6 mb-2">
-                                <small class="text-muted d-block">System Reference</small>
-                                <code id="resReferenceId" class="text-primary"></code>
-                            </div>
-                            <div class="col-md-6 mb-2">
-                                <small class="text-muted d-block">Submitted At</small>
-                                <span id="resSubmittedAt"></span>
-                            </div>
-                            <div class="col-md-6 mb-2">
-                                <small class="text-muted d-block">Review Status</small>
-                                <strong id="resStatusLabel"></strong>
-                            </div>
-                        </div>
-
-                        <div class="p-3 rounded-3 mt-3" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);">
-                            <small class="text-muted d-block mb-1"><i class="fa-solid fa-comment-dots mr-1"></i> Admin Note / Vetting Remarks:</small>
-                            <p id="resAdminNote" class="mb-0 text-white font-weight-500"></p>
-                        </div>
+                <!-- Enter Tracking ID -->
+                <div class="col-12 mb-3">
+                    <label for="number" class="font-weight-600 mb-2 small text-muted">Enter Tracking ID</label>
+                    <div class="input-wrap">
+                        <i class="fa-solid fa-hashtag"></i>
+                        <input type="text" id="number" name="number" class="form-control form-control-lg" placeholder="Enter Tracking ID e.g BTX947E60001020" required>
                     </div>
                 </div>
 
-                <div class="text-center mt-4">
-                    <button class="btn btn-outline-light btn-wide" onclick="window.location.reload()">
-                        <i class="fa-solid fa-arrow-rotate-right mr-1"></i> New Request / Lookup
+                <!-- Action Buttons: Go Back & Submit Tracking -->
+                <div class="col-12 d-flex align-items-center gap-2 mt-2">
+                    <a href="{{ route('services.nin.suite') }}" class="btn btn-warning text-white px-4 font-weight-bold mr-2" style="background-color: #f97316; border-color: #f97316; border-radius: 8px;">
+                        <i class="fa-solid fa-arrow-left mr-1"></i> Go Back
+                    </a>
+                    <button type="submit" class="btn btn-primary px-4 font-weight-bold" id="submitBtn" style="background-color: #2563eb; border-color: #2563eb; border-radius: 8px;">
+                        <i class="fa-solid fa-paper-plane mr-1"></i> <span id="btnText">Submit Tracking</span>
+                    </button>
+                    <button type="button" class="btn btn-outline-light ml-auto" onclick="quickCheckStatus()" title="Quick check status by entered Tracking ID">
+                        <i class="fa-solid fa-magnifying-glass mr-1"></i> Track Status
                     </button>
                 </div>
             </div>
+        </form>
+    </div>
 
-            <!-- Vault Panel -->
-            <div id="panel-vault" class="main-panel col-lg-12" style="display: none;">
-                <div class="panel-card p-4">
-                    <h3 class="h6 font-weight-bold mb-4">Clearance Vault &amp; History</h3>
-                    <div class="table-responsive">
-                        <table class="table admin-table text-white">
-                            <thead>
-                                <tr>
-                                    <th>Reference</th>
-                                    <th>Tracking ID</th>
-                                    <th>Status</th>
-                                    <th>Date</th>
-                                    <th class="text-right">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($history as $res)
-                                    <tr>
-                                        <td><code class="text-primary">{{ $res->reference_id }}</code></td>
-                                        <td><span class="text-warning font-weight-bold">{{ $res->identifier }}</span></td>
-                                        <td>
-                                            @if($res->status === 'successful')
-                                                <span class="badge badge-success">Cleared</span>
-                                            @elseif($res->status === 'failed')
-                                                <span class="badge badge-danger">Rejected</span>
-                                            @else
-                                                <span class="badge badge-warning text-dark">Under Review</span>
-                                            @endif
-                                        </td>
-                                        <td>{{ $res->created_at->format('M d, Y') }}</td>
-                                        <td class="text-right">
-                                            <button class="btn btn-xs btn-outline-primary" onclick='showVaultDetails(@json($res))'>
-                                                <i class="fa fa-eye"></i> View
-                                            </button>
-                                        </td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="5" class="text-center py-4 text-muted small">No clearance records found in vault.</td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
+    <!-- Live Status Preview Card (Shown after submit or lookup) -->
+    <div id="statusResultCard" class="panel-card p-4 mb-4" style="display: none;">
+        <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom border-white-5">
+            <h3 class="h6 font-weight-bold text-white m-0">
+                <i class="fa-solid fa-clipboard-check text-warning mr-2"></i> Current Application Status
+            </h3>
+            <span id="cardStatusBadge" class="badge py-2 px-3"></span>
+        </div>
+        <div class="row g-3 text-white">
+            <div class="col-md-3 mb-2">
+                <small class="text-muted d-block">Tracking ID</small>
+                <strong id="cardTrackingId" class="text-warning font-monospace fs-6"></strong>
+            </div>
+            <div class="col-md-3 mb-2">
+                <small class="text-muted d-block">IPE Category</small>
+                <span id="cardCategory" class="text-white font-weight-600"></span>
+            </div>
+            <div class="col-md-3 mb-2">
+                <small class="text-muted d-block">System Reference</small>
+                <code id="cardRefId" class="text-primary"></code>
+            </div>
+            <div class="col-md-3 mb-2">
+                <small class="text-muted d-block">Submitted Date</small>
+                <span id="cardSubmittedAt"></span>
+            </div>
+            <div class="col-12 mt-2">
+                <div class="p-3 rounded-3" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);">
+                    <small class="text-warning d-block mb-1 font-weight-600"><i class="fa-solid fa-circle-info mr-1"></i> Admin Remarks / Vetting Output:</small>
+                    <p id="cardAdminNote" class="mb-0 text-white font-weight-500"></p>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- IPE Results Section (Competitor style blue bar & table) -->
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-5" style="background: var(--clr-bg-card); border: 1px solid rgba(255,255,255,0.08);">
+        <!-- Blue Header Banner matching competitor screenshot -->
+        <div class="py-2.5 px-4 text-white font-weight-bold d-flex align-items-center justify-content-between" style="background-color: #2563eb;">
+            <span style="font-size: 1rem;"><i class="fa-solid fa-list-check mr-2"></i> IPE Results</span>
+            <span class="badge badge-light text-primary font-weight-bold">{{ $history->count() }} Total</span>
+        </div>
+
+        <div class="card-body p-4">
+            <!-- Search & Filter Controls -->
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+                <div class="d-flex align-items-center gap-2" style="max-width: 450px; width: 100%;">
+                    <div class="input-wrap flex-grow-1">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" id="tableSearchInput" class="form-control" placeholder="Search by Tracking ID or NIN" onkeyup="filterResultsTable()">
+                    </div>
+                    <button type="button" class="btn btn-primary px-3" onclick="filterResultsTable()">
+                        Search
+                    </button>
+                </div>
+                <div class="text-white-50 small">
+                    <strong>Total Record({{ $history->count() }})</strong> — page 1 of 1
+                </div>
+            </div>
+
+            <!-- Results Table -->
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 text-white" id="ipeResultsTable">
+                    <thead style="background: rgba(255,255,255,0.04);">
+                        <tr>
+                            <th>Reference</th>
+                            <th>Tracking ID / NIN</th>
+                            <th>IPE Category</th>
+                            <th>Status</th>
+                            <th>Admin Remarks / Note</th>
+                            <th>Submitted At</th>
+                            <th class="text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($history as $res)
+                            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);" class="result-row">
+                                <td><code>{{ $res->reference_id }}</code></td>
+                                <td><span class="text-warning font-monospace font-weight-bold tracking-cell">{{ $res->identifier }}</span></td>
+                                <td>
+                                    <span class="badge badge-secondary px-2 py-1">
+                                        {{ $res->response_data['category'] ?? 'Improcessing Error' }}
+                                    </span>
+                                </td>
+                                <td>
+                                    @if($res->status === 'successful')
+                                        <span class="badge badge-success px-2.5 py-1">Cleared / Ready</span>
+                                    @elseif($res->status === 'failed')
+                                        <span class="badge badge-danger px-2.5 py-1">Failed / Rejected</span>
+                                    @else
+                                        <span class="badge badge-warning text-dark px-2.5 py-1">Processing (Within An Hour)</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    <small class="text-white-50">
+                                        {{ $res->admin_note ?: ($res->status === 'successful' ? 'Cleared successfully.' : 'Under review.') }}
+                                    </small>
+                                </td>
+                                <td><small class="text-muted">{{ $res->created_at->format('M d, Y H:i') }}</small></td>
+                                <td class="text-right">
+                                    <button class="btn btn-sm btn-outline-primary" onclick='displayCardDetails(@json($res))'>
+                                        <i class="fa-solid fa-eye mr-1"></i> View
+                                    </button>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr id="emptyRow">
+                                <td colspan="7" class="text-center py-5 text-muted">
+                                    <i class="fa-solid fa-folder-open fa-2x mb-2 d-block opacity-50"></i>
+                                    No IPE records found. Submit a tracking ID above to initiate clearance.
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -162,139 +191,203 @@
 
 @push('styles')
 <style>
-    .tab-strip { display: flex; gap: 0; border-bottom: 2px solid rgba(255,255,255,0.05); margin-bottom: 20px; }
-    .s-tab { padding: 12px 25px; background: none; border: none; color: var(--clr-text-muted); font-weight: 600; font-size: 0.85rem; cursor: pointer; border-bottom: 2px solid transparent; transition: 0.3s; }
-    .s-tab.active { color: #f59e0b; border-bottom-color: #f59e0b; }
-    .main-panel { display: none; }
-    .main-panel.active { display: block; }
-    .panel-card { background: var(--clr-bg-card); backdrop-filter: blur(25px); border: var(--border-glass); border-radius: 20px; }
-    .input-wrap { position: relative; display: flex; align-items: center; }
-    .input-wrap i { position: absolute; left: 16px; color: var(--clr-text-muted); }
-    .input-wrap .form-control { padding-left: 45px !important; height: 50px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); }
-    .btn-wide { padding-left: 40px; padding-right: 40px; border-radius: 12px; }
+    .panel-card { 
+        background: var(--clr-bg-card); 
+        backdrop-filter: blur(25px); 
+        border: 1px solid rgba(255,255,255,0.08); 
+        border-radius: 16px; 
+    }
+    .custom-select-styled {
+        height: 52px;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.12);
+        color: #fff;
+        border-radius: 10px;
+    }
+    .custom-select-styled option {
+        background: #111827;
+        color: #fff;
+    }
+    .input-wrap { 
+        position: relative; 
+        display: flex; 
+        align-items: center; 
+    }
+    .input-wrap i { 
+        position: absolute; 
+        left: 16px; 
+        color: var(--clr-text-muted); 
+    }
+    .input-wrap .form-control { 
+        padding-left: 45px !important; 
+        height: 52px; 
+        background: rgba(255,255,255,0.04); 
+        border: 1px solid rgba(255,255,255,0.12); 
+        border-radius: 10px;
+        color: #fff;
+    }
+    .input-wrap .form-control:focus {
+        border-color: #2563eb;
+        background: rgba(255,255,255,0.07);
+        color: #fff;
+    }
 </style>
 @endpush
 
 @push('scripts')
 <script>
-    function switchMainPanel(panel, btn) {
-        $('.main-panel').hide().removeClass('active');
-        $('#panel-' + panel).show().addClass('active');
-        $('.s-tab').removeClass('active');
-        $(btn).addClass('active');
-        $('#resultArea').hide();
-    }
-
-    function renderStatusCard(data) {
-        $('#searchPanel').hide();
-        $('#panel-vault').hide();
-        
-        let trackingId = data.tracking_id || 'N/A';
+    function displayCardDetails(data) {
+        let trackingId = data.identifier || data.tracking_id || 'N/A';
         let refId = data.reference_id || 'N/A';
+        let category = (data.response_data && data.response_data.category) ? data.response_data.category : (data.category || 'Improcessing Error');
         let status = data.status || 'waiting_for_review';
-        let statusLabel = data.status_label || (status === 'successful' ? 'Cleared' : (status === 'failed' ? 'Rejected' : 'Under Review'));
-        let adminNote = data.admin_note || 'Awaiting administrative review.';
-        let submittedAt = data.submitted_at || new Date().toLocaleString();
+        let adminNote = data.admin_note || (status === 'successful' ? 'Cleared successfully by administrator.' : 'Under review by administrator (within an hour).');
+        let submittedAt = data.created_at || data.submitted_at || 'Just now';
 
-        $('#resTrackingId').text(trackingId);
-        $('#resReferenceId').text(refId);
-        $('#resSubmittedAt').text(submittedAt);
-        $('#resStatusLabel').text(statusLabel);
-        $('#resAdminNote').text(adminNote);
+        $('#cardTrackingId').text(trackingId);
+        $('#cardRefId').text(refId);
+        $('#cardCategory').text(category);
+        $('#cardSubmittedAt').text(submittedAt);
+        $('#cardAdminNote').text(adminNote);
 
-        let badge = $('#resultStatusBadge');
+        let badge = $('#cardStatusBadge');
         if (status === 'successful') {
-            badge.removeClass('bg-warning bg-danger text-dark').addClass('bg-success text-white').text('Cleared / Successful');
+            badge.removeClass('badge-warning badge-danger text-dark').addClass('badge-success text-white').text('Cleared / Ready');
         } else if (status === 'failed') {
-            badge.removeClass('bg-warning bg-success text-dark').addClass('bg-danger text-white').text('Rejected / Failed');
+            badge.removeClass('badge-warning badge-success text-dark').addClass('badge-danger text-white').text('Failed / Rejected');
         } else {
-            badge.removeClass('bg-success bg-danger text-white').addClass('bg-warning text-dark').text('Under Review by Admin');
+            badge.removeClass('badge-success badge-danger text-white').addClass('badge-warning text-dark').text('Under Review (Within An Hour)');
         }
 
-        $('#resultArea').fadeIn();
+        $('#statusResultCard').fadeIn();
+        $('html, body').animate({ scrollTop: $('#statusResultCard').offset().top - 80 }, 400);
     }
 
-    function showVaultDetails(item) {
-        let formatted = {
-            tracking_id: item.identifier,
-            reference_id: item.reference_id,
-            status: item.status,
-            status_label: item.status === 'successful' ? 'Cleared' : (item.status === 'failed' ? 'Rejected' : 'Under Review'),
-            admin_note: item.admin_note || (item.status === 'successful' ? 'Cleared successfully by administrator.' : 'Under review.'),
-            submitted_at: item.created_at,
-        };
-        renderStatusCard(formatted);
+    function quickCheckStatus() {
+        let trackingId = $('#number').val().trim();
+        if (!trackingId) {
+            Swal.fire({
+                title: 'Enter Tracking ID',
+                text: 'Please input your Tracking ID in the box to track its clearance status.',
+                icon: 'info',
+                background: '#0a0a0f',
+                color: '#fff'
+            });
+            $('#number').focus();
+            return;
+        }
+
+        Swal.fire({
+            title: 'Checking Status...',
+            text: 'Querying administrative vetting records for ' + trackingId,
+            didOpen: () => { Swal.showLoading(); },
+            background: '#0a0a0f',
+            color: '#fff',
+            allowOutsideClick: false
+        });
+
+        $.ajax({
+            url: "{{ route('services.clearance.verify') }}",
+            method: 'POST',
+            data: {
+                _token: "{{ csrf_token() }}",
+                mode: 'status',
+                number: trackingId
+            },
+            success: function(res) {
+                if (res.status && res.data) {
+                    Swal.close();
+                    displayCardDetails(res.data);
+                } else {
+                    Swal.fire({
+                        title: 'Record Not Found',
+                        text: res.message || 'No clearance record found with that Tracking ID.',
+                        icon: 'warning',
+                        background: '#0a0a0f',
+                        color: '#fff'
+                    });
+                }
+            },
+            error: function(xhr) {
+                let msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Error retrieving status.';
+                Swal.fire({ title: 'Error', text: msg, icon: 'error', background: '#0a0a0f', color: '#fff' });
+            }
+        });
     }
 
-    function updateUI(mode) {
-        if (mode === 'status') {
-            $('#priceBadge').hide();
-            $('#remarksWrap').hide();
-            $('#btnText').text('Track Status');
+    function filterResultsTable() {
+        let query = $('#tableSearchInput').val().toLowerCase().trim();
+        let rows = $('.result-row');
+        let matched = 0;
+
+        rows.each(function() {
+            let text = $(this).text().toLowerCase();
+            if (text.indexOf(query) !== -1) {
+                $(this).show();
+                matched++;
+            } else {
+                $(this).hide();
+            }
+        });
+
+        if (matched === 0 && rows.length > 0) {
+            if ($('#noMatchRow').length === 0) {
+                $('#ipeResultsTable tbody').append('<tr id="noMatchRow"><td colspan="7" class="text-center py-4 text-muted">No matching tracking IDs found.</td></tr>');
+            }
         } else {
-            $('#priceBadge').show();
-            $('#remarksWrap').show();
-            $('#btnText').text('Submit Request');
+            $('#noMatchRow').remove();
         }
     }
 
     $(document).ready(function() {
         $('#clearanceForm').on('submit', function(e) {
             e.preventDefault();
-            let btn = $('#submit-btn');
+            let btn = $('#submitBtn');
             let originalHtml = btn.html();
-            let mode = $('#mode').val();
-            let confirmText = (mode === 'submit') ? 'A fee of ₦{{ number_format($price, 2) }} will be charged for processing this clearance. Continue?' : 'Track status for this Tracking ID?';
+            let category = $('#category').val();
+            let trackingId = $('#number').val().trim();
+
+            if (!category) {
+                Swal.fire({ title: 'Select Category', text: 'Please select an IPE category before submitting.', icon: 'warning', background: '#0a0a0f', color: '#fff' });
+                return;
+            }
 
             Swal.fire({
-                title: (mode === 'submit') ? 'Confirm Clearance Request' : 'Check Request Status',
-                text: confirmText,
+                title: 'Confirm IPE Clearance',
+                html: `<p class="mb-2">A fee of <strong>₦{{ number_format($price ?? 700, 2) }}</strong> will be deducted from your wallet.</p><p class="small text-muted mb-0">Category: <b>${category}</b><br>Tracking ID: <b>${trackingId}</b><br>Result turnaround: <b>Within An Hour</b></p>`,
                 icon: 'question',
                 showCancelButton: true,
-                confirmButtonColor: '#f59e0b',
+                confirmButtonColor: '#2563eb',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'Yes, Submit Tracking',
                 background: '#0a0a0f',
                 color: '#fff'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin mr-2"></i> Processing...');
-                    
+                    btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin mr-2"></i> Submitting...');
+
                     $.ajax({
                         url: $(this).attr('action'),
                         method: 'POST',
                         data: $(this).serialize(),
                         success: function(response) {
                             if (response.status) {
-                                if (mode === 'submit') {
-                                    Swal.fire({ 
-                                        title: 'Submitted Successfully!', 
-                                        text: response.message, 
-                                        icon: 'success', 
-                                        background: '#0a0a0f', 
-                                        color: '#fff' 
-                                    }).then(() => {
-                                        if (response.data) {
-                                            renderStatusCard(response.data);
-                                        } else {
-                                            window.location.reload();
-                                        }
-                                    });
-                                } else {
-                                    renderStatusCard(response.data);
-                                    Swal.fire({ 
-                                        title: 'Status Retrieved!', 
-                                        text: 'Current status: ' + (response.data.status_label || response.data.status), 
-                                        icon: 'info', 
-                                        background: '#0a0a0f', 
-                                        color: '#fff' 
-                                    });
-                                }
+                                Swal.fire({
+                                    title: 'Submitted Successfully!',
+                                    text: response.message,
+                                    icon: 'success',
+                                    background: '#0a0a0f',
+                                    color: '#fff'
+                                }).then(() => {
+                                    window.location.reload();
+                                });
                             } else {
                                 Swal.fire({ title: 'Notice', text: response.message, icon: 'warning', background: '#0a0a0f', color: '#fff' });
+                                btn.prop('disabled', false).html(originalHtml);
                             }
-                            btn.prop('disabled', false).html(originalHtml);
                         },
                         error: function(xhr) {
-                            let msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Unable to complete request at this time.';
+                            let msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Unable to complete clearance submission.';
                             Swal.fire({ title: 'Error', text: msg, icon: 'error', background: '#0a0a0f', color: '#fff' });
                             btn.prop('disabled', false).html(originalHtml);
                         }

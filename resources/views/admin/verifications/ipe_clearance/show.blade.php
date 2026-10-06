@@ -53,6 +53,10 @@
                 @endif
             </div>
             <div class="col-md-6">
+                <span class="d-block small text-white-50">IPE Category</span>
+                <strong class="text-white">{{ $request->response_data['category'] ?? 'Improcessing Error' }}</strong>
+            </div>
+            <div class="col-md-6">
                 <span class="d-block small text-white-50">Provider / Processor</span>
                 <strong class="text-white">{{ $request->provider_name }}</strong>
             </div>

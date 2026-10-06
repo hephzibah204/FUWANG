@@ -101,7 +101,7 @@
                 </div>
                 <div class="col-md-4 mb-4">
                     <label class="text-white-50 small mb-2">IPE Clearance (₦)</label>
-                    <input type="number" name="ipe_clearance_price" class="form-control text-white rounded-3" value="{{ $vp->ipe_clearance_price ?? 400 }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                    <input type="number" name="ipe_clearance_price" class="form-control text-white rounded-3" value="{{ $vp->ipe_clearance_price ?? 700 }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
                 </div>
                 <div class="col-md-4 mb-4">
                     <label class="text-white-50 small mb-2">Personalization (₦)</label>
