@@ -9,9 +9,17 @@
             <h3 class="font-weight-bold text-white mb-0"><i class="fa-solid fa-user-check text-warning me-2"></i>Review &amp; Resolve IPE Clearance</h3>
             <p class="text-white-50 small mb-0">Inspect applicant submission, assign a new tracking ID upon success, or reject with automatic wallet refund.</p>
         </div>
-        <a href="{{ route('admin.verifications.ipe_clearance.index') }}" class="btn btn-outline-light btn-sm">
-            <i class="fa-solid fa-arrow-left me-1"></i> Back to Requests
-        </a>
+        <div class="d-flex align-items-center gap-2">
+            <form action="{{ route('admin.verifications.ipe_clearance.sync_robosttech', $request->id) }}" method="POST" class="m-0">
+                @csrf
+                <button type="submit" class="btn btn-outline-info btn-sm">
+                    <i class="fa-solid fa-arrows-rotate me-1"></i> Sync Robosttech API
+                </button>
+            </form>
+            <a href="{{ route('admin.verifications.ipe_clearance.index') }}" class="btn btn-outline-light btn-sm">
+                <i class="fa-solid fa-arrow-left me-1"></i> Back to Requests
+            </a>
+        </div>
     </div>
 
     @if(session('success'))
@@ -73,6 +81,18 @@
             <div class="col-md-6">
                 <span class="d-block small text-white-50">Amount Paid</span>
                 <strong class="text-success font-monospace">₦{{ number_format($d['amount_paid'] ?? 700, 2) }}</strong>
+            </div>
+            <div class="col-md-6">
+                <span class="d-block small text-white-50">Processing Engine</span>
+                @if(($request->provider_name ?? '') === 'Robosttech')
+                    <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-50 py-1 px-2">
+                        <i class="fa-solid fa-robot me-1"></i> Robosttech API
+                    </span>
+                @else
+                    <span class="badge bg-primary bg-opacity-25 text-info border border-info border-opacity-50 py-1 px-2">
+                        <i class="fa-solid fa-user-check me-1"></i> Manual Admin Vetting
+                    </span>
+                @endif
             </div>
 
             @if(!empty($currentNewTracking))

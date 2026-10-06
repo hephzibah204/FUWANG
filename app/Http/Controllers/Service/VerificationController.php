@@ -1110,12 +1110,13 @@ class VerificationController extends Controller
                         ->get();
 
         $price = VerificationPrice::first()->ipe_clearance_price ?? 700;
+        $ipeMode = \App\Models\SystemSetting::get('ipe_clearance_mode', 'manual');
 
-        return view('services.identity.clearance', compact('history', 'price'));
+        return view('services.identity.clearance', compact('history', 'price', 'ipeMode'));
     }
 
     /**
-     * Handle IPE Clearance Submission & Status Query (Manual Admin Processing)
+     * Handle IPE Clearance Submission & Status Query (Manual Admin Processing or Robosttech API)
      */
     public function verifyClearance(Request $request)
     {
@@ -1132,8 +1133,9 @@ class VerificationController extends Controller
         $trackingId = trim((string) $request->number);
         $nin = trim((string) $request->input('nin', ''));
         $category = trim((string) $request->input('category', 'Improcessing Error'));
+        $ipeClearanceMode = \App\Models\SystemSetting::get('ipe_clearance_mode', 'manual');
 
-        // Status check mode: retrieve existing review record
+        // Status check mode: retrieve existing review record and optionally sync from API
         if ($mode === 'status') {
             $existing = VerificationResult::where(function ($query) use ($trackingId, $nin) {
                     $query->where('identifier', $trackingId)
@@ -1142,13 +1144,68 @@ class VerificationController extends Controller
                         $query->orWhere('response_data->nin', $nin);
                     }
                 })
-                ->whereIn('service_type', ['ipe_clearance', 'clearance', 'clearance_request'])
+                ->whereIn('service_type', ['ipe_clearance', 'clearance', 'clearance_request', 'clearance_status'])
                 ->where(function ($q) use ($user) {
                     $q->where('user_id', $user->id)
                       ->orWhereNull('user_id');
                 })
                 ->latest()
                 ->first();
+
+            // If Robosttech mode or existing request was submitted via Robosttech, check Robosttech status API
+            if ($ipeClearanceMode === 'robosttech' || ($existing && $existing->provider_name === 'Robosttech' && in_array($existing->status, ['pending', 'waiting_for_review']))) {
+                $apiCenter = ApiCenter::first();
+                if ($apiCenter && $apiCenter->robosttech_api_key) {
+                    try {
+                        $endpoint = $this->resolveRobostEndpoint(
+                            (string) ($apiCenter->robosttech_endpoint_clearance_status ?: 'https://robosttech.com/api'),
+                            'clearance_status'
+                        );
+                        $apiRes = Http::timeout(25)->withHeaders([
+                            'api-key' => $apiCenter->robosttech_api_key,
+                            'Content-Type' => 'application/json'
+                        ])->post($endpoint, [
+                            'tracking_id' => $trackingId,
+                            'number' => $trackingId,
+                        ]);
+
+                        if ($apiRes->successful()) {
+                            $apiData = $apiRes->json();
+                            $apiStatus = strtolower((string) ($apiData['status'] ?? $apiData['data']['status'] ?? ''));
+                            $newTid = $apiData['new_tracking_id'] ?? $apiData['data']['new_tracking_id'] ?? null;
+
+                            if ($existing) {
+                                $exData = $existing->response_data ?? [];
+                                $exData['robosttech_last_status'] = $apiData;
+                                if (in_array($apiStatus, ['successful', 'success', 'cleared', 'completed', 'true', '1'])) {
+                                    $existing->status = 'successful';
+                                    if ($newTid) {
+                                        $exData['new_tracking_id'] = $newTid;
+                                    }
+                                    $existing->admin_note = $apiData['message'] ?? 'Cleared via Robosttech API.';
+                                } elseif (in_array($apiStatus, ['failed', 'rejected', 'error', 'false', '0'])) {
+                                    $existing->status = 'failed';
+                                    $existing->admin_note = $apiData['message'] ?? 'Rejected via Robosttech API.';
+                                    if (empty($exData['refunded'])) {
+                                        $refundAmount = (float) ($exData['amount_paid'] ?? VerificationPrice::first()->ipe_clearance_price ?? 700);
+                                        $wallet = app(WalletService::class);
+                                        $ref = $wallet->refund($user, $refundAmount, 'IPE Clearance Rejected (API): ' . $existing->admin_note, 'IPE-REFUND');
+                                        if ($ref['ok'] ?? false) {
+                                            $exData['refunded'] = true;
+                                            $exData['refunded_amount'] = $refundAmount;
+                                            $exData['refunded_at'] = now()->toDateTimeString();
+                                        }
+                                    }
+                                }
+                                $existing->response_data = $exData;
+                                $existing->save();
+                            }
+                        }
+                    } catch (\Throwable $e) {
+                        Log::warning('Robosttech clearance status check error: ' . $e->getMessage());
+                    }
+                }
+            }
 
             if (!$existing) {
                 return response()->json([
@@ -1160,7 +1217,7 @@ class VerificationController extends Controller
             $readableStatus = match($existing->status) {
                 'successful' => 'Cleared / Successful',
                 'failed' => 'Rejected / Failed',
-                default => 'Under Review by Admin'
+                default => ($existing->provider_name === 'Robosttech' ? 'Processing via Robosttech API' : 'Under Review by Admin')
             };
 
             $existingData = $existing->response_data ?? [];
@@ -1176,7 +1233,7 @@ class VerificationController extends Controller
                     'status' => $existing->status,
                     'status_label' => $readableStatus,
                     'category' => $existingData['category'] ?? 'Improcessing Error',
-                    'admin_note' => $existing->admin_note ?: 'Your application is currently being vetted by an administrator. Check back in less than 24 hours.',
+                    'admin_note' => $existing->admin_note ?: ($existing->provider_name === 'Robosttech' ? 'Request is currently being processed by Robosttech API.' : 'Your application is currently being vetted by an administrator. Check back in less than 24 hours.'),
                     'submitted_at' => $existing->created_at->format('M d, Y H:i:s'),
                     'updated_at' => $existing->updated_at->format('M d, Y H:i:s'),
                     'details' => $existingData,
@@ -1196,45 +1253,123 @@ class VerificationController extends Controller
         try {
             $referenceId = 'CLR-' . strtoupper(bin2hex(random_bytes(4)));
 
-            $payload = [
-                'tracking_id' => $trackingId,
-                'nin' => $nin !== '' ? $nin : null,
-                'new_tracking_id' => null,
-                'category' => $category,
-                'user_name' => $user->fullname,
-                'user_email' => $user->email,
-                'user_phone' => $user->phone,
-                'remarks' => $request->input('remarks'),
-                'service_mode' => 'Manual Vetting',
-                'amount_paid' => (float) $price,
-            ];
+            if ($ipeClearanceMode === 'robosttech') {
+                $apiCenter = ApiCenter::first();
+                if (!$apiCenter || !$apiCenter->robosttech_api_key) {
+                    throw new \App\Exceptions\ServiceNotConfiguredException('Robosttech API credentials not configured in Admin Settings.');
+                }
 
-            $result = VerificationResult::create([
-                'user_id' => $user->id,
-                'service_type' => 'ipe_clearance',
-                'identifier' => $trackingId,
-                'provider_name' => 'ADMIN_MANUAL',
-                'status' => 'waiting_for_review',
-                'reference_id' => $referenceId,
-                'admin_note' => 'Awaiting admin vetting and clearance. Results typically available in less than 24 hours.',
-                'response_data' => $payload,
-            ]);
+                $endpoint = $this->resolveRobostEndpoint(
+                    (string) ($apiCenter->robosttech_endpoint_clearance ?: 'https://robosttech.com/api'),
+                    'clearance'
+                );
 
-            $wallet->markTransactionSuccess($debit['txId']);
-
-            return response()->json([
-                'status' => true,
-                'message' => 'Clearance request submitted successfully. You will see results under IPE Results in less than 24 hours.',
-                'data' => [
+                $response = Http::timeout(45)->withHeaders([
+                    'api-key' => $apiCenter->robosttech_api_key,
+                    'Content-Type' => 'application/json'
+                ])->post($endpoint, [
                     'tracking_id' => $trackingId,
-                    'reference_id' => $referenceId,
+                    'number' => $trackingId,
+                    'nin' => $nin ?: null,
                     'category' => $category,
+                ]);
+
+                if ($response->successful()) {
+                    $apiData = $response->json();
+                    $apiStatus = strtolower((string) ($apiData['status'] ?? $apiData['data']['status'] ?? 'waiting_for_review'));
+                    $newTid = $apiData['new_tracking_id'] ?? $apiData['data']['new_tracking_id'] ?? null;
+                    $isSuccess = in_array($apiStatus, ['cleared', 'completed', 'resolved']) || !empty($newTid);
+                    $initialStatus = $isSuccess ? 'successful' : 'waiting_for_review';
+
+                    $payload = [
+                        'tracking_id' => $trackingId,
+                        'nin' => $nin !== '' ? $nin : null,
+                        'new_tracking_id' => $newTid,
+                        'category' => $category,
+                        'user_name' => $user->fullname,
+                        'user_email' => $user->email,
+                        'user_phone' => $user->phone,
+                        'remarks' => $request->input('remarks'),
+                        'service_mode' => 'Robosttech API',
+                        'amount_paid' => (float) $price,
+                        'api_response' => $apiData,
+                    ];
+
+                    $result = VerificationResult::create([
+                        'user_id' => $user->id,
+                        'service_type' => 'ipe_clearance',
+                        'identifier' => $trackingId,
+                        'provider_name' => 'Robosttech',
+                        'status' => $initialStatus,
+                        'reference_id' => $referenceId,
+                        'admin_note' => $apiData['message'] ?? 'Submitted to Robosttech API. Check status in a few minutes.',
+                        'response_data' => $payload,
+                    ]);
+
+                    $wallet->markTransactionSuccess($debit['txId']);
+
+                    return response()->json([
+                        'status' => true,
+                        'message' => 'Clearance request submitted to Robosttech API successfully. Please check status under IPE Results in a few minutes.',
+                        'data' => [
+                            'tracking_id' => $trackingId,
+                            'reference_id' => $referenceId,
+                            'category' => $category,
+                            'status' => $initialStatus,
+                            'status_label' => $isSuccess ? 'Cleared / Successful' : 'Processing via Robosttech API',
+                            'admin_note' => $apiData['message'] ?? 'Submitted to Robosttech API.',
+                            'new_tracking_id' => $newTid,
+                            'nin' => $nin ?: null,
+                        ],
+                        'result_id' => $result->id
+                    ]);
+                } else {
+                    $payload = $response->json();
+                    throw new \Exception((is_array($payload) ? ($payload['message'] ?? $payload['detail'] ?? null) : null)
+                        ?: ('Robosttech API connection failed (HTTP ' . $response->status() . ')'));
+                }
+            } else {
+                // Manual Review Mode
+                $payload = [
+                    'tracking_id' => $trackingId,
+                    'nin' => $nin !== '' ? $nin : null,
+                    'new_tracking_id' => null,
+                    'category' => $category,
+                    'user_name' => $user->fullname,
+                    'user_email' => $user->email,
+                    'user_phone' => $user->phone,
+                    'remarks' => $request->input('remarks'),
+                    'service_mode' => 'Manual Vetting',
+                    'amount_paid' => (float) $price,
+                ];
+
+                $result = VerificationResult::create([
+                    'user_id' => $user->id,
+                    'service_type' => 'ipe_clearance',
+                    'identifier' => $trackingId,
+                    'provider_name' => 'ADMIN_MANUAL',
                     'status' => 'waiting_for_review',
-                    'status_label' => 'Under Review by Admin',
+                    'reference_id' => $referenceId,
                     'admin_note' => 'Awaiting admin vetting and clearance. Results typically available in less than 24 hours.',
-                ],
-                'result_id' => $result->id
-            ]);
+                    'response_data' => $payload,
+                ]);
+
+                $wallet->markTransactionSuccess($debit['txId']);
+
+                return response()->json([
+                    'status' => true,
+                    'message' => 'Clearance request submitted successfully. You will see results under IPE Results in less than 24 hours.',
+                    'data' => [
+                        'tracking_id' => $trackingId,
+                        'reference_id' => $referenceId,
+                        'category' => $category,
+                        'status' => 'waiting_for_review',
+                        'status_label' => 'Under Review by Admin',
+                        'admin_note' => 'Awaiting admin vetting and clearance. Results typically available in less than 24 hours.',
+                    ],
+                    'result_id' => $result->id
+                ]);
+            }
         } catch (\Exception $e) {
             $wallet->failAndRefund($user, (float) $price, 'IPE Clearance Submission Failure', $debit['txId']);
             return response()->json(['status' => false, 'message' => 'Failed to process submission: ' . $e->getMessage()]);
@@ -1399,7 +1534,7 @@ class VerificationController extends Controller
         }
     }
 
-    private function resolveRobostEndpoint(string $configured, string $path): string
+    public function resolveRobostEndpoint(string $configured, string $path): string
     {
         $configured = trim($configured);
         if ($configured === '') {

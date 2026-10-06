@@ -20,7 +20,7 @@ class SettingsController extends Controller
 {
     public function index()
     {
-        $apiSettings   = DB::table('api_settings')->first();
+        $apiSettings   = \Illuminate\Support\Facades\Schema::hasTable('api_settings') ? DB::table('api_settings')->first() : null;
         $apiCenter     = DB::table('api_centers')->first();
         $notification  = DB::table('notifying_centers')->first();
         $verifyPrices  = DB::table('verification_prices')->first();
@@ -47,6 +47,7 @@ class SettingsController extends Controller
             ->get();
 
         $bvnRetrievalPrice = (float) SystemSetting::get('bvn_retrieval_price', 800);
+        $ipeClearanceMode = (string) SystemSetting::get('ipe_clearance_mode', 'manual');
 
         return view('admin.settings.index', compact(
             'apiSettings', 'apiCenter', 'notification',
@@ -57,7 +58,8 @@ class SettingsController extends Controller
             'verifymeWebhookSecretSet',
             'verifymeWebhookSecretUpdatedAt',
             'securityAuditLogs',
-            'bvnRetrievalPrice'
+            'bvnRetrievalPrice',
+            'ipeClearanceMode'
         ));
     }
 
@@ -138,22 +140,29 @@ class SettingsController extends Controller
     public function updateApiSettings(Request $request)
     {
         $request->validate([
-            'nin_search_type'  => 'required|string|max:100',
-            'bvn_search_type'  => 'required|string|max:100',
-            'data_api_type'    => 'required|string|max:100',
-            'airtime_api_type' => 'nullable|string|max:100',
+            'nin_search_type'    => 'required|string|max:100',
+            'bvn_search_type'    => 'required|string|max:100',
+            'data_api_type'      => 'required|string|max:100',
+            'airtime_api_type'   => 'nullable|string|max:100',
+            'ipe_clearance_mode' => 'nullable|string|in:manual,robosttech',
         ]);
 
-        DB::table('api_settings')->updateOrInsert(
-            ['id' => DB::table('api_settings')->min('id') ?? 1],
-            [
-                'nin_search_type'  => $request->nin_search_type,
-                'bvn_search_type'  => $request->bvn_search_type,
-                'data_api_type'    => $request->data_api_type,
-                'airtime_api_type' => $request->airtime_api_type,
-                'date'             => now()->toDateString(),
-            ]
-        );
+        if (\Illuminate\Support\Facades\Schema::hasTable('api_settings')) {
+            DB::table('api_settings')->updateOrInsert(
+                ['id' => DB::table('api_settings')->min('id') ?? 1],
+                [
+                    'nin_search_type'  => $request->nin_search_type,
+                    'bvn_search_type'  => $request->bvn_search_type,
+                    'data_api_type'    => $request->data_api_type,
+                    'airtime_api_type' => $request->airtime_api_type,
+                    'date'             => now()->toDateString(),
+                ]
+            );
+        }
+
+        if ($request->filled('ipe_clearance_mode')) {
+            SystemSetting::set('ipe_clearance_mode', $request->input('ipe_clearance_mode'), 'services');
+        }
 
         return response()->json(['status' => true, 'message' => 'API settings updated successfully.']);
     }

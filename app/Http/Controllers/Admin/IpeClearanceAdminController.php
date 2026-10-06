@@ -5,8 +5,12 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\VerificationResult;
 use App\Models\User;
+use App\Models\ApiCenter;
+use App\Models\SystemSetting;
+use App\Http\Controllers\Service\VerificationController;
 use App\Services\WalletService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class IpeClearanceAdminController extends Controller
@@ -36,8 +40,101 @@ class IpeClearanceAdminController extends Controller
         }
 
         $requests = $query->paginate(20)->withQueryString();
+        $currentMode = SystemSetting::get('ipe_clearance_mode', 'manual');
 
-        return view('admin.verifications.ipe_clearance.index', compact('requests'));
+        return view('admin.verifications.ipe_clearance.index', compact('requests', 'currentMode'));
+    }
+
+    /**
+     * Switch Operating Mode between Manual Reporting and Robosttech API
+     */
+    public function updateMode(Request $request)
+    {
+        $request->validate([
+            'mode' => 'required|string|in:manual,robosttech',
+        ]);
+
+        SystemSetting::set('ipe_clearance_mode', $request->mode, 'services');
+
+        $label = $request->mode === 'robosttech' ? 'Robosttech API' : 'Manual Reporting';
+
+        return back()->with('success', "IPE Clearance operating mode switched to {$label}.");
+    }
+
+    /**
+     * Manually sync a request status from Robosttech API
+     */
+    public function syncRobosttech($id)
+    {
+        $verification = VerificationResult::findOrFail($id);
+        $apiCenter = ApiCenter::first();
+
+        if (!$apiCenter || !$apiCenter->robosttech_api_key) {
+            return back()->with('error', 'Robosttech API credentials are not configured in Admin Settings.');
+        }
+
+        $controller = new VerificationController();
+        $endpoint = $controller->resolveRobostEndpoint(
+            (string) ($apiCenter->robosttech_endpoint_clearance_status ?: 'https://robosttech.com/api'),
+            'clearance_status'
+        );
+
+        try {
+            $response = Http::timeout(30)->withHeaders([
+                'api-key' => $apiCenter->robosttech_api_key,
+                'Content-Type' => 'application/json'
+            ])->post($endpoint, [
+                'tracking_id' => $verification->identifier,
+                'number' => $verification->identifier,
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                $responseData = $verification->response_data ?? [];
+                $responseData['robosttech_sync'] = $data;
+
+                $apiStatus = strtolower((string) ($data['status'] ?? $data['data']['status'] ?? ''));
+                $newTid = $data['new_tracking_id'] ?? $data['data']['new_tracking_id'] ?? null;
+
+                if (in_array($apiStatus, ['successful', 'success', 'cleared', 'completed', 'true', '1'])) {
+                    $verification->status = 'successful';
+                    if ($newTid) {
+                        $responseData['new_tracking_id'] = $newTid;
+                    }
+                    $verification->admin_note = $data['message'] ?? 'Cleared via Robosttech API sync.';
+                } elseif (in_array($apiStatus, ['failed', 'rejected', 'error', 'false', '0'])) {
+                    $verification->status = 'failed';
+                    $verification->admin_note = $data['message'] ?? 'Rejected via Robosttech API sync.';
+                    if (empty($responseData['refunded'])) {
+                        $user = User::find($verification->user_id);
+                        if ($user) {
+                            $refundAmount = (float) ($responseData['amount_paid'] ?? \App\Models\VerificationPrice::first()->ipe_clearance_price ?? 700);
+                            $wallet = app(WalletService::class);
+                            $ref = $wallet->failAndRefund(
+                                $user,
+                                $refundAmount,
+                                'IPE Clearance Rejected (API Sync): ' . $verification->admin_note,
+                                $verification->reference_id
+                            );
+                            if ($ref['ok'] ?? false) {
+                                $responseData['refunded'] = true;
+                                $responseData['refunded_amount'] = $refundAmount;
+                                $responseData['refunded_at'] = now()->toDateTimeString();
+                            }
+                        }
+                    }
+                }
+
+                $verification->response_data = $responseData;
+                $verification->save();
+
+                return back()->with('success', 'Robosttech API sync completed. Current Status: ' . ucfirst($verification->status));
+            }
+
+            return back()->with('error', 'Robosttech API returned error (HTTP ' . $response->status() . '): ' . ($response->json()['message'] ?? 'Unknown response'));
+        } catch (\Throwable $e) {
+            return back()->with('error', 'Sync failed: ' . $e->getMessage());
+        }
     }
 
     public function show($id)

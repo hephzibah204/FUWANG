@@ -222,6 +222,13 @@
                     <label class="text-white-50 small mb-2">Airtime API Provider</label>
                     <input type="text" name="airtime_api_type" class="form-control text-white rounded-3" value="{{ $as->airtime_api_type ?? '' }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);" placeholder="e.g. Sadeeqdata">
                 </div>
+                <div class="col-md-6 mb-4">
+                    <label class="text-white-50 small mb-2">IPE Clearance Provider / Mode</label>
+                    <select name="ipe_clearance_mode" class="form-control text-white rounded-3" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                        <option value="manual" {{ ($ipeClearanceMode ?? 'manual') === 'manual' ? 'selected' : '' }}>Manual Admin Reporting &amp; Review (Default)</option>
+                        <option value="robosttech" {{ ($ipeClearanceMode ?? 'manual') === 'robosttech' ? 'selected' : '' }}>Robosttech API</option>
+                    </select>
+                </div>
             </div>
             <button type="submit" class="btn btn-primary rounded-pill px-4"><i class="fa fa-floppy-disk mr-2"></i>Save API Config</button>
         </form>

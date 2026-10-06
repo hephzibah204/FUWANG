@@ -12,7 +12,7 @@
         <div class="sh-text">
             <h1 class="h4 font-weight-bold mb-1">IPE Clearance</h1>
             <p class="text-muted small mb-0">
-                Select IPEs Category and Enter the Tracking ID in the form below. The IPE Result are shown under the form below. You will get the Result in <strong class="text-success font-weight-bold">less than 24 hours</strong>.
+                Select IPEs Category and Enter the Tracking ID in the form below. The IPE Result are shown under the form below. You will get the Result in <strong class="text-success font-weight-bold">{{ ($ipeMode ?? 'manual') === 'robosttech' ? 'a few minutes' : 'less than 24 hours' }}</strong>.
             </p>
         </div>
     </div>

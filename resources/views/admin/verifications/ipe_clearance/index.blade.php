@@ -9,7 +9,22 @@
             <h3 class="font-weight-bold text-white mb-1"><i class="fa-solid fa-user-check text-warning me-2"></i>IPE Clearance Requests Desk</h3>
             <p class="text-white-50 small mb-0">Review requests, assign new tracking IDs on approval, process refunds on rejection, and bulk manage reports.</p>
         </div>
-        <div class="d-flex align-items-center gap-2">
+        <div class="d-flex align-items-center flex-wrap gap-2">
+            <!-- Mode Switcher -->
+            <div class="d-flex align-items-center bg-dark p-1 px-2.5 rounded-pill border border-secondary">
+                <span class="small text-white-50 me-2"><i class="fa-solid fa-sliders text-warning me-1"></i>Engine:</span>
+                <form method="POST" action="{{ route('admin.verifications.ipe_clearance.mode') }}" class="d-inline-flex align-items-center m-0">
+                    @csrf
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button type="submit" name="mode" value="manual" class="btn btn-sm py-1 px-3 {{ ($currentMode ?? 'manual') === 'manual' ? 'btn-primary font-weight-bold shadow-sm' : 'btn-outline-secondary text-white-50 border-0' }}">
+                            <i class="fa-solid fa-user-check me-1"></i> Manual Reporting
+                        </button>
+                        <button type="submit" name="mode" value="robosttech" class="btn btn-sm py-1 px-3 {{ ($currentMode ?? 'manual') === 'robosttech' ? 'btn-success font-weight-bold shadow-sm' : 'btn-outline-secondary text-white-50 border-0' }}">
+                            <i class="fa-solid fa-robot me-1"></i> Robosttech API
+                        </button>
+                    </div>
+                </form>
+            </div>
             <!-- Bulk Export Button -->
             <a href="{{ route('admin.verifications.ipe_clearance.export', request()->all()) }}" class="btn btn-outline-success font-weight-bold">
                 <i class="fa-solid fa-file-arrow-down me-1"></i> Download CSV ({{ $requests->total() }})
@@ -63,6 +78,7 @@
                     <thead style="background: rgba(255,255,255,0.05);">
                         <tr>
                             <th>Reference</th>
+                            <th>Engine</th>
                             <th>Original Tracking ID</th>
                             <th>NIN Number</th>
                             <th>IPE Category</th>
@@ -78,6 +94,17 @@
                             @php $d = $req->response_data ?? []; @endphp
                             <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
                                 <td><code>{{ $req->reference_id ?? ('REF-' . $req->id) }}</code></td>
+                                <td>
+                                    @if(($req->provider_name ?? '') === 'Robosttech')
+                                        <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-50 py-1 px-2">
+                                            <i class="fa-solid fa-robot me-1"></i> Robosttech
+                                        </span>
+                                    @else
+                                        <span class="badge bg-primary bg-opacity-25 text-info border border-info border-opacity-50 py-1 px-2">
+                                            <i class="fa-solid fa-user-check me-1"></i> Manual
+                                        </span>
+                                    @endif
+                                </td>
                                 <td><span class="font-weight-600 text-warning font-monospace">{{ $req->identifier }}</span></td>
                                 <td>
                                     @if(!empty($d['nin']))

@@ -574,12 +574,14 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
             Route::get('/verifications/nin-modifications/{id}', [App\Http\Controllers\Admin\NINModificationAdminController::class, 'show'])->name('verifications.nin_modifications.show');
             Route::post('/verifications/nin-modifications/{id}/update', [App\Http\Controllers\Admin\NINModificationAdminController::class, 'updateStatus'])->name('verifications.nin_modifications.update');
 
-            // IPE Clearance Management (Manual Admin Processing)
+            // IPE Clearance Management (Manual Admin Processing & Robosttech API)
             Route::get('/verifications/ipe-clearance', [App\Http\Controllers\Admin\IpeClearanceAdminController::class, 'index'])->name('verifications.ipe_clearance.index');
+            Route::post('/verifications/ipe-clearance/mode', [App\Http\Controllers\Admin\IpeClearanceAdminController::class, 'updateMode'])->name('verifications.ipe_clearance.mode');
             Route::get('/verifications/ipe-clearance/export', [App\Http\Controllers\Admin\IpeClearanceAdminController::class, 'exportCsv'])->name('verifications.ipe_clearance.export');
             Route::post('/verifications/ipe-clearance/import', [App\Http\Controllers\Admin\IpeClearanceAdminController::class, 'importCsv'])->name('verifications.ipe_clearance.import');
             Route::get('/verifications/ipe-clearance/{id}', [App\Http\Controllers\Admin\IpeClearanceAdminController::class, 'show'])->name('verifications.ipe_clearance.show');
             Route::post('/verifications/ipe-clearance/{id}/update', [App\Http\Controllers\Admin\IpeClearanceAdminController::class, 'updateStatus'])->name('verifications.ipe_clearance.update');
+            Route::post('/verifications/ipe-clearance/{id}/sync-robosttech', [App\Http\Controllers\Admin\IpeClearanceAdminController::class, 'syncRobosttech'])->name('verifications.ipe_clearance.sync_robosttech');
 
             // â”€â”€ Broadcast Messaging â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             Route::get('/broadcasts',                  [App\Http\Controllers\Admin\BroadcastController::class, 'index'])->name('broadcasts.index');
