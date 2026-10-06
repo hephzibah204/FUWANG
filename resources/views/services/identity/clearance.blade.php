@@ -12,7 +12,7 @@
         <div class="sh-text">
             <h1 class="h4 font-weight-bold mb-1">IPE Clearance</h1>
             <p class="text-muted small mb-0">
-                Select IPEs Category and Enter the Tracking ID in the form below. The IPE Result are shown under the form below. You will get the Result within <strong class="text-success font-weight-bold">An Hour</strong>.
+                Select IPEs Category and Enter the Tracking ID in the form below. The IPE Result are shown under the form below. You will get the Result in <strong class="text-success font-weight-bold">less than 24 hours</strong>.
             </p>
         </div>
     </div>
@@ -158,7 +158,7 @@
                                     @elseif($res->status === 'failed')
                                         <span class="badge badge-danger px-2.5 py-1">Failed / Rejected</span>
                                     @else
-                                        <span class="badge badge-warning text-dark px-2.5 py-1">Processing (Within An Hour)</span>
+                                        <span class="badge badge-warning text-dark px-2.5 py-1">Processing (Less than 24 hours)</span>
                                     @endif
                                 </td>
                                 <td>
@@ -241,7 +241,7 @@
         let refId = data.reference_id || 'N/A';
         let category = (data.response_data && data.response_data.category) ? data.response_data.category : (data.category || 'Improcessing Error');
         let status = data.status || 'waiting_for_review';
-        let adminNote = data.admin_note || (status === 'successful' ? 'Cleared successfully by administrator.' : 'Under review by administrator (within an hour).');
+        let adminNote = data.admin_note || (status === 'successful' ? 'Cleared successfully by administrator.' : 'Under review by administrator (in less than 24 hours).');
         let submittedAt = data.created_at || data.submitted_at || 'Just now';
 
         $('#cardTrackingId').text(trackingId);
@@ -256,7 +256,7 @@
         } else if (status === 'failed') {
             badge.removeClass('badge-warning badge-success text-dark').addClass('badge-danger text-white').text('Failed / Rejected');
         } else {
-            badge.removeClass('badge-success badge-danger text-white').addClass('badge-warning text-dark').text('Under Review (Within An Hour)');
+            badge.removeClass('badge-success badge-danger text-white').addClass('badge-warning text-dark').text('Under Review (Less than 24 hours)');
         }
 
         $('#statusResultCard').fadeIn();
@@ -354,7 +354,7 @@
 
             Swal.fire({
                 title: 'Confirm IPE Clearance',
-                html: `<p class="mb-2">A fee of <strong>₦{{ number_format($price ?? 700, 2) }}</strong> will be deducted from your wallet.</p><p class="small text-muted mb-0">Category: <b>${category}</b><br>Tracking ID: <b>${trackingId}</b><br>Result turnaround: <b>Within An Hour</b></p>`,
+                html: `<p class="mb-2">A fee of <strong>₦{{ number_format($price ?? 700, 2) }}</strong> will be deducted from your wallet.</p><p class="small text-muted mb-0">Category: <b>${category}</b><br>Tracking ID: <b>${trackingId}</b><br>Result turnaround: <b>In less than 24 hours</b></p>`,
                 icon: 'question',
                 showCancelButton: true,
                 confirmButtonColor: '#2563eb',

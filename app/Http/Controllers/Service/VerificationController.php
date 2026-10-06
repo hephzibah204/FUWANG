@@ -1164,7 +1164,7 @@ class VerificationController extends Controller
                     'status' => $existing->status,
                     'status_label' => $readableStatus,
                     'category' => $existing->response_data['category'] ?? 'Improcessing Error',
-                    'admin_note' => $existing->admin_note ?: 'Your application is currently being vetted by an administrator. Check back within an hour.',
+                    'admin_note' => $existing->admin_note ?: 'Your application is currently being vetted by an administrator. Check back in less than 24 hours.',
                     'submitted_at' => $existing->created_at->format('M d, Y H:i:s'),
                     'updated_at' => $existing->updated_at->format('M d, Y H:i:s'),
                     'details' => $existing->response_data ?? [],
@@ -1202,7 +1202,7 @@ class VerificationController extends Controller
                 'provider_name' => 'ADMIN_MANUAL',
                 'status' => 'waiting_for_review',
                 'reference_id' => $referenceId,
-                'admin_note' => 'Awaiting admin vetting and clearance. Results typically available within an hour.',
+                'admin_note' => 'Awaiting admin vetting and clearance. Results typically available in less than 24 hours.',
                 'response_data' => $payload,
             ]);
 
@@ -1210,14 +1210,14 @@ class VerificationController extends Controller
 
             return response()->json([
                 'status' => true,
-                'message' => 'Clearance request submitted successfully. You will see results under IPE Results within an hour.',
+                'message' => 'Clearance request submitted successfully. You will see results under IPE Results in less than 24 hours.',
                 'data' => [
                     'tracking_id' => $trackingId,
                     'reference_id' => $referenceId,
                     'category' => $category,
                     'status' => 'waiting_for_review',
                     'status_label' => 'Under Review by Admin',
-                    'admin_note' => 'Awaiting admin vetting and clearance. Results typically available within an hour.',
+                    'admin_note' => 'Awaiting admin vetting and clearance. Results typically available in less than 24 hours.',
                 ],
                 'result_id' => $result->id
             ]);
