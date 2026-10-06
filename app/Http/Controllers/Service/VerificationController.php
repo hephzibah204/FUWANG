@@ -1105,7 +1105,7 @@ class VerificationController extends Controller
     public function clearanceIndex()
     {
         $history = VerificationResult::where('user_id', Auth::id())
-                        ->where('service_type', 'clearance')
+                        ->whereIn('service_type', ['clearance', 'ipe_clearance', 'clearance_request', 'clearance_status'])
                         ->latest()
                         ->get();
 
@@ -1115,84 +1115,110 @@ class VerificationController extends Controller
     }
 
     /**
-     * Handle IPE Clearance Verification
+     * Handle IPE Clearance Submission & Status Query (Manual Admin Processing)
      */
     public function verifyClearance(Request $request)
     {
         $request->validate([
-            'number' => ['required', 'string'],
-            'mode' => ['nullable', 'string', 'in:submit,status']
+            'number' => ['required', 'string', 'max:120'],
+            'mode' => ['nullable', 'string', 'in:submit,status'],
+            'remarks' => ['nullable', 'string', 'max:1000'],
         ]);
 
         $mode = $request->input('mode', 'submit');
         $user = Auth::user();
-        $price = VerificationPrice::first()->ipe_clearance_price ?? 400;
-        $apiCenter = ApiCenter::first();
+        $trackingId = trim((string) $request->number);
 
-        if (!$apiCenter || !$apiCenter->robosttech_api_key) {
-            throw new \App\Exceptions\ServiceNotConfiguredException('Robosttech API credentials not configured');
+        // Status check mode: retrieve existing review record
+        if ($mode === 'status') {
+            $existing = VerificationResult::where('identifier', $trackingId)
+                ->whereIn('service_type', ['ipe_clearance', 'clearance', 'clearance_request'])
+                ->where(function ($q) use ($user) {
+                    $q->where('user_id', $user->id)
+                      ->orWhereNull('user_id');
+                })
+                ->latest()
+                ->first();
+
+            if (!$existing) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'No clearance request found with Tracking ID: ' . $trackingId . '. Please verify the ID or submit a new request.'
+                ]);
+            }
+
+            $readableStatus = match($existing->status) {
+                'successful' => 'Cleared / Successful',
+                'failed' => 'Rejected / Failed',
+                default => 'Under Review by Admin'
+            };
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Clearance status retrieved.',
+                'data' => [
+                    'tracking_id' => $existing->identifier,
+                    'reference_id' => $existing->reference_id,
+                    'status' => $existing->status,
+                    'status_label' => $readableStatus,
+                    'admin_note' => $existing->admin_note ?: 'Your application is currently being vetted by an administrator. Check back shortly.',
+                    'submitted_at' => $existing->created_at->format('M d, Y H:i:s'),
+                    'updated_at' => $existing->updated_at->format('M d, Y H:i:s'),
+                    'details' => $existing->response_data ?? [],
+                ],
+                'result_id' => $existing->id
+            ]);
         }
 
-        // Only charge for initial submission
-        $debit = null;
-        if ($mode === 'submit') {
-            $wallet = app(WalletService::class);
-            $debit = $wallet->debit($user, (float) $price, 'IPE Clearance Submission', 'CLEAR');
-            if (!$debit['ok']) {
-                return response()->json(['status' => false, 'message' => $debit['message']]);
-            }
+        // Mode: Submit new clearance request
+        $price = VerificationPrice::first()->ipe_clearance_price ?? 400;
+        $wallet = app(WalletService::class);
+        $debit = $wallet->debit($user, (float) $price, 'IPE Clearance Submission (' . $trackingId . ')', 'CLEAR');
+        if (!$debit['ok']) {
+            return response()->json(['status' => false, 'message' => $debit['message']]);
         }
 
         try {
-            $endpoint = ($mode === 'status') 
-                ? ($apiCenter->robosttech_endpoint_clearance_status ?: 'https://robosttech.com/api/clearance_status')
-                : ($apiCenter->robosttech_endpoint_clearance ?: 'https://robosttech.com/api/clearance');
+            $referenceId = 'CLR-' . strtoupper(bin2hex(random_bytes(4)));
 
-            $response = Http::timeout(45)
-                ->withHeaders([
-                    'api-key' => $apiCenter->robosttech_api_key,
-                    'Content-Type' => 'application/json'
-                ])
-                ->post($endpoint, [
-                    'tracking_id' => $request->number,
-                ]);
+            $payload = [
+                'tracking_id' => $trackingId,
+                'user_name' => $user->fullname,
+                'user_email' => $user->email,
+                'user_phone' => $user->phone,
+                'remarks' => $request->input('remarks'),
+                'service_mode' => 'Manual Vetting',
+                'amount_paid' => (float) $price,
+            ];
 
-            // Robosttech API might return 200 even for failed lookups or empty responses as per documentation sample
-            // The documentation says "This request doesn't return any response body" for some cases? 
-            // Wait, the "Example Response" section in the user input says "No response body". 
-            // This is strange for a verification API. Let me re-read the doc.
-            // "and update the result within some minutes, then you send request to check the status."
-            
-            if ($response->successful()) {
-                $data = $response->json();
-                
-                if ($mode === 'submit') {
-                    $result = $this->storeResult($user, 'clearance_request', $request->number, 'Robosttech', $data);
-                    $wallet->markTransactionSuccess($debit['txId']);
-                    return response()->json([
-                        'status' => true,
-                        'message' => 'Clearance request submitted successfully. Please check status in a few minutes.',
-                        'data' => $data,
-                        'result_id' => $result->id
-                    ]);
-                } else {
-                    // Status check
-                    $result = $this->storeResult($user, 'clearance_status', $request->number, 'Robosttech', $data);
-                    return response()->json([
-                        'status' => true,
-                        'message' => 'Status retrieved successfully.',
-                        'data' => $data,
-                        'result_id' => $result->id
-                    ]);
-                }
-            } else {
-                throw new \Exception('API Error: ' . ($response->json()['message'] ?? 'Provider connection failed'));
-            }
+            $result = VerificationResult::create([
+                'user_id' => $user->id,
+                'service_type' => 'ipe_clearance',
+                'identifier' => $trackingId,
+                'provider_name' => 'ADMIN_MANUAL',
+                'status' => 'waiting_for_review',
+                'reference_id' => $referenceId,
+                'admin_note' => 'Awaiting admin vetting and clearance.',
+                'response_data' => $payload,
+            ]);
+
+            $wallet->markTransactionSuccess($debit['txId']);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Clearance request submitted successfully. Our team will vet and process your clearance shortly.',
+                'data' => [
+                    'tracking_id' => $trackingId,
+                    'reference_id' => $referenceId,
+                    'status' => 'waiting_for_review',
+                    'status_label' => 'Under Review by Admin',
+                    'admin_note' => 'Awaiting admin vetting and clearance.',
+                ],
+                'result_id' => $result->id
+            ]);
         } catch (\Exception $e) {
-            if ($mode === 'submit' && isset($wallet) && isset($debit)) {
-                $wallet->failAndRefund($user, (float) $price, 'IPE Clearance Submission', $debit['txId']);
-            }
-            return response()->json(['status' => false, 'message' => $e->getMessage()]);
+            $wallet->failAndRefund($user, (float) $price, 'IPE Clearance Submission Failure', $debit['txId']);
+            return response()->json(['status' => false, 'message' => 'Failed to process submission: ' . $e->getMessage()]);
         }
     }
 

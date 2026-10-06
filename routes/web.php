@@ -574,6 +574,11 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
             Route::get('/verifications/nin-modifications/{id}', [App\Http\Controllers\Admin\NINModificationAdminController::class, 'show'])->name('verifications.nin_modifications.show');
             Route::post('/verifications/nin-modifications/{id}/update', [App\Http\Controllers\Admin\NINModificationAdminController::class, 'updateStatus'])->name('verifications.nin_modifications.update');
 
+            // IPE Clearance Management (Manual Admin Processing)
+            Route::get('/verifications/ipe-clearance', [App\Http\Controllers\Admin\IpeClearanceAdminController::class, 'index'])->name('verifications.ipe_clearance.index');
+            Route::get('/verifications/ipe-clearance/{id}', [App\Http\Controllers\Admin\IpeClearanceAdminController::class, 'show'])->name('verifications.ipe_clearance.show');
+            Route::post('/verifications/ipe-clearance/{id}/update', [App\Http\Controllers\Admin\IpeClearanceAdminController::class, 'updateStatus'])->name('verifications.ipe_clearance.update');
+
             // â”€â”€ Broadcast Messaging â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             Route::get('/broadcasts',                  [App\Http\Controllers\Admin\BroadcastController::class, 'index'])->name('broadcasts.index');
             Route::get('/broadcasts/create',           [App\Http\Controllers\Admin\BroadcastController::class, 'create'])->name('broadcasts.create');
