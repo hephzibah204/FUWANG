@@ -1121,6 +1121,7 @@ class VerificationController extends Controller
     {
         $request->validate([
             'number' => ['required', 'string', 'max:120'],
+            'nin' => ['nullable', 'string', 'max:20'],
             'category' => ['nullable', 'string', 'max:150'],
             'mode' => ['nullable', 'string', 'in:submit,status'],
             'remarks' => ['nullable', 'string', 'max:1000'],
@@ -1129,11 +1130,18 @@ class VerificationController extends Controller
         $mode = $request->input('mode', 'submit');
         $user = Auth::user();
         $trackingId = trim((string) $request->number);
+        $nin = trim((string) $request->input('nin', ''));
         $category = trim((string) $request->input('category', 'Improcessing Error'));
 
         // Status check mode: retrieve existing review record
         if ($mode === 'status') {
-            $existing = VerificationResult::where('identifier', $trackingId)
+            $existing = VerificationResult::where(function ($query) use ($trackingId, $nin) {
+                    $query->where('identifier', $trackingId)
+                          ->orWhere('reference_id', $trackingId);
+                    if ($nin !== '') {
+                        $query->orWhere('response_data->nin', $nin);
+                    }
+                })
                 ->whereIn('service_type', ['ipe_clearance', 'clearance', 'clearance_request'])
                 ->where(function ($q) use ($user) {
                     $q->where('user_id', $user->id)
@@ -1155,19 +1163,23 @@ class VerificationController extends Controller
                 default => 'Under Review by Admin'
             };
 
+            $existingData = $existing->response_data ?? [];
+
             return response()->json([
                 'status' => true,
                 'message' => 'Clearance status retrieved.',
                 'data' => [
                     'tracking_id' => $existing->identifier,
+                    'new_tracking_id' => $existingData['new_tracking_id'] ?? null,
+                    'nin' => $existingData['nin'] ?? null,
                     'reference_id' => $existing->reference_id,
                     'status' => $existing->status,
                     'status_label' => $readableStatus,
-                    'category' => $existing->response_data['category'] ?? 'Improcessing Error',
+                    'category' => $existingData['category'] ?? 'Improcessing Error',
                     'admin_note' => $existing->admin_note ?: 'Your application is currently being vetted by an administrator. Check back in less than 24 hours.',
                     'submitted_at' => $existing->created_at->format('M d, Y H:i:s'),
                     'updated_at' => $existing->updated_at->format('M d, Y H:i:s'),
-                    'details' => $existing->response_data ?? [],
+                    'details' => $existingData,
                 ],
                 'result_id' => $existing->id
             ]);
@@ -1186,6 +1198,8 @@ class VerificationController extends Controller
 
             $payload = [
                 'tracking_id' => $trackingId,
+                'nin' => $nin !== '' ? $nin : null,
+                'new_tracking_id' => null,
                 'category' => $category,
                 'user_name' => $user->fullname,
                 'user_email' => $user->email,

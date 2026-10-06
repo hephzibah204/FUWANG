@@ -576,6 +576,8 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
 
             // IPE Clearance Management (Manual Admin Processing)
             Route::get('/verifications/ipe-clearance', [App\Http\Controllers\Admin\IpeClearanceAdminController::class, 'index'])->name('verifications.ipe_clearance.index');
+            Route::get('/verifications/ipe-clearance/export', [App\Http\Controllers\Admin\IpeClearanceAdminController::class, 'exportCsv'])->name('verifications.ipe_clearance.export');
+            Route::post('/verifications/ipe-clearance/import', [App\Http\Controllers\Admin\IpeClearanceAdminController::class, 'importCsv'])->name('verifications.ipe_clearance.import');
             Route::get('/verifications/ipe-clearance/{id}', [App\Http\Controllers\Admin\IpeClearanceAdminController::class, 'show'])->name('verifications.ipe_clearance.show');
             Route::post('/verifications/ipe-clearance/{id}/update', [App\Http\Controllers\Admin\IpeClearanceAdminController::class, 'updateStatus'])->name('verifications.ipe_clearance.update');
 

@@ -45,11 +45,20 @@
                 </div>
 
                 <!-- Enter Tracking ID -->
-                <div class="col-12 mb-3">
+                <div class="col-md-7 mb-3">
                     <label for="number" class="font-weight-600 mb-2 small text-muted">Enter Tracking ID</label>
                     <div class="input-wrap">
                         <i class="fa-solid fa-hashtag"></i>
                         <input type="text" id="number" name="number" class="form-control form-control-lg" placeholder="Enter Tracking ID e.g BTX947E60001020" required>
+                    </div>
+                </div>
+
+                <!-- Optional NIN Number -->
+                <div class="col-md-5 mb-3">
+                    <label for="nin" class="font-weight-600 mb-2 small text-muted">NIN Number (Optional if known)</label>
+                    <div class="input-wrap">
+                        <i class="fa-solid fa-id-card"></i>
+                        <input type="text" id="nin" name="nin" class="form-control form-control-lg" placeholder="11-digit NIN (Optional)" maxlength="15">
                     </div>
                 </div>
 
@@ -73,13 +82,13 @@
     <div id="statusResultCard" class="panel-card p-4 mb-4" style="display: none;">
         <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom border-white-5">
             <h3 class="h6 font-weight-bold text-white m-0">
-                <i class="fa-solid fa-clipboard-check text-warning mr-2"></i> Current Application Status
+                <i class="fa-solid fa-clipboard-check text-warning mr-2"></i> Current Application Status &amp; Result
             </h3>
             <span id="cardStatusBadge" class="badge py-2 px-3"></span>
         </div>
         <div class="row g-3 text-white">
             <div class="col-md-3 mb-2">
-                <small class="text-muted d-block">Tracking ID</small>
+                <small class="text-muted d-block">Original Tracking ID</small>
                 <strong id="cardTrackingId" class="text-warning font-monospace fs-6"></strong>
             </div>
             <div class="col-md-3 mb-2">
@@ -94,6 +103,17 @@
                 <small class="text-muted d-block">Submitted Date</small>
                 <span id="cardSubmittedAt"></span>
             </div>
+
+            <!-- New Tracking ID Awarded Banner -->
+            <div class="col-12 mt-2" id="newTrackingCardWrap" style="display: none;">
+                <div class="p-3 bg-success bg-opacity-25 rounded-3 border border-success border-opacity-50 text-white">
+                    <small class="text-success-emphasis d-block font-weight-bold mb-1">
+                        <i class="fa-solid fa-key me-1"></i> Your New Tracking ID:
+                    </small>
+                    <span id="cardNewTrackingId" class="font-monospace fs-4 text-white font-weight-bold"></span>
+                </div>
+            </div>
+
             <div class="col-12 mt-2">
                 <div class="p-3 rounded-3" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);">
                     <small class="text-warning d-block mb-1 font-weight-600"><i class="fa-solid fa-circle-info mr-1"></i> Admin Remarks / Vetting Output:</small>
@@ -117,7 +137,7 @@
                 <div class="d-flex align-items-center gap-2" style="max-width: 450px; width: 100%;">
                     <div class="input-wrap flex-grow-1">
                         <i class="fa-solid fa-magnifying-glass"></i>
-                        <input type="text" id="tableSearchInput" class="form-control" placeholder="Search by Tracking ID or NIN" onkeyup="filterResultsTable()">
+                        <input type="text" id="tableSearchInput" class="form-control" placeholder="Search by Tracking ID, New Tracking ID, or NIN" onkeyup="filterResultsTable()">
                     </div>
                     <button type="button" class="btn btn-primary px-3" onclick="filterResultsTable()">
                         Search
@@ -134,7 +154,9 @@
                     <thead style="background: rgba(255,255,255,0.04);">
                         <tr>
                             <th>Reference</th>
-                            <th>Tracking ID / NIN</th>
+                            <th>Original Tracking ID</th>
+                            <th>New Tracking ID</th>
+                            <th>NIN</th>
                             <th>IPE Category</th>
                             <th>Status</th>
                             <th>Admin Remarks / Note</th>
@@ -144,21 +166,38 @@
                     </thead>
                     <tbody>
                         @forelse($history as $res)
+                            @php $d = $res->response_data ?? []; @endphp
                             <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);" class="result-row">
                                 <td><code>{{ $res->reference_id }}</code></td>
                                 <td><span class="text-warning font-monospace font-weight-bold tracking-cell">{{ $res->identifier }}</span></td>
                                 <td>
+                                    @if(!empty($d['new_tracking_id']))
+                                        <span class="badge bg-success font-monospace px-2.5 py-1">
+                                            <i class="fa-solid fa-key me-1"></i> {{ $d['new_tracking_id'] }}
+                                        </span>
+                                    @else
+                                        <span class="text-white-50">—</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    @if(!empty($d['nin']))
+                                        <span class="font-monospace text-info">{{ $d['nin'] }}</span>
+                                    @else
+                                        <span class="text-white-50">—</span>
+                                    @endif
+                                </td>
+                                <td>
                                     <span class="badge badge-secondary px-2 py-1">
-                                        {{ $res->response_data['category'] ?? 'Improcessing Error' }}
+                                        {{ $d['category'] ?? 'Improcessing Error' }}
                                     </span>
                                 </td>
                                 <td>
                                     @if($res->status === 'successful')
-                                        <span class="badge badge-success px-2.5 py-1">Cleared / Ready</span>
+                                        <span class="badge badge-success px-2.5 py-1"><i class="fa-solid fa-check me-1"></i> Cleared / Ready</span>
                                     @elseif($res->status === 'failed')
-                                        <span class="badge badge-danger px-2.5 py-1">Failed / Rejected</span>
+                                        <span class="badge badge-danger px-2.5 py-1"><i class="fa-solid fa-xmark me-1"></i> Failed / Refunded</span>
                                     @else
-                                        <span class="badge badge-warning text-dark px-2.5 py-1">Processing (Less than 24 hours)</span>
+                                        <span class="badge badge-warning text-dark px-2.5 py-1"><i class="fa-solid fa-clock me-1"></i> Processing (&lt; 24h)</span>
                                     @endif
                                 </td>
                                 <td>
@@ -175,7 +214,7 @@
                             </tr>
                         @empty
                             <tr id="emptyRow">
-                                <td colspan="7" class="text-center py-5 text-muted">
+                                <td colspan="9" class="text-center py-5 text-muted">
                                     <i class="fa-solid fa-folder-open fa-2x mb-2 d-block opacity-50"></i>
                                     No IPE records found. Submit a tracking ID above to initiate clearance.
                                 </td>
@@ -239,7 +278,9 @@
     function displayCardDetails(data) {
         let trackingId = data.identifier || data.tracking_id || 'N/A';
         let refId = data.reference_id || 'N/A';
-        let category = (data.response_data && data.response_data.category) ? data.response_data.category : (data.category || 'Improcessing Error');
+        let resp = data.response_data || data.details || {};
+        let category = resp.category || data.category || 'Improcessing Error';
+        let newTrackingId = resp.new_tracking_id || data.new_tracking_id || null;
         let status = data.status || 'waiting_for_review';
         let adminNote = data.admin_note || (status === 'successful' ? 'Cleared successfully by administrator.' : 'Under review by administrator (in less than 24 hours).');
         let submittedAt = data.created_at || data.submitted_at || 'Just now';
@@ -250,13 +291,20 @@
         $('#cardSubmittedAt').text(submittedAt);
         $('#cardAdminNote').text(adminNote);
 
+        if (newTrackingId) {
+            $('#cardNewTrackingId').text(newTrackingId);
+            $('#newTrackingCardWrap').show();
+        } else {
+            $('#newTrackingCardWrap').hide();
+        }
+
         let badge = $('#cardStatusBadge');
         if (status === 'successful') {
-            badge.removeClass('badge-warning badge-danger text-dark').addClass('badge-success text-white').text('Cleared / Ready');
+            badge.removeClass('badge-warning badge-danger text-dark').addClass('badge-success text-white').html('<i class="fa-solid fa-check me-1"></i> Cleared / Successful');
         } else if (status === 'failed') {
-            badge.removeClass('badge-warning badge-success text-dark').addClass('badge-danger text-white').text('Failed / Rejected');
+            badge.removeClass('badge-warning badge-success text-dark').addClass('badge-danger text-white').html('<i class="fa-solid fa-xmark me-1"></i> Failed / Refunded');
         } else {
-            badge.removeClass('badge-success badge-danger text-white').addClass('badge-warning text-dark').text('Under Review (Less than 24 hours)');
+            badge.removeClass('badge-success badge-danger text-white').addClass('badge-warning text-dark').html('<i class="fa-solid fa-clock me-1"></i> Under Review (&lt; 24 hours)');
         }
 
         $('#statusResultCard').fadeIn();
@@ -265,6 +313,8 @@
 
     function quickCheckStatus() {
         let trackingId = $('#number').val().trim();
+        let nin = $('#nin').val().trim();
+
         if (!trackingId) {
             Swal.fire({
                 title: 'Enter Tracking ID',
@@ -292,7 +342,8 @@
             data: {
                 _token: "{{ csrf_token() }}",
                 mode: 'status',
-                number: trackingId
+                number: trackingId,
+                nin: nin
             },
             success: function(res) {
                 if (res.status && res.data) {
@@ -332,7 +383,7 @@
 
         if (matched === 0 && rows.length > 0) {
             if ($('#noMatchRow').length === 0) {
-                $('#ipeResultsTable tbody').append('<tr id="noMatchRow"><td colspan="7" class="text-center py-4 text-muted">No matching tracking IDs found.</td></tr>');
+                $('#ipeResultsTable tbody').append('<tr id="noMatchRow"><td colspan="9" class="text-center py-4 text-muted">No matching tracking IDs found.</td></tr>');
             }
         } else {
             $('#noMatchRow').remove();
