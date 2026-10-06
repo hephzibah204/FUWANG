@@ -971,103 +971,301 @@ class VerificationController extends Controller
     public function validationIndex()
     {
         $history = VerificationResult::where('user_id', Auth::id())
-                        ->where('service_type', 'validation')
+                        ->whereIn('service_type', ['validation', 'nin_validation'])
                         ->latest()
                         ->get();
 
         $price = VerificationPrice::first()->validation_price ?? 700;
+        $validationMode = \App\Models\SystemSetting::get('nin_validation_mode', 'manual');
         $activeProvider = $this->preferredValidationProvider();
-        $providerLabel = $activeProvider?->name ?: 'Robosttech';
+        $providerLabel = $validationMode === 'manual' ? 'Manual Reporting' : ($activeProvider?->name ?: 'Robosttech');
 
-        return view('services.identity.validation', compact('history', 'price', 'providerLabel'));
+        return view('services.identity.validation', compact('history', 'price', 'providerLabel', 'validationMode'));
     }
 
     /**
-     * Handle Validation Verification
+     * Handle Validation Verification (Manual Admin Review or Robosttech API)
      */
     public function verifyValidation(Request $request)
     {
         $expectsJson = $request->expectsJson() || $request->ajax() || $request->wantsJson();
 
         $request->validate([
-            'number' => ['required', 'string'],
+            'number' => ['required', 'string', 'max:120'],
+            'mode' => ['nullable', 'string', 'in:submit,status'],
+            'validation_reason' => ['nullable', 'string', 'max:255'],
+            'remarks' => ['nullable', 'string', 'max:1000'],
         ]);
 
+        $mode = $request->input('mode', 'submit');
         $user = Auth::user();
-        $price = VerificationPrice::first()->validation_price ?? 700;
-        $apiCenter = ApiCenter::first();
-        $customProvider = $this->preferredValidationProvider();
-        $providerName = $customProvider?->name ?: 'Robosttech';
-        $wallet = app(WalletService::class);
-        $debit = $wallet->debit($user, (float) $price, 'Document Validation', 'VAL');
-        if (!$debit['ok']) {
-            if ($expectsJson) {
-                return response()->json(['status' => false, 'message' => $debit['message'], 'provider' => $providerName]);
+        $ninNumber = trim((string) $request->number);
+        $reason = trim((string) $request->input('validation_reason', 'NIN Validation'));
+        $validationMode = \App\Models\SystemSetting::get('nin_validation_mode', 'manual');
+
+        // Status check mode
+        if ($mode === 'status') {
+            $existing = VerificationResult::where(function ($query) use ($ninNumber) {
+                    $query->where('identifier', $ninNumber)
+                          ->orWhere('reference_id', $ninNumber)
+                          ->orWhere('response_data->nin', $ninNumber);
+                })
+                ->whereIn('service_type', ['validation', 'nin_validation'])
+                ->where(function ($q) use ($user) {
+                    $q->where('user_id', $user->id)
+                      ->orWhereNull('user_id');
+                })
+                ->latest()
+                ->first();
+
+            // If Robosttech mode or existing request was submitted via Robosttech, check Robosttech status
+            if ($validationMode === 'robosttech' || ($existing && $existing->provider_name === 'Robosttech' && in_array($existing->status, ['pending', 'waiting_for_review']))) {
+                $apiCenter = ApiCenter::first();
+                if ($apiCenter && $apiCenter->robosttech_api_key) {
+                    try {
+                        $endpoint = $this->resolveRobostEndpoint(
+                            (string) ($apiCenter->robosttech_endpoint_validation ?: 'https://robosttech.com/api'),
+                            'validation'
+                        );
+                        $apiRes = Http::timeout(25)->withHeaders([
+                            'api-key' => $apiCenter->robosttech_api_key,
+                            'Content-Type' => 'application/json'
+                        ])->post($endpoint, [
+                            'nin' => $ninNumber,
+                            'number' => $ninNumber,
+                        ]);
+
+                        if ($apiRes->successful()) {
+                            $apiData = $apiRes->json();
+                            $apiStatus = strtolower((string) ($apiData['status'] ?? $apiData['data']['status'] ?? ''));
+
+                            if ($existing) {
+                                $exData = $existing->response_data ?? [];
+                                $exData['robosttech_last_status'] = $apiData;
+                                if (in_array($apiStatus, ['successful', 'success', 'cleared', 'completed', 'valid', 'true', '1'])) {
+                                    $existing->status = 'successful';
+                                    $existing->admin_note = $apiData['message'] ?? 'Validated via Robosttech API.';
+                                } elseif (in_array($apiStatus, ['failed', 'rejected', 'error', 'invalid', 'false', '0'])) {
+                                    $existing->status = 'failed';
+                                    $existing->admin_note = $apiData['message'] ?? 'Rejected via Robosttech API.';
+                                    if (empty($exData['refunded'])) {
+                                        $refundAmount = (float) ($exData['amount_paid'] ?? VerificationPrice::first()->validation_price ?? 700);
+                                        $wallet = app(WalletService::class);
+                                        $ref = $wallet->failAndRefund($user, $refundAmount, 'NIN Validation Rejected (API): ' . $existing->admin_note, $existing->reference_id);
+                                        if ($ref['ok'] ?? false) {
+                                            $exData['refunded'] = true;
+                                            $exData['refunded_amount'] = $refundAmount;
+                                            $exData['refunded_at'] = now()->toDateTimeString();
+                                        }
+                                    }
+                                }
+                                $existing->response_data = $exData;
+                                $existing->save();
+                            }
+                        }
+                    } catch (\Throwable $e) {
+                        Log::warning('Robosttech validation status check error: ' . $e->getMessage());
+                    }
+                }
             }
 
+            if (!$existing) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'No validation request found with NIN/Reference: ' . $ninNumber . '. Please check the number or submit a new request.'
+                ]);
+            }
+
+            $readableStatus = match($existing->status) {
+                'successful' => 'Validated / Successful',
+                'failed' => 'Rejected / Failed',
+                default => ($existing->provider_name === 'Robosttech' ? 'Processing via Robosttech API' : 'Under Review by Admin')
+            };
+
+            $existingData = $existing->response_data ?? [];
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Validation status retrieved.',
+                'data' => [
+                    'nin' => $existing->identifier,
+                    'reference_id' => $existing->reference_id,
+                    'status' => $existing->status,
+                    'status_label' => $readableStatus,
+                    'validation_reason' => $existingData['validation_reason'] ?? 'NIN Validation',
+                    'admin_note' => $existing->admin_note ?: ($existing->provider_name === 'Robosttech' ? 'Request is currently being processed by Robosttech API.' : 'Your application is currently being vetted by an administrator. Check back in less than 24 hours.'),
+                    'submitted_at' => $existing->created_at->format('M d, Y H:i:s'),
+                    'updated_at' => $existing->updated_at->format('M d, Y H:i:s'),
+                    'details' => $existingData,
+                ],
+                'result_id' => $existing->id
+            ]);
+        }
+
+        // Mode: Submit new validation request
+        $price = VerificationPrice::first()->validation_price ?? 700;
+        $wallet = app(WalletService::class);
+        $debit = $wallet->debit($user, (float) $price, 'Document Validation (' . $ninNumber . ')', 'VAL');
+        if (!$debit['ok']) {
+            if ($expectsJson) {
+                return response()->json(['status' => false, 'message' => $debit['message']]);
+            }
             return back()->withErrors(['number' => $debit['message']])->withInput();
         }
 
         try {
-            $headers = [];
-            $payload = [
-                'nin' => $request->number,
-                'number' => $request->number,
-            ];
-            $timeout = 45;
+            $referenceId = 'VAL-' . strtoupper(bin2hex(random_bytes(4)));
 
-            if ($customProvider) {
-                $identifier = strtolower((string) ($customProvider->provider_identifier ?? ''));
-                $endpoint = trim((string) ($customProvider->endpoint ?? ''));
-                if ($endpoint === '') {
-                    throw new \Exception('Validation provider endpoint is not configured.');
-                }
+            if ($validationMode === 'robosttech') {
+                $apiCenter = ApiCenter::first();
+                $customProvider = $this->preferredValidationProvider();
+                $providerName = $customProvider?->name ?: 'Robosttech';
 
-                $headers = is_array($customProvider->headers) ? $customProvider->headers : [];
-                $timeout = (int) ($customProvider->timeout_seconds ?: 45);
-
-                if (str_contains($identifier, 'robosttech')) {
-                    $endpoint = $this->resolveRobostEndpoint($endpoint, 'validation');
-                    if (!empty($customProvider->api_key) && empty($headers['api-key'])) {
-                        $headers['api-key'] = (string) $customProvider->api_key;
-                    }
-                } elseif (str_contains($identifier, 'dataverify') || str_contains(strtolower($endpoint), 'dataverify.com.ng')) {
-                    $apiKey = trim((string) ($customProvider->api_key ?? ''));
-                    if ($apiKey === '') {
-                        throw new \Exception('DataVerify API key is missing for validation provider.');
-                    }
-                    $payload['api_key'] = $apiKey;
-                }
-
-                $headers['Content-Type'] = $headers['Content-Type'] ?? 'application/json';
-            } else {
-                if (!$apiCenter || !$apiCenter->robosttech_api_key) {
-                    throw new \App\Exceptions\ServiceNotConfiguredException('No active validation provider is configured (Custom API or Robosttech).');
-                }
-
-                $providerName = 'Robosttech';
-                $endpoint = $this->resolveRobostEndpoint((string) ($apiCenter->robosttech_endpoint_validation ?: 'https://robosttech.com/api'), 'validation');
-                $headers = [
-                    'api-key' => $apiCenter->robosttech_api_key,
-                    'Content-Type' => 'application/json'
+                $headers = [];
+                $payload = [
+                    'nin' => $ninNumber,
+                    'number' => $ninNumber,
+                    'validation_reason' => $reason,
                 ];
-            }
+                $timeout = 45;
 
-            $response = Http::timeout($timeout)
-                ->withHeaders($headers)
-                ->post($endpoint, $payload);
+                if ($customProvider) {
+                    $identifier = strtolower((string) ($customProvider->provider_identifier ?? ''));
+                    $endpoint = trim((string) ($customProvider->endpoint ?? ''));
+                    if ($endpoint === '') {
+                        throw new \Exception('Validation provider endpoint is not configured.');
+                    }
 
-            if ($response->successful()) {
-                $data = $response->json();
-                $result = $this->storeResult($user, 'validation', $request->number, $providerName, $data);
+                    $headers = is_array($customProvider->headers) ? $customProvider->headers : [];
+                    $timeout = (int) ($customProvider->timeout_seconds ?: 45);
+
+                    if (str_contains($identifier, 'robosttech')) {
+                        $endpoint = $this->resolveRobostEndpoint($endpoint, 'validation');
+                        if (!empty($customProvider->api_key) && empty($headers['api-key'])) {
+                            $headers['api-key'] = (string) $customProvider->api_key;
+                        }
+                    } elseif (str_contains($identifier, 'dataverify') || str_contains(strtolower($endpoint), 'dataverify.com.ng')) {
+                        $apiKey = trim((string) ($customProvider->api_key ?? ''));
+                        if ($apiKey === '') {
+                            throw new \Exception('DataVerify API key is missing for validation provider.');
+                        }
+                        $payload['api_key'] = $apiKey;
+                    }
+
+                    $headers['Content-Type'] = $headers['Content-Type'] ?? 'application/json';
+                } else {
+                    if (!$apiCenter || !$apiCenter->robosttech_api_key) {
+                        throw new \App\Exceptions\ServiceNotConfiguredException('Robosttech API credentials not configured in Admin Settings.');
+                    }
+
+                    $providerName = 'Robosttech';
+                    $endpoint = $this->resolveRobostEndpoint((string) ($apiCenter->robosttech_endpoint_validation ?: 'https://robosttech.com/api'), 'validation');
+                    $headers = [
+                        'api-key' => $apiCenter->robosttech_api_key,
+                        'Content-Type' => 'application/json'
+                    ];
+                }
+
+                $response = Http::timeout($timeout)->withHeaders($headers)->post($endpoint, $payload);
+
+                if ($response->successful()) {
+                    $data = $response->json();
+                    $apiStatus = strtolower((string) ($data['status'] ?? $data['data']['status'] ?? 'waiting_for_review'));
+                    $isSuccess = in_array($apiStatus, ['validated', 'completed', 'valid']) || !empty($data['nin_data']);
+                    $initialStatus = $isSuccess ? 'successful' : 'waiting_for_review';
+
+                    $resPayload = [
+                        'nin' => $ninNumber,
+                        'validation_reason' => $reason,
+                        'user_name' => $user->fullname,
+                        'user_email' => $user->email,
+                        'user_phone' => $user->phone,
+                        'remarks' => $request->input('remarks'),
+                        'service_mode' => 'Robosttech API',
+                        'amount_paid' => (float) $price,
+                        'api_response' => $data,
+                    ];
+
+                    $result = VerificationResult::create([
+                        'user_id' => $user->id,
+                        'service_type' => 'validation',
+                        'identifier' => $ninNumber,
+                        'provider_name' => $providerName,
+                        'status' => $initialStatus,
+                        'reference_id' => $referenceId,
+                        'admin_note' => $data['message'] ?? 'Submitted to validation API.',
+                        'response_data' => $resPayload,
+                    ]);
+
+                    $wallet->markTransactionSuccess($debit['txId']);
+
+                    if ($expectsJson) {
+                        return response()->json([
+                            'status' => true,
+                            'message' => 'Validation request processed successfully.',
+                            'provider' => $providerName,
+                            'data' => [
+                                'nin' => $ninNumber,
+                                'reference_id' => $referenceId,
+                                'status' => $initialStatus,
+                                'status_label' => $isSuccess ? 'Validated / Successful' : 'Processing via API',
+                                'admin_note' => $data['message'] ?? 'Submitted to validation provider.',
+                            ],
+                            'result_id' => $result->id,
+                            'reference_id' => $result->reference_id,
+                        ]);
+                    }
+
+                    return redirect()
+                        ->route('services.validation')
+                        ->with('status', 'Validation Submitted Successfully')
+                        ->with('validation_provider', $providerName)
+                        ->with('validation_result', $data)
+                        ->with('validation_result_id', $result->id)
+                        ->with('validation_reference_id', $result->reference_id);
+                } else {
+                    $payload = $response->json();
+                    throw new \Exception((is_array($payload) ? ($payload['message'] ?? $payload['detail'] ?? null) : null)
+                        ?: ('Verification failed (HTTP ' . $response->status() . ')'));
+                }
+            } else {
+                // Manual Review Mode
+                $resPayload = [
+                    'nin' => $ninNumber,
+                    'validation_reason' => $reason,
+                    'user_name' => $user->fullname,
+                    'user_email' => $user->email,
+                    'user_phone' => $user->phone,
+                    'remarks' => $request->input('remarks'),
+                    'service_mode' => 'Manual Vetting',
+                    'amount_paid' => (float) $price,
+                ];
+
+                $result = VerificationResult::create([
+                    'user_id' => $user->id,
+                    'service_type' => 'validation',
+                    'identifier' => $ninNumber,
+                    'provider_name' => 'ADMIN_MANUAL',
+                    'status' => 'waiting_for_review',
+                    'reference_id' => $referenceId,
+                    'admin_note' => 'Awaiting admin vetting and validation. Results typically available in less than 24 hours.',
+                    'response_data' => $resPayload,
+                ]);
+
                 $wallet->markTransactionSuccess($debit['txId']);
 
                 if ($expectsJson) {
                     return response()->json([
                         'status' => true,
-                        'message' => 'Validation Successful',
-                        'provider' => $providerName,
-                        'data' => $data,
+                        'message' => 'Validation request submitted successfully. You will see results under Validation Vault in less than 24 hours.',
+                        'provider' => 'ADMIN_MANUAL',
+                        'data' => [
+                            'nin' => $ninNumber,
+                            'reference_id' => $referenceId,
+                            'status' => 'waiting_for_review',
+                            'status_label' => 'Under Review by Admin',
+                            'admin_note' => 'Awaiting admin vetting and validation. Results typically available in less than 24 hours.',
+                        ],
                         'result_id' => $result->id,
                         'reference_id' => $result->reference_id,
                     ]);
@@ -1075,23 +1273,17 @@ class VerificationController extends Controller
 
                 return redirect()
                     ->route('services.validation')
-                    ->with('status', 'Validation Successful')
-                    ->with('validation_provider', $providerName)
-                    ->with('validation_result', $data)
+                    ->with('status', 'Validation request submitted successfully. Check Validation Vault in less than 24 hours.')
+                    ->with('validation_provider', 'ADMIN_MANUAL')
                     ->with('validation_result_id', $result->id)
                     ->with('validation_reference_id', $result->reference_id);
-            } else {
-                $payload = $response->json();
-                throw new \Exception((is_array($payload) ? ($payload['message'] ?? $payload['detail'] ?? null) : null)
-                    ?: ('Verification failed (HTTP ' . $response->status() . ')'));
             }
         } catch (\Exception $e) {
-            $wallet->failAndRefund($user, (float) $price, 'Document Validation', $debit['txId']);
+            $wallet->failAndRefund($user, (float) $price, 'Document Validation Failure', $debit['txId']);
             if ($expectsJson) {
                 return response()->json([
                     'status' => false,
-                    'message' => $e->getMessage(),
-                    'provider' => $providerName,
+                    'message' => 'Failed to process validation: ' . $e->getMessage(),
                 ]);
             }
 

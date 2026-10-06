@@ -583,6 +583,15 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
             Route::post('/verifications/ipe-clearance/{id}/update', [App\Http\Controllers\Admin\IpeClearanceAdminController::class, 'updateStatus'])->name('verifications.ipe_clearance.update');
             Route::post('/verifications/ipe-clearance/{id}/sync-robosttech', [App\Http\Controllers\Admin\IpeClearanceAdminController::class, 'syncRobosttech'])->name('verifications.ipe_clearance.sync_robosttech');
 
+            // NIN Validation Management (Manual Admin Processing & Robosttech API)
+            Route::get('/verifications/nin-validation', [App\Http\Controllers\Admin\NinValidationAdminController::class, 'index'])->name('verifications.nin_validation.index');
+            Route::post('/verifications/nin-validation/mode', [App\Http\Controllers\Admin\NinValidationAdminController::class, 'updateMode'])->name('verifications.nin_validation.mode');
+            Route::get('/verifications/nin-validation/export', [App\Http\Controllers\Admin\NinValidationAdminController::class, 'exportCsv'])->name('verifications.nin_validation.export');
+            Route::post('/verifications/nin-validation/import', [App\Http\Controllers\Admin\NinValidationAdminController::class, 'importCsv'])->name('verifications.nin_validation.import');
+            Route::get('/verifications/nin-validation/{id}', [App\Http\Controllers\Admin\NinValidationAdminController::class, 'show'])->name('verifications.nin_validation.show');
+            Route::post('/verifications/nin-validation/{id}/update', [App\Http\Controllers\Admin\NinValidationAdminController::class, 'updateStatus'])->name('verifications.nin_validation.update');
+            Route::post('/verifications/nin-validation/{id}/sync-robosttech', [App\Http\Controllers\Admin\NinValidationAdminController::class, 'syncRobosttech'])->name('verifications.nin_validation.sync_robosttech');
+
             // â”€â”€ Broadcast Messaging â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             Route::get('/broadcasts',                  [App\Http\Controllers\Admin\BroadcastController::class, 'index'])->name('broadcasts.index');
             Route::get('/broadcasts/create',           [App\Http\Controllers\Admin\BroadcastController::class, 'create'])->name('broadcasts.create');

@@ -538,6 +538,7 @@
                     <a href="{{ route('admin.verifications.index') }}" class="{{ Request::routeIs('admin.verifications.index') ? 'active' : '' }}">Verification Vault</a>
                     <a href="{{ route('admin.verifications.nin_modifications.index') }}" class="{{ Request::routeIs('admin.verifications.nin_modifications.*') ? 'active' : '' }}">NIN Modifications</a>
                     <a href="{{ route('admin.verifications.ipe_clearance.index') }}" class="{{ Request::routeIs('admin.verifications.ipe_clearance.*') ? 'active' : '' }}">IPE Clearance</a>
+                    <a href="{{ route('admin.verifications.nin_validation.index') }}" class="{{ Request::routeIs('admin.verifications.nin_validation.*') ? 'active' : '' }}">NIN Validation</a>
                 </div>
             </div>
 
