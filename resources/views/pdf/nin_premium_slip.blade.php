@@ -142,22 +142,23 @@
 
         .qr-container {
             position: absolute;
-            top: 24px;
-            right: 17px;
-            width: 118px;
-            height: 118px;
+            top: 27px;
+            right: 20px;
+            width: 114px;
+            height: 114px;
             text-align: center;
         }
 
         .qr-container img {
-            width: 118px;
-            height: 118px;
+            width: 114px;
+            height: 114px;
+            display: block;
         }
 
         .value-issue-date {
             position: absolute;
-            top: 208px;
-            right: 18px;
+            top: 206px;
+            right: 19px;
             width: 116px;
             font-size: 10px;
             font-weight: bold;

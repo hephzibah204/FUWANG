@@ -23,7 +23,8 @@ class QrCodeDataUri
                 'outputInterface' => QRGdImagePNG::class,
                 'outputBase64' => true,
                 'scale' => $scale,
-                'addQuietzone' => false,
+                'addQuietzone' => true,
+                'quietzoneSize' => 2,
             ])))->render($data);
         } catch (\Throwable $e) {
             return null;
