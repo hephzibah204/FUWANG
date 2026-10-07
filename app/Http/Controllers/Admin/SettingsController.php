@@ -49,6 +49,9 @@ class SettingsController extends Controller
         $bvnRetrievalPrice = (float) SystemSetting::get('bvn_retrieval_price', 800);
         $ipeClearanceMode = (string) SystemSetting::get('ipe_clearance_mode', 'manual');
         $ninValidationMode = (string) SystemSetting::get('nin_validation_mode', 'manual');
+        $agentLicensePromoPrice = (float) SystemSetting::get('agent_license_promo_price', 100000);
+        $agentLicenseRegularPrice = (float) SystemSetting::get('agent_license_regular_price', 150000);
+        $agentLicensePromoEndsAt = (string) SystemSetting::get('agent_license_promo_ends_at', '2026-10-10 23:59:59');
 
         return view('admin.settings.index', compact(
             'apiSettings', 'apiCenter', 'notification',
@@ -61,7 +64,10 @@ class SettingsController extends Controller
             'securityAuditLogs',
             'bvnRetrievalPrice',
             'ipeClearanceMode',
-            'ninValidationMode'
+            'ninValidationMode',
+            'agentLicensePromoPrice',
+            'agentLicenseRegularPrice',
+            'agentLicensePromoEndsAt'
         ));
     }
 
@@ -97,6 +103,9 @@ class SettingsController extends Controller
             'ipe_clearance_price'       => 'required|numeric|min:0',
             'personalization_price'     => 'required|numeric|min:0',
             'bvn_retrieval_price'       => 'nullable|numeric|min:0',
+            'agent_license_promo_price' => 'nullable|numeric|min:0',
+            'agent_license_regular_price' => 'nullable|numeric|min:0',
+            'agent_license_promo_ends_at' => 'nullable|string',
         ]);
 
         DB::table('verification_prices')->where('id', 1)->update([
@@ -113,6 +122,18 @@ class SettingsController extends Controller
 
         if ($request->filled('bvn_retrieval_price')) {
             SystemSetting::set('bvn_retrieval_price', (float) $request->bvn_retrieval_price, 'pricing');
+        }
+
+        if ($request->filled('agent_license_promo_price')) {
+            SystemSetting::set('agent_license_promo_price', (float) $request->agent_license_promo_price, 'pricing');
+        }
+
+        if ($request->filled('agent_license_regular_price')) {
+            SystemSetting::set('agent_license_regular_price', (float) $request->agent_license_regular_price, 'pricing');
+        }
+
+        if ($request->filled('agent_license_promo_ends_at')) {
+            SystemSetting::set('agent_license_promo_ends_at', trim((string) $request->agent_license_promo_ends_at), 'pricing');
         }
 
         return response()->json(['status' => true, 'message' => 'Pricing updated successfully.']);

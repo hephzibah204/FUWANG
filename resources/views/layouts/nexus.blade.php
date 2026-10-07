@@ -510,6 +510,9 @@
                             <span class="badge bg-warning text-dark rounded-pill text-2xs ms-auto">{{ $sidebarPendingAgents }}</span>
                         @endif
                     </a>
+                    <a href="{{ route('admin.agents.licenses.index') }}" class="{{ Request::routeIs('admin.agents.licenses.*') ? 'active' : '' }}">
+                        <i class="fa-solid fa-certificate me-2 text-xs text-warning opacity-75"></i> Station Licenses
+                    </a>
                     <a href="{{ route('admin.agents.notifications.index') }}" class="{{ Request::routeIs('admin.agents.notifications.*') ? 'active' : '' }}">
                         <i class="fa-solid fa-bullhorn me-2 text-xs opacity-75"></i> Broadcast & Alerts
                     </a>

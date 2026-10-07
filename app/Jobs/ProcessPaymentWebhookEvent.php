@@ -275,6 +275,52 @@ class ProcessPaymentWebhookEvent implements ShouldQueue
             return;
         }
 
+        $metadata = (array) ($obj['metadata'] ?? []);
+        $paymentType = (string) ($metadata['payment_type'] ?? '');
+        $isAgentLicense = ($paymentType === 'agent_license') || str_starts_with($reference, 'LIC-');
+
+        if ($isAgentLicense) {
+            DB::transaction(function () use ($email, $amount, $reference, $metadata, $obj) {
+                $user = $this->findUserForPayment($email, null, $reference);
+                if (!$user) {
+                    throw new \RuntimeException("User not found for Paystack payment (email: '{$email}')");
+                }
+
+                $agentId = $metadata['agent_id'] ?? null;
+                $agent = $agentId 
+                    ? \App\Models\EnrollmentAgent::find($agentId) 
+                    : $user->enrollmentAgent;
+
+                if ($agent) {
+                    $agent->update([
+                        'license_status' => 'paid',
+                        'license_fee_amount' => $amount,
+                        'license_fee_paid' => $amount,
+                        'license_payment_method' => 'paystack',
+                        'license_payment_reference' => $reference,
+                        'license_paid_at' => now(),
+                        'license_rejection_reason' => null,
+                    ]);
+
+                    \App\Models\AgentLicenseTransaction::updateOrCreate(
+                        ['reference' => $reference],
+                        [
+                            'agent_id' => $agent->id,
+                            'user_id' => $user->id,
+                            'amount' => $amount,
+                            'payment_method' => 'paystack',
+                            'gateway_reference' => (string) ($obj['id'] ?? $reference),
+                            'status' => 'completed',
+                            'meta' => $obj,
+                        ]
+                    );
+                }
+            });
+
+            $this->markSucceeded($event);
+            return;
+        }
+
         DB::transaction(function () use ($email, $amount, $reference) {
             $user = $this->findUserForPayment($email, null, $reference);
             if (!$user) {

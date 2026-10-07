@@ -23,7 +23,16 @@ class AgentOnboardingController extends Controller
             return redirect()->route('agent.dashboard');
         }
 
-        return view('agent.onboarding.index', compact('agent'));
+        $effectiveFee = EnrollmentAgent::getEffectiveLicenseFee();
+        $isPromo = EnrollmentAgent::isPromoActive();
+        $promoEndsAt = \App\Models\SystemSetting::get('agent_license_promo_ends_at', '2026-10-10 23:59:59');
+        $manualFunding = \Illuminate\Support\Facades\DB::table('manual_funding')->first();
+        $walletBalance = (float) ($user->accountBalance->user_balance ?? 0.0);
+        $paystackKey = \App\Support\PaymentProviderCredentials::paystack()['public_key'];
+
+        return view('agent.onboarding.index', compact(
+            'agent', 'effectiveFee', 'isPromo', 'promoEndsAt', 'manualFunding', 'walletBalance', 'paystackKey'
+        ));
     }
 
     public function uploadDocs(Request $request)

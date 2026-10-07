@@ -22,11 +22,15 @@ class PreApprovedAgent extends Model
         'is_claimed',
         'claimed_at',
         'claimed_by_user_id',
+        'has_paid_license',
+        'license_payment_method',
+        'license_notes',
     ];
 
     protected $casts = [
         'is_claimed' => 'boolean',
         'claimed_at' => 'datetime',
+        'has_paid_license' => 'boolean',
     ];
 
     public function claimedByUser(): BelongsTo

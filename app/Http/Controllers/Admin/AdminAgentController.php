@@ -17,13 +17,26 @@ class AdminAgentController extends Controller
             $query->where('status', $status);
         }
 
+        $licenseStatus = $request->query('license_status');
+        if (in_array($licenseStatus, ['paid', 'pending_review', 'unpaid'], true)) {
+            if ($licenseStatus === 'unpaid') {
+                $query->where(function($q) {
+                    $q->whereNull('license_status')->orWhere('license_status', 'unpaid');
+                });
+            } else {
+                $query->where('license_status', $licenseStatus);
+            }
+        }
+
         if ($search = $request->query('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('full_name', 'like', "%{$search}%")
                   ->orWhere('phone_number', 'like', "%{$search}%")
                   ->orWhere('nin', 'like', "%{$search}%")
                   ->orWhere('bvn', 'like', "%{$search}%")
-                  ->orWhere('machine_imei', 'like', "%{$search}%");
+                  ->orWhere('machine_imei', 'like', "%{$search}%")
+                  ->orWhere('company_agent_code', 'like', "%{$search}%")
+                  ->orWhere('license_payment_reference', 'like', "%{$search}%");
             });
         }
 
@@ -35,9 +48,14 @@ class AdminAgentController extends Controller
             'approved' => EnrollmentAgent::where('status', 'approved')->count(),
             'rejected' => EnrollmentAgent::where('status', 'rejected')->count(),
             'suspended' => EnrollmentAgent::where('status', 'suspended')->count(),
+            'licensed_paid' => EnrollmentAgent::whereIn('license_status', ['paid', 'waived'])->count(),
+            'licensed_pending' => EnrollmentAgent::where('license_status', 'pending_review')->count(),
+            'licensed_unpaid' => EnrollmentAgent::where(function($q) {
+                $q->whereNull('license_status')->orWhere('license_status', 'unpaid');
+            })->count(),
         ];
 
-        return view('admin.agents.index', compact('agents', 'counts', 'status'));
+        return view('admin.agents.index', compact('agents', 'counts', 'status', 'licenseStatus'));
     }
 
     public function overview()
@@ -126,7 +144,7 @@ class AdminAgentController extends Controller
 
     public function show($id)
     {
-        $agent = EnrollmentAgent::with('user')->findOrFail($id);
+        $agent = EnrollmentAgent::with(['user', 'licenseVerifiedBy', 'licenseTransactions'])->findOrFail($id);
 
         return view('admin.agents.show', compact('agent'));
     }

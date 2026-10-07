@@ -173,6 +173,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::match(['GET', 'POST'], '/switch-mode', [App\Http\Controllers\Agent\AgentDashboardController::class, 'switchMode'])->name('switch_mode');
 
+        // Station License Accreditation Routes
+        Route::prefix('license')->name('license.')->group(function () {
+            Route::get('/info', [App\Http\Controllers\Agent\AgentLicenseController::class, 'getLicenseInfo'])->name('info');
+            Route::post('/paystack/init', [App\Http\Controllers\Agent\AgentLicenseController::class, 'initPaystack'])->name('paystack_init');
+            Route::post('/paystack/verify', [App\Http\Controllers\Agent\AgentLicenseController::class, 'verifyPaystack'])->name('paystack_verify');
+            Route::post('/wallet/pay', [App\Http\Controllers\Agent\AgentLicenseController::class, 'payWithWallet'])->name('pay_wallet');
+            Route::post('/upload-proof', [App\Http\Controllers\Agent\AgentLicenseController::class, 'uploadOfflineProof'])->name('upload_proof');
+            Route::post('/claim-legacy', [App\Http\Controllers\Agent\AgentLicenseController::class, 'claimLegacy'])->name('claim_legacy');
+        });
+
         Route::middleware([App\Http\Middleware\EnsureApprovedAgent::class])->group(function () {
             Route::get('/dashboard', [App\Http\Controllers\Agent\AgentDashboardController::class, 'index'])->name('dashboard');
 
@@ -762,6 +772,15 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
                     Route::put('/{id}', [App\Http\Controllers\Admin\AdminAgentRosterController::class, 'update'])->name('update');
                     Route::post('/{id}/unclaim', [App\Http\Controllers\Admin\AdminAgentRosterController::class, 'unclaim'])->name('unclaim');
                     Route::delete('/{id}', [App\Http\Controllers\Admin\AdminAgentRosterController::class, 'destroy'])->name('destroy');
+                });
+
+                // Station Licenses Desk & Management
+                Route::prefix('licenses')->name('licenses.')->group(function () {
+                    Route::get('/', [App\Http\Controllers\Admin\AdminAgentLicenseController::class, 'index'])->name('index');
+                    Route::post('/{id}/mark-paid', [App\Http\Controllers\Admin\AdminAgentLicenseController::class, 'markPaid'])->name('mark_paid');
+                    Route::post('/{id}/approve-proof', [App\Http\Controllers\Admin\AdminAgentLicenseController::class, 'approveProof'])->name('approve_proof');
+                    Route::post('/{id}/reject-proof', [App\Http\Controllers\Admin\AdminAgentLicenseController::class, 'rejectProof'])->name('reject_proof');
+                    Route::post('/{id}/revoke', [App\Http\Controllers\Admin\AdminAgentLicenseController::class, 'revoke'])->name('revoke');
                 });
 
                 // Specific Agent operations

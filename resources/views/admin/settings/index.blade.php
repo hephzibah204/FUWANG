@@ -112,6 +112,25 @@
                     <input type="number" name="bvn_retrieval_price" class="form-control text-white rounded-3" value="{{ $bvnRetrievalPrice ?? 800 }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
                 </div>
             </div>
+
+            <h6 class="text-white fw-bold mb-3"><i class="fa-solid fa-id-badge text-warning me-2"></i>NIN Enrollment Agent Station License Pricing</h6>
+            <div class="row">
+                <div class="col-md-4 mb-4">
+                    <label class="text-white-50 small mb-2">Agent License Promo Price (₦) <span class="badge bg-warning text-dark font-monospace">Active Promo</span></label>
+                    <input type="number" name="agent_license_promo_price" class="form-control text-white rounded-3 font-monospace fw-bold" value="{{ $agentLicensePromoPrice ?? 100000 }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(234, 179, 8, 0.4);">
+                    <small class="text-white-50 text-2xs">Current promo rate paid online/wallet/offline.</small>
+                </div>
+                <div class="col-md-4 mb-4">
+                    <label class="text-white-50 small mb-2">Agent License Standard Regular Price (₦)</label>
+                    <input type="number" name="agent_license_regular_price" class="form-control text-white rounded-3 font-monospace" value="{{ $agentLicenseRegularPrice ?? 150000 }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                    <small class="text-white-50 text-2xs">Price applicable after promo expiration.</small>
+                </div>
+                <div class="col-md-4 mb-4">
+                    <label class="text-white-50 small mb-2">Promo End Date & Time</label>
+                    <input type="text" name="agent_license_promo_ends_at" class="form-control text-white rounded-3 font-monospace" value="{{ $agentLicensePromoEndsAt ?? '2026-10-10 23:59:59' }}" placeholder="YYYY-MM-DD HH:MM:SS" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                    <small class="text-white-50 text-2xs">Promo expires end of day October 10th, 2026.</small>
+                </div>
+            </div>
             <button type="submit" class="btn btn-primary rounded-pill px-4"><i class="fa fa-floppy-disk mr-2"></i>Save Pricing</button>
         </form>
 

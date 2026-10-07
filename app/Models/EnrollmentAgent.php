@@ -43,6 +43,19 @@ class EnrollmentAgent extends Model
         'is_mva_of_month',
         'meta',
         'approved_at',
+        // License accreditation fields
+        'license_status',
+        'license_fee_amount',
+        'license_fee_paid',
+        'license_payment_method',
+        'license_payment_reference',
+        'license_proof_path',
+        'license_proof_meta',
+        'license_paid_at',
+        'license_verified_by',
+        'license_verified_at',
+        'license_rejection_reason',
+        'license_admin_notes',
     ];
 
     protected $casts = [
@@ -57,11 +70,60 @@ class EnrollmentAgent extends Model
         'terms_accepted_at' => 'datetime',
         'total_enrollments' => 'integer',
         'monthly_enrollments' => 'integer',
+        'license_fee_amount' => 'decimal:2',
+        'license_fee_paid' => 'decimal:2',
+        'license_proof_meta' => 'array',
+        'license_paid_at' => 'datetime',
+        'license_verified_at' => 'datetime',
     ];
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function licenseVerifiedBy(): BelongsTo
+    {
+        return $this->belongsTo(Admin::class, 'license_verified_by');
+    }
+
+    public function licenseTransactions()
+    {
+        return $this->hasMany(AgentLicenseTransaction::class, 'agent_id')->latest();
+    }
+
+    public function isLicensePaid(): bool
+    {
+        return in_array($this->license_status, ['paid', 'waived'], true);
+    }
+
+    public function isLicensePendingReview(): bool
+    {
+        return $this->license_status === 'pending_review';
+    }
+
+    public function isLicenseUnpaid(): bool
+    {
+        return empty($this->license_status) || $this->license_status === 'unpaid';
+    }
+
+    public static function isPromoActive(): bool
+    {
+        $promoEndsAt = SystemSetting::get('agent_license_promo_ends_at', '2026-10-10 23:59:59');
+        try {
+            return now()->lessThanOrEqualTo(\Carbon\Carbon::parse($promoEndsAt));
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    public static function getEffectiveLicenseFee(): float
+    {
+        if (self::isPromoActive()) {
+            return (float) SystemSetting::get('agent_license_promo_price', 100000.00);
+        }
+
+        return (float) SystemSetting::get('agent_license_regular_price', 150000.00);
     }
 
     public function isApproved(): bool

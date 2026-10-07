@@ -24,8 +24,15 @@
                     @endif
                 </div>
                 <div>
-                    <div class="d-flex align-items-center gap-2 mb-1">
+                    <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
                         <span class="badge bg-primary px-3 py-1 rounded-pill text-uppercase font-monospace">Agency Mode Active</span>
+                        @if($agent->isLicensePaid())
+                            <span class="badge bg-success px-3 py-1 rounded-pill"><i class="fa-solid fa-certificate me-1"></i>Licensed Station</span>
+                        @elseif($agent->isLicensePendingReview())
+                            <span class="badge bg-warning text-dark px-3 py-1 rounded-pill"><i class="fa-solid fa-clock me-1"></i>License Under Review</span>
+                        @else
+                            <span class="badge bg-secondary px-3 py-1 rounded-pill"><i class="fa-solid fa-xmark me-1"></i>License Unpaid</span>
+                        @endif
                         @if(!$agent->picture_path)
                             <span class="badge bg-danger px-3 py-1 rounded-pill"><i class="fa-solid fa-exclamation-triangle me-1"></i>Profile Photo Required for Full Activation</span>
                         @endif
@@ -41,6 +48,42 @@
             </div>
         </div>
     </div>
+
+    <!-- Station License Status Banner -->
+    @if(!$agent->isLicensePaid())
+        <div class="alert border-0 rounded-4 p-4 mb-4 d-flex align-items-center justify-content-between flex-wrap gap-3" style="background: linear-gradient(135deg, rgba(234, 179, 8, 0.2), rgba(180, 83, 9, 0.3)); border: 1px solid rgba(234, 179, 8, 0.4) !important;">
+            <div class="d-flex align-items-center gap-3">
+                <div class="rounded-circle p-3 text-center" style="background: rgba(234, 179, 8, 0.3); width: 54px; height: 54px;">
+                    <i class="fa-solid fa-certificate text-warning fa-xl"></i>
+                </div>
+                <div>
+                    @if($agent->isLicensePendingReview())
+                        <span class="badge bg-warning text-dark font-monospace fw-bold mb-1">PAYMENT PROOF SUBMITTED</span>
+                        <h5 class="text-white fw-bold mb-1">License Accreditation Verification In Progress</h5>
+                        <p class="text-white-50 mb-0">Your offline transfer / pre-launch payment claim is being verified by the operations desk within 24 hours.</p>
+                    @else
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <span class="badge bg-warning text-dark font-monospace fw-bold">PROMO FEE: ₦{{ number_format($effectiveFee, 2) }}</span>
+                            <span class="badge bg-danger rounded-pill">Promo Ends Oct 10, 2026</span>
+                        </div>
+                        <h5 class="text-white fw-bold mb-1">Accredit Your Station License</h5>
+                        <p class="text-white-50 mb-0">Pay your station accreditation fee online via Paystack, wallet balance, or submit offline transfer receipt / pre-launch payment proof.</p>
+                    @endif
+                </div>
+            </div>
+            <div>
+                @if(!$agent->isLicensePendingReview())
+                    <button type="button" class="btn btn-warning text-dark rounded-pill px-4 py-2 fw-bold" data-toggle="modal" data-bs-toggle="modal" data-target="#accreditLicenseModal" data-bs-target="#accreditLicenseModal">
+                        <i class="fa-solid fa-shield-check me-2"></i>Accredit License Now
+                    </button>
+                @else
+                    <button type="button" class="btn btn-outline-warning rounded-pill px-4 py-2" data-toggle="modal" data-bs-toggle="modal" data-target="#accreditLicenseModal" data-bs-target="#accreditLicenseModal">
+                        <i class="fa-solid fa-eye me-2"></i>View / Update Claim
+                    </button>
+                @endif
+            </div>
+        </div>
+    @endif
 
     @if(!$agent->picture_path)
         <div class="alert alert-danger border-0 rounded-4 p-4 mb-4 d-flex align-items-center justify-content-between flex-wrap gap-3" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4) !important;">
@@ -384,4 +427,244 @@
         </div>
     </div>
 </div>
+
+<!-- Modal: Accredit Station License -->
+<div class="modal fade" id="accreditLicenseModal" tabindex="-1" aria-labelledby="accreditLicenseModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4" style="background: #111827; border: 1px solid rgba(255,255,255,0.15) !important;">
+            <div class="modal-header border-bottom border-secondary">
+                <h5 class="modal-title text-white fw-bold" id="accreditLicenseModalLabel">
+                    <i class="fa-solid fa-certificate text-warning me-2"></i>Accredit NIN Station License
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <!-- Promo rate header -->
+                <div class="alert border-0 rounded-3 p-3 mb-4 d-flex align-items-center justify-content-between flex-wrap gap-2" style="background: linear-gradient(135deg, rgba(234, 179, 8, 0.15), rgba(180, 83, 9, 0.25)); border: 1px solid rgba(234, 179, 8, 0.4) !important;">
+                    <div>
+                        <span class="badge bg-warning text-dark font-monospace fw-bold mb-1">PROMO RATE: ₦{{ number_format($effectiveFee ?? 100000, 2) }}</span>
+                        <strong class="text-white d-block">Special Enrollment License Promo Ending October 10th, 2026</strong>
+                        <small class="text-white-50">Select your preferred payment channel to complete accreditation.</small>
+                    </div>
+                </div>
+
+                <!-- 4 Tabs -->
+                <ul class="nav nav-pills mb-3 gap-2" id="dashLicensePaymentTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active rounded-pill px-3 py-2 fw-bold text-xs" id="dtab-paystack-btn" data-bs-toggle="pill" data-bs-target="#dtab-paystack" data-toggle="pill" data-target="#dtab-paystack" type="button" role="tab">
+                            <i class="fa-solid fa-credit-card me-1 text-primary"></i>1. Pay Online (Paystack)
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link rounded-pill px-3 py-2 fw-bold text-xs" id="dtab-wallet-btn" data-bs-toggle="pill" data-bs-target="#dtab-wallet" data-toggle="pill" data-target="#dtab-wallet" type="button" role="tab">
+                            <i class="fa-solid fa-wallet me-1 text-info"></i>2. Pay via Wallet
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link rounded-pill px-3 py-2 fw-bold text-xs" id="dtab-offline-btn" data-bs-toggle="pill" data-bs-target="#dtab-offline" data-toggle="pill" data-target="#dtab-offline" type="button" role="tab">
+                            <i class="fa-solid fa-receipt me-1 text-warning"></i>3. Paid Offline (Proof)
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link rounded-pill px-3 py-2 fw-bold text-xs" id="dtab-legacy-btn" data-bs-toggle="pill" data-bs-target="#dtab-legacy" data-toggle="pill" data-target="#dtab-legacy" type="button" role="tab">
+                            <i class="fa-solid fa-clock-rotate-left me-1 text-success"></i>4. Pre-Launch Paid
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content border border-secondary rounded-4 p-4 bg-dark" id="dashLicensePaymentTabsContent">
+                    <!-- Tab 1: Paystack Online -->
+                    <div class="tab-pane fade show active" id="dtab-paystack" role="tabpanel">
+                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                            <div>
+                                <h6 class="text-white fw-bold mb-1"><i class="fa-solid fa-bolt text-warning me-2"></i>Instant Accreditation via Paystack</h6>
+                                <p class="text-white-50 small mb-0">Pay with Debit Card, Transfer, USSD or Apple Pay. Accreditation activates immediately on confirmation.</p>
+                            </div>
+                            <div>
+                                <button type="button" id="dashPaystackPayBtn" class="btn btn-primary rounded-pill px-4 py-2 fw-bold">
+                                    <i class="fa-solid fa-lock me-2"></i>Pay ₦{{ number_format($effectiveFee ?? 100000, 2) }}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab 2: Wallet Balance -->
+                    <div class="tab-pane fade" id="dtab-wallet" role="tabpanel">
+                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                            <div>
+                                <h6 class="text-white fw-bold mb-1"><i class="fa-solid fa-wallet text-info me-2"></i>Pay from Fuwa Wallet</h6>
+                                <p class="text-white-50 small mb-1">Current Wallet Balance: <strong class="text-warning">₦{{ number_format($walletBalance ?? 0, 2) }}</strong>.</p>
+                                @if(($walletBalance ?? 0) < ($effectiveFee ?? 100000))
+                                    <small class="text-danger"><i class="fa-solid fa-circle-exclamation me-1"></i>Insufficient balance. Fund your wallet or pay via Paystack.</small>
+                                @endif
+                            </div>
+                            <div>
+                                <form action="{{ route('agent.license.pay_wallet') }}" method="POST" onsubmit="return confirm('Confirm payment of ₦{{ number_format($effectiveFee ?? 100000, 2) }} from your wallet balance?');">
+                                    @csrf
+                                    <button type="submit" class="btn btn-info text-dark rounded-pill px-4 py-2 fw-bold" {{ ($walletBalance ?? 0) < ($effectiveFee ?? 100000) ? 'disabled' : '' }}>
+                                        <i class="fa-solid fa-check me-2"></i>Pay ₦{{ number_format($effectiveFee ?? 100000, 2) }}
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab 3: Offline Proof Upload -->
+                    <div class="tab-pane fade" id="dtab-offline" role="tabpanel">
+                        <div class="mb-3 p-3 rounded-3" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);">
+                            <h6 class="text-warning fw-bold mb-2"><i class="fa-solid fa-building-columns me-2"></i>Official Bank Details:</h6>
+                            <div class="row g-2 text-white small">
+                                <div class="col-md-4">Bank: <strong class="text-white">{{ $manualFunding->bank_name ?? 'Zenith Bank' }}</strong></div>
+                                <div class="col-md-4">Account No: <strong class="text-warning font-monospace fs-6">{{ $manualFunding->account_number ?? '1234567890' }}</strong></div>
+                                <div class="col-md-4">Account Name: <strong class="text-white">{{ $manualFunding->account_name ?? 'Fuwa Logistics Services' }}</strong></div>
+                            </div>
+                        </div>
+
+                        <form action="{{ route('agent.license.upload_proof') }}" method="POST" enctype="multipart/form-data">
+                            @csrf
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label text-white-50 small">Amount Paid (₦)</label>
+                                    <input type="number" step="0.01" name="amount_paid" class="form-control bg-transparent text-white border-secondary" value="{{ $effectiveFee ?? 100000 }}" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-white-50 small">Bank Reference / Session ID</label>
+                                    <input type="text" name="payment_reference" class="form-control bg-transparent text-white border-secondary" placeholder="e.g. 000013241007..." required>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label text-white-50 small">Upload Payment Receipt / Proof (PDF, JPG, PNG)</label>
+                                    <input type="file" name="payment_proof" class="form-control bg-transparent text-white border-secondary" accept=".pdf,.jpg,.jpeg,.png" required>
+                                </div>
+                                <div class="col-12">
+                                    <button type="submit" class="btn btn-warning rounded-pill px-4 py-2 fw-bold text-dark">
+                                        <i class="fa-solid fa-upload me-2"></i>Submit Offline Proof for Verification
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Tab 4: Pre-Website Legacy Claim -->
+                    <div class="tab-pane fade" id="dtab-legacy" role="tabpanel">
+                        <div class="alert alert-info border-0 rounded-3 p-3 mb-3" style="background: rgba(14, 165, 233, 0.15); color: #bae6fd;">
+                            <h6 class="fw-bold mb-1"><i class="fa-solid fa-info-circle me-2"></i>Paid Prior to Website Launch?</h6>
+                            <p class="mb-0 small">If you paid for your license before this portal launched, submit your payment records below. An admin will verify with the legacy accounting records.</p>
+                        </div>
+
+                        <form action="{{ route('agent.license.claim_legacy') }}" method="POST" enctype="multipart/form-data">
+                            @csrf
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label text-white-50 small">Approximate Payment Date</label>
+                                    <input type="date" name="payment_date" class="form-control bg-transparent text-white border-secondary" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-white-50 small">Amount Paid (₦)</label>
+                                    <input type="number" step="0.01" name="amount_paid" class="form-control bg-transparent text-white border-secondary" placeholder="100000" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-white-50 small">Original Bank / Transaction Reference</label>
+                                    <input type="text" name="legacy_reference" class="form-control bg-transparent text-white border-secondary" placeholder="e.g. Bank slip reference, teller number...">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-white-50 small">Supporting Receipt / Teller (Optional)</label>
+                                    <input type="file" name="legacy_proof" class="form-control bg-transparent text-white border-secondary" accept=".pdf,.jpg,.jpeg,.png">
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label text-white-50 small">Remarks / Details for Admin Verification</label>
+                                    <textarea name="remarks" rows="2" class="form-control bg-transparent text-white border-secondary" placeholder="Provide any details about the admin staff or coordinator you paid to..."></textarea>
+                                </div>
+                                <div class="col-12">
+                                    <button type="submit" class="btn btn-success rounded-pill px-4 py-2 fw-bold">
+                                        <i class="fa-solid fa-paper-plane me-2"></i>Submit Pre-Launch Verification Claim
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://js.paystack.co/v1/inline.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const dashPayBtn = document.getElementById('dashPaystackPayBtn');
+    if (!dashPayBtn) return;
+
+    dashPayBtn.addEventListener('click', async function(e) {
+        e.preventDefault();
+        dashPayBtn.disabled = true;
+        dashPayBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i>Initializing Paystack...';
+
+        try {
+            const initRes = await fetch("{{ route('agent.license.paystack_init') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                }
+            });
+
+            const data = await initRes.json();
+            if (!data.status) {
+                alert(data.message || 'Unable to initialize Paystack checkout.');
+                dashPayBtn.disabled = false;
+                dashPayBtn.innerHTML = '<i class="fa-solid fa-lock me-2"></i>Pay ₦{{ number_format($effectiveFee ?? 100000, 2) }}';
+                return;
+            }
+
+            const handler = PaystackPop.setup({
+                key: data.public_key,
+                email: data.email,
+                amount: data.amount_kobo,
+                currency: 'NGN',
+                ref: data.reference,
+                metadata: data.metadata,
+                callback: function(response) {
+                    dashPayBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i>Verifying Accreditation...';
+                    fetch("{{ route('agent.license.paystack_verify') }}", {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({ reference: response.reference })
+                    })
+                    .then(r => r.json())
+                    .then(res => {
+                        if (res.status) {
+                            alert(res.message);
+                            window.location.reload();
+                        } else {
+                            alert(res.message || 'Payment verification failed.');
+                            dashPayBtn.disabled = false;
+                            dashPayBtn.innerHTML = '<i class="fa-solid fa-lock me-2"></i>Pay ₦{{ number_format($effectiveFee ?? 100000, 2) }}';
+                        }
+                    })
+                    .catch(err => {
+                        alert('Network error while verifying payment.');
+                        dashPayBtn.disabled = false;
+                        dashPayBtn.innerHTML = '<i class="fa-solid fa-lock me-2"></i>Pay ₦{{ number_format($effectiveFee ?? 100000, 2) }}';
+                    });
+                },
+                onClose: function() {
+                    dashPayBtn.disabled = false;
+                    dashPayBtn.innerHTML = '<i class="fa-solid fa-lock me-2"></i>Pay ₦{{ number_format($effectiveFee ?? 100000, 2) }}';
+                }
+            });
+
+            handler.openIframe();
+        } catch (err) {
+            alert('Error connecting to payment gateway: ' + err.message);
+            dashPayBtn.disabled = false;
+            dashPayBtn.innerHTML = '<i class="fa-solid fa-lock me-2"></i>Pay ₦{{ number_format($effectiveFee ?? 100000, 2) }}';
+        }
+    });
+});
+</script>
 @endsection

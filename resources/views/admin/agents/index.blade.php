@@ -17,6 +17,9 @@
             <p class="text-white-50 mb-0">Review agent applications, verify credentials, manage approvals, and track performance.</p>
         </div>
         <div class="d-flex gap-2 flex-wrap">
+            <a href="{{ route('admin.agents.licenses.index') }}" class="btn btn-warning text-dark rounded-pill fw-bold">
+                <i class="fa-solid fa-certificate me-1"></i>Station Licenses
+            </a>
             <a href="{{ route('admin.agents.notifications.index') }}" class="btn btn-primary rounded-pill fw-bold">
                 <i class="fa-solid fa-bullhorn me-1"></i>Broadcast
             </a>
@@ -39,7 +42,7 @@
     <div class="card border-0 rounded-4 p-3 mb-4" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08) !important;">
         <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
             <div class="d-flex gap-2 flex-wrap">
-                <a href="{{ route('admin.agents.index') }}" class="btn btn-sm rounded-pill {{ !$status ? 'btn-primary' : 'btn-outline-light' }}">
+                <a href="{{ route('admin.agents.index') }}" class="btn btn-sm rounded-pill {{ !$status && !request('license_status') ? 'btn-primary' : 'btn-outline-light' }}">
                     All Agents ({{ $counts['total'] }})
                 </a>
                 <a href="{{ route('admin.agents.index', ['status' => 'pending']) }}" class="btn btn-sm rounded-pill {{ $status === 'pending' ? 'btn-warning text-dark fw-bold' : 'btn-outline-warning' }}">
@@ -48,16 +51,20 @@
                 <a href="{{ route('admin.agents.index', ['status' => 'approved']) }}" class="btn btn-sm rounded-pill {{ $status === 'approved' ? 'btn-success fw-bold' : 'btn-outline-success' }}">
                     Approved ({{ $counts['approved'] }})
                 </a>
-                <a href="{{ route('admin.agents.index', ['status' => 'rejected']) }}" class="btn btn-sm rounded-pill {{ $status === 'rejected' ? 'btn-danger fw-bold' : 'btn-outline-danger' }}">
-                    Rejected ({{ $counts['rejected'] }})
+                <a href="{{ route('admin.agents.index', ['license_status' => 'paid']) }}" class="btn btn-sm rounded-pill {{ request('license_status') === 'paid' ? 'btn-success fw-bold' : 'btn-outline-success' }}">
+                    <i class="fa-solid fa-certificate me-1"></i>Licensed ({{ $counts['licensed_paid'] ?? 0 }})
                 </a>
-                <a href="{{ route('admin.agents.index', ['status' => 'suspended']) }}" class="btn btn-sm rounded-pill {{ $status === 'suspended' ? 'btn-secondary fw-bold' : 'btn-outline-secondary' }}">
-                    Suspended ({{ $counts['suspended'] }})
+                <a href="{{ route('admin.agents.index', ['license_status' => 'pending_review']) }}" class="btn btn-sm rounded-pill {{ request('license_status') === 'pending_review' ? 'btn-warning text-dark fw-bold' : 'btn-outline-warning' }}">
+                    <i class="fa-solid fa-clock me-1"></i>License Review ({{ $counts['licensed_pending'] ?? 0 }})
+                </a>
+                <a href="{{ route('admin.agents.index', ['license_status' => 'unpaid']) }}" class="btn btn-sm rounded-pill {{ request('license_status') === 'unpaid' ? 'btn-secondary fw-bold' : 'btn-outline-secondary' }}">
+                    License Unpaid ({{ $counts['licensed_unpaid'] ?? 0 }})
                 </a>
             </div>
 
             <form action="{{ route('admin.agents.index') }}" method="GET" class="d-flex gap-2">
                 @if($status) <input type="hidden" name="status" value="{{ $status }}"> @endif
+                @if(request('license_status')) <input type="hidden" name="license_status" value="{{ request('license_status') }}"> @endif
                 <input type="text" name="search" value="{{ request('search') }}" class="form-control form-control-sm rounded-pill" placeholder="Search name, phone, NIN, IMEI...">
                 <button type="submit" class="btn btn-primary btn-sm rounded-pill px-3">Search</button>
             </form>
@@ -76,6 +83,7 @@
                         <th>NIN / BVN</th>
                         <th>Machine IMEI</th>
                         <th>Status</th>
+                        <th>License</th>
                         <th>Enrollments</th>
                         <th class="text-end">Actions</th>
                     </tr>
@@ -119,6 +127,21 @@
                                     <span class="badge bg-danger px-2 py-1 rounded-pill">Rejected</span>
                                 @elseif($agent->isSuspended())
                                     <span class="badge bg-secondary px-2 py-1 rounded-pill">Suspended</span>
+                                @endif
+                            </td>
+                            <td>
+                                @if($agent->isLicensePaid())
+                                    <span class="badge bg-success rounded-pill px-2 py-1" title="{{ ucfirst($agent->license_payment_method ?? 'paid') }}">
+                                        <i class="fa-solid fa-certificate me-1"></i>Paid
+                                    </span>
+                                @elseif($agent->isLicensePendingReview())
+                                    <span class="badge bg-warning text-dark rounded-pill px-2 py-1">
+                                        <i class="fa-solid fa-clock me-1"></i>Review
+                                    </span>
+                                @else
+                                    <span class="badge bg-secondary rounded-pill px-2 py-1">
+                                        Unpaid
+                                    </span>
                                 @endif
                             </td>
                             <td>

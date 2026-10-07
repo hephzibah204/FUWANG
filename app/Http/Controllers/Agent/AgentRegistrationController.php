@@ -445,6 +445,16 @@ class AgentRegistrationController extends Controller
                         $agent->update(['company_agent_code' => $preApproved->agent_code]);
                     }
 
+                    if ($preApproved->has_paid_license && $agent->license_status !== 'paid') {
+                        $agent->update([
+                            'license_status' => 'paid',
+                            'license_fee_paid' => \App\Models\EnrollmentAgent::getEffectiveLicenseFee(),
+                            'license_payment_method' => $preApproved->license_payment_method ?: 'legacy_pre_platform',
+                            'license_paid_at' => now(),
+                            'license_admin_notes' => $preApproved->license_notes ?: 'Accredited via master pre-approved roster',
+                        ]);
+                    }
+
                     // Clean up OTP from session upon successful claim
                     session()->forget([
                         'claim_otp_code_' . $preApproved->agent_code,
