@@ -340,6 +340,14 @@
                         </form>
                     </div>
                 @endif
+
+                <form action="{{ route('admin.agents.destroy', $agent->id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this Enrollment Agent profile? This will remove their agent credentials and hardware record, but their main user account, wallet balance, and other profiles will remain completely intact.');">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-outline-secondary text-white-50 rounded-pill w-100 py-1.5 small fw-bold">
+                        <i class="fa-solid fa-trash me-2"></i>Delete Agent Profile
+                    </button>
+                </form>
             </div>
         </div>
     </div>

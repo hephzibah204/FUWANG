@@ -132,6 +132,11 @@ Route::get('/explore/{slug}', [\App\Http\Controllers\PublicServiceController::cl
     ->middleware(['ab:service_landing', 'track.view:service_landing'])
     ->name('public.services.show');
 
+// Webinar System Public Routes
+Route::get('/webinars', [\App\Http\Controllers\PublicWebinarController::class, 'index'])->name('webinars.index');
+Route::get('/webinars/{slug}', [\App\Http\Controllers\PublicWebinarController::class, 'show'])->name('webinars.show');
+Route::post('/webinars/{slug}/register', [\App\Http\Controllers\PublicWebinarController::class, 'register'])->name('webinars.register');
+
 Route::get('/email/unsubscribe/{user}/{scope}', [\App\Http\Controllers\EmailPreferenceController::class, 'unsubscribe'])
     ->middleware('signed')
     ->name('email.unsubscribe');
@@ -630,8 +635,12 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
             Route::get('/sms-campaigns/{smsCampaign}/recipients/export', [App\Http\Controllers\Admin\CampaignRecipientsController::class, 'smsRecipientsExport'])->name('sms_campaigns.recipients.export');
             Route::post('/sms-campaigns/{smsCampaign}/retry-failed', [App\Http\Controllers\Admin\CampaignRecipientsController::class, 'retrySmsFailed'])->name('sms_campaigns.retry_failed');
 
-            // â”€â”€ Verification Vault â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // Verification Vault
             Route::get('/transactions',                [App\Http\Controllers\Admin\AdminTransactionController::class, 'index'])->name('transactions.index');
+
+            // Webinar Management System
+            Route::resource('webinars', \App\Http\Controllers\AdminWebinarController::class);
+            Route::get('webinars/{webinar}/export-attendees', [\App\Http\Controllers\AdminWebinarController::class, 'exportAttendees'])->name('webinars.export_attendees');
             Route::get('/verifications',               [App\Http\Controllers\Admin\AdminVerificationController::class, 'index'])->name('verifications.index');
             Route::get('/verifications/{id}',          [App\Http\Controllers\Admin\AdminVerificationController::class, 'show'])->name('verifications.show');
             Route::get('/verifications/{id}/report',   [App\Http\Controllers\Admin\AdminVerificationController::class, 'report'])->name('verifications.report');
@@ -791,6 +800,7 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
                 Route::match(['GET', 'POST'], '/{id}/reject', [App\Http\Controllers\Admin\AdminAgentController::class, 'reject'])->name('reject');
                 Route::match(['GET', 'POST'], '/{id}/suspend', [App\Http\Controllers\Admin\AdminAgentController::class, 'suspend'])->name('suspend');
                 Route::match(['GET', 'POST'], '/{id}/reactivate', [App\Http\Controllers\Admin\AdminAgentController::class, 'reactivate'])->name('reactivate');
+                Route::delete('/{id}', [App\Http\Controllers\Admin\AdminAgentController::class, 'destroy'])->name('destroy');
 
                 // Agent Issues Management
                 Route::prefix('issues')->name('issues.')->group(function () {

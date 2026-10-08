@@ -179,4 +179,28 @@ class AdminAgentManagementTest extends TestCase
             'is_mva_of_month' => true,
         ]);
     }
+
+    public function test_admin_can_delete_enrollment_agent_profile_without_deleting_user(): void
+    {
+        $user = User::factory()->create();
+        $agent = EnrollmentAgent::create([
+            'user_id' => $user->id,
+            'full_name' => 'Agent Profile To Delete',
+            'phone_number' => '08099998888',
+            'residential_address' => 'Test Address',
+            'office_address' => 'Test Office',
+            'bvn' => '11111111111',
+            'nin' => '22222222222',
+            'status' => 'approved',
+        ]);
+
+        $response = $this->actingAs($this->admin, 'admin')
+            ->delete(route('admin.agents.destroy', $agent->id));
+
+        $response->assertRedirect(route('admin.agents.index'));
+        $response->assertSessionHas('success');
+
+        $this->assertDatabaseMissing('enrollment_agents', ['id' => $agent->id]);
+        $this->assertDatabaseHas('users', ['id' => $user->id]);
+    }
 }

@@ -549,6 +549,7 @@
                 <button type="button" class="submenu-toggle" aria-expanded="false"><i class="fa-solid fa-bullhorn"></i> <span class="nav-text">Engagement</span> <i class="fa-solid fa-chevron-down ml-auto small submenu-arrow"></i></button>
                 <div class="submenu" role="region">
                     <a href="{{ route('admin.broadcasts.index') }}" class="{{ Request::routeIs('admin.broadcasts.*') ? 'active' : '' }}">Broadcasts</a>
+                    <a href="{{ route('admin.webinars.index') }}" class="{{ Request::routeIs('admin.webinars.*') ? 'active' : '' }}">Webinars</a>
                     @if(Auth::guard('admin')->user()?->is_super_admin)
                     <a href="{{ route('admin.direct_messages.index') }}" class="{{ Request::routeIs('admin.direct_messages.*') ? 'active' : '' }}">Direct Messages</a>
                     <a href="{{ route('admin.email_campaigns.index') }}" class="{{ Request::routeIs('admin.email_campaigns.*') ? 'active' : '' }}">Email Campaigns</a>
@@ -890,6 +891,7 @@
                             </div>
                         </li>
                         <li class="nav-item mx-2"><a class="nav-link text-white small font-weight-bold {{ Request::routeIs('agent.*') ? 'text-primary' : '' }}" href="{{ route('agent.landing') }}">Enrollment Agent</a></li>
+                        <li class="nav-item mx-2"><a class="nav-link text-white small font-weight-bold {{ Request::routeIs('webinars.*') ? 'text-primary' : '' }}" href="{{ route('webinars.index') }}">Webinars</a></li>
                         <li class="nav-item mx-2"><a class="nav-link text-white small font-weight-bold {{ Request::routeIs('logistics.*') ? 'text-primary' : '' }}" href="{{ route('logistics.home') }}">Logistics</a></li>
                         <li class="nav-item mx-2"><a class="nav-link text-white small font-weight-bold {{ Request::routeIs('blog.*') ? 'text-primary' : '' }}" href="{{ route('blog.index') }}">Blog</a></li>
                     </ul>
@@ -1332,9 +1334,9 @@
             });
         });
     </script>
-    @auth
+    @if($isAuthed)
         <x-nexus.mobile-nav />
-    @endauth
+    @endif
 
     @stack('scripts')
 </body>

@@ -192,6 +192,16 @@ class AdminAgentController extends Controller
         return back()->with('success', "Agent {$agent->full_name} status reactivated to approved.");
     }
 
+    public function destroy($id)
+    {
+        $agent = EnrollmentAgent::findOrFail($id);
+        $agentName = $agent->full_name;
+        
+        $agent->delete();
+
+        return redirect()->route('admin.agents.index')->with('success', "Enrollment Agent profile for {$agentName} has been deleted. Their main user account remains active.");
+    }
+
     public function leaderboard()
     {
         $approvedAgents = EnrollmentAgent::where('status', 'approved')

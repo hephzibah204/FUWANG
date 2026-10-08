@@ -165,6 +165,14 @@
                                             </button>
                                         </form>
                                     @endif
+
+                                    <form action="{{ route('admin.agents.destroy', $agent->id) }}" method="POST" class="d-inline ms-1" onsubmit="return confirm('Delete agent profile for {{ $agent->full_name }}? Their user account will remain safe.');">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-2.5" title="Delete Agent Profile Only">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                    </form>
                                 </div>
                             </td>
                         </tr>
