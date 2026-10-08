@@ -185,11 +185,23 @@ class EnrollmentAgent extends Model
             ->orderByDesc('monthly_enrollments')
             ->first();
 
-        // Clear all existing MVP flags
-        static::query()->where('is_mva_of_month', true)->update(['is_mva_of_month' => false]);
-
         if ($topAgent) {
-            $topAgent->update(['is_mva_of_month' => true]);
+            // Clear flag on all other agents
+            static::query()
+                ->where('id', '!=', $topAgent->id)
+                ->where('is_mva_of_month', true)
+                ->update(['is_mva_of_month' => false]);
+
+            // Ensure top agent is flagged in DB and memory
+            static::query()
+                ->where('id', $topAgent->id)
+                ->update(['is_mva_of_month' => true]);
+
+            $topAgent->is_mva_of_month = true;
+        } else {
+            static::query()
+                ->where('is_mva_of_month', true)
+                ->update(['is_mva_of_month' => false]);
         }
 
         return $topAgent;

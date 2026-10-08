@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Admin;
 use App\Models\Broadcast;
 use App\Models\EnrollmentAgent;
 use App\Models\User;
@@ -117,7 +118,7 @@ class EnrollmentAgentSystemTest extends TestCase
             'status' => 'approved',
         ]);
 
-        // Publish MVA
+        // Publish MVA / Sync
         $publishRes = $this->actingAs($admin, 'admin')->post(route('admin.agents.leaderboard.publish'), [
             'mva_agent_id' => $agent->id,
         ]);
@@ -126,6 +127,75 @@ class EnrollmentAgentSystemTest extends TestCase
             'id' => $agent->id,
             'is_mva_of_month' => true,
         ]);
+    }
+
+    public function test_leaderboard_and_mvp_are_automatically_calculated_by_total_numbers_of_enrollment_per_agent_recorded_by_admin(): void
+    {
+        $admin = Admin::factory()->create(['is_super_admin' => true]);
+
+        $userA = User::factory()->create();
+        $agentA = EnrollmentAgent::create([
+            'user_id' => $userA->id,
+            'full_name' => 'Agent Alpha',
+            'phone_number' => '08011111111',
+            'residential_address' => 'Address A',
+            'office_address' => 'Office A',
+            'bvn' => '11111111111',
+            'nin' => '22222222222',
+            'machine_imei' => '111122223333444',
+            'status' => 'approved',
+            'total_enrollments' => 50,
+            'monthly_enrollments' => 10,
+        ]);
+
+        $userB = User::factory()->create();
+        $agentB = EnrollmentAgent::create([
+            'user_id' => $userB->id,
+            'full_name' => 'Agent Beta',
+            'phone_number' => '08022222222',
+            'residential_address' => 'Address B',
+            'office_address' => 'Office B',
+            'bvn' => '33333333333',
+            'nin' => '44444444444',
+            'machine_imei' => '555566667777888',
+            'status' => 'approved',
+            'total_enrollments' => 20,
+            'monthly_enrollments' => 20,
+        ]);
+
+        // When admin records enrollments for Agent B to 300 total enrollments
+        $resUpdateB = $this->actingAs($admin, 'admin')->post(route('admin.agents.update_enrollments', $agentB->id), [
+            'total_enrollments' => 300,
+            'monthly_enrollments' => 50,
+        ]);
+        $resUpdateB->assertRedirect();
+
+        // Agent B must automatically become the MVP because 300 > 50
+        $this->assertTrue($agentB->fresh()->is_mva_of_month);
+        $this->assertFalse($agentA->fresh()->is_mva_of_month);
+
+        // Leaderboard page ranks Agent B first, Agent A second
+        $leaderboardRes = $this->actingAs($admin, 'admin')->get(route('admin.agents.leaderboard'));
+        $leaderboardRes->assertStatus(200);
+        $leaderboardRes->assertSeeInOrder(['Agent Beta', 'Agent Alpha']);
+        $leaderboardRes->assertSee('MVP (Rank #1)');
+
+        // Now admin records Agent A to 500 total enrollments
+        $resUpdateA = $this->actingAs($admin, 'admin')->post(route('admin.agents.update_enrollments', $agentA->id), [
+            'total_enrollments' => 500,
+            'monthly_enrollments' => 80,
+        ]);
+        $resUpdateA->assertRedirect();
+
+        // Agent A must now automatically be crowned MVP because 500 > 300
+        $this->assertTrue($agentA->fresh()->is_mva_of_month);
+        $this->assertFalse($agentB->fresh()->is_mva_of_month);
+
+        // Agent A visits dashboard and sees their MVP status and rank #1
+        $dashboardRes = $this->actingAs($userA)->get(route('agent.dashboard'));
+        $dashboardRes->assertStatus(200);
+        $dashboardRes->assertSee('MOST VALUABLE AGENT (MVP)');
+        $dashboardRes->assertSee('500');
     }
 
     public function test_broadcast_supports_targeting_enrollment_agents(): void

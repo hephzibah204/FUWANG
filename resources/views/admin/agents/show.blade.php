@@ -597,12 +597,12 @@
                         <div class="mb-3">
                             <label class="form-label text-white small fw-bold">Total Successful Enrollments (All-Time)</label>
                             <input type="number" min="0" name="total_enrollments" value="{{ $agent->total_enrollments }}" class="form-control text-white bg-dark border-secondary rounded-3" required>
-                            <small class="text-white-50 text-2xs">Cumulative total of citizen NIMC captures completed.</small>
+                            <small class="text-emerald-400 text-2xs"><i class="fa-solid fa-trophy me-1"></i>Primary metric: Agent Leaderboard and MVP are automatically calculated by this total.</small>
                         </div>
                         <div class="mb-3">
                             <label class="form-label text-white small fw-bold">Current Month Enrollments</label>
                             <input type="number" min="0" name="monthly_enrollments" value="{{ $agent->monthly_enrollments }}" class="form-control text-white bg-dark border-secondary rounded-3" required>
-                            <small class="text-white-50 text-2xs">Used for monthly performance & MVA leaderboard calculations.</small>
+                            <small class="text-white-50 text-2xs">Used for monthly performance and tie-breaker statistics.</small>
                         </div>
                     </div>
                     <div class="modal-footer border-secondary">

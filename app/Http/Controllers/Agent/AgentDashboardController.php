@@ -18,16 +18,19 @@ class AgentDashboardController extends Controller
         // Ensure user active dashboard mode is agency
         session(['active_dashboard_mode' => 'agency']);
 
-        // Top Leaderboard agents
+        // Top Leaderboard agents automatically calculated by total enrollments
         $leaderboard = EnrollmentAgent::where('status', 'approved')
-            ->orderBy('monthly_enrollments', 'desc')
-            ->orderBy('total_enrollments', 'desc')
+            ->orderByDesc('total_enrollments')
+            ->orderByDesc('monthly_enrollments')
             ->take(10)
             ->get();
 
-        // MVA Agent of the month
+        // MVP / MVA Agent of the month automatically calculated by total enrollments
         $mvaAgent = EnrollmentAgent::where('status', 'approved')
             ->where('is_mva_of_month', true)
+            ->first() ?: EnrollmentAgent::where('status', 'approved')
+            ->where('total_enrollments', '>', 0)
+            ->orderByDesc('total_enrollments')
             ->first();
 
         // Agent targeted broadcasts

@@ -248,10 +248,10 @@
             <div class="card border-0 rounded-4 p-4 mb-4 position-relative overflow-hidden" style="background: linear-gradient(135deg, rgba(234, 179, 8, 0.12) 0%, rgba(20, 24, 39, 0.8) 100%); border: 1px solid rgba(234, 179, 8, 0.3) !important;">
                 <div class="d-flex align-items-center justify-content-between mb-3">
                     <span class="badge bg-warning text-dark px-3 py-1 rounded-pill fw-bold text-xs">
-                        <i class="fa-solid fa-crown me-1"></i> MVA OF THE MONTH
+                        <i class="fa-solid fa-crown me-1"></i> NETWORK MVP (AUTOMATIC)
                     </span>
                     <a href="{{ route('admin.agents.leaderboard') }}" class="text-warning text-xs text-decoration-none fw-semibold">
-                        Edit Leaderboard <i class="fa-solid fa-chevron-right ms-1"></i>
+                        View Leaderboard <i class="fa-solid fa-chevron-right ms-1"></i>
                     </a>
                 </div>
 
@@ -268,17 +268,17 @@
                             <h6 class="text-white fw-bold mb-0 text-truncate">{{ $mva->full_name }}</h6>
                             <div class="text-xs text-white-50">{{ $mva->company_agent_code ?? 'Agent #' . $mva->id }} &bull; {{ $mva->state ?? 'National' }}</div>
                             <div class="d-flex gap-3 mt-2 text-xs">
-                                <div><strong class="text-warning">{{ number_format($mva->monthly_enrollments) }}</strong> <span class="text-white-50">this month</span></div>
-                                <div><strong class="text-white">{{ number_format($mva->total_enrollments) }}</strong> <span class="text-white-50">all-time</span></div>
+                                <div><strong class="text-warning">{{ number_format($mva->total_enrollments) }}</strong> <span class="text-white-50">total captures</span></div>
+                                <div><strong class="text-emerald-400">{{ number_format($mva->monthly_enrollments) }}</strong> <span class="text-white-50">this month</span></div>
                             </div>
                         </div>
                     </div>
                 @else
                     <div class="text-center py-3">
                         <i class="fa-solid fa-trophy text-warning opacity-50 fa-2x mb-2"></i>
-                        <p class="text-white-50 text-xs mb-2">No agent is currently crowned as Most Valuable Agent.</p>
+                        <p class="text-white-50 text-xs mb-2">No agent has recorded enrollments yet to qualify for MVP.</p>
                         <a href="{{ route('admin.agents.leaderboard') }}" class="btn btn-sm btn-outline-warning rounded-pill px-3 text-xs fw-semibold">
-                            Select MVA of the Month
+                            Open Leaderboard
                         </a>
                     </div>
                 @endif

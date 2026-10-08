@@ -79,8 +79,8 @@ class AdminAgentController extends Controller
 
         $recentAgents = EnrollmentAgent::with('user')->latest()->take(6)->get();
         $recentIssues = \App\Models\Ticket::with(['agent', 'user'])->whereNotNull('agent_id')->latest()->take(5)->get();
-        $topAgents = EnrollmentAgent::where('status', 'approved')->orderByDesc('monthly_enrollments')->orderByDesc('total_enrollments')->take(5)->get();
-        $mva = EnrollmentAgent::where('is_mva_of_month', true)->first();
+        $mva = EnrollmentAgent::recalculateMva();
+        $topAgents = EnrollmentAgent::where('status', 'approved')->orderByDesc('total_enrollments')->orderByDesc('monthly_enrollments')->take(5)->get();
 
         $stateDistribution = EnrollmentAgent::selectRaw('state, count(*) as count')
             ->whereNotNull('state')
@@ -147,6 +147,7 @@ class AdminAgentController extends Controller
         }
 
         $agent->update($validated);
+        EnrollmentAgent::recalculateMva();
 
         return redirect()->route('admin.agents.show', $agent->id)->with('success', "Agent profile for {$agent->full_name} updated successfully.");
     }
@@ -166,6 +167,7 @@ class AdminAgentController extends Controller
             'approved_at' => now(),
             'rejection_reason' => null,
         ]);
+        EnrollmentAgent::recalculateMva();
 
         return back()->with('success', "Agent {$agent->full_name} has been approved successfully.");
     }
@@ -224,7 +226,13 @@ class AdminAgentController extends Controller
 
         $agent->update($validated);
 
-        return back()->with('success', "Enrollment statistics for {$agent->full_name} updated successfully! (Total: " . number_format($agent->total_enrollments) . ", Monthly: " . number_format($agent->monthly_enrollments) . ")");
+        // Automatically recalculate MVP/MVA across all agents based on total enrollments
+        $mvp = EnrollmentAgent::recalculateMva();
+        $mvpNotice = ($mvp && $mvp->id === $agent->id)
+            ? " {$agent->full_name} is currently the #1 MVP on the network!"
+            : ($mvp ? " Current #1 MVP is {$mvp->full_name} (" . number_format($mvp->total_enrollments) . " total captures)." : "");
+
+        return back()->with('success', "Enrollment statistics for {$agent->full_name} updated successfully! (Total: " . number_format($agent->total_enrollments) . ", Monthly: " . number_format($agent->monthly_enrollments) . ").{$mvpNotice}");
     }
 
     public function bulkAction(Request $request)
@@ -311,12 +319,13 @@ class AdminAgentController extends Controller
 
     public function leaderboard()
     {
-        $approvedAgents = EnrollmentAgent::where('status', 'approved')
-            ->orderBy('monthly_enrollments', 'desc')
-            ->orderBy('total_enrollments', 'desc')
-            ->get();
+        // Automatically calculate and crown MVP/MVA based on total enrollments recorded
+        $currentMva = EnrollmentAgent::recalculateMva();
 
-        $currentMva = EnrollmentAgent::where('is_mva_of_month', true)->first();
+        $approvedAgents = EnrollmentAgent::where('status', 'approved')
+            ->orderByDesc('total_enrollments')
+            ->orderByDesc('monthly_enrollments')
+            ->get();
 
         return view('admin.agents.leaderboard', compact('approvedAgents', 'currentMva'));
     }
@@ -327,17 +336,18 @@ class AdminAgentController extends Controller
             'mva_agent_id' => ['nullable', 'exists:enrollment_agents,id'],
         ]);
 
-        // Reset all MVA flags
-        EnrollmentAgent::query()->update(['is_mva_of_month' => false]);
-
         if ($mvaId = $request->input('mva_agent_id')) {
+            EnrollmentAgent::query()->update(['is_mva_of_month' => false]);
             $mvaAgent = EnrollmentAgent::find($mvaId);
             if ($mvaAgent) {
                 $mvaAgent->update(['is_mva_of_month' => true]);
             }
+        } else {
+            // Automatically calculate MVP based on highest total enrollments
+            EnrollmentAgent::recalculateMva();
         }
 
-        return back()->with('success', 'Agent Leaderboard & Most Valuable Agent (MVA) of the Month updated and published!');
+        return back()->with('success', 'Agent Leaderboard & MVP status synchronized successfully based on total numbers of enrollment!');
     }
 
     public function showUploadPreApproved()

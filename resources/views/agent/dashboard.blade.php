@@ -134,9 +134,9 @@
                     <i class="fa-solid fa-trophy text-warning fa-2x"></i>
                 </div>
                 <div>
-                    <span class="badge bg-warning text-dark font-monospace fw-bold mb-1">MOST VALUABLE AGENT OF THE MONTH</span>
+                    <span class="badge bg-warning text-dark font-monospace fw-bold mb-1">MOST VALUABLE AGENT (MVP)</span>
                     <h5 class="text-white fw-bold mb-0">{{ $mvaAgent->full_name }} @if($mvaAgent->id === $agent->id) <span class="badge bg-success ms-2">YOU!</span> @endif</h5>
-                    <p class="text-white-50 small mb-0">Recognized for top enrollment volume & outstanding agency service delivery with {{ number_format($mvaAgent->monthly_enrollments) }} enrollments this month.</p>
+                    <p class="text-white-50 small mb-0">Recognized for top enrollment volume & outstanding agency service delivery with {{ number_format($mvaAgent->total_enrollments) }} total citizen enrollments recorded.</p>
                 </div>
             </div>
         </div>
@@ -357,7 +357,7 @@
             <div class="card border-0 rounded-4 p-4 h-100" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08) !important;">
                 <div class="d-flex align-items-center justify-content-between mb-3">
                     <h5 class="text-white fw-bold mb-0"><i class="fa-solid fa-ranking-star text-warning me-2"></i>Top Agents Leaderboard</h5>
-                    <span class="text-white-50 small">Monthly Standings</span>
+                    <span class="text-white-50 small">Ranked by Total Enrollments</span>
                 </div>
 
                 <div class="table-responsive">
@@ -367,7 +367,7 @@
                                 <th>#</th>
                                 <th>Agent Name</th>
                                 <th>Office Location</th>
-                                <th class="text-end">Enrollments</th>
+                                <th class="text-end">Total Enrollments</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -389,12 +389,12 @@
                                         @if($leadAgent->id === $agent->id)
                                             <span class="badge bg-success ms-1">You</span>
                                         @endif
-                                        @if($leadAgent->is_mva_of_month)
-                                            <span class="badge bg-warning text-dark ms-1"><i class="fa-solid fa-star me-1"></i>MVA</span>
+                                        @if($leadAgent->is_mva_of_month || $index === 0)
+                                            <span class="badge bg-warning text-dark ms-1"><i class="fa-solid fa-star me-1"></i>MVP</span>
                                         @endif
                                     </td>
                                     <td class="text-white-50 small">{{ \Illuminate\Support\Str::limit($leadAgent->office_address, 25) }}</td>
-                                    <td class="text-end fw-bold text-success">{{ number_format($leadAgent->monthly_enrollments) }}</td>
+                                    <td class="text-end fw-bold text-success">{{ number_format($leadAgent->total_enrollments) }}</td>
                                 </tr>
                             @empty
                                 <tr>
