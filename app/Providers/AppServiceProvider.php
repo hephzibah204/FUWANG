@@ -137,27 +137,30 @@ class AppServiceProvider extends ServiceProvider
             if (Schema::hasTable('api_centers')) {
                 $ac = \Illuminate\Support\Facades\DB::table('api_centers')->first();
                 if ($ac) {
-                    // Register dynamic mailers in memory
+                    // Register dynamic mailers in memory (Resend & Mailtrap only)
+                    $resendKey = $ac->resend_api_key ?: env('MAIL_PASSWORD');
+                    $mailtrapPassword = $ac->mailtrap_password ?: env('MAILTRAP_PASSWORD', env('MAILTRAP_API_KEY'));
+
                     config([
                         'mail.mailers.resend_smtp' => [
                             'transport' => 'smtp',
                             'host' => 'smtp.resend.com',
-                            'port' => 465,
+                            'port' => 587,
                             'encryption' => 'tls',
                             'username' => 'resend',
-                            'password' => $ac->resend_api_key,
-                            'timeout' => null,
-                            'local_domain' => env('MAIL_EHLO_DOMAIN'),
+                            'password' => $resendKey,
+                            'timeout' => 15,
+                            'local_domain' => env('MAIL_EHLO_DOMAIN', 'fuwa.ng'),
                         ],
                         'mail.mailers.mailtrap_smtp' => [
                             'transport' => 'smtp',
-                            'host' => $ac->mailtrap_host ?? 'send.smtp.mailtrap.io',
-                            'port' => $ac->mailtrap_port ?? 587,
+                            'host' => $ac->mailtrap_host ?: env('MAILTRAP_HOST', 'send.smtp.mailtrap.io'),
+                            'port' => (int) ($ac->mailtrap_port ?: env('MAILTRAP_PORT', 587)),
                             'encryption' => 'tls',
-                            'username' => $ac->mailtrap_username ?? 'api',
-                            'password' => $ac->mailtrap_password,
-                            'timeout' => null,
-                            'local_domain' => env('MAIL_EHLO_DOMAIN'),
+                            'username' => $ac->mailtrap_username ?: env('MAILTRAP_USERNAME', 'api'),
+                            'password' => $mailtrapPassword,
+                            'timeout' => 15,
+                            'local_domain' => env('MAIL_EHLO_DOMAIN', 'fuwa.ng'),
                         ],
                         'mail.mailers.failover' => [
                             'transport' => 'failover',
@@ -169,8 +172,8 @@ class AppServiceProvider extends ServiceProvider
                         ],
                     ]);
 
-                    // Determine active mailer from Admin selection (defaults to Resend)
-                    $active = $ac->active_mailer ?? 'resend';
+                    // Determine active mailer from Admin selection (defaults to resend with failover capability)
+                    $active = strtolower(trim((string)($ac->active_mailer ?? 'resend')));
                     
                     if ($active === 'mailtrap') {
                         config(['mail.default' => 'mailtrap_smtp']);
@@ -179,7 +182,8 @@ class AppServiceProvider extends ServiceProvider
                     } elseif ($active === 'roundrobin') {
                         config(['mail.default' => 'roundrobin']);
                     } else {
-                        config(['mail.default' => 'resend_smtp']);
+                        // Default to Resend if key exists, otherwise Mailtrap
+                        config(['mail.default' => !empty($resendKey) ? 'resend_smtp' : 'mailtrap_smtp']);
                     }
                 }
             }

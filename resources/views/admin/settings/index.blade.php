@@ -539,13 +539,12 @@
                     <p class="text-white-50 text-uppercase small font-weight-bold mb-2" style="letter-spacing: 1px;">Email Gateway Settings</p>
                 </div>
                 <div class="col-md-12 mb-4">
-                    <label class="text-white-50 small mb-2">Active Mailer Configuration</label>
+                    <label class="text-white-50 small mb-2">Active Mailer Configuration (Resend &amp; Mailtrap Only)</label>
                     <select name="active_mailer" class="form-control text-white rounded-3" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
-                        <option value="hostinger" {{ ($ac->active_mailer ?? 'hostinger') == 'hostinger' ? 'selected' : '' }}>Hostinger (from .env)</option>
-                        <option value="resend" {{ ($ac->active_mailer ?? '') == 'resend' ? 'selected' : '' }}>Resend (Live Sending)</option>
-                        <option value="mailtrap" {{ ($ac->active_mailer ?? '') == 'mailtrap' ? 'selected' : '' }}>Mailtrap (Sandbox / Testing)</option>
-                        <option value="failover" {{ ($ac->active_mailer ?? '') == 'failover' ? 'selected' : '' }}>Smart Failover (Try Resend -> Mailtrap -> Hostinger)</option>
-                        <option value="roundrobin" {{ ($ac->active_mailer ?? '') == 'roundrobin' ? 'selected' : '' }}>Smart Load Balancer (Alternate Resend & Mailtrap)</option>
+                        <option value="resend" {{ ($ac->active_mailer ?? 'resend') == 'resend' ? 'selected' : '' }}>Resend (Live Sending — Primary)</option>
+                        <option value="mailtrap" {{ ($ac->active_mailer ?? '') == 'mailtrap' ? 'selected' : '' }}>Mailtrap (Live / Delivery)</option>
+                        <option value="failover" {{ ($ac->active_mailer ?? '') == 'failover' ? 'selected' : '' }}>Smart Failover (Try Resend &rarr; Mailtrap)</option>
+                        <option value="roundrobin" {{ ($ac->active_mailer ?? '') == 'roundrobin' ? 'selected' : '' }}>Smart Load Balancer (Alternate Resend &amp; Mailtrap)</option>
                     </select>
                 </div>
 

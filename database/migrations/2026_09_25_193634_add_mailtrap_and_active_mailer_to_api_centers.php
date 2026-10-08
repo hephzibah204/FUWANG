@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('api_centers', function (Blueprint $table) {
-            $table->string('active_mailer')->default('hostinger')->after('resend_api_key');
+            $table->string('active_mailer')->default('resend')->after('resend_api_key');
             $table->string('mailtrap_host')->nullable()->after('active_mailer');
             $table->string('mailtrap_port')->nullable()->after('mailtrap_host');
             $table->string('mailtrap_username')->nullable()->after('mailtrap_port');

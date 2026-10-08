@@ -365,6 +365,8 @@ class EnrollmentAgentSystemTest extends TestCase
         });
 
         $this->assertNotNull(session('claim_otp_code_FUWA-SEND-999'));
+        $this->assertNotNull(\Illuminate\Support\Facades\Cache::get('agent_claim_otp_FUWA-SEND-999'));
+        $this->assertEquals('s***@example.com', $response->json('masked_email'));
     }
 
     public function test_expired_claim_otp_fails_verification(): void

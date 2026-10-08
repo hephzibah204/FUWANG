@@ -3,15 +3,19 @@
 namespace App\Http\Controllers\Agent;
 
 use App\Http\Controllers\Controller;
+use App\Models\EmailLog;
 use App\Models\EnrollmentAgent;
 use App\Models\PreApprovedAgent;
 use App\Models\User;
 use App\Services\AccountKycIdentityService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class AgentRegistrationController extends Controller
@@ -157,18 +161,66 @@ class AgentRegistrationController extends Controller
         }
 
         $otp = (string) random_int(100000, 999999);
+        $expiresAt = now()->addMinutes(15);
+
+        // Store OTP in both Session and Cache to prevent session-loss issues
         session([
             'claim_otp_code_' . $preApproved->agent_code => $otp,
-            'claim_otp_expires_' . $preApproved->agent_code => now()->addMinutes(15),
+            'claim_otp_expires_' . $preApproved->agent_code => $expiresAt,
         ]);
+        Cache::put('agent_claim_otp_' . $preApproved->agent_code, [
+            'code' => $otp,
+            'expires_at' => $expiresAt,
+        ], 900); // 15 minutes
 
+        $mailSent = false;
+        $activeMailerUsed = config('mail.default', 'resend_smtp');
+
+        // Attempt 1: Default configured mailer (Resend / Active)
         try {
-            \Illuminate\Support\Facades\Mail::to($targetEmail)->send(new \App\Mail\AgentClaimVerificationMail($preApproved, $otp));
-        } catch (\Throwable $e) {
-            Log::error('Failed to send claim verification email: ' . $e->getMessage());
+            Mail::to($targetEmail)->send(new \App\Mail\AgentClaimVerificationMail($preApproved, $otp));
+            $mailSent = true;
+            Log::info("Agent claim OTP sent via {$activeMailerUsed} to {$targetEmail} for agent {$preApproved->agent_code}");
+        } catch (\Throwable $e1) {
+            Log::warning("Primary mailer ({$activeMailerUsed}) failed for agent claim OTP: " . $e1->getMessage());
+
+            // Attempt 2: Fallback to mailtrap_smtp if primary was resend
+            try {
+                Mail::mailer('mailtrap_smtp')->to($targetEmail)->send(new \App\Mail\AgentClaimVerificationMail($preApproved, $otp));
+                $mailSent = true;
+                $activeMailerUsed = 'mailtrap_smtp';
+                Log::info("Agent claim OTP sent via fallback mailtrap_smtp to {$targetEmail} for agent {$preApproved->agent_code}");
+            } catch (\Throwable $e2) {
+                Log::error("All mail transports failed to send claim OTP to {$targetEmail}: Primary: " . $e1->getMessage() . " | Fallback: " . $e2->getMessage());
+            }
+        }
+
+        // Log into email_logs table if available
+        if (Schema::hasTable('email_logs')) {
+            try {
+                EmailLog::create([
+                    'id' => (string) Str::uuid(),
+                    'to_email' => $targetEmail,
+                    'type' => 'agent_claim_otp',
+                    'subject' => 'Verification Code for Pre-Approved Agent Profile Claim — Fuwa.NG Ecosystem',
+                    'status' => $mailSent ? 'sent' : 'failed',
+                    'metadata' => [
+                        'agent_code' => $preApproved->agent_code,
+                        'full_name' => $preApproved->full_name,
+                        'mailer' => $activeMailerUsed,
+                    ],
+                    'sent_at' => $mailSent ? now() : null,
+                    'failed_at' => !$mailSent ? now() : null,
+                ]);
+            } catch (\Throwable $logEx) {
+                // Ignore log save errors
+            }
+        }
+
+        if (!$mailSent) {
             return response()->json([
                 'ok' => false,
-                'message' => 'Unable to send verification email. Please contact support.',
+                'message' => 'Unable to dispatch verification email at this moment. Please check your internet connection or try again shortly.',
             ], 500);
         }
 
@@ -178,6 +230,8 @@ class AgentRegistrationController extends Controller
         return response()->json([
             'ok' => true,
             'message' => "Verification OTP sent to {$maskedEmail}.",
+            'masked_email' => $maskedEmail,
+            'cooldown_seconds' => 60,
         ]);
     }
 
@@ -288,11 +342,26 @@ class AgentRegistrationController extends Controller
                 $savedOtp = session('claim_otp_code_' . $preApprovedRecord->agent_code);
                 $expiresAt = session('claim_otp_expires_' . $preApprovedRecord->agent_code);
 
+                if (!$savedOtp) {
+                    $cached = Cache::get('agent_claim_otp_' . $preApprovedRecord->agent_code);
+                    if ($cached && is_array($cached)) {
+                        $savedOtp = $cached['code'] ?? null;
+                        $expiresAt = $cached['expires_at'] ?? null;
+                    }
+                }
+
                 if (!$savedOtp || !$expiresAt || now()->greaterThan($expiresAt) || (string)$savedOtp !== (string)$validated['claim_otp']) {
                     return back()
                         ->withInput()
                         ->withErrors(['claim_otp' => 'Invalid or expired email verification OTP. Please click "Send Email OTP" to receive a fresh verification code.']);
                 }
+
+                // Clear OTP once successfully validated
+                session()->forget([
+                    'claim_otp_code_' . $preApprovedRecord->agent_code,
+                    'claim_otp_expires_' . $preApprovedRecord->agent_code,
+                ]);
+                Cache::forget('agent_claim_otp_' . $preApprovedRecord->agent_code);
             }
 
             // Lock prefilled info from preApprovedRecord if found
