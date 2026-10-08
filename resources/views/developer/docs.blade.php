@@ -10,9 +10,14 @@
                 <h3 class="text-white mb-1 font-weight-bold"><i class="fa-solid fa-book text-primary mr-2"></i> {{ $docs['title'] }}</h3>
                 <p class="text-white-50 mb-0">Live documentation for the currently enabled developer API endpoints.</p>
             </div>
-            <a href="{{ route('developer.portal') }}" class="btn btn-outline-light rounded-pill px-4">
-                <i class="fa fa-arrow-left mr-2"></i>Back to Portal
-            </a>
+            <div class="d-flex align-items-center" style="gap: 8px;">
+                <a href="{{ route('developer.sandbox') }}" class="btn btn-warning text-dark font-weight-bold rounded-pill px-3">
+                    <i class="fa-solid fa-flask-vial mr-1.5"></i>API Sandbox
+                </a>
+                <a href="{{ route('developer.portal') }}" class="btn btn-outline-light rounded-pill px-3">
+                    <i class="fa fa-arrow-left mr-1.5"></i>Portal
+                </a>
+            </div>
         </div>
     </div>
 </div>

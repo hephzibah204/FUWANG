@@ -256,6 +256,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Developer Portal
     Route::get('/developer', [App\Http\Controllers\DeveloperPortalController::class, 'index'])->name('developer.portal');
     Route::get('/developer/docs', [App\Http\Controllers\DeveloperPortalController::class, 'docs'])->name('developer.docs');
+    Route::get('/developer/sandbox', [App\Http\Controllers\DeveloperPortalController::class, 'sandbox'])->name('developer.sandbox');
+    Route::post('/developer/sandbox/validate-key', [App\Http\Controllers\DeveloperPortalController::class, 'validateKey'])->name('developer.sandbox.validate_key');
+    Route::post('/developer/sandbox/execute', [App\Http\Controllers\DeveloperPortalController::class, 'executeSandbox'])->name('developer.sandbox.execute');
     Route::post('/developer/tokens', [App\Http\Controllers\DeveloperPortalController::class, 'createToken'])->name('developer.tokens.create');
     Route::post('/developer/tokens/{id}/revoke', [App\Http\Controllers\DeveloperPortalController::class, 'revokeToken'])->name('developer.tokens.revoke');
     Route::get('/developer/openapi/v1', [App\Http\Controllers\DeveloperPortalController::class, 'openapiV1'])->name('developer.openapi.v1');

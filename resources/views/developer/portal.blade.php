@@ -51,7 +51,10 @@
                                 </td>
                                 <td class="py-3 text-right">
                                     @if(!$t->revoked_at)
-                                        <button class="btn btn-sm btn-outline-danger rounded-pill px-3" onclick="revokeToken({{ $t->id }})">Revoke</button>
+                                        <a href="{{ route('developer.sandbox', ['token_id' => $t->id]) }}" class="btn btn-sm btn-outline-info rounded-pill px-2.5 mr-1" title="Test in API Sandbox">
+                                            <i class="fa-solid fa-vial"></i> Test
+                                        </a>
+                                        <button class="btn btn-sm btn-outline-danger rounded-pill px-2.5" onclick="revokeToken({{ $t->id }})">Revoke</button>
                                     @else
                                         <span class="text-white-50">—</span>
                                     @endif
@@ -71,6 +74,9 @@
             <div class="d-flex align-items-center justify-content-between mb-3">
                 <h5 class="text-white mb-0 fw-bold">Integration</h5>
                 <div class="d-flex" style="gap: 8px;">
+                    <a class="btn btn-warning text-dark font-weight-bold rounded-pill px-3" href="{{ route('developer.sandbox') }}">
+                        <i class="fa-solid fa-flask-vial mr-1"></i>API Sandbox
+                    </a>
                     <a class="btn btn-outline-light rounded-pill px-3" href="{{ route('developer.docs') }}">
                         <i class="fa fa-book mr-1"></i>Tutorials
                     </a>
@@ -205,7 +211,12 @@ const data = await res.json();</pre>
                             <input id="createdToken" class="form-control text-white rounded-3 font-monospace" readonly style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
                             <button type="button" class="btn btn-outline-primary rounded-pill px-4" onclick="copyText('createdToken')">Copy</button>
                         </div>
-                        <div class="text-warning small mt-2">This token will not be shown again.</div>
+                        <div class="d-flex justify-content-between align-items-center mt-2">
+                            <span class="text-warning small">This token will not be shown again.</span>
+                            <a id="modalTestSandboxBtn" href="{{ route('developer.sandbox') }}" class="btn btn-sm btn-outline-info rounded-pill px-3">
+                                <i class="fa-solid fa-flask-vial me-1"></i> Test in Sandbox &rarr;
+                            </a>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer border-0 pt-0">
@@ -248,6 +259,11 @@ async function instantGenerateToken() {
                 <div class="d-flex mb-3" style="gap: 10px;">
                     <input id="swalTokenVal" class="form-control text-white rounded-3 font-monospace text-center" value="${res.token}" readonly style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);">
                     <button type="button" class="btn btn-outline-primary rounded-pill px-3" onclick="copyText('swalTokenVal')">Copy</button>
+                </div>
+                <div class="text-center mt-2">
+                    <a href="{{ route('developer.sandbox') }}?api_key=${encodeURIComponent(res.token)}" class="btn btn-sm btn-outline-info rounded-pill px-3">
+                        <i class="fa-solid fa-flask-vial me-1"></i> Test Key in Sandbox &rarr;
+                    </a>
                 </div>
             `,
             confirmButtonText: 'Done',
@@ -309,6 +325,10 @@ $('#createTokenForm').on('submit', function(e) {
         data: $(form).serialize(),
         success(res) {
             document.getElementById('createdToken').value = res.token;
+            const sandboxLink = document.getElementById('modalTestSandboxBtn');
+            if (sandboxLink) {
+                sandboxLink.href = '{{ route("developer.sandbox") }}?api_key=' + encodeURIComponent(res.token);
+            }
             document.getElementById('createdTokenWrap').style.display = 'block';
             Swal.fire({ icon: 'success', title: 'Created', text: res.message, background: '#141826', color: '#fff' });
             setTimeout(() => location.reload(), 2000);
