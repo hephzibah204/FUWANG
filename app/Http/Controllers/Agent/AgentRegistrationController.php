@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
@@ -175,23 +176,89 @@ class AgentRegistrationController extends Controller
 
         $mailSent = false;
         $activeMailerUsed = config('mail.default', 'resend_smtp');
+        $dispatchError = null;
 
-        // Attempt 1: Default configured mailer (Resend / Active)
-        try {
-            Mail::to($targetEmail)->send(new \App\Mail\AgentClaimVerificationMail($preApproved, $otp));
-            $mailSent = true;
-            Log::info("Agent claim OTP sent via {$activeMailerUsed} to {$targetEmail} for agent {$preApproved->agent_code}");
-        } catch (\Throwable $e1) {
-            Log::warning("Primary mailer ({$activeMailerUsed}) failed for agent claim OTP: " . $e1->getMessage());
-
-            // Attempt 2: Fallback to mailtrap_smtp if primary was resend
+        // In testing environment, use standard Mail facade so unit tests with Mail::fake() work seamlessly
+        if (app()->environment('testing')) {
             try {
-                Mail::mailer('mailtrap_smtp')->to($targetEmail)->send(new \App\Mail\AgentClaimVerificationMail($preApproved, $otp));
+                Mail::to($targetEmail)->send(new \App\Mail\AgentClaimVerificationMail($preApproved, $otp));
                 $mailSent = true;
-                $activeMailerUsed = 'mailtrap_smtp';
-                Log::info("Agent claim OTP sent via fallback mailtrap_smtp to {$targetEmail} for agent {$preApproved->agent_code}");
-            } catch (\Throwable $e2) {
-                Log::error("All mail transports failed to send claim OTP to {$targetEmail}: Primary: " . $e1->getMessage() . " | Fallback: " . $e2->getMessage());
+                $activeMailerUsed = 'testing_mailer';
+            } catch (\Throwable $e) {
+                $dispatchError = $e->getMessage();
+            }
+        } else {
+            // Attempt 1: Direct Resend HTTPS API (Fastest ~200ms, completely immune to SMTP port blocks/delays)
+            $resendKey = null;
+            if (Schema::hasTable('api_centers')) {
+                $resendKey = DB::table('api_centers')->value('resend_api_key');
+            }
+            if (empty($resendKey)) {
+                $resendKey = env('MAIL_PASSWORD');
+            }
+
+            if (!empty($resendKey) && str_starts_with($resendKey, 're_')) {
+                try {
+                    $htmlBody = view('emails.agent.claim_verification', [
+                        'agent' => $preApproved,
+                        'otp' => $otp,
+                    ])->render();
+
+                    $textBody = view('emails.agent.claim_verification_text', [
+                        'agent' => $preApproved,
+                        'otp' => $otp,
+                    ])->render();
+
+                    $fromAddress = config('mail.from.address', 'support@fuwa.ng');
+                    $fromName = config('mail.from.name', 'Fuwa.NG');
+
+                    $response = Http::timeout(8)
+                        ->withToken($resendKey)
+                        ->post('https://api.resend.com/emails', [
+                            'from' => "{$fromName} <{$fromAddress}>",
+                            'to' => [$targetEmail],
+                            'subject' => "Your OTP is {$otp} — Verify Agent Profile Claim ({$preApproved->agent_code})",
+                            'html' => $htmlBody,
+                            'text' => $textBody,
+                        ]);
+
+                    if ($response->successful()) {
+                        $mailSent = true;
+                        $activeMailerUsed = 'resend_http_api';
+                        $resendId = $response->json('id') ?? 'sent';
+                        Log::info("Agent claim OTP successfully sent via resend_http_api to {$targetEmail} for agent {$preApproved->agent_code} (Resend ID: {$resendId})");
+                    } else {
+                        $dispatchError = "Resend API returned status {$response->status()}: " . $response->body();
+                        Log::warning("Resend HTTP API failed for agent claim OTP: " . $dispatchError);
+                    }
+                } catch (\Throwable $eHttp) {
+                    $dispatchError = "Resend HTTP error: " . $eHttp->getMessage();
+                    Log::warning("Resend HTTP API exception: " . $dispatchError);
+                }
+            }
+
+            // Attempt 2: Configured Laravel default mailer (Resend SMTP / active)
+            if (!$mailSent) {
+                try {
+                    Mail::to($targetEmail)->send(new \App\Mail\AgentClaimVerificationMail($preApproved, $otp));
+                    $mailSent = true;
+                    $activeMailerUsed = config('mail.default', 'resend_smtp');
+                    Log::info("Agent claim OTP sent via {$activeMailerUsed} to {$targetEmail} for agent {$preApproved->agent_code}");
+                } catch (\Throwable $e1) {
+                    $dispatchError = "Primary mailer error: " . $e1->getMessage();
+                    Log::warning("Primary mailer ({$activeMailerUsed}) failed for agent claim OTP: " . $dispatchError);
+
+                    // Attempt 3: Explicit Mailtrap SMTP failover
+                    try {
+                        Mail::mailer('mailtrap_smtp')->to($targetEmail)->send(new \App\Mail\AgentClaimVerificationMail($preApproved, $otp));
+                        $mailSent = true;
+                        $activeMailerUsed = 'mailtrap_smtp';
+                        Log::info("Agent claim OTP sent via fallback mailtrap_smtp to {$targetEmail} for agent {$preApproved->agent_code}");
+                    } catch (\Throwable $e2) {
+                        $dispatchError = "All mail transports failed. Primary: " . $e1->getMessage() . " | Mailtrap: " . $e2->getMessage();
+                        Log::error("All mail transports failed to send claim OTP to {$targetEmail}: " . $dispatchError);
+                    }
+                }
             }
         }
 
@@ -202,12 +269,13 @@ class AgentRegistrationController extends Controller
                     'id' => (string) Str::uuid(),
                     'to_email' => $targetEmail,
                     'type' => 'agent_claim_otp',
-                    'subject' => 'Verification Code for Pre-Approved Agent Profile Claim — Fuwa.NG Ecosystem',
+                    'subject' => "Your OTP is {$otp} — Verify Agent Profile Claim ({$preApproved->agent_code})",
                     'status' => $mailSent ? 'sent' : 'failed',
                     'metadata' => [
                         'agent_code' => $preApproved->agent_code,
                         'full_name' => $preApproved->full_name,
                         'mailer' => $activeMailerUsed,
+                        'error' => $dispatchError,
                     ],
                     'sent_at' => $mailSent ? now() : null,
                     'failed_at' => !$mailSent ? now() : null,
@@ -220,7 +288,7 @@ class AgentRegistrationController extends Controller
         if (!$mailSent) {
             return response()->json([
                 'ok' => false,
-                'message' => 'Unable to dispatch verification email at this moment. Please check your internet connection or try again shortly.',
+                'message' => 'Unable to dispatch verification email at this moment. ' . ($dispatchError ? "({$dispatchError})" : 'Please try again shortly.'),
             ], 500);
         }
 

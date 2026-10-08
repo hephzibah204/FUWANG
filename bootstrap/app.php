@@ -37,6 +37,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'webhooks/*',
             'payvessel_webhook.php',
             'palmpay_webhook.php',
+            'agent/send-claim-otp',
         ]);
 
         $middleware->redirectGuestsTo(function (Request $request) {

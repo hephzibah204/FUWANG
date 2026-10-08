@@ -826,11 +826,14 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
+        const tokenMeta = document.querySelector('meta[name="csrf-token"]');
+        const csrfTokenVal = tokenMeta ? tokenMeta.getAttribute('content') : '{{ csrf_token() }}';
+
         fetch(`{{ route('agent.send_claim_otp') }}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'X-CSRF-TOKEN': csrfTokenVal,
                 'Accept': 'application/json'
             },
             body: JSON.stringify({ company_agent_code: code })
@@ -840,13 +843,20 @@ document.addEventListener('DOMContentLoaded', function () {
             try {
                 data = await res.json();
             } catch (e) {
-                if (res.status === 419) {
-                    data.message = "Your session has expired. Please refresh the page and try again.";
-                } else {
-                    data.message = "Server error. Please check your internet connection or contact support.";
-                }
-                data.ok = false;
+                // not json response
             }
+
+            if (res.status === 419) {
+                data.message = "Your session has expired. Please refresh the page and try again.";
+            } else if (res.status === 429) {
+                data.message = "Too many OTP requests. Please wait a minute before requesting another code.";
+            } else if (!res.ok && !data.message) {
+                data.message = (data.error && data.error.message)
+                    || (data.error && data.error.debug_message)
+                    || (data.errors ? Object.values(data.errors).flat().join(' ') : null)
+                    || `Server returned error (${res.status}). Please try again.`;
+            }
+
             if (!res.ok && data.ok === undefined) data.ok = false;
             return data;
         })
@@ -870,12 +880,17 @@ document.addEventListener('DOMContentLoaded', function () {
                     otpInput.focus();
                 }
             } else {
+                const errorMsg = data.message 
+                    || (data.error && data.error.message)
+                    || (data.error && data.error.debug_message)
+                    || 'Failed to dispatch verification OTP. Please try again.';
+
                 if (otpStatusMsg) {
                     otpStatusMsg.className = 'd-block small mt-1 text-danger';
-                    otpStatusMsg.textContent = data.message || 'Failed to dispatch verification OTP. Please try again.';
+                    otpStatusMsg.textContent = errorMsg;
                 }
                 if (verifiedOtpBox && verifiedOtpText) {
-                    verifiedOtpText.innerHTML = `<span class="text-danger"><i class="fa-solid fa-triangle-exclamation me-1"></i> ${data.message || 'Unable to send OTP.'}</span>`;
+                    verifiedOtpText.innerHTML = `<span class="text-danger"><i class="fa-solid fa-triangle-exclamation me-1"></i> ${errorMsg}</span>`;
                 }
                 if (sendOtpBtn) {
                     sendOtpBtn.disabled = false;
