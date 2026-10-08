@@ -313,4 +313,13 @@ class AdminAgentManagementTest extends TestCase
             'target_audience' => 'enrollment_agents',
         ]);
     }
+
+    public function test_admin_can_access_station_licenses_page(): void
+    {
+        $response = $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.agents.licenses.index'));
+
+        $response->assertOk();
+        $response->assertSee('Station Licenses Desk');
+    }
 }

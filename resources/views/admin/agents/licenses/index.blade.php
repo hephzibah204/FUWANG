@@ -23,7 +23,7 @@
             <a href="{{ route('admin.agents.index') }}" class="btn btn-outline-light rounded-pill fw-bold">
                 <i class="fa-solid fa-users me-1"></i>All Agents
             </a>
-            <a href="{{ route('admin.settings') }}#tab-pricing" class="btn btn-outline-warning rounded-pill fw-bold">
+            <a href="{{ route('admin.settings.index') }}#tab-pricing" class="btn btn-outline-warning rounded-pill fw-bold">
                 <i class="fa-solid fa-gear me-1"></i>Pricing Config
             </a>
         </div>

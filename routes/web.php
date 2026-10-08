@@ -715,6 +715,7 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
 
             // Settings
             Route::get('/settings',                    [App\Http\Controllers\Admin\SettingsController::class, 'index'])->name('settings.index');
+            Route::get('/settings/general',            fn() => redirect()->route('admin.settings.index'))->name('settings');
             Route::post('/settings/notification',      [App\Http\Controllers\Admin\SettingsController::class, 'updateNotification'])->name('settings.notification');
             Route::post('/settings/pricing',           [App\Http\Controllers\Admin\SettingsController::class, 'updatePricing'])->name('settings.pricing');
             Route::post('/settings/manual-funding',    [App\Http\Controllers\Admin\SettingsController::class, 'updateManualFunding'])->name('settings.manual_funding');
