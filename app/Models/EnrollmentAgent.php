@@ -170,6 +170,29 @@ class EnrollmentAgent extends Model
     {
         $this->increment('total_enrollments', $count);
         $this->increment('monthly_enrollments', $count);
+        static::recalculateMva();
+    }
+
+    /**
+     * Automatically recalculate and assign MVP/MVA based on highest total_enrollments.
+     * The approved agent with the highest total_enrollments (> 0) is awarded MVP status.
+     */
+    public static function recalculateMva(): ?self
+    {
+        $topAgent = static::where('status', 'approved')
+            ->where('total_enrollments', '>', 0)
+            ->orderByDesc('total_enrollments')
+            ->orderByDesc('monthly_enrollments')
+            ->first();
+
+        // Clear all existing MVP flags
+        static::query()->where('is_mva_of_month', true)->update(['is_mva_of_month' => false]);
+
+        if ($topAgent) {
+            $topAgent->update(['is_mva_of_month' => true]);
+        }
+
+        return $topAgent;
     }
 
     public function getHealthScore(): int

@@ -170,10 +170,11 @@
             <div class="nav-item {{ Request::routeIs('history') ? 'active' : '' }}">
                 <a href="{{ route('history') }}"><i class="fa-solid fa-clock-rotate-left"></i> History</a>
             </div>
-            
+            @if(Route::has('parcels.dashboard'))
             <div class="nav-item {{ Request::is('parcels-agent*') ? 'active' : '' }}">
                 <a href="{{ route('parcels.dashboard') }}"><i class="fa-solid fa-box-open"></i> Parcels Agent</a>
             </div>
+            @endif
 
             <div class="nav-section">Identity & Trust</div>
             <div class="nav-item {{ Request::routeIs('services.nin') ? 'active' : '' }}">

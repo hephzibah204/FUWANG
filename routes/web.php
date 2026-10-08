@@ -113,6 +113,7 @@ Route::post('/explore/logistics/track', function () {
 
 require __DIR__ . '/logistics.php';
 require __DIR__ . '/auctions.php';
+require __DIR__ . '/parcels.php';
 
 if (app()->environment('local')) {
     Route::get('/debug/auctions-summary', function () {
@@ -793,19 +794,6 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
                     Route::post('/{id}/revoke', [App\Http\Controllers\Admin\AdminAgentLicenseController::class, 'revoke'])->name('revoke');
                 });
 
-                // Specific Agent operations
-                Route::post('/bulk-action', [App\Http\Controllers\Admin\AdminAgentController::class, 'bulkAction'])->name('bulk_action');
-                Route::get('/{id}', [App\Http\Controllers\Admin\AdminAgentController::class, 'show'])->name('show');
-                Route::get('/{id}/edit', [App\Http\Controllers\Admin\AdminAgentController::class, 'edit'])->name('edit');
-                Route::put('/{id}', [App\Http\Controllers\Admin\AdminAgentController::class, 'update'])->name('update');
-                Route::post('/{id}/enrollments', [App\Http\Controllers\Admin\AdminAgentController::class, 'updateEnrollments'])->name('update_enrollments');
-                Route::post('/{id}/notify', [App\Http\Controllers\Admin\AdminAgentNotificationController::class, 'sendDirectNotification'])->name('notify_direct');
-                Route::match(['GET', 'POST'], '/{id}/approve', [App\Http\Controllers\Admin\AdminAgentController::class, 'approve'])->name('approve');
-                Route::match(['GET', 'POST'], '/{id}/reject', [App\Http\Controllers\Admin\AdminAgentController::class, 'reject'])->name('reject');
-                Route::match(['GET', 'POST'], '/{id}/suspend', [App\Http\Controllers\Admin\AdminAgentController::class, 'suspend'])->name('suspend');
-                Route::match(['GET', 'POST'], '/{id}/reactivate', [App\Http\Controllers\Admin\AdminAgentController::class, 'reactivate'])->name('reactivate');
-                Route::delete('/{id}', [App\Http\Controllers\Admin\AdminAgentController::class, 'destroy'])->name('destroy');
-
                 // Agent Issues Management
                 Route::prefix('issues')->name('issues.')->group(function () {
                     Route::get('/', [App\Http\Controllers\Admin\AdminAgentIssueController::class, 'index'])->name('index');
@@ -813,6 +801,19 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
                     Route::post('/{id}/reply', [App\Http\Controllers\Admin\AdminAgentIssueController::class, 'reply'])->name('reply');
                     Route::post('/{id}/status', [App\Http\Controllers\Admin\AdminAgentIssueController::class, 'updateStatus'])->name('status');
                 });
+
+                // Specific Agent operations
+                Route::post('/bulk-action', [App\Http\Controllers\Admin\AdminAgentController::class, 'bulkAction'])->name('bulk_action');
+                Route::get('/{id}', [App\Http\Controllers\Admin\AdminAgentController::class, 'show'])->whereNumber('id')->name('show');
+                Route::get('/{id}/edit', [App\Http\Controllers\Admin\AdminAgentController::class, 'edit'])->whereNumber('id')->name('edit');
+                Route::put('/{id}', [App\Http\Controllers\Admin\AdminAgentController::class, 'update'])->whereNumber('id')->name('update');
+                Route::post('/{id}/enrollments', [App\Http\Controllers\Admin\AdminAgentController::class, 'updateEnrollments'])->whereNumber('id')->name('update_enrollments');
+                Route::post('/{id}/notify', [App\Http\Controllers\Admin\AdminAgentNotificationController::class, 'sendDirectNotification'])->whereNumber('id')->name('notify_direct');
+                Route::match(['GET', 'POST'], '/{id}/approve', [App\Http\Controllers\Admin\AdminAgentController::class, 'approve'])->whereNumber('id')->name('approve');
+                Route::match(['GET', 'POST'], '/{id}/reject', [App\Http\Controllers\Admin\AdminAgentController::class, 'reject'])->whereNumber('id')->name('reject');
+                Route::match(['GET', 'POST'], '/{id}/suspend', [App\Http\Controllers\Admin\AdminAgentController::class, 'suspend'])->whereNumber('id')->name('suspend');
+                Route::match(['GET', 'POST'], '/{id}/reactivate', [App\Http\Controllers\Admin\AdminAgentController::class, 'reactivate'])->whereNumber('id')->name('reactivate');
+                Route::delete('/{id}', [App\Http\Controllers\Admin\AdminAgentController::class, 'destroy'])->whereNumber('id')->name('destroy');
             });
 
             // Parcel Agents Admin
