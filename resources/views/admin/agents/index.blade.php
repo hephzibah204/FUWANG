@@ -4,172 +4,199 @@
 
 @section('content')
 <div class="container-fluid py-4">
-    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+    <!-- Header -->
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
         <div>
             <div class="d-flex align-items-center gap-2 mb-1">
                 <a href="{{ route('admin.agents.overview') }}" class="text-white-50 text-xs text-decoration-none">
                     <i class="fa-solid fa-arrow-left me-1"></i> Command Center
                 </a>
                 <span class="text-white-50 text-xs">/</span>
-                <span class="text-emerald-400 text-xs fw-semibold">Agent Directory</span>
+                <span class="text-emerald-400 text-xs font-semibold">Agent Directory</span>
             </div>
-            <h3 class="text-white fw-bold mb-1"><i class="fa-solid fa-users-gear text-primary me-2"></i>NIN Enrollment Agents Directory</h3>
-            <p class="text-white-50 mb-0">Review agent applications, verify credentials, manage approvals, and track performance.</p>
+            <h1 class="h3 text-white font-weight-bold mb-1">
+                <i class="fa-solid fa-users-gear text-primary me-2"></i>NIN Enrollment Agents Directory
+            </h1>
+            <p class="text-muted small mb-0">Review agent applications, verify credentials, manage approvals, and track performance.</p>
         </div>
         <div class="d-flex gap-2 flex-wrap">
-            <a href="{{ route('admin.agents.licenses.index') }}" class="btn btn-warning text-dark rounded-pill fw-bold">
-                <i class="fa-solid fa-certificate me-1"></i>Station Licenses
+            <a href="{{ route('admin.agents.licenses.index') }}" class="btn btn-warning text-dark rounded-12 font-weight-bold px-3">
+                <i class="fa-solid fa-certificate me-1.5"></i> Station Licenses
             </a>
-            <a href="{{ route('admin.agents.notifications.index') }}" class="btn btn-primary rounded-pill fw-bold">
-                <i class="fa-solid fa-bullhorn me-1"></i>Broadcast
+            <a href="{{ route('admin.agents.notifications.index') }}" class="btn btn-primary rounded-12 font-weight-bold px-3">
+                <i class="fa-solid fa-bullhorn me-1.5"></i> Broadcast
             </a>
-            <a href="{{ route('admin.agents.roster.index') }}" class="btn btn-outline-warning rounded-pill fw-bold">
-                <i class="fa-solid fa-clipboard-user me-1"></i>Master Roster
+            <a href="{{ route('admin.agents.roster.index') }}" class="btn btn-outline-warning rounded-12 font-weight-bold px-3">
+                <i class="fa-solid fa-clipboard-user me-1.5"></i> Master Roster
             </a>
-            <a href="{{ route('admin.agents.leaderboard') }}" class="btn btn-outline-light rounded-pill fw-bold">
-                <i class="fa-solid fa-trophy me-1"></i>Leaderboard
+            <a href="{{ route('admin.agents.leaderboard') }}" class="btn btn-outline-light rounded-12 font-weight-bold px-3">
+                <i class="fa-solid fa-trophy me-1.5"></i> Leaderboard
             </a>
         </div>
     </div>
 
     @if (session('success'))
-        <div class="alert alert-success border-0 rounded-3 mb-4 p-3" style="background: rgba(34, 197, 94, 0.15); color: #bbf7d0;">
-            <i class="fa-solid fa-check-circle me-2"></i>{{ session('success') }}
+        <div class="alert alert-success border-0 rounded-12 p-3 text-sm mb-4">
+            <i class="fa-solid fa-circle-check me-2"></i>{{ session('success') }}
         </div>
     @endif
 
-    <!-- Status Filters & Search Bar -->
-    <div class="card border-0 rounded-4 p-3 mb-4" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08) !important;">
-        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
-            <div class="d-flex gap-2 flex-wrap">
-                <a href="{{ route('admin.agents.index') }}" class="btn btn-sm rounded-pill {{ !$status && !request('license_status') ? 'btn-primary' : 'btn-outline-light' }}">
-                    All Agents ({{ $counts['total'] }})
-                </a>
-                <a href="{{ route('admin.agents.index', ['status' => 'pending']) }}" class="btn btn-sm rounded-pill {{ $status === 'pending' ? 'btn-warning text-dark fw-bold' : 'btn-outline-warning' }}">
-                    Pending ({{ $counts['pending'] }})
-                </a>
-                <a href="{{ route('admin.agents.index', ['status' => 'approved']) }}" class="btn btn-sm rounded-pill {{ $status === 'approved' ? 'btn-success fw-bold' : 'btn-outline-success' }}">
-                    Approved ({{ $counts['approved'] }})
-                </a>
-                <a href="{{ route('admin.agents.index', ['license_status' => 'paid']) }}" class="btn btn-sm rounded-pill {{ request('license_status') === 'paid' ? 'btn-success fw-bold' : 'btn-outline-success' }}">
-                    <i class="fa-solid fa-certificate me-1"></i>Licensed ({{ $counts['licensed_paid'] ?? 0 }})
-                </a>
-                <a href="{{ route('admin.agents.index', ['license_status' => 'pending_review']) }}" class="btn btn-sm rounded-pill {{ request('license_status') === 'pending_review' ? 'btn-warning text-dark fw-bold' : 'btn-outline-warning' }}">
-                    <i class="fa-solid fa-clock me-1"></i>License Review ({{ $counts['licensed_pending'] ?? 0 }})
-                </a>
-                <a href="{{ route('admin.agents.index', ['license_status' => 'unpaid']) }}" class="btn btn-sm rounded-pill {{ request('license_status') === 'unpaid' ? 'btn-secondary fw-bold' : 'btn-outline-secondary' }}">
-                    License Unpaid ({{ $counts['licensed_unpaid'] ?? 0 }})
-                </a>
+    <!-- Status Filters & Search Bar Card -->
+    <div class="glass-card p-4 rounded-20 border border-white-10 mb-4">
+        <div class="row align-items-center g-3">
+            <div class="col-lg-8">
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="{{ route('admin.agents.index') }}" class="btn btn-sm {{ !$status && !request('license_status') ? 'btn-primary' : 'btn-outline-secondary text-white' }} rounded-pill px-3 py-1.5 font-weight-medium">
+                        All Agents ({{ $counts['total'] }})
+                    </a>
+                    <a href="{{ route('admin.agents.index', ['status' => 'pending']) }}" class="btn btn-sm {{ $status === 'pending' ? 'btn-warning text-dark font-weight-bold' : 'btn-outline-warning' }} rounded-pill px-3 py-1.5">
+                        Pending ({{ $counts['pending'] }})
+                    </a>
+                    <a href="{{ route('admin.agents.index', ['status' => 'approved']) }}" class="btn btn-sm {{ $status === 'approved' ? 'btn-success font-weight-bold' : 'btn-outline-success' }} rounded-pill px-3 py-1.5">
+                        Approved ({{ $counts['approved'] }})
+                    </a>
+                    <a href="{{ route('admin.agents.index', ['license_status' => 'paid']) }}" class="btn btn-sm {{ request('license_status') === 'paid' ? 'btn-success font-weight-bold' : 'btn-outline-success' }} rounded-pill px-3 py-1.5">
+                        <i class="fa-solid fa-certificate me-1"></i> Licensed ({{ $counts['licensed_paid'] ?? 0 }})
+                    </a>
+                    <a href="{{ route('admin.agents.index', ['license_status' => 'pending_review']) }}" class="btn btn-sm {{ request('license_status') === 'pending_review' ? 'btn-warning text-dark font-weight-bold' : 'btn-outline-warning' }} rounded-pill px-3 py-1.5">
+                        <i class="fa-solid fa-clock me-1"></i> Review ({{ $counts['licensed_pending'] ?? 0 }})
+                    </a>
+                    <a href="{{ route('admin.agents.index', ['license_status' => 'unpaid']) }}" class="btn btn-sm {{ request('license_status') === 'unpaid' ? 'btn-secondary text-white font-weight-bold' : 'btn-outline-secondary text-white-50' }} rounded-pill px-3 py-1.5">
+                        Unpaid ({{ $counts['licensed_unpaid'] ?? 0 }})
+                    </a>
+                </div>
             </div>
 
-            <form action="{{ route('admin.agents.index') }}" method="GET" class="d-flex gap-2">
-                @if($status) <input type="hidden" name="status" value="{{ $status }}"> @endif
-                @if(request('license_status')) <input type="hidden" name="license_status" value="{{ request('license_status') }}"> @endif
-                <input type="text" name="search" value="{{ request('search') }}" class="form-control form-control-sm rounded-pill" placeholder="Search name, phone, NIN, IMEI...">
-                <button type="submit" class="btn btn-primary btn-sm rounded-pill px-3">Search</button>
-            </form>
+            <div class="col-lg-4">
+                <form action="{{ route('admin.agents.index') }}" method="GET">
+                    @if($status) <input type="hidden" name="status" value="{{ $status }}"> @endif
+                    @if(request('license_status')) <input type="hidden" name="license_status" value="{{ request('license_status') }}"> @endif
+                    <div class="input-group">
+                        <input type="text" name="search" value="{{ request('search') }}" class="form-control form-control-sm bg-dark border-white-10 text-white rounded-start-12" placeholder="Search name, phone, NIN, IMEI...">
+                        <button type="submit" class="btn btn-primary btn-sm rounded-end-12 px-3 font-weight-bold">
+                            <i class="fa-solid fa-magnifying-glass me-1"></i> Search
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 
-    <!-- Agent Applications Table -->
-    <div class="card border-0 rounded-4 p-4" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08) !important;">
+    <!-- Agent Applications Table Card -->
+    <div class="glass-card rounded-20 overflow-hidden border border-white-10">
         <div class="table-responsive">
-            <table class="table table-dark table-hover align-middle mb-0" style="background: transparent;">
-                <thead>
-                    <tr class="text-white-50 border-bottom border-secondary">
-                        <th>#</th>
-                        <th>Agent Name</th>
-                        <th>Phone / User</th>
-                        <th>NIN / BVN</th>
+            <table class="table table-dark table-hover mb-0 align-middle">
+                <thead class="table-light-5">
+                    <tr class="text-muted text-xs text-uppercase tracking-wider">
+                        <th class="ps-4">Agent Info</th>
+                        <th>Contact / Email</th>
+                        <th>NIN & BVN Details</th>
                         <th>Machine IMEI</th>
                         <th>Status</th>
                         <th>License</th>
                         <th>Enrollments</th>
-                        <th class="text-end">Actions</th>
+                        <th class="pe-4 text-end">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($agents as $agent)
                         <tr>
-                            <td>{{ $agent->id }}</td>
-                            <td>
-                                <strong class="text-white">{{ $agent->full_name }}</strong>
-                                @if($agent->is_fast_tracked)
-                                    <span class="badge bg-warning text-dark ms-1"><i class="fa-solid fa-bolt me-1"></i>Fast-Tracked Existing Agent</span>
-                                @endif
-                                @if($agent->is_mva_of_month)
-                                    <span class="badge bg-warning text-dark ms-1"><i class="fa-solid fa-star"></i> MVA</span>
-                                @endif
-                                <br>
-                                @if($agent->company_agent_code)
-                                    <small class="badge bg-secondary font-monospace">Code: {{ $agent->company_agent_code }}</small>
-                                @endif
-                                <small class="text-white-50">{{ $agent->meta['station_name'] ?? 'Primary Terminal' }}</small>
+                            <td class="ps-4 py-3">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="avatar-circle bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center font-weight-bold text-sm" style="width: 40px; height: 40px; flex-shrink: 0;">
+                                        {{ substr($agent->full_name, 0, 1) }}
+                                    </div>
+                                    <div>
+                                        <a href="{{ route('admin.agents.show', $agent->id) }}" class="text-white font-weight-bold text-decoration-none d-block hover-primary">
+                                            {{ $agent->full_name }}
+                                        </a>
+                                        <div class="d-flex align-items-center gap-1.5 flex-wrap mt-0.5">
+                                            @if($agent->is_fast_tracked)
+                                                <span class="badge bg-warning text-dark font-weight-bold text-2xs rounded-pill">Fast-Tracked</span>
+                                            @endif
+                                            @if($agent->is_mva_of_month)
+                                                <span class="badge bg-warning text-dark font-weight-bold text-2xs rounded-pill"><i class="fa-solid fa-star me-0.5"></i> MVA</span>
+                                            @endif
+                                            @if($agent->company_agent_code)
+                                                <span class="badge bg-secondary text-white font-monospace text-2xs rounded-pill">Code: {{ $agent->company_agent_code }}</span>
+                                            @endif
+                                            <span class="text-muted text-2xs">{{ $agent->meta['station_name'] ?? 'Primary Terminal' }}</span>
+                                        </div>
+                                    </div>
+                                </div>
                             </td>
                             <td>
-                                <span class="text-white">{{ $agent->phone_number }}</span>
-                                <br><small class="text-white-50">{{ $agent->user->email ?? 'No User Email' }}</small>
+                                <span class="d-block text-white font-weight-medium text-xs">{{ $agent->phone_number }}</span>
+                                <span class="d-block text-muted text-2xs">{{ $agent->user->email ?? 'No User Email' }}</span>
                             </td>
                             <td>
-                                <span class="text-info font-monospace">NIN: {{ $agent->nin }}</span>
-                                @if($agent->nin_verified)
-                                    <i class="fa-solid fa-circle-check text-success ms-1" title="NIN Verified"></i>
-                                @endif
-                                <br><small class="text-white-50 font-monospace">BVN: {{ $agent->bvn }}</small>
+                                <span class="d-block text-info font-monospace text-xs">
+                                    NIN: {{ $agent->nin }}
+                                    @if($agent->nin_verified)
+                                        <i class="fa-solid fa-circle-check text-success ms-1" title="NIN Verified"></i>
+                                    @endif
+                                </span>
+                                <span class="d-block text-muted font-monospace text-2xs">BVN: {{ $agent->bvn }}</span>
                             </td>
-                            <td><code class="text-warning">{{ $agent->machine_imei }}</code></td>
+                            <td>
+                                @if($agent->machine_imei)
+                                    <code class="text-warning text-xs px-2 py-1 bg-dark rounded border border-white-5">{{ $agent->machine_imei }}</code>
+                                @else
+                                    <span class="text-muted text-2xs">Not set</span>
+                                @endif
+                            </td>
                             <td>
                                 @if($agent->isApproved())
-                                    <span class="badge bg-success px-2 py-1 rounded-pill">Approved</span>
+                                    <span class="badge bg-success text-white rounded-pill px-2.5 py-1 text-2xs font-weight-bold">APPROVED</span>
                                 @elseif($agent->isPending())
-                                    <span class="badge bg-warning text-dark px-2 py-1 rounded-pill">Pending</span>
+                                    <span class="badge bg-warning text-dark rounded-pill px-2.5 py-1 text-2xs font-weight-bold">PENDING</span>
                                 @elseif($agent->isRejected())
-                                    <span class="badge bg-danger px-2 py-1 rounded-pill">Rejected</span>
+                                    <span class="badge bg-danger text-white rounded-pill px-2.5 py-1 text-2xs font-weight-bold">REJECTED</span>
                                 @elseif($agent->isSuspended())
-                                    <span class="badge bg-secondary px-2 py-1 rounded-pill">Suspended</span>
+                                    <span class="badge bg-secondary text-white rounded-pill px-2.5 py-1 text-2xs font-weight-bold">SUSPENDED</span>
                                 @endif
                             </td>
                             <td>
                                 @if($agent->isLicensePaid())
-                                    <span class="badge bg-success rounded-pill px-2 py-1" title="{{ ucfirst($agent->license_payment_method ?? 'paid') }}">
-                                        <i class="fa-solid fa-certificate me-1"></i>Paid
+                                    <span class="badge bg-success text-white rounded-pill px-2.5 py-1 text-2xs font-weight-bold" title="{{ ucfirst($agent->license_payment_method ?? 'paid') }}">
+                                        <i class="fa-solid fa-certificate me-1"></i> Paid
                                     </span>
                                 @elseif($agent->isLicensePendingReview())
-                                    <span class="badge bg-warning text-dark rounded-pill px-2 py-1">
-                                        <i class="fa-solid fa-clock me-1"></i>Review
+                                    <span class="badge bg-warning text-dark rounded-pill px-2.5 py-1 text-2xs font-weight-bold">
+                                        <i class="fa-solid fa-clock me-1"></i> Review
                                     </span>
                                 @else
-                                    <span class="badge bg-secondary rounded-pill px-2 py-1">
+                                    <span class="badge bg-secondary text-white-50 rounded-pill px-2.5 py-1 text-2xs">
                                         Unpaid
                                     </span>
                                 @endif
                             </td>
                             <td>
-                                <span class="fw-bold text-success">{{ number_format($agent->total_enrollments) }}</span>
-                                <small class="text-white-50">({{ number_format($agent->monthly_enrollments) }}/mo)</small>
+                                <span class="d-block text-success font-weight-bold text-xs">{{ number_format($agent->total_enrollments) }} total</span>
+                                <span class="d-block text-muted text-2xs">({{ number_format($agent->monthly_enrollments) }}/mo)</span>
                             </td>
-                            <td class="text-end">
-                                <div class="btn-group btn-group-sm">
-                                    <a href="{{ route('admin.agents.show', $agent->id) }}" class="btn btn-sm btn-outline-info rounded-pill px-2.5" title="View Dossier">
+                            <td class="pe-4 text-end">
+                                <div class="d-flex align-items-center justify-content-end gap-1.5">
+                                    <a href="{{ route('admin.agents.show', $agent->id) }}" class="btn btn-sm btn-outline-info text-info rounded-12 p-2" title="View Dossier" style="width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center;">
                                         <i class="fa-solid fa-eye"></i>
                                     </a>
-                                    <a href="{{ route('admin.agents.edit', $agent->id) }}" class="btn btn-sm btn-outline-light rounded-pill px-2.5 ms-1" title="Edit Profile & Hardware">
+                                    <a href="{{ route('admin.agents.edit', $agent->id) }}" class="btn btn-sm btn-outline-light rounded-12 p-2" title="Edit Profile & Hardware" style="width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center;">
                                         <i class="fa-solid fa-pen-to-square"></i>
                                     </a>
 
                                     @if($agent->isPending())
-                                        <form action="{{ route('admin.agents.approve', $agent->id) }}" method="POST" class="d-inline ms-1">
+                                        <form action="{{ route('admin.agents.approve', $agent->id) }}" method="POST" class="d-inline m-0">
                                             @csrf
-                                            <button type="submit" class="btn btn-sm btn-success rounded-pill px-2.5" title="Approve">
+                                            <button type="submit" class="btn btn-sm btn-success rounded-12 p-2" title="Approve Agent" style="width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center;">
                                                 <i class="fa-solid fa-check"></i>
                                             </button>
                                         </form>
                                     @endif
 
-                                    <form action="{{ route('admin.agents.destroy', $agent->id) }}" method="POST" class="d-inline ms-1" onsubmit="return confirm('Delete agent profile for {{ $agent->full_name }}? Their user account will remain safe.');">
+                                    <form action="{{ route('admin.agents.destroy', $agent->id) }}" method="POST" class="d-inline m-0" onsubmit="return confirm('Delete agent profile for {{ $agent->full_name }}? Their user account will remain safe.');">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-2.5" title="Delete Agent Profile Only">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger text-danger rounded-12 p-2" title="Delete Agent Profile Only" style="width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center;">
                                             <i class="fa-solid fa-trash"></i>
                                         </button>
                                     </form>
@@ -178,16 +205,21 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="text-center text-white-50 py-4">No agent records found.</td>
+                            <td colspan="8" class="text-center text-muted py-5">
+                                <i class="fa-solid fa-users-slash fa-2x mb-3 d-block"></i>
+                                No enrollment agent records found matching your filters.
+                            </td>
                         </tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
 
-        <div class="mt-3">
-            {{ $agents->links() }}
-        </div>
+        @if($agents->hasPages())
+            <div class="p-3 border-top border-white-10">
+                {{ $agents->links() }}
+            </div>
+        @endif
     </div>
 </div>
 @endsection
