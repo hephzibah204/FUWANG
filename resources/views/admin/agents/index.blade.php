@@ -112,58 +112,58 @@
                 </div>
             </div>
 
-            <div class="table-responsive">
-                <table class="table table-dark table-hover mb-0 align-middle">
+            <div class="table-responsive agent-table-responsive">
+                <table class="table table-dark table-hover mb-0 align-middle table-agents">
                     <thead class="table-light-5">
                         <tr class="text-muted text-xs text-uppercase tracking-wider">
-                            <th class="ps-4" style="width: 40px;">
+                            <th class="ps-3 ps-md-4" style="width: 38px; min-width: 38px;">
                                 <input type="checkbox" id="selectAllAgents" class="form-check-input bg-dark border-white-20" title="Select All On Page">
                             </th>
-                            <th>Agent Info</th>
-                            <th>Contact / Email</th>
-                            <th>NIN & BVN Details</th>
-                            <th>Machine IMEI</th>
-                            <th>Status</th>
-                            <th>License</th>
-                            <th>Enrollments</th>
-                            <th class="pe-4 text-end">Actions</th>
+                            <th style="min-width: 180px;">Agent Info</th>
+                            <th style="min-width: 160px;">Contact / Email</th>
+                            <th style="min-width: 140px;">NIN & BVN Details</th>
+                            <th style="min-width: 130px;">Machine IMEI</th>
+                            <th style="min-width: 95px;">Status</th>
+                            <th style="min-width: 85px;">License</th>
+                            <th style="min-width: 105px;">Enrollments</th>
+                            <th class="pe-3 pe-md-4 text-end table-action-col" style="min-width: 145px; width: 145px;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($agents as $agent)
                             <tr>
-                                <td class="ps-4 py-3">
+                                <td class="ps-3 ps-md-4 py-2.5">
                                     <input type="checkbox" name="agent_ids[]" value="{{ $agent->id }}" class="form-check-input agent-checkbox bg-dark border-white-20">
                                 </td>
-                                <td>
-                                    <div class="d-flex align-items-center gap-3">
-                                        <div class="avatar-circle bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center font-weight-bold text-sm" style="width: 40px; height: 40px; flex-shrink: 0;">
+                                <td class="py-2.5">
+                                    <div class="d-flex align-items-center gap-2.5">
+                                        <div class="avatar-circle bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center font-weight-bold text-xs" style="width: 34px; height: 34px; min-width: 34px; flex-shrink: 0;">
                                             {{ substr($agent->full_name, 0, 1) }}
                                         </div>
-                                        <div>
-                                            <a href="{{ route('admin.agents.show', $agent->id) }}" class="text-white font-weight-bold text-decoration-none d-block hover-primary">
+                                        <div style="min-width: 0;">
+                                            <a href="{{ route('admin.agents.show', $agent->id) }}" class="text-white font-weight-bold text-decoration-none d-block hover-primary text-truncate" style="max-width: 165px;" title="{{ $agent->full_name }}">
                                                 {{ $agent->full_name }}
                                             </a>
-                                            <div class="d-flex align-items-center gap-1.5 flex-wrap mt-0.5">
+                                            <div class="d-flex align-items-center gap-1 flex-wrap mt-0.5">
                                                 @if($agent->is_fast_tracked)
-                                                    <span class="badge bg-warning text-dark font-weight-bold text-2xs rounded-pill">Fast-Tracked</span>
+                                                    <span class="badge bg-warning text-dark font-weight-bold text-3xs rounded-pill px-1.5 py-0.5">Fast-Tracked</span>
                                                 @endif
                                                 @if($agent->is_mva_of_month)
-                                                    <span class="badge bg-warning text-dark font-weight-bold text-2xs rounded-pill"><i class="fa-solid fa-star me-0.5"></i> MVA</span>
+                                                    <span class="badge bg-warning text-dark font-weight-bold text-3xs rounded-pill px-1.5 py-0.5"><i class="fa-solid fa-star me-0.5"></i> MVP</span>
                                                 @endif
                                                 @if($agent->company_agent_code)
-                                                    <span class="badge bg-secondary text-white font-monospace text-2xs rounded-pill">Code: {{ $agent->company_agent_code }}</span>
+                                                    <span class="badge bg-secondary text-white font-monospace text-3xs rounded-pill px-1.5 py-0.5">Code: {{ $agent->company_agent_code }}</span>
                                                 @endif
-                                                <span class="text-muted text-2xs">{{ $agent->meta['station_name'] ?? 'Primary Terminal' }}</span>
+                                                <span class="text-muted text-3xs d-block text-truncate" style="max-width: 150px;">{{ $agent->meta['station_name'] ?? 'Primary Terminal' }}</span>
                                             </div>
                                         </div>
                                     </div>
                                 </td>
-                                <td>
+                                <td class="py-2.5">
                                     <span class="d-block text-white font-weight-medium text-xs">{{ $agent->phone_number }}</span>
-                                    <span class="d-block text-muted text-2xs">{{ $agent->user->email ?? 'No User Email' }}</span>
+                                    <span class="d-block text-muted text-2xs text-truncate" style="max-width: 160px;" title="{{ $agent->user->email ?? 'No User Email' }}">{{ $agent->user->email ?? 'No User Email' }}</span>
                                 </td>
-                                <td>
+                                <td class="py-2.5 text-nowrap">
                                     <span class="d-block text-info font-monospace text-xs">
                                         NIN: {{ $agent->nin }}
                                         @if($agent->nin_verified)
@@ -172,14 +172,14 @@
                                     </span>
                                     <span class="d-block text-muted font-monospace text-2xs">BVN: {{ $agent->bvn }}</span>
                                 </td>
-                                <td>
+                                <td class="py-2.5 text-nowrap">
                                     @if($agent->machine_imei)
-                                        <code class="text-warning text-xs px-2 py-1 bg-dark rounded border border-white-5">{{ $agent->machine_imei }}</code>
+                                        <code class="text-warning text-2xs px-1.5 py-0.5 bg-dark rounded border border-white-5 font-monospace">{{ $agent->machine_imei }}</code>
                                     @else
                                         <span class="text-muted text-2xs">Not set</span>
                                     @endif
                                 </td>
-                                <td>
+                                <td class="py-2.5 text-nowrap">
                                     @if($agent->isApproved())
                                         <span class="badge bg-success text-white rounded-pill px-2.5 py-1 text-2xs font-weight-bold">APPROVED</span>
                                     @elseif($agent->isPending())
@@ -190,7 +190,7 @@
                                         <span class="badge bg-secondary text-white rounded-pill px-2.5 py-1 text-2xs font-weight-bold">SUSPENDED</span>
                                     @endif
                                 </td>
-                                <td>
+                                <td class="py-2.5 text-nowrap">
                                     @if($agent->isLicensePaid())
                                         <span class="badge bg-success text-white rounded-pill px-2.5 py-1 text-2xs font-weight-bold" title="{{ ucfirst($agent->license_payment_method ?? 'paid') }}">
                                             <i class="fa-solid fa-certificate me-1"></i> Paid
@@ -205,26 +205,26 @@
                                         </span>
                                     @endif
                                 </td>
-                                <td>
+                                <td class="py-2.5 text-nowrap">
                                     <span class="d-block text-success font-weight-bold text-xs">{{ number_format($agent->total_enrollments) }} total</span>
                                     <span class="d-block text-muted text-2xs">({{ number_format($agent->monthly_enrollments) }}/mo)</span>
                                 </td>
-                                <td class="pe-4 text-end">
-                                    <div class="d-flex align-items-center justify-content-end gap-1.5">
-                                        <a href="{{ route('admin.agents.show', $agent->id) }}" class="btn btn-sm btn-outline-info text-info rounded-12 p-2" title="View Dossier" style="width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center;">
+                                <td class="pe-3 pe-md-4 py-2.5 text-end table-action-col">
+                                    <div class="d-inline-flex align-items-center justify-content-end gap-1">
+                                        <a href="{{ route('admin.agents.show', $agent->id) }}" class="btn btn-sm btn-outline-info text-info rounded-10 p-0" title="View Dossier" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;">
                                             <i class="fa-solid fa-eye"></i>
                                         </a>
-                                        <a href="{{ route('admin.agents.edit', $agent->id) }}" class="btn btn-sm btn-outline-light rounded-12 p-2" title="Edit Profile & Hardware" style="width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center;">
+                                        <a href="{{ route('admin.agents.edit', $agent->id) }}" class="btn btn-sm btn-outline-light rounded-10 p-0" title="Edit Profile & Hardware" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;">
                                             <i class="fa-solid fa-pen-to-square"></i>
                                         </a>
 
                                         @if($agent->isPending())
-                                            <button type="submit" form="singleApprove{{ $agent->id }}" class="btn btn-sm btn-success rounded-12 p-2" title="Approve Agent" style="width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center;">
+                                            <button type="submit" form="singleApprove{{ $agent->id }}" class="btn btn-sm btn-success rounded-10 p-0" title="Approve Agent" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;">
                                                 <i class="fa-solid fa-check"></i>
                                             </button>
                                         @endif
 
-                                        <button type="submit" form="singleDelete{{ $agent->id }}" class="btn btn-sm btn-outline-danger text-danger rounded-12 p-2" title="Delete Agent Profile Only" style="width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center;">
+                                        <button type="submit" form="singleDelete{{ $agent->id }}" class="btn btn-sm btn-outline-danger text-danger rounded-10 p-0" title="Delete Agent Profile Only" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;">
                                             <i class="fa-solid fa-trash"></i>
                                         </button>
                                     </div>
@@ -303,4 +303,53 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 </script>
+
+<style>
+    .agent-table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        position: relative;
+    }
+    .agent-table-responsive::-webkit-scrollbar {
+        height: 6px;
+    }
+    .agent-table-responsive::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.03);
+    }
+    .agent-table-responsive::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 4px;
+    }
+    .agent-table-responsive::-webkit-scrollbar-thumb:hover {
+        background: rgba(59, 130, 246, 0.6);
+    }
+    .table-agents {
+        min-width: 980px;
+        width: 100%;
+    }
+    .table-agents .table-action-col {
+        position: sticky;
+        right: 0;
+        z-index: 5;
+        background-color: #0b1120 !important;
+        box-shadow: -10px 0 16px -4px rgba(0, 0, 0, 0.7);
+        white-space: nowrap;
+        min-width: 145px;
+        width: 145px;
+        text-align: right;
+    }
+    .table-agents thead th.table-action-col {
+        background-color: #162033 !important;
+        z-index: 6;
+    }
+    .table-agents tbody tr:hover .table-action-col {
+        background-color: #1e293b !important;
+    }
+    .text-3xs {
+        font-size: 0.68rem;
+    }
+    .rounded-10 {
+        border-radius: 10px;
+    }
+</style>
 @endsection
