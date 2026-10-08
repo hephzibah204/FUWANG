@@ -203,4 +203,114 @@ class AdminAgentManagementTest extends TestCase
         $this->assertDatabaseMissing('enrollment_agents', ['id' => $agent->id]);
         $this->assertDatabaseHas('users', ['id' => $user->id]);
     }
+
+    public function test_admin_can_update_agent_enrollment_counts(): void
+    {
+        $user = User::factory()->create();
+        $agent = EnrollmentAgent::create([
+            'user_id' => $user->id,
+            'full_name' => 'Enrollment Metrics Agent',
+            'phone_number' => '08012345678',
+            'residential_address' => '123 Test St',
+            'office_address' => 'Office 10',
+            'bvn' => '12345678901',
+            'nin' => '98765432109',
+            'status' => 'approved',
+            'total_enrollments' => 10,
+            'monthly_enrollments' => 5,
+        ]);
+
+        $response = $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.agents.update_enrollments', $agent->id), [
+                'total_enrollments' => 1250,
+                'monthly_enrollments' => 340,
+            ]);
+
+        $response->assertSessionHas('success');
+
+        $this->assertDatabaseHas('enrollment_agents', [
+            'id' => $agent->id,
+            'total_enrollments' => 1250,
+            'monthly_enrollments' => 340,
+        ]);
+    }
+
+    public function test_admin_can_bulk_approve_and_bulk_suspend_agents(): void
+    {
+        $user1 = User::factory()->create();
+        $user2 = User::factory()->create();
+
+        $agent1 = EnrollmentAgent::create([
+            'user_id' => $user1->id,
+            'full_name' => 'Agent One',
+            'phone_number' => '08011111111',
+            'residential_address' => '123 Test St',
+            'office_address' => 'Office 1',
+            'bvn' => '12345678901',
+            'nin' => '98765432101',
+            'status' => 'pending',
+        ]);
+
+        $agent2 = EnrollmentAgent::create([
+            'user_id' => $user2->id,
+            'full_name' => 'Agent Two',
+            'phone_number' => '08022222222',
+            'residential_address' => '456 Test St',
+            'office_address' => 'Office 2',
+            'bvn' => '12345678902',
+            'nin' => '98765432102',
+            'status' => 'pending',
+        ]);
+
+        // Bulk approve
+        $response = $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.agents.bulk_action'), [
+                'action' => 'approve',
+                'agent_ids' => [$agent1->id, $agent2->id],
+            ]);
+
+        $response->assertSessionHas('success');
+        $this->assertDatabaseHas('enrollment_agents', ['id' => $agent1->id, 'status' => 'approved']);
+        $this->assertDatabaseHas('enrollment_agents', ['id' => $agent2->id, 'status' => 'approved']);
+
+        // Bulk suspend
+        $response2 = $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.agents.bulk_action'), [
+                'action' => 'suspend',
+                'agent_ids' => [$agent1->id, $agent2->id],
+            ]);
+
+        $response2->assertSessionHas('success');
+        $this->assertDatabaseHas('enrollment_agents', ['id' => $agent1->id, 'status' => 'suspended']);
+        $this->assertDatabaseHas('enrollment_agents', ['id' => $agent2->id, 'status' => 'suspended']);
+    }
+
+    public function test_admin_can_send_direct_notification_to_agent(): void
+    {
+        $user = User::factory()->create();
+        $agent = EnrollmentAgent::create([
+            'user_id' => $user->id,
+            'full_name' => 'Alert Agent',
+            'phone_number' => '08033333333',
+            'residential_address' => '789 Alert St',
+            'office_address' => 'Office 3',
+            'bvn' => '12345678903',
+            'nin' => '98765432103',
+            'status' => 'approved',
+        ]);
+
+        $response = $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.agents.notify_direct', $agent->id), [
+                'subject' => 'Terminal Configuration Update',
+                'message' => 'Please update your NIMC enrollment app to build 2.4.',
+                'send_email' => 0,
+            ]);
+
+        $response->assertSessionHas('success');
+
+        $this->assertDatabaseHas('broadcasts', [
+            'subject' => 'Terminal Configuration Update',
+            'target_audience' => 'enrollment_agents',
+        ]);
+    }
 }

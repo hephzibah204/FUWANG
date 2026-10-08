@@ -43,18 +43,18 @@
             <div class="card border-0 rounded-4 p-4 h-100 position-relative overflow-hidden" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08) !important;">
                 <div class="d-flex align-items-center justify-content-between mb-3">
                     <span class="text-white-50 text-xs text-uppercase fw-semibold tracking-wider">Agency Force</span>
-                    <div class="rounded-3 p-2 d-flex align-items-center justify-content-center" style="background: rgba(16, 185, 129, 0.15); width: 38px; height: 38px;">
+                    <a href="{{ route('admin.agents.index') }}" class="rounded-3 p-2 d-flex align-items-center justify-content-center text-decoration-none" style="background: rgba(16, 185, 129, 0.15); width: 38px; height: 38px;">
                         <i class="fa-solid fa-users-gear text-emerald-400"></i>
-                    </div>
+                    </a>
                 </div>
                 <div class="d-flex align-items-baseline gap-2 mb-2">
-                    <h2 class="text-white fw-bold mb-0">{{ number_format($totalAgents) }}</h2>
+                    <a href="{{ route('admin.agents.index') }}" class="text-white fw-bold fs-2 text-decoration-none hover-primary mb-0">{{ number_format($totalAgents) }}</a>
                     <span class="text-xs text-white-50">Registered</span>
                 </div>
                 <div class="d-flex gap-2 flex-wrap mt-auto pt-2 border-top border-secondary border-opacity-25 text-xs">
-                    <span class="text-success"><i class="fa-solid fa-check-circle me-1"></i>{{ $approvedAgents }} Active</span>
-                    <span class="text-warning"><i class="fa-solid fa-clock me-1"></i>{{ $pendingAgents }} Pending</span>
-                    <span class="text-danger"><i class="fa-solid fa-ban me-1"></i>{{ $suspendedAgents + $rejectedAgents }} Inactive</span>
+                    <a href="{{ route('admin.agents.index', ['status' => 'approved']) }}" class="text-success text-decoration-none"><i class="fa-solid fa-check-circle me-1"></i>{{ $approvedAgents }} Active</a>
+                    <a href="{{ route('admin.agents.index', ['status' => 'pending']) }}" class="text-warning text-decoration-none"><i class="fa-solid fa-clock me-1"></i>{{ $pendingAgents }} Pending</a>
+                    <a href="{{ route('admin.agents.index', ['status' => 'suspended']) }}" class="text-danger text-decoration-none"><i class="fa-solid fa-ban me-1"></i>{{ $suspendedAgents + $rejectedAgents }} Inactive</a>
                 </div>
             </div>
         </div>
@@ -64,12 +64,12 @@
             <div class="card border-0 rounded-4 p-4 h-100 position-relative overflow-hidden" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08) !important;">
                 <div class="d-flex align-items-center justify-content-between mb-3">
                     <span class="text-white-50 text-xs text-uppercase fw-semibold tracking-wider">Citizen Enrollments</span>
-                    <div class="rounded-3 p-2 d-flex align-items-center justify-content-center" style="background: rgba(59, 130, 246, 0.15); width: 38px; height: 38px;">
+                    <a href="{{ route('admin.agents.leaderboard') }}" class="rounded-3 p-2 d-flex align-items-center justify-content-center text-decoration-none" style="background: rgba(59, 130, 246, 0.15); width: 38px; height: 38px;">
                         <i class="fa-solid fa-fingerprint text-primary"></i>
-                    </div>
+                    </a>
                 </div>
                 <div class="d-flex align-items-baseline gap-2 mb-2">
-                    <h2 class="text-white fw-bold mb-0">{{ number_format($totalEnrollments) }}</h2>
+                    <a href="{{ route('admin.agents.leaderboard') }}" class="text-white fw-bold fs-2 text-decoration-none hover-primary mb-0">{{ number_format($totalEnrollments) }}</a>
                     <span class="text-xs text-success fw-bold"><i class="fa-solid fa-arrow-trend-up me-1"></i>Cumulative</span>
                 </div>
                 <div class="d-flex align-items-center justify-content-between mt-auto pt-2 border-top border-secondary border-opacity-25 text-xs">
@@ -84,12 +84,12 @@
             <div class="card border-0 rounded-4 p-4 h-100 position-relative overflow-hidden" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08) !important;">
                 <div class="d-flex align-items-center justify-content-between mb-3">
                     <span class="text-white-50 text-xs text-uppercase fw-semibold tracking-wider">Enrolled Terminals</span>
-                    <div class="rounded-3 p-2 d-flex align-items-center justify-content-center" style="background: rgba(245, 158, 11, 0.15); width: 38px; height: 38px;">
+                    <a href="{{ route('admin.agents.index') }}" class="rounded-3 p-2 d-flex align-items-center justify-content-center text-decoration-none" style="background: rgba(245, 158, 11, 0.15); width: 38px; height: 38px;">
                         <i class="fa-solid fa-laptop-code text-warning"></i>
-                    </div>
+                    </a>
                 </div>
                 <div class="d-flex align-items-baseline gap-2 mb-2">
-                    <h2 class="text-white fw-bold mb-0">{{ number_format($totalTerminals) }}</h2>
+                    <a href="{{ route('admin.agents.index') }}" class="text-white fw-bold fs-2 text-decoration-none hover-primary mb-0">{{ number_format($totalTerminals) }}</a>
                     <span class="text-xs text-white-50">IMEI Bound</span>
                 </div>
                 <div class="d-flex align-items-center justify-content-between mt-auto pt-2 border-top border-secondary border-opacity-25 text-xs">
@@ -104,12 +104,12 @@
             <div class="card border-0 rounded-4 p-4 h-100 position-relative overflow-hidden" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08) !important;">
                 <div class="d-flex align-items-center justify-content-between mb-3">
                     <span class="text-white-50 text-xs text-uppercase fw-semibold tracking-wider">Support & Issues</span>
-                    <div class="rounded-3 p-2 d-flex align-items-center justify-content-center" style="background: rgba(239, 68, 68, 0.15); width: 38px; height: 38px;">
+                    <a href="{{ route('admin.agents.issues.index') }}" class="rounded-3 p-2 d-flex align-items-center justify-content-center text-decoration-none" style="background: rgba(239, 68, 68, 0.15); width: 38px; height: 38px;">
                         <i class="fa-solid fa-headset text-danger"></i>
-                    </div>
+                    </a>
                 </div>
                 <div class="d-flex align-items-baseline gap-2 mb-2">
-                    <h2 class="text-white fw-bold mb-0">{{ number_format($openIssuesCount) }}</h2>
+                    <a href="{{ route('admin.agents.issues.index') }}" class="text-white fw-bold fs-2 text-decoration-none hover-primary mb-0">{{ number_format($openIssuesCount) }}</a>
                     <span class="badge bg-danger rounded-pill text-2xs">Pending Action</span>
                 </div>
                 <div class="d-flex align-items-center justify-content-between mt-auto pt-2 border-top border-secondary border-opacity-25 text-xs">
@@ -179,6 +179,7 @@
                                 <th>NIN & State</th>
                                 <th>Machine / IMEI</th>
                                 <th>Status</th>
+                                <th>Registered</th>
                                 <th class="text-end">Action</th>
                             </tr>
                         </thead>
@@ -189,7 +190,7 @@
                                         <div class="fw-semibold text-white">{{ $agent->full_name }}</div>
                                         <div class="text-xs text-white-50">{{ $agent->phone_number }}</div>
                                         @if($agent->is_fast_tracked)
-                                            <span class="badge bg-warning text-dark text-2xs mt-1"><i class="fa-solid fa-bolt me-1"></i>Existing Agent</span>
+                                             <span class="badge bg-warning text-dark text-2xs mt-1"><i class="fa-solid fa-bolt me-1"></i>Existing Agent</span>
                                         @endif
                                     </td>
                                     <td>
@@ -214,6 +215,11 @@
                                             <span class="badge bg-secondary rounded-pill text-2xs">{{ ucfirst($agent->status) }}</span>
                                         @endif
                                     </td>
+                                    <td>
+                                        <span class="text-white-50 text-2xs d-block" title="{{ $agent->created_at?->format('d M Y, h:i A') }}">
+                                            <i class="fa-regular fa-clock me-1 text-primary"></i>{{ $agent->created_at ? $agent->created_at->diffForHumans() : 'N/A' }}
+                                        </span>
+                                    </td>
                                     <td class="text-end">
                                         <div class="btn-group btn-group-sm">
                                             <a href="{{ route('admin.agents.show', $agent->id) }}" class="btn btn-outline-info rounded-pill px-2.5" title="View Dossier">
@@ -227,7 +233,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="5" class="text-center text-white-50 py-4">No enrollment agents registered yet.</td>
+                                    <td colspan="6" class="text-center text-white-50 py-4">No enrollment agents registered yet.</td>
                                 </tr>
                             @endforelse
                         </tbody>
@@ -279,7 +285,7 @@
             </div>
 
             <!-- Recent Agent Hardware & Support Issues -->
-            <div class="card border-0 rounded-4 p-4" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08) !important;">
+            <div class="card border-0 rounded-4 p-4 mb-4" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08) !important;">
                 <div class="d-flex align-items-center justify-content-between mb-3">
                     <div>
                         <h6 class="text-white fw-bold mb-0"><i class="fa-solid fa-headset text-danger me-2"></i>Agent Hardware & Inquiries</h6>
@@ -313,6 +319,34 @@
                             <i class="fa-solid fa-shield-heart text-success mb-2 fa-lg d-block"></i>
                             No open hardware or agent support tickets. Everything is running smoothly!
                         </div>
+                    @endforelse
+                </div>
+            </div>
+
+            <!-- Geographic Distribution Card -->
+            <div class="card border-0 rounded-4 p-4" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08) !important;">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <div>
+                        <h6 class="text-white fw-bold mb-0"><i class="fa-solid fa-map-location-dot text-emerald-400 me-2"></i>Network State Coverage</h6>
+                        <small class="text-white-50 text-2xs">Regional footprint of active enrollment stations</small>
+                    </div>
+                    <span class="badge bg-emerald-500/20 text-emerald-400 rounded-pill text-2xs border border-emerald-500/30">{{ count($stateDistribution) }} Regions</span>
+                </div>
+
+                <div class="d-flex flex-column gap-3">
+                    @forelse($stateDistribution as $dist)
+                        @php $pct = $totalAgents > 0 ? round(($dist->count / $totalAgents) * 100) : 0; @endphp
+                        <div>
+                            <div class="d-flex justify-content-between text-xs mb-1">
+                                <span class="text-white fw-semibold">{{ $dist->state }}</span>
+                                <span class="text-white-50">{{ $dist->count }} agents ({{ $pct }}%)</span>
+                            </div>
+                            <div class="progress rounded-pill" style="height: 6px; background: rgba(255,255,255,0.08);">
+                                <div class="progress-bar bg-emerald-500 rounded-pill" role="progressbar" style="width: {{ $pct }}%"></div>
+                            </div>
+                        </div>
+                    @empty
+                        <p class="text-white-50 text-xs mb-0 text-center py-2">No regional distribution data available yet.</p>
                     @endforelse
                 </div>
             </div>

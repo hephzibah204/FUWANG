@@ -82,6 +82,14 @@ class AdminAgentController extends Controller
         $topAgents = EnrollmentAgent::where('status', 'approved')->orderByDesc('monthly_enrollments')->orderByDesc('total_enrollments')->take(5)->get();
         $mva = EnrollmentAgent::where('is_mva_of_month', true)->first();
 
+        $stateDistribution = EnrollmentAgent::selectRaw('state, count(*) as count')
+            ->whereNotNull('state')
+            ->where('state', '!=', '')
+            ->groupBy('state')
+            ->orderByDesc('count')
+            ->take(6)
+            ->get();
+
         return view('admin.agents.overview', compact(
             'totalAgents',
             'approvedAgents',
@@ -99,7 +107,8 @@ class AdminAgentController extends Controller
             'recentAgents',
             'recentIssues',
             'topAgents',
-            'mva'
+            'mva',
+            'stateDistribution'
         ));
     }
 
@@ -200,6 +209,104 @@ class AdminAgentController extends Controller
         $agent->delete();
 
         return redirect()->route('admin.agents.index')->with('success', "Enrollment Agent profile for {$agentName} has been deleted. Their main user account remains active.");
+    }
+
+    public function updateEnrollments(Request $request, $id)
+    {
+        $agent = EnrollmentAgent::findOrFail($id);
+
+        $validated = $request->validate([
+            'total_enrollments' => ['required', 'integer', 'min:0'],
+            'monthly_enrollments' => ['nullable', 'integer', 'min:0'],
+        ]);
+
+        $validated['monthly_enrollments'] = $validated['monthly_enrollments'] ?? 0;
+
+        $agent->update($validated);
+
+        return back()->with('success', "Enrollment statistics for {$agent->full_name} updated successfully! (Total: " . number_format($agent->total_enrollments) . ", Monthly: " . number_format($agent->monthly_enrollments) . ")");
+    }
+
+    public function bulkAction(Request $request)
+    {
+        $action = $request->input('action');
+        $agentIds = $request->input('agent_ids', []);
+
+        if (empty($agentIds) || !is_array($agentIds)) {
+            return back()->with('error', 'Please select at least one agent to perform this action.');
+        }
+
+        switch ($action) {
+            case 'approve':
+                $count = EnrollmentAgent::whereIn('id', $agentIds)->update([
+                    'status' => 'approved',
+                    'approved_at' => now(),
+                    'rejection_reason' => null,
+                ]);
+                return back()->with('success', "Successfully approved {$count} enrollment agent(s).");
+
+            case 'suspend':
+                $count = EnrollmentAgent::whereIn('id', $agentIds)->update([
+                    'status' => 'suspended',
+                ]);
+                return back()->with('success', "Successfully suspended {$count} enrollment agent(s).");
+
+            case 'delete':
+                $count = EnrollmentAgent::whereIn('id', $agentIds)->delete();
+                return back()->with('success', "Successfully deleted {$count} enrollment agent profile(s). User accounts remain intact.");
+
+            case 'export':
+                $agents = EnrollmentAgent::with('user')->whereIn('id', $agentIds)->get();
+                $filename = 'enrollment_agents_export_' . date('Y_m_d_His') . '.csv';
+
+                $headers = [
+                    'Content-Type' => 'text/csv',
+                    'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+                ];
+
+                $callback = function () use ($agents) {
+                    $handle = fopen('php://output', 'w');
+                    fputcsv($handle, [
+                        'ID',
+                        'Full Name',
+                        'Phone Number',
+                        'Email',
+                        'NIN',
+                        'BVN',
+                        'State',
+                        'Machine IMEI',
+                        'Status',
+                        'License Status',
+                        'Total Enrollments',
+                        'Monthly Enrollments',
+                        'Created At',
+                    ]);
+
+                    foreach ($agents as $agent) {
+                        fputcsv($handle, [
+                            $agent->id,
+                            $agent->full_name,
+                            $agent->phone_number,
+                            $agent->user?->email ?? ($agent->meta['email'] ?? ''),
+                            $agent->nin,
+                            $agent->bvn,
+                            $agent->state,
+                            $agent->machine_imei,
+                            $agent->status,
+                            $agent->license_status ?? 'unpaid',
+                            $agent->total_enrollments,
+                            $agent->monthly_enrollments,
+                            $agent->created_at?->format('Y-m-d H:i:s'),
+                        ]);
+                    }
+                    fclose($handle);
+                };
+
+                return response()->stream($callback, 200, $headers);
+
+            default:
+                return back()->with('error', 'Invalid bulk action requested.');
+        }
     }
 
     public function leaderboard()

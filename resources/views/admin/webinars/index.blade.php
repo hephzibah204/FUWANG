@@ -84,9 +84,9 @@
                                 <span class="d-block text-muted text-2xs">{{ $webinar->scheduled_at->format('h:i A') }} ({{ $webinar->duration_minutes }}m)</span>
                             </td>
                             <td>
-                                <span class="badge bg-primary-subtle text-primary rounded-pill px-3 py-1 font-weight-bold">
-                                    {{ $webinar->registrations_count }} Registered
-                                </span>
+                                <a href="{{ route('admin.webinars.show', $webinar->id) }}" class="badge bg-primary-subtle text-primary rounded-pill px-3 py-1.5 font-weight-bold text-decoration-none hover-primary d-inline-flex align-items-center gap-1.5" title="View Registered Attendees">
+                                    <i class="fa-solid fa-users"></i> {{ $webinar->registrations_count }} @if($webinar->max_attendees) / {{ $webinar->max_attendees }} @endif
+                                </a>
                             </td>
                             <td>
                                 @if($webinar->price > 0)

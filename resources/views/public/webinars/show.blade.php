@@ -184,6 +184,29 @@
                         </button>
                     </form>
                 @endif
+
+                <!-- Share Masterclass -->
+                <div class="mt-4 pt-3 border-top border-white-10 text-center">
+                    <span class="text-white-50 text-2xs text-uppercase font-weight-bold d-block mb-2">Share This Masterclass</span>
+                    <div class="d-flex justify-content-center gap-2">
+                        @php
+                            $shareUrl = urlencode(url()->current());
+                            $shareText = urlencode("Join me at this upcoming masterclass: " . $webinar->title);
+                        @endphp
+                        <a href="https://api.whatsapp.com/send?text={{ $shareText }}%20{{ $shareUrl }}" target="_blank" class="btn btn-sm btn-outline-success rounded-circle d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;" title="Share on WhatsApp">
+                            <i class="fa-brands fa-whatsapp"></i>
+                        </a>
+                        <a href="https://twitter.com/intent/tweet?text={{ $shareText }}&url={{ $shareUrl }}" target="_blank" class="btn btn-sm btn-outline-light rounded-circle d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;" title="Share on X">
+                            <i class="fa-brands fa-x-twitter"></i>
+                        </a>
+                        <a href="https://www.linkedin.com/sharing/share-offsite/?url={{ $shareUrl }}" target="_blank" class="btn btn-sm btn-outline-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;" title="Share on LinkedIn">
+                            <i class="fa-brands fa-linkedin-in"></i>
+                        </a>
+                        <button type="button" class="btn btn-sm btn-outline-secondary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;" title="Copy Link" onclick="navigator.clipboard.writeText(window.location.href); alert('Webinar link copied to clipboard!');">
+                            <i class="fa-solid fa-link"></i>
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

@@ -108,6 +108,58 @@ class AdminAgentNotificationController extends Controller
         return back()->with('success', $feedback);
     }
 
+    public function sendDirectNotification(Request $request, $id)
+    {
+        $agent = EnrollmentAgent::with('user')->findOrFail($id);
+
+        $validated = $request->validate([
+            'subject' => ['required', 'string', 'max:255'],
+            'message' => ['required', 'string', 'max:5000'],
+            'send_email' => ['nullable', 'boolean'],
+        ]);
+
+        $admin = Auth::guard('admin')->user();
+        $sendEmail = !empty($validated['send_email']);
+        $emailSent = false;
+        $recipientEmail = $agent->user?->email ?? ($agent->meta['email'] ?? null);
+
+        if ($sendEmail && !empty($recipientEmail) && filter_var($recipientEmail, FILTER_VALIDATE_EMAIL)) {
+            try {
+                Mail::to($recipientEmail)->send(new AgentBroadcastMail(
+                    $agent->full_name,
+                    $validated['subject'],
+                    $validated['message']
+                ));
+                $emailSent = true;
+            } catch (\Throwable $e) {
+                Log::warning("Failed to dispatch direct email to agent {$agent->id}: " . $e->getMessage());
+            }
+        }
+
+        Broadcast::create([
+            'subject' => $validated['subject'],
+            'message' => $validated['message'],
+            'target_audience' => 'enrollment_agents',
+            'status' => 'sent',
+            'sent_at' => now(),
+            'created_by' => $admin?->id,
+            'meta' => [
+                'direct_agent_id' => $agent->id,
+                'agent_name' => $agent->full_name,
+                'target_status' => 'direct',
+                'send_email' => $sendEmail,
+                'email_sent' => $emailSent,
+            ],
+        ]);
+
+        $msg = "Direct notification successfully sent to {$agent->full_name}.";
+        if ($emailSent) {
+            $msg .= " Email dispatched to {$recipientEmail}.";
+        }
+
+        return back()->with('success', $msg);
+    }
+
     public function destroy($id)
     {
         $broadcast = Broadcast::findOrFail($id);

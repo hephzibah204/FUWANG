@@ -793,9 +793,12 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
                 });
 
                 // Specific Agent operations
+                Route::post('/bulk-action', [App\Http\Controllers\Admin\AdminAgentController::class, 'bulkAction'])->name('bulk_action');
                 Route::get('/{id}', [App\Http\Controllers\Admin\AdminAgentController::class, 'show'])->name('show');
                 Route::get('/{id}/edit', [App\Http\Controllers\Admin\AdminAgentController::class, 'edit'])->name('edit');
                 Route::put('/{id}', [App\Http\Controllers\Admin\AdminAgentController::class, 'update'])->name('update');
+                Route::post('/{id}/enrollments', [App\Http\Controllers\Admin\AdminAgentController::class, 'updateEnrollments'])->name('update_enrollments');
+                Route::post('/{id}/notify', [App\Http\Controllers\Admin\AdminAgentNotificationController::class, 'sendDirectNotification'])->name('notify_direct');
                 Route::match(['GET', 'POST'], '/{id}/approve', [App\Http\Controllers\Admin\AdminAgentController::class, 'approve'])->name('approve');
                 Route::match(['GET', 'POST'], '/{id}/reject', [App\Http\Controllers\Admin\AdminAgentController::class, 'reject'])->name('reject');
                 Route::match(['GET', 'POST'], '/{id}/suspend', [App\Http\Controllers\Admin\AdminAgentController::class, 'suspend'])->name('suspend');

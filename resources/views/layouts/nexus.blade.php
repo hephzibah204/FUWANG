@@ -489,14 +489,15 @@
             @php
                 $sidebarPendingAgents = \App\Models\EnrollmentAgent::where('status', 'pending')->count();
                 $sidebarOpenAgentIssues = \App\Models\Ticket::whereNotNull('agent_id')->where('status', 'open')->count();
-                $sidebarAgentAttentionCount = $sidebarPendingAgents + $sidebarOpenAgentIssues;
+                $sidebarPendingLicenses = \App\Models\EnrollmentAgent::where('license_status', 'pending_review')->count();
+                $sidebarAgentAttentionCount = $sidebarPendingAgents + $sidebarOpenAgentIssues + $sidebarPendingLicenses;
             @endphp
             <div class="nav-item has-submenu {{ Request::routeIs('admin.agents.*') ? 'open' : '' }}">
                 <button type="button" class="submenu-toggle {{ Request::routeIs('admin.agents.*') ? 'active' : '' }}" aria-expanded="{{ Request::routeIs('admin.agents.*') ? 'true' : 'false' }}">
                     <i class="fa-solid fa-id-card-clip text-emerald-400"></i>
                     <span class="nav-text font-medium">Agency Network</span>
                     @if($sidebarAgentAttentionCount > 0)
-                        <span class="badge bg-danger rounded-pill px-1.5 py-0.5 text-2xs ms-1" title="{{ $sidebarPendingAgents }} pending approvals, {{ $sidebarOpenAgentIssues }} open tickets">{{ $sidebarAgentAttentionCount }}</span>
+                        <span class="badge bg-danger rounded-pill px-1.5 py-0.5 text-2xs ms-1" title="{{ $sidebarPendingAgents }} pending approvals, {{ $sidebarPendingLicenses }} license reviews, {{ $sidebarOpenAgentIssues }} open tickets">{{ $sidebarAgentAttentionCount }}</span>
                     @endif
                     <i class="fa-solid fa-chevron-down ml-auto small submenu-arrow"></i>
                 </button>
@@ -512,6 +513,9 @@
                     </a>
                     <a href="{{ route('admin.agents.licenses.index') }}" class="{{ Request::routeIs('admin.agents.licenses.*') ? 'active' : '' }}">
                         <i class="fa-solid fa-certificate me-2 text-xs text-warning opacity-75"></i> Station Licenses
+                        @if($sidebarPendingLicenses > 0)
+                            <span class="badge bg-warning text-dark rounded-pill text-2xs ms-auto">{{ $sidebarPendingLicenses }}</span>
+                        @endif
                     </a>
                     <a href="{{ route('admin.agents.notifications.index') }}" class="{{ Request::routeIs('admin.agents.notifications.*') ? 'active' : '' }}">
                         <i class="fa-solid fa-bullhorn me-2 text-xs opacity-75"></i> Broadcast & Alerts
