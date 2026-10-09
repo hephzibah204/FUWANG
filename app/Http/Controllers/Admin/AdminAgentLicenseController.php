@@ -105,6 +105,9 @@ class AdminAgentLicenseController extends Controller
                 : 'ADMIN-' . date('Ymd') . '-' . strtoupper(Str::random(4))
         );
 
+        AgentLicenseTransaction::ensureSchemaIntegrity();
+        PreApprovedAgent::ensureSchemaIntegrity();
+
         DB::transaction(function () use ($agent, $admin, $method, $feeAmount, $paymentDate, $ref, $request) {
             $agent->update([
                 'license_status' => $method === 'waived' ? 'waived' : 'paid',
@@ -132,11 +135,23 @@ class AdminAgentLicenseController extends Controller
 
             // If agent is linked to pre_approved_agents, update master roster record too
             if ($agent->company_agent_code) {
-                PreApprovedAgent::where('agent_code', $agent->company_agent_code)->update([
-                    'has_paid_license' => true,
-                    'license_payment_method' => $method,
-                    'license_notes' => 'Marked paid by admin: ' . $request->admin_notes,
-                ]);
+                try {
+                    $updateData = [];
+                    if (Schema::hasColumn('pre_approved_agents', 'has_paid_license')) {
+                        $updateData['has_paid_license'] = true;
+                    }
+                    if (Schema::hasColumn('pre_approved_agents', 'license_payment_method')) {
+                        $updateData['license_payment_method'] = $method;
+                    }
+                    if (Schema::hasColumn('pre_approved_agents', 'license_notes')) {
+                        $updateData['license_notes'] = 'Marked paid by admin: ' . $request->admin_notes;
+                    }
+                    if (!empty($updateData)) {
+                        PreApprovedAgent::where('agent_code', $agent->company_agent_code)->update($updateData);
+                    }
+                } catch (\Throwable $preEx) {
+                    \Illuminate\Support\Facades\Log::warning('Notice updating pre_approved_agents in markPaid: ' . $preEx->getMessage());
+                }
             }
         });
 
@@ -161,6 +176,9 @@ class AdminAgentLicenseController extends Controller
         $meta = (array) ($agent->license_proof_meta ?? []);
         $amount = (float) ($meta['amount_paid'] ?? EnrollmentAgent::getEffectiveLicenseFee());
         $reference = (string) ($meta['transaction_reference'] ?? $agent->license_payment_reference ?: ('PROOF-APPV-' . $agent->id));
+
+        AgentLicenseTransaction::ensureSchemaIntegrity();
+        PreApprovedAgent::ensureSchemaIntegrity();
 
         DB::transaction(function () use ($agent, $admin, $amount, $reference, $request) {
             $agent->update([
@@ -188,10 +206,20 @@ class AdminAgentLicenseController extends Controller
             );
 
             if ($agent->company_agent_code) {
-                PreApprovedAgent::where('agent_code', $agent->company_agent_code)->update([
-                    'has_paid_license' => true,
-                    'license_payment_method' => 'offline_proof',
-                ]);
+                try {
+                    $updateData = [];
+                    if (Schema::hasColumn('pre_approved_agents', 'has_paid_license')) {
+                        $updateData['has_paid_license'] = true;
+                    }
+                    if (Schema::hasColumn('pre_approved_agents', 'license_payment_method')) {
+                        $updateData['license_payment_method'] = 'offline_proof';
+                    }
+                    if (!empty($updateData)) {
+                        PreApprovedAgent::where('agent_code', $agent->company_agent_code)->update($updateData);
+                    }
+                } catch (\Throwable $preEx) {
+                    \Illuminate\Support\Facades\Log::warning('Notice updating pre_approved_agents in approveProof: ' . $preEx->getMessage());
+                }
             }
         });
 
