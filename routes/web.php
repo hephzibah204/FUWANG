@@ -792,6 +792,7 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
                 Route::prefix('licenses')->name('licenses.')->group(function () {
                     Route::get('/', [App\Http\Controllers\Admin\AdminAgentLicenseController::class, 'index'])->name('index');
                     Route::post('/{id}/mark-paid', [App\Http\Controllers\Admin\AdminAgentLicenseController::class, 'markPaid'])->name('mark_paid');
+                    Route::post('/{id}/update', [App\Http\Controllers\Admin\AdminAgentLicenseController::class, 'update'])->name('update');
                     Route::post('/{id}/approve-proof', [App\Http\Controllers\Admin\AdminAgentLicenseController::class, 'approveProof'])->name('approve_proof');
                     Route::post('/{id}/reject-proof', [App\Http\Controllers\Admin\AdminAgentLicenseController::class, 'rejectProof'])->name('reject_proof');
                     Route::post('/{id}/revoke', [App\Http\Controllers\Admin\AdminAgentLicenseController::class, 'revoke'])->name('revoke');

@@ -10,6 +10,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class AdminAgentLicenseController extends Controller
@@ -163,6 +164,192 @@ class AdminAgentLicenseController extends Controller
         };
 
         return back()->with('success', "Agent {$agent->full_name} license marked as PAID ({$methodLabel}).");
+    }
+
+    /**
+     * Update / Correct existing license details (price, status, payment method, reference, notes)
+     */
+    public function update(Request $request, $id)
+    {
+        $agent = EnrollmentAgent::findOrFail($id);
+
+        $request->validate([
+            'license_status' => ['required', 'string', 'in:paid,unpaid,pending_review,waived'],
+            'amount' => ['nullable', 'numeric', 'min:0'],
+            'payment_method' => ['nullable', 'string', 'in:legacy_pre_platform,admin_manual,waived,wallet,paystack,offline_proof'],
+            'payment_reference' => ['nullable', 'string', 'max:120'],
+            'payment_date' => ['nullable', 'date'],
+            'admin_notes' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $admin = Auth::guard('admin')->user();
+        $status = $request->license_status;
+        $method = $request->payment_method ?: ($agent->license_payment_method ?: 'admin_manual');
+
+        AgentLicenseTransaction::ensureSchemaIntegrity();
+        PreApprovedAgent::ensureSchemaIntegrity();
+
+        DB::transaction(function () use ($agent, $admin, $status, $method, $request) {
+            if ($status === 'paid') {
+                $amount = $request->filled('amount') 
+                    ? (float) $request->amount 
+                    : (float) ($agent->license_fee_paid ?? EnrollmentAgent::getEffectiveLicenseFee());
+                $paidAt = $request->filled('payment_date') 
+                    ? Carbon::parse($request->payment_date) 
+                    : ($agent->license_paid_at ?: now());
+                $ref = $request->filled('payment_reference') 
+                    ? $request->payment_reference 
+                    : ($agent->license_payment_reference ?: 'ADMIN-' . date('Ymd') . '-' . strtoupper(Str::random(4)));
+
+                $agent->update([
+                    'license_status' => 'paid',
+                    'license_fee_amount' => $amount,
+                    'license_fee_paid' => $amount,
+                    'license_payment_method' => $method,
+                    'license_payment_reference' => $ref,
+                    'license_paid_at' => $paidAt,
+                    'license_verified_by' => $admin?->id ?: $agent->license_verified_by,
+                    'license_verified_at' => $agent->license_verified_at ?: now(),
+                    'license_admin_notes' => $request->admin_notes,
+                    'license_rejection_reason' => null,
+                ]);
+
+                AgentLicenseTransaction::createSafe([
+                    'agent_id' => $agent->id,
+                    'user_id' => $agent->user_id,
+                    'amount' => $amount,
+                    'payment_method' => $method,
+                    'reference' => $ref,
+                    'status' => 'completed',
+                    'admin_id' => $admin?->id,
+                    'notes' => 'License updated/corrected by Admin ' . ($admin?->name ?? '') . ($request->admin_notes ? ': ' . $request->admin_notes : ''),
+                ]);
+
+                if ($agent->company_agent_code) {
+                    try {
+                        $updateData = [];
+                        if (Schema::hasColumn('pre_approved_agents', 'has_paid_license')) {
+                            $updateData['has_paid_license'] = true;
+                        }
+                        if (Schema::hasColumn('pre_approved_agents', 'license_payment_method')) {
+                            $updateData['license_payment_method'] = $method;
+                        }
+                        if (Schema::hasColumn('pre_approved_agents', 'license_notes')) {
+                            $updateData['license_notes'] = 'License updated by admin: ' . $request->admin_notes;
+                        }
+                        if (!empty($updateData)) {
+                            PreApprovedAgent::where('agent_code', $agent->company_agent_code)->update($updateData);
+                        }
+                    } catch (\Throwable $preEx) {
+                        \Illuminate\Support\Facades\Log::warning('Notice updating pre_approved_agents in update license: ' . $preEx->getMessage());
+                    }
+                }
+            } elseif ($status === 'waived') {
+                $ref = $request->filled('payment_reference') 
+                    ? $request->payment_reference 
+                    : ($agent->license_payment_reference ?: 'WAIVED-' . ($agent->company_agent_code ?: $agent->id));
+
+                $agent->update([
+                    'license_status' => 'waived',
+                    'license_fee_amount' => 0.00,
+                    'license_fee_paid' => 0.00,
+                    'license_payment_method' => 'waived',
+                    'license_payment_reference' => $ref,
+                    'license_paid_at' => $request->filled('payment_date') ? Carbon::parse($request->payment_date) : ($agent->license_paid_at ?: now()),
+                    'license_verified_by' => $admin?->id ?: $agent->license_verified_by,
+                    'license_verified_at' => $agent->license_verified_at ?: now(),
+                    'license_admin_notes' => $request->admin_notes,
+                    'license_rejection_reason' => null,
+                ]);
+
+                AgentLicenseTransaction::createSafe([
+                    'agent_id' => $agent->id,
+                    'user_id' => $agent->user_id,
+                    'amount' => 0.00,
+                    'payment_method' => 'waived',
+                    'reference' => $ref,
+                    'status' => 'completed',
+                    'admin_id' => $admin?->id,
+                    'notes' => 'License waived by Admin ' . ($admin?->name ?? '') . ($request->admin_notes ? ': ' . $request->admin_notes : ''),
+                ]);
+
+                if ($agent->company_agent_code) {
+                    try {
+                        $updateData = [];
+                        if (Schema::hasColumn('pre_approved_agents', 'has_paid_license')) {
+                            $updateData['has_paid_license'] = true;
+                        }
+                        if (Schema::hasColumn('pre_approved_agents', 'license_payment_method')) {
+                            $updateData['license_payment_method'] = 'waived';
+                        }
+                        if (Schema::hasColumn('pre_approved_agents', 'license_notes')) {
+                            $updateData['license_notes'] = 'Waived by admin: ' . $request->admin_notes;
+                        }
+                        if (!empty($updateData)) {
+                            PreApprovedAgent::where('agent_code', $agent->company_agent_code)->update($updateData);
+                        }
+                    } catch (\Throwable $preEx) {}
+                }
+            } elseif ($status === 'pending_review') {
+                $amount = $request->filled('amount') ? (float) $request->amount : (float) ($agent->license_fee_paid ?? EnrollmentAgent::getEffectiveLicenseFee());
+                $agent->update([
+                    'license_status' => 'pending_review',
+                    'license_fee_amount' => $amount,
+                    'license_payment_method' => $method ?: 'offline_proof',
+                    'license_payment_reference' => $request->payment_reference ?: $agent->license_payment_reference,
+                    'license_admin_notes' => $request->admin_notes,
+                ]);
+
+                if ($agent->company_agent_code) {
+                    try {
+                        if (Schema::hasColumn('pre_approved_agents', 'has_paid_license')) {
+                            PreApprovedAgent::where('agent_code', $agent->company_agent_code)->update(['has_paid_license' => false]);
+                        }
+                    } catch (\Throwable $preEx) {}
+                }
+            } else { // 'unpaid'
+                $agent->update([
+                    'license_status' => 'unpaid',
+                    'license_fee_paid' => null,
+                    'license_payment_method' => null,
+                    'license_payment_reference' => null,
+                    'license_paid_at' => null,
+                    'license_admin_notes' => $request->admin_notes ?: 'License reset to unpaid by admin correction',
+                    'license_rejection_reason' => $request->admin_notes,
+                ]);
+
+                AgentLicenseTransaction::createSafe([
+                    'agent_id' => $agent->id,
+                    'user_id' => $agent->user_id,
+                    'amount' => 0.00,
+                    'payment_method' => 'admin_manual',
+                    'reference' => 'CORRECTION-UNPAID-' . date('Ymd') . '-' . strtoupper(Str::random(4)),
+                    'status' => 'rejected',
+                    'admin_id' => $admin?->id,
+                    'notes' => 'Status corrected to UNPAID by Admin ' . ($admin?->name ?? '') . ($request->admin_notes ? ': ' . $request->admin_notes : ''),
+                ]);
+
+                if ($agent->company_agent_code) {
+                    try {
+                        $updateData = [];
+                        if (Schema::hasColumn('pre_approved_agents', 'has_paid_license')) {
+                            $updateData['has_paid_license'] = false;
+                        }
+                        if (Schema::hasColumn('pre_approved_agents', 'license_payment_method')) {
+                            $updateData['license_payment_method'] = null;
+                        }
+                        if (Schema::hasColumn('pre_approved_agents', 'license_notes')) {
+                            $updateData['license_notes'] = 'Corrected to unpaid by admin: ' . $request->admin_notes;
+                        }
+                        if (!empty($updateData)) {
+                            PreApprovedAgent::where('agent_code', $agent->company_agent_code)->update($updateData);
+                        }
+                    } catch (\Throwable $preEx) {}
+                }
+            }
+        });
+
+        return back()->with('success', "License details for {$agent->full_name} have been updated successfully.");
     }
 
     /**

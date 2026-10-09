@@ -411,4 +411,63 @@ class AgentLicensePaymentTest extends TestCase
         $balanceRecord->refresh();
         $this->assertEquals($initialBalance, (float)$balanceRecord->user_balance);
     }
+
+    public function test_admin_can_update_license_details_to_correct_mistake_in_price_and_status(): void
+    {
+        // Initially marked paid at 100,000
+        $this->agent->update([
+            'license_status' => 'paid',
+            'license_fee_paid' => 100000,
+            'license_payment_method' => 'admin_manual',
+            'license_payment_reference' => 'INITIAL-REF',
+        ]);
+
+        // Admin corrects price to 80,000 and updates reference and notes
+        $response = $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.agents.licenses.update', $this->agent->id), [
+                'license_status' => 'paid',
+                'amount' => 80000.00,
+                'payment_method' => 'admin_manual',
+                'payment_reference' => 'CORRECTED-REF-99',
+                'payment_date' => now()->toDateString(),
+                'admin_notes' => 'Corrected amount from 100k to 80k due to ledger typo',
+            ]);
+
+        $response->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->agent->refresh();
+        $this->assertEquals('paid', $this->agent->license_status);
+        $this->assertEquals(80000.00, (float) $this->agent->license_fee_paid);
+        $this->assertEquals('CORRECTED-REF-99', $this->agent->license_payment_reference);
+        $this->assertEquals('Corrected amount from 100k to 80k due to ledger typo', $this->agent->license_admin_notes);
+    }
+
+    public function test_admin_can_update_license_status_from_paid_to_unpaid_when_marked_by_mistake(): void
+    {
+        // Initially agent is marked paid
+        $this->agent->update([
+            'license_status' => 'paid',
+            'license_fee_paid' => 100000,
+            'license_payment_method' => 'legacy_pre_platform',
+            'license_payment_reference' => 'ACCIDENTAL-PAID',
+        ]);
+
+        // Admin corrects status to unpaid
+        $response = $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.agents.licenses.update', $this->agent->id), [
+                'license_status' => 'unpaid',
+                'admin_notes' => 'Marked as paid by mistake - payment was never received',
+            ]);
+
+        $response->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->agent->refresh();
+        $this->assertEquals('unpaid', $this->agent->license_status);
+        $this->assertNull($this->agent->license_fee_paid);
+        $this->assertNull($this->agent->license_payment_method);
+        $this->assertNull($this->agent->license_payment_reference);
+    }
 }
+

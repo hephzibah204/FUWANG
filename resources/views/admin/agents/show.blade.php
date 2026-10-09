@@ -505,9 +505,9 @@
                     </div>
                 @endif
 
-                <!-- Modal Trigger: Mark License as Paid -->
+                <!-- Modal Trigger: Edit / Accredit License -->
                 <button type="button" class="btn btn-outline-warning rounded-pill w-100 py-2 fw-bold mb-2" data-toggle="modal" data-bs-toggle="modal" data-target="#markLicensePaidModal" data-bs-target="#markLicensePaidModal">
-                    <i class="fa-solid fa-pen-nib me-2"></i>{{ $agent->isLicensePaid() ? 'Edit License / Accreditation' : 'Mark License as Paid' }}
+                    <i class="fa-solid fa-pen-to-square me-2"></i>{{ $agent->isLicensePaid() ? 'Edit License / Price & Status' : 'Accredit License / Mark as Paid' }}
                 </button>
 
                 @if($agent->isLicensePaid())
@@ -647,26 +647,38 @@
         </div>
     </div>
 
-    <!-- Mark License Paid Modal -->
+    <!-- Edit License / Accredit Modal -->
     <div class="modal fade text-start" id="markLicensePaidModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content bg-dark text-white rounded-4 border border-success">
+            <div class="modal-content bg-dark text-white rounded-4 border border-warning">
                 <div class="modal-header border-secondary">
-                    <h5 class="modal-title fw-bold text-success"><i class="fa-solid fa-certificate me-2"></i>Accredit Station License</h5>
+                    <h5 class="modal-title fw-bold text-warning"><i class="fa-solid fa-pen-to-square me-2"></i>Edit License / Accreditation Details</h5>
                     <button type="button" class="close text-white" data-dismiss="modal" data-bs-dismiss="modal" style="background:transparent; border:0; font-size:1.5rem;">&times;</button>
                 </div>
-                <form action="{{ route('admin.agents.licenses.mark_paid', $agent->id) }}" method="POST">
+                <form action="{{ route('admin.agents.licenses.update', $agent->id) }}" method="POST">
                     @csrf
                     <div class="modal-body p-4">
-                        <p class="text-white-50 small mb-3">Accredit or update station license for <strong>{{ $agent->full_name }}</strong>.</p>
+                        <p class="text-white-50 small mb-3">Accredit or modify station license details for <strong>{{ $agent->full_name }}</strong>.</p>
+
+                        <div class="mb-3">
+                            <label class="form-label text-white small fw-bold">License Status</label>
+                            <select name="license_status" class="form-select bg-dark text-white border-secondary rounded-3" required>
+                                <option value="paid" {{ ($agent->license_status === 'paid' || $agent->isLicensePaid()) ? 'selected' : '' }}>Paid / Accredited</option>
+                                <option value="unpaid" {{ ($agent->license_status === 'unpaid' || $agent->isLicenseUnpaid()) ? 'selected' : '' }}>Unpaid</option>
+                                <option value="pending_review" {{ $agent->license_status === 'pending_review' ? 'selected' : '' }}>Pending Review (Offline Proof / Claim)</option>
+                                <option value="waived" {{ $agent->license_status === 'waived' ? 'selected' : '' }}>Special Exemption / Waived Fee</option>
+                            </select>
+                            <small class="text-white-50 text-2xs">Change status directly if an administrative error occurred.</small>
+                        </div>
 
                         <div class="mb-3">
                             <label class="form-label text-white small fw-bold">Payment Method / Origin</label>
-                            <select name="payment_method" class="form-select bg-dark text-white border-secondary rounded-3" required>
+                            <select name="payment_method" class="form-select bg-dark text-white border-secondary rounded-3">
                                 <option value="legacy_pre_platform" {{ $agent->license_payment_method === 'legacy_pre_platform' ? 'selected' : '' }}>Paid Before Website Launch (Pre-Website Legacy)</option>
                                 <option value="admin_manual" {{ $agent->license_payment_method === 'admin_manual' ? 'selected' : '' }}>Verified Offline Bank Transfer / Cash</option>
                                 <option value="paystack" {{ $agent->license_payment_method === 'paystack' ? 'selected' : '' }}>Direct Paystack Verified</option>
                                 <option value="wallet" {{ $agent->license_payment_method === 'wallet' ? 'selected' : '' }}>Wallet Balance</option>
+                                <option value="offline_proof" {{ $agent->license_payment_method === 'offline_proof' ? 'selected' : '' }}>Offline Bank Transfer Proof</option>
                                 <option value="waived" {{ $agent->license_payment_method === 'waived' ? 'selected' : '' }}>Special Exemption / Waived Fee</option>
                             </select>
                         </div>
@@ -674,6 +686,7 @@
                         <div class="mb-3">
                             <label class="form-label text-white small fw-bold">Amount Paid (₦)</label>
                             <input type="number" step="0.01" name="amount" value="{{ $agent->license_fee_paid ?? \App\Models\EnrollmentAgent::getEffectiveLicenseFee() }}" class="form-control text-white bg-dark border-secondary rounded-3">
+                            <small class="text-white-50 text-2xs">Correct the recorded payment amount if wrong.</small>
                         </div>
 
                         <div class="mb-3">
@@ -687,13 +700,13 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label text-white small fw-bold">Admin Audit Notes</label>
-                            <textarea name="admin_notes" rows="2" placeholder="e.g. Verified by management before platform launch" class="form-control text-white bg-dark border-secondary rounded-3">{{ $agent->license_admin_notes }}</textarea>
+                            <label class="form-label text-white small fw-bold">Admin Audit Notes / Correction Reason</label>
+                            <textarea name="admin_notes" rows="2" placeholder="e.g. Verified by management before platform launch or corrected amount" class="form-control text-white bg-dark border-secondary rounded-3">{{ $agent->license_admin_notes }}</textarea>
                         </div>
                     </div>
                     <div class="modal-footer border-secondary">
                         <button type="button" class="btn btn-outline-light rounded-pill" data-dismiss="modal" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-success rounded-pill px-4"><i class="fa-solid fa-check-circle me-1"></i>Save Accreditation</button>
+                        <button type="submit" class="btn btn-warning rounded-pill px-4 fw-bold"><i class="fa-solid fa-save me-1"></i>Save Changes</button>
                     </div>
                 </form>
             </div>

@@ -351,6 +351,11 @@
                                                 <i class="fa-solid fa-check-double me-2"></i>Mark License as Paid...
                                             </button>
                                         </li>
+                                        <li>
+                                            <button class="dropdown-item text-warning" type="button" data-toggle="modal" data-bs-toggle="modal" data-target="#editLicenseModal{{ $agent->id }}" data-bs-target="#editLicenseModal{{ $agent->id }}">
+                                                <i class="fa-solid fa-pen-to-square me-2"></i>Edit License / Corrections...
+                                            </button>
+                                        </li>
                                         @if($agent->isLicensePaid())
                                             <li>
                                                 <button class="dropdown-item text-danger" type="button" data-toggle="modal" data-bs-toggle="modal" data-target="#revokeModal{{ $agent->id }}" data-bs-target="#revokeModal{{ $agent->id }}">
@@ -409,6 +414,72 @@
                                                 <div class="modal-footer border-secondary">
                                                     <button type="button" class="btn btn-outline-light rounded-pill" data-dismiss="modal" data-bs-dismiss="modal">Cancel</button>
                                                     <button type="submit" class="btn btn-success rounded-pill px-4"><i class="fa-solid fa-check-circle me-1"></i>Accredit License</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Edit / Correction Modal -->
+                                <div class="modal fade text-start" id="editLicenseModal{{ $agent->id }}" tabindex="-1" aria-hidden="true">
+                                    <div class="modal-dialog modal-dialog-centered">
+                                        <div class="modal-content bg-dark text-white rounded-4 border border-warning">
+                                            <div class="modal-header border-secondary">
+                                                <h5 class="modal-title fw-bold text-warning"><i class="fa-solid fa-pen-to-square me-2"></i>Edit License / Corrections</h5>
+                                                <button type="button" class="close text-white" data-dismiss="modal" data-bs-dismiss="modal" style="background:transparent; border:0; font-size:1.5rem;">&times;</button>
+                                            </div>
+                                            <form action="{{ route('admin.agents.licenses.update', $agent->id) }}" method="POST">
+                                                @csrf
+                                                <div class="modal-body p-4">
+                                                    <p class="text-white-50 small mb-3">Modify or correct license details for <strong>{{ $agent->full_name }}</strong> ({{ $agent->company_agent_code ?: 'AG-' . $agent->id }}).</p>
+
+                                                    <div class="mb-3">
+                                                        <label class="form-label text-white small fw-bold">License Status</label>
+                                                        <select name="license_status" class="form-select bg-dark text-white border-secondary rounded-3" required>
+                                                            <option value="paid" {{ ($agent->license_status === 'paid' || $agent->isLicensePaid()) ? 'selected' : '' }}>Paid / Accredited</option>
+                                                            <option value="unpaid" {{ ($agent->license_status === 'unpaid' || $agent->isLicenseUnpaid()) ? 'selected' : '' }}>Unpaid</option>
+                                                            <option value="pending_review" {{ $agent->license_status === 'pending_review' ? 'selected' : '' }}>Pending Review (Offline Proof / Claim)</option>
+                                                            <option value="waived" {{ $agent->license_status === 'waived' ? 'selected' : '' }}>Special Exemption / Waived Fee</option>
+                                                        </select>
+                                                        <small class="text-white-50 text-2xs">Change status directly if an administrative error occurred.</small>
+                                                    </div>
+
+                                                    <div class="mb-3">
+                                                        <label class="form-label text-white small fw-bold">Payment Method / Origin</label>
+                                                        <select name="payment_method" class="form-select bg-dark text-white border-secondary rounded-3">
+                                                            <option value="legacy_pre_platform" {{ $agent->license_payment_method === 'legacy_pre_platform' ? 'selected' : '' }}>Paid Before Website Launch (Pre-Website Legacy)</option>
+                                                            <option value="admin_manual" {{ $agent->license_payment_method === 'admin_manual' ? 'selected' : '' }}>Verified Offline Bank Transfer / Cash</option>
+                                                            <option value="paystack" {{ $agent->license_payment_method === 'paystack' ? 'selected' : '' }}>Direct Paystack Verified</option>
+                                                            <option value="wallet" {{ $agent->license_payment_method === 'wallet' ? 'selected' : '' }}>Wallet Deduction</option>
+                                                            <option value="offline_proof" {{ $agent->license_payment_method === 'offline_proof' ? 'selected' : '' }}>Offline Bank Transfer Proof</option>
+                                                            <option value="waived" {{ $agent->license_payment_method === 'waived' ? 'selected' : '' }}>Special Exemption / Waived Fee</option>
+                                                        </select>
+                                                    </div>
+
+                                                    <div class="mb-3">
+                                                        <label class="form-label text-white small fw-bold">Amount Paid (₦)</label>
+                                                        <input type="number" step="0.01" name="amount" value="{{ $agent->license_fee_paid ?? $effectiveFee }}" class="form-control text-white bg-dark border-secondary rounded-3">
+                                                        <small class="text-white-50 text-2xs">Correct the recorded payment amount if wrong.</small>
+                                                    </div>
+
+                                                    <div class="mb-3">
+                                                        <label class="form-label text-white small fw-bold">Payment Reference / Receipt ID (Optional)</label>
+                                                        <input type="text" name="payment_reference" value="{{ $agent->license_payment_reference }}" placeholder="e.g. REC-12345 or Bank Transfer Ref" class="form-control text-white bg-dark border-secondary rounded-3">
+                                                    </div>
+
+                                                    <div class="mb-3">
+                                                        <label class="form-label text-white small fw-bold">Payment Date (Optional)</label>
+                                                        <input type="date" name="payment_date" value="{{ $agent->license_paid_at ? $agent->license_paid_at->format('Y-m-d') : date('Y-m-d') }}" class="form-control text-white bg-dark border-secondary rounded-3">
+                                                    </div>
+
+                                                    <div class="mb-3">
+                                                        <label class="form-label text-white small fw-bold">Admin Audit Notes / Correction Reason</label>
+                                                        <textarea name="admin_notes" rows="2" placeholder="e.g. Price adjusted due to bank ledger reconciliation error" class="form-control text-white bg-dark border-secondary rounded-3">{{ $agent->license_admin_notes }}</textarea>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer border-secondary">
+                                                    <button type="button" class="btn btn-outline-light rounded-pill" data-dismiss="modal" data-bs-dismiss="modal">Cancel</button>
+                                                    <button type="submit" class="btn btn-warning rounded-pill px-4 fw-bold"><i class="fa-solid fa-save me-1"></i>Save Changes</button>
                                                 </div>
                                             </form>
                                         </div>
