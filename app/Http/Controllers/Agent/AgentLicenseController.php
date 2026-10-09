@@ -96,7 +96,7 @@ class AgentLicenseController extends Controller
 
         $reference = 'LIC-' . date('Ymd') . '-' . $agent->id . '-' . strtoupper(Str::random(6));
 
-        AgentLicenseTransaction::create([
+        AgentLicenseTransaction::createSafe([
             'agent_id' => $agent->id,
             'user_id' => $user->id,
             'amount' => $fee,
@@ -206,7 +206,7 @@ class AgentLicenseController extends Controller
                 'license_rejection_reason' => null,
             ]);
 
-            AgentLicenseTransaction::updateOrCreate(
+            AgentLicenseTransaction::updateOrCreateSafe(
                 ['reference' => $reference],
                 [
                     'agent_id' => $agent->id,
@@ -273,7 +273,7 @@ class AgentLicenseController extends Controller
                 'license_rejection_reason' => null,
             ]);
 
-            AgentLicenseTransaction::create([
+            AgentLicenseTransaction::createSafe([
                 'agent_id' => $agent->id,
                 'user_id' => $user->id,
                 'amount' => $fee,
@@ -346,7 +346,7 @@ class AgentLicenseController extends Controller
                 'license_rejection_reason' => null,
             ]);
 
-            AgentLicenseTransaction::create([
+            AgentLicenseTransaction::createSafe([
                 'agent_id' => $agent->id,
                 'user_id' => $user->id,
                 'amount' => (float) $request->amount_paid,
@@ -409,7 +409,7 @@ class AgentLicenseController extends Controller
                 'license_rejection_reason' => null,
             ]);
 
-            AgentLicenseTransaction::create([
+            AgentLicenseTransaction::createSafe([
                 'agent_id' => $agent->id,
                 'user_id' => $user->id,
                 'amount' => 0.00,

@@ -302,7 +302,7 @@ class ProcessPaymentWebhookEvent implements ShouldQueue
                         'license_rejection_reason' => null,
                     ]);
 
-                    \App\Models\AgentLicenseTransaction::updateOrCreate(
+                    \App\Models\AgentLicenseTransaction::updateOrCreateSafe(
                         ['reference' => $reference],
                         [
                             'agent_id' => $agent->id,

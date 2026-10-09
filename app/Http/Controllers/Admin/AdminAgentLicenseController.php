@@ -119,7 +119,7 @@ class AdminAgentLicenseController extends Controller
                 'license_rejection_reason' => null,
             ]);
 
-            AgentLicenseTransaction::create([
+            AgentLicenseTransaction::createSafe([
                 'agent_id' => $agent->id,
                 'user_id' => $agent->user_id,
                 'amount' => $feeAmount,
@@ -173,7 +173,7 @@ class AdminAgentLicenseController extends Controller
                 'license_rejection_reason' => null,
             ]);
 
-            AgentLicenseTransaction::updateOrCreate(
+            AgentLicenseTransaction::updateOrCreateSafe(
                 ['agent_id' => $agent->id, 'gateway_reference' => $agent->license_payment_reference],
                 [
                     'user_id' => $agent->user_id,
