@@ -239,4 +239,79 @@ class EnrollmentAgent extends Model
         }
         return ['name' => 'Bronze Tier', 'badge' => 'bg-secondary', 'color' => '#94a3b8', 'bonus' => 'Standard Commission', 'next' => 'Silver Tier', 'needed' => 30 - $count];
     }
+
+    public function getPictureUrlAttribute(): ?string
+    {
+        if (empty($this->picture_path)) {
+            return null;
+        }
+
+        if (str_starts_with($this->picture_path, 'http://') || str_starts_with($this->picture_path, 'https://')) {
+            return $this->picture_path;
+        }
+
+        return route('agent.media', ['path' => $this->picture_path]);
+    }
+
+    public function getUtilityBillUrlAttribute(): ?string
+    {
+        if (empty($this->utility_bill_path)) {
+            return null;
+        }
+
+        if (str_starts_with($this->utility_bill_path, 'http://') || str_starts_with($this->utility_bill_path, 'https://')) {
+            return $this->utility_bill_path;
+        }
+
+        return route('agent.media', ['path' => $this->utility_bill_path]);
+    }
+
+    public function getBusinessDocUrlAttribute(): ?string
+    {
+        if (empty($this->business_registration_doc_path)) {
+            return null;
+        }
+
+        if (str_starts_with($this->business_registration_doc_path, 'http://') || str_starts_with($this->business_registration_doc_path, 'https://')) {
+            return $this->business_registration_doc_path;
+        }
+
+        return route('agent.media', ['path' => $this->business_registration_doc_path]);
+    }
+
+    public function getLicenseProofUrlAttribute(): ?string
+    {
+        if (empty($this->license_proof_path)) {
+            return null;
+        }
+
+        if (str_starts_with($this->license_proof_path, 'http://') || str_starts_with($this->license_proof_path, 'https://')) {
+            return $this->license_proof_path;
+        }
+
+        return route('agent.media', ['path' => $this->license_proof_path]);
+    }
+
+    public function getPictureLocalPathAttribute(): ?string
+    {
+        if (empty($this->picture_path)) {
+            return null;
+        }
+
+        $candidates = [
+            storage_path('app/public/' . $this->picture_path),
+            public_path('storage/' . $this->picture_path),
+            storage_path('app/' . $this->picture_path),
+            public_path($this->picture_path),
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (file_exists($candidate) && !is_dir($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
 }
+

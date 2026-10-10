@@ -134,8 +134,8 @@
             <tr>
                 <td class="body-cell">
                     <div class="photo-box">
-                        @if($agent->picture_path && file_exists(storage_path('app/public/' . $agent->picture_path)))
-                            <img src="{{ storage_path('app/public/' . $agent->picture_path) }}" class="photo-img" alt="Photo">
+                        @if($agent->picture_local_path)
+                            <img src="{{ $agent->picture_local_path }}" class="photo-img" alt="Photo">
                         @else
                             <div style="padding-top: 40px; color: #94a3b8; font-size: 10px;">PASSPORT</div>
                         @endif

@@ -20,7 +20,7 @@
 
                     @if($agent->picture_path)
                         <div class="mb-4">
-                            <img src="{{ asset('storage/' . $agent->picture_path) }}" alt="{{ $agent->full_name }}" class="rounded-circle border border-3 border-success shadow" style="width: 100px; height: 100px; object-fit: cover;">
+                            <img src="{{ $agent->picture_url }}" alt="{{ $agent->full_name }}" class="rounded-circle border border-3 border-success shadow" style="width: 100px; height: 100px; object-fit: cover;">
                         </div>
                     @endif
 

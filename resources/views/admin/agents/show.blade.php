@@ -49,7 +49,7 @@
                 <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 border-bottom border-secondary pb-3 mb-3">
                     <div class="d-flex align-items-center gap-3">
                         @if($agent->picture_path)
-                            <img src="{{ asset('storage/' . $agent->picture_path) }}" alt="Agent Photo" class="rounded-circle border border-primary" style="width: 64px; height: 64px; object-fit: cover;">
+                            <img src="{{ $agent->picture_url }}" alt="Agent Photo" class="rounded-circle border border-primary" style="width: 64px; height: 64px; object-fit: cover;">
                         @else
                             <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center text-white fw-bold fs-3" style="width: 64px; height: 64px;">
                                 {{ substr($agent->full_name, 0, 1) }}
@@ -194,74 +194,74 @@
                             <strong class="text-white d-block mb-2 text-xs text-uppercase tracking-wider">Utility Bill</strong>
                             @if($agent->utility_bill_path)
                                 @php
-                                    $isImg = preg_match('/\.(jpg|jpeg|png|webp)$/i', $agent->utility_bill_path);
-                                    $docUrl = asset('storage/' . $agent->utility_bill_path);
-                                @endphp
-                                @if($isImg)
-                                    <div class="mb-2 rounded overflow-hidden" style="height: 90px; background: #000;">
-                                        <img src="{{ $docUrl }}" class="w-100 h-100 object-fit-cover" alt="Utility Bill" role="button" onclick="openLightbox('{{ $docUrl }}', 'Utility Bill')">
-                                    </div>
-                                @else
-                                    <div class="mb-2 py-3 bg-dark rounded text-info">
-                                        <i class="fa-solid fa-file-pdf fa-2x"></i>
-                                    </div>
-                                @endif
-                                <div class="d-flex gap-1 justify-content-center">
-                                    @if($isImg)
-                                        <button type="button" class="btn btn-xs btn-outline-info rounded-pill px-2.5 py-1 text-2xs" onclick="openLightbox('{{ $docUrl }}', 'Utility Bill')">
-                                            <i class="fa-solid fa-eye me-1"></i>Preview
-                                        </button>
-                                    @endif
-                                    <a href="{{ $docUrl }}" target="_blank" class="btn btn-xs btn-outline-light rounded-pill px-2.5 py-1 text-2xs">
-                                        <i class="fa-solid fa-external-link me-1"></i>Open
-                                    </a>
-                                </div>
-                            @else
-                                <div class="py-4 text-white-50 small">
-                                    <i class="fa-solid fa-circle-exclamation text-danger mb-1 d-block"></i>
-                                    Not Uploaded
-                                </div>
-                            @endif
-                        </div>
-                    </div>
+                                     $isImg = preg_match('/\.(jpg|jpeg|png|webp)$/i', $agent->utility_bill_path);
+                                     $docUrl = $agent->utility_bill_url;
+                                 @endphp
+                                 @if($isImg)
+                                     <div class="mb-2 rounded overflow-hidden" style="height: 90px; background: #000;">
+                                         <img src="{{ $docUrl }}" class="w-100 h-100 object-fit-cover" alt="Utility Bill" role="button" onclick="openLightbox('{{ $docUrl }}', 'Utility Bill')">
+                                     </div>
+                                 @else
+                                     <div class="mb-2 py-3 bg-dark rounded text-info">
+                                         <i class="fa-solid fa-file-pdf fa-2x"></i>
+                                     </div>
+                                 @endif
+                                 <div class="d-flex gap-1 justify-content-center">
+                                     @if($isImg)
+                                         <button type="button" class="btn btn-xs btn-outline-info rounded-pill px-2.5 py-1 text-2xs" onclick="openLightbox('{{ $docUrl }}', 'Utility Bill')">
+                                             <i class="fa-solid fa-eye me-1"></i>Preview
+                                         </button>
+                                     @endif
+                                     <a href="{{ $docUrl }}" target="_blank" class="btn btn-xs btn-outline-light rounded-pill px-2.5 py-1 text-2xs">
+                                         <i class="fa-solid fa-external-link me-1"></i>Open
+                                     </a>
+                                 </div>
+                             @else
+                                 <div class="py-4 text-white-50 small">
+                                     <i class="fa-solid fa-circle-exclamation text-danger mb-1 d-block"></i>
+                                     Not Uploaded
+                                 </div>
+                             @endif
+                         </div>
+                     </div>
 
-                    <!-- Passport Picture -->
-                    <div class="col-md-4">
-                        <div class="card border-0 p-3 rounded-3 text-center h-100" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08) !important;">
-                            <strong class="text-white d-block mb-2 text-xs text-uppercase tracking-wider">Passport Photo</strong>
-                            @if($agent->picture_path)
-                                @php
-                                    $docUrl = asset('storage/' . $agent->picture_path);
-                                @endphp
-                                <div class="mb-2 rounded overflow-hidden" style="height: 90px; background: #000;">
-                                    <img src="{{ $docUrl }}" class="w-100 h-100 object-fit-cover" alt="Passport Photo" role="button" onclick="openLightbox('{{ $docUrl }}', 'Passport Photo')">
-                                </div>
-                                <div class="d-flex gap-1 justify-content-center">
-                                    <button type="button" class="btn btn-xs btn-outline-info rounded-pill px-2.5 py-1 text-2xs" onclick="openLightbox('{{ $docUrl }}', 'Passport Photo')">
-                                        <i class="fa-solid fa-eye me-1"></i>Preview
-                                    </button>
-                                    <a href="{{ $docUrl }}" target="_blank" class="btn btn-xs btn-outline-light rounded-pill px-2.5 py-1 text-2xs">
-                                        <i class="fa-solid fa-external-link me-1"></i>Open
-                                    </a>
-                                </div>
-                            @else
-                                <div class="py-4 text-white-50 small">
-                                    <i class="fa-solid fa-circle-exclamation text-danger mb-1 d-block"></i>
-                                    Not Uploaded
-                                </div>
-                            @endif
-                        </div>
-                    </div>
+                     <!-- Passport Picture -->
+                     <div class="col-md-4">
+                         <div class="card border-0 p-3 rounded-3 text-center h-100" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08) !important;">
+                             <strong class="text-white d-block mb-2 text-xs text-uppercase tracking-wider">Passport Photo</strong>
+                             @if($agent->picture_path)
+                                 @php
+                                     $docUrl = $agent->picture_url;
+                                 @endphp
+                                 <div class="mb-2 rounded overflow-hidden" style="height: 90px; background: #000;">
+                                     <img src="{{ $docUrl }}" class="w-100 h-100 object-fit-cover" alt="Passport Photo" role="button" onclick="openLightbox('{{ $docUrl }}', 'Passport Photo')">
+                                 </div>
+                                 <div class="d-flex gap-1 justify-content-center">
+                                     <button type="button" class="btn btn-xs btn-outline-info rounded-pill px-2.5 py-1 text-2xs" onclick="openLightbox('{{ $docUrl }}', 'Passport Photo')">
+                                         <i class="fa-solid fa-eye me-1"></i>Preview
+                                     </button>
+                                     <a href="{{ $docUrl }}" target="_blank" class="btn btn-xs btn-outline-light rounded-pill px-2.5 py-1 text-2xs">
+                                         <i class="fa-solid fa-external-link me-1"></i>Open
+                                     </a>
+                                 </div>
+                             @else
+                                 <div class="py-4 text-white-50 small">
+                                     <i class="fa-solid fa-circle-exclamation text-danger mb-1 d-block"></i>
+                                     Not Uploaded
+                                 </div>
+                             @endif
+                         </div>
+                     </div>
 
-                    <!-- CAC Business Doc -->
-                    <div class="col-md-4">
-                        <div class="card border-0 p-3 rounded-3 text-center h-100" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08) !important;">
-                            <strong class="text-white d-block mb-2 text-xs text-uppercase tracking-wider">CAC Business Doc</strong>
-                            @if($agent->business_registration_doc_path)
-                                @php
-                                    $isImg = preg_match('/\.(jpg|jpeg|png|webp)$/i', $agent->business_registration_doc_path);
-                                    $docUrl = asset('storage/' . $agent->business_registration_doc_path);
-                                @endphp
+                     <!-- CAC Business Doc -->
+                     <div class="col-md-4">
+                         <div class="card border-0 p-3 rounded-3 text-center h-100" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08) !important;">
+                             <strong class="text-white d-block mb-2 text-xs text-uppercase tracking-wider">CAC Business Doc</strong>
+                             @if($agent->business_registration_doc_path)
+                                 @php
+                                     $isImg = preg_match('/\.(jpg|jpeg|png|webp)$/i', $agent->business_registration_doc_path);
+                                     $docUrl = $agent->business_doc_url;
+                                 @endphp
                                 @if($isImg)
                                     <div class="mb-2 rounded overflow-hidden" style="height: 90px; background: #000;">
                                         <img src="{{ $docUrl }}" class="w-100 h-100 object-fit-cover" alt="CAC Doc" role="button" onclick="openLightbox('{{ $docUrl }}', 'CAC Business Document')">
@@ -462,7 +462,7 @@
                     <div class="p-3 bg-dark rounded-3 border border-secondary mb-3">
                         <strong class="text-white small d-block mb-2"><i class="fa-solid fa-file-invoice-dollar text-warning me-1"></i>Submitted Payment Proof:</strong>
                         <div class="d-flex align-items-center justify-content-between">
-                            <a href="{{ asset('storage/' . $agent->license_proof_path) }}" target="_blank" class="btn btn-sm btn-outline-info rounded-pill px-3">
+                            <a href="{{ $agent->license_proof_url }}" target="_blank" class="btn btn-sm btn-outline-info rounded-pill px-3">
                                 <i class="fa-solid fa-eye me-1"></i>View Proof Document
                             </a>
                             @if($agent->isLicensePendingReview())

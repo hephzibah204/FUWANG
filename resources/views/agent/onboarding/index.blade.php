@@ -87,7 +87,10 @@
                             <label class="form-label text-white small fw-bold">1. Utility Bill Upload (Electricity, Water, or Waste Bill)</label>
                             <input type="file" name="utility_bill" accept="image/png,image/jpeg,image/webp,application/pdf" class="form-control mb-2">
                             @if($agent->utility_bill_path)
-                                <div class="badge bg-success"><i class="fa-solid fa-check me-1"></i>Utility Bill Uploaded</div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="badge bg-success"><i class="fa-solid fa-check me-1"></i>Utility Bill Uploaded</div>
+                                    <a href="{{ $agent->utility_bill_url }}" target="_blank" class="btn btn-xs btn-outline-info rounded-pill px-2.5 py-1 text-2xs"><i class="fa-solid fa-eye me-1"></i>View</a>
+                                </div>
                             @else
                                 <small class="text-danger">* Required. PNG, JPG, WEBP, or PDF (max 5MB).</small>
                             @endif
@@ -97,7 +100,11 @@
                             <label class="form-label text-white small fw-bold">2. Agent Passport Picture / Live Photo</label>
                             <input type="file" name="picture" accept="image/png,image/jpeg,image/webp" class="form-control mb-2">
                             @if($agent->picture_path)
-                                <div class="badge bg-success"><i class="fa-solid fa-check me-1"></i>Passport Picture Uploaded</div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <img src="{{ $agent->picture_url }}" alt="Passport Photo" class="rounded border border-success" style="width: 44px; height: 44px; object-fit: cover;">
+                                    <div class="badge bg-success"><i class="fa-solid fa-check me-1"></i>Passport Picture Uploaded</div>
+                                    <a href="{{ $agent->picture_url }}" target="_blank" class="btn btn-xs btn-outline-info rounded-pill px-2.5 py-1 text-2xs"><i class="fa-solid fa-eye me-1"></i>View</a>
+                                </div>
                             @else
                                 <small class="text-danger">* Required. PNG, JPG, or WEBP (max 5MB).</small>
                             @endif
@@ -113,7 +120,10 @@
                             <label class="form-label text-white small fw-bold">4. CAC / Business Registration Certificate <span class="badge bg-secondary font-monospace" style="font-size: 0.65rem;">Optional</span></label>
                             <input type="file" name="business_doc" accept="image/png,image/jpeg,image/webp,application/pdf" class="form-control mb-2">
                             @if($agent->business_registration_doc_path)
-                                <div class="badge bg-info"><i class="fa-solid fa-check me-1"></i>Business Document Uploaded</div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="badge bg-info"><i class="fa-solid fa-check me-1"></i>Business Document Uploaded</div>
+                                    <a href="{{ $agent->business_doc_url }}" target="_blank" class="btn btn-xs btn-outline-info rounded-pill px-2.5 py-1 text-2xs"><i class="fa-solid fa-eye me-1"></i>View</a>
+                                </div>
                             @else
                                 <small class="text-white-50" style="font-size: 0.75rem;">PNG, JPG, WEBP, or PDF (max 5MB). Increases profile trust rating.</small>
                             @endif

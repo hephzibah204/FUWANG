@@ -58,6 +58,7 @@ class AgentOnboardingController extends Controller
                 Storage::disk('public')->delete($agent->utility_bill_path);
             }
             $updates['utility_bill_path'] = $request->file('utility_bill')->store('agent_kyc', 'public');
+            AgentMediaController::mirrorToPublicStorage($updates['utility_bill_path']);
         }
 
         if ($request->hasFile('picture')) {
@@ -65,6 +66,7 @@ class AgentOnboardingController extends Controller
                 Storage::disk('public')->delete($agent->picture_path);
             }
             $updates['picture_path'] = $request->file('picture')->store('agent_kyc', 'public');
+            AgentMediaController::mirrorToPublicStorage($updates['picture_path']);
         }
 
         if ($request->hasFile('business_doc')) {
@@ -72,6 +74,7 @@ class AgentOnboardingController extends Controller
                 Storage::disk('public')->delete($agent->business_registration_doc_path);
             }
             $updates['business_registration_doc_path'] = $request->file('business_doc')->store('agent_kyc', 'public');
+            AgentMediaController::mirrorToPublicStorage($updates['business_registration_doc_path']);
         }
 
         if ($request->filled('business_registration_number')) {

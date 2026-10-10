@@ -164,7 +164,7 @@
                                 </td>
                                 <td>
                                     @if($pAgent->license_proof_path)
-                                        <a href="{{ asset('storage/' . $pAgent->license_proof_path) }}" target="_blank" class="btn btn-sm btn-outline-info rounded-pill px-3">
+                                        <a href="{{ $pAgent->license_proof_url }}" target="_blank" class="btn btn-sm btn-outline-info rounded-pill px-3">
                                             <i class="fa-solid fa-eye me-1"></i>View Proof
                                         </a>
                                     @else

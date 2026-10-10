@@ -42,7 +42,7 @@
                     <!-- Photo with holographic glow -->
                     <div class="position-relative d-inline-block mb-3">
                         @if($agent->picture_path)
-                            <img src="{{ asset('storage/' . $agent->picture_path) }}" alt="{{ $agent->full_name }}" class="rounded-3 shadow" style="width: 125px; height: 140px; object-fit: cover; border: 3px solid #38bdf8;">
+                            <img src="{{ $agent->picture_url }}" alt="{{ $agent->full_name }}" class="rounded-3 shadow" style="width: 125px; height: 140px; object-fit: cover; border: 3px solid #38bdf8;">
                         @else
                             <div class="rounded-3 d-flex align-items-center justify-content-center bg-secondary text-white" style="width: 125px; height: 140px; border: 3px solid #f59e0b;">
                                 <i class="fa-solid fa-user-tie fa-3x"></i>

@@ -42,12 +42,15 @@
                         @if($reply->attachment_path)
                             <div class="mt-3 pt-2 border-top border-secondary">
                                 <span class="text-white-50 small d-block mb-1"><i class="fa-solid fa-paperclip me-1"></i>Attached Screenshot / Document:</span>
+                                @php
+                                    $attachmentUrl = route('agent.media', ['path' => $reply->attachment_path]);
+                                @endphp
                                 @if(Str::endsWith(strtolower($reply->attachment_path), ['.png', '.jpg', '.jpeg', '.webp']))
-                                    <a href="{{ asset('storage/' . $reply->attachment_path) }}" target="_blank">
-                                        <img src="{{ asset('storage/' . $reply->attachment_path) }}" alt="Screenshot Proof" class="img-thumbnail bg-dark border-secondary rounded-3" style="max-height: 180px;">
+                                    <a href="{{ $attachmentUrl }}" target="_blank">
+                                        <img src="{{ $attachmentUrl }}" alt="Screenshot Proof" class="img-thumbnail bg-dark border-secondary rounded-3" style="max-height: 180px;">
                                     </a>
                                 @else
-                                    <a href="{{ asset('storage/' . $reply->attachment_path) }}" target="_blank" class="btn btn-sm btn-outline-info rounded-pill">
+                                    <a href="{{ $attachmentUrl }}" target="_blank" class="btn btn-sm btn-outline-info rounded-pill">
                                         <i class="fa-solid fa-file-download me-1"></i>View Attachment
                                     </a>
                                 @endif

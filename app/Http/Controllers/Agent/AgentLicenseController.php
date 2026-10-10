@@ -323,6 +323,7 @@ class AgentLicenseController extends Controller
         }
 
         $proofPath = $request->file('payment_proof')->store('agent_licenses/proofs', 'public');
+        \App\Http\Controllers\Agent\AgentMediaController::mirrorToPublicStorage($proofPath);
         $effectiveFee = EnrollmentAgent::getEffectiveLicenseFee();
 
         $meta = [
@@ -388,6 +389,7 @@ class AgentLicenseController extends Controller
                 Storage::disk('public')->delete($proofPath);
             }
             $proofPath = $request->file('legacy_proof_file')->store('agent_licenses/proofs', 'public');
+            \App\Http\Controllers\Agent\AgentMediaController::mirrorToPublicStorage($proofPath);
         }
 
         $meta = [

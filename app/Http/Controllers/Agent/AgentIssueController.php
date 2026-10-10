@@ -53,6 +53,7 @@ class AgentIssueController extends Controller
         $attachmentPath = null;
         if ($request->hasFile('attachment')) {
             $attachmentPath = $request->file('attachment')->store('agent_issues', 'public');
+            \App\Http\Controllers\Agent\AgentMediaController::mirrorToPublicStorage($attachmentPath);
         }
 
         $ticket = Ticket::create([
@@ -120,6 +121,7 @@ class AgentIssueController extends Controller
         $attachmentPath = null;
         if ($request->hasFile('attachment')) {
             $attachmentPath = $request->file('attachment')->store('agent_issues', 'public');
+            \App\Http\Controllers\Agent\AgentMediaController::mirrorToPublicStorage($attachmentPath);
         }
 
         TicketReply::create([

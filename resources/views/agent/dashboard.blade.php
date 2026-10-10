@@ -10,7 +10,7 @@
             <div class="d-flex align-items-center gap-3">
                 <div class="position-relative">
                     @if($agent->picture_path)
-                        <img src="{{ asset('storage/' . $agent->picture_path) }}" alt="{{ $agent->full_name }}" class="rounded-circle border border-primary border-3" style="width: 70px; height: 70px; object-fit: cover;">
+                        <img src="{{ $agent->picture_url }}" alt="{{ $agent->full_name }}" class="rounded-circle border border-primary border-3" style="width: 70px; height: 70px; object-fit: cover;">
                         <button type="button" class="btn btn-sm btn-primary rounded-circle position-absolute bottom-0 end-0 p-1" style="width: 26px; height: 26px; line-height: 1;" data-toggle="modal" data-bs-toggle="modal" data-target="#uploadPhotoModal" data-bs-target="#uploadPhotoModal" title="Update Profile Picture">
                             <i class="fa-solid fa-camera fa-xs"></i>
                         </button>

@@ -1,5 +1,12 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    # Send all requests to the public directory
+
+    # Prevent Apache directory collision with root storage directory
+    RewriteCond %{REQUEST_URI} ^/storage/
+    RewriteRule ^storage/(.*)$ public/index.php [L]
+
+    # Send all other requests to the public directory
+    RewriteCond %{REQUEST_URI} !^/public/
     RewriteRule ^(.*)$ public/$1 [L]
 </IfModule>
+

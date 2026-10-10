@@ -259,7 +259,7 @@
                     <div class="d-flex align-items-center gap-3">
                         <div class="rounded-circle overflow-hidden bg-dark border border-warning d-flex align-items-center justify-content-center" style="width: 58px; height: 58px; min-width: 58px;">
                             @if($mva->picture_path)
-                                <img src="{{ asset('storage/' . $mva->picture_path) }}" alt="{{ $mva->full_name }}" class="w-100 h-100 object-fit-cover">
+                                <img src="{{ $mva->picture_url }}" alt="{{ $mva->full_name }}" class="w-100 h-100 object-fit-cover">
                             @else
                                 <i class="fa-solid fa-user-tie text-warning fa-xl"></i>
                             @endif
