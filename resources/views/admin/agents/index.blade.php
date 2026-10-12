@@ -119,14 +119,14 @@
                             <th class="ps-3 ps-md-4" style="width: 38px; min-width: 38px;">
                                 <input type="checkbox" id="selectAllAgents" class="form-check-input bg-dark border-white-20" title="Select All On Page">
                             </th>
-                            <th style="min-width: 180px;">Agent Info</th>
-                            <th style="min-width: 160px;">Contact / Email</th>
-                            <th style="min-width: 140px;">NIN & BVN Details</th>
+                            <th style="min-width: 170px;">Agent Info</th>
+                            <th style="min-width: 140px;">Contact / Email</th>
+                            <th style="min-width: 130px;">NIN & BVN Details</th>
                             <th style="min-width: 130px;">Machine IMEI</th>
-                            <th style="min-width: 95px;">Status</th>
+                            <th style="min-width: 90px;">Status</th>
                             <th style="min-width: 85px;">License</th>
-                            <th style="min-width: 105px;">Enrollments</th>
-                            <th class="pe-3 pe-md-4 text-end table-action-col" style="min-width: 145px; width: 145px;">Actions</th>
+                            <th style="min-width: 95px;">Enrollments</th>
+                            <th class="pe-3 pe-md-4 text-end" style="min-width: 135px;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -136,12 +136,12 @@
                                     <input type="checkbox" name="agent_ids[]" value="{{ $agent->id }}" class="form-check-input agent-checkbox bg-dark border-white-20">
                                 </td>
                                 <td class="py-2.5">
-                                    <div class="d-flex align-items-center gap-2.5">
-                                        <div class="avatar-circle bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center font-weight-bold text-xs" style="width: 34px; height: 34px; min-width: 34px; flex-shrink: 0;">
+                                    <div class="d-flex align-items-start gap-2.5">
+                                        <div class="avatar-circle rounded-circle d-flex align-items-center justify-content-center font-weight-bold text-xs" style="width: 34px; height: 34px; min-width: 34px; flex-shrink: 0; background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4); margin-top: 2px;">
                                             {{ substr($agent->full_name, 0, 1) }}
                                         </div>
                                         <div style="min-width: 0;">
-                                            <a href="{{ route('admin.agents.show', $agent->id) }}" class="text-white font-weight-bold text-decoration-none d-block hover-primary text-truncate" style="max-width: 165px;" title="{{ $agent->full_name }}">
+                                            <a href="{{ route('admin.agents.show', $agent->id) }}" class="text-white font-weight-bold text-decoration-none d-block hover-primary" title="{{ $agent->full_name }}">
                                                 {{ $agent->full_name }}
                                             </a>
                                             <div class="d-flex align-items-center gap-1 flex-wrap mt-0.5">
@@ -161,7 +161,7 @@
                                 </td>
                                 <td class="py-2.5">
                                     <span class="d-block text-white font-weight-medium text-xs">{{ $agent->phone_number }}</span>
-                                    <span class="d-block text-muted text-2xs text-truncate" style="max-width: 160px;" title="{{ $agent->user->email ?? 'No User Email' }}">{{ $agent->user->email ?? 'No User Email' }}</span>
+                                    <span class="d-block text-muted text-2xs" style="word-break: break-all; max-width: 175px;" title="{{ $agent->user->email ?? 'No User Email' }}">{{ $agent->user->email ?? 'No User Email' }}</span>
                                 </td>
                                 <td class="py-2.5 text-nowrap">
                                     <span class="d-block text-info font-monospace text-xs">
@@ -172,9 +172,17 @@
                                     </span>
                                     <span class="d-block text-muted font-monospace text-2xs">BVN: {{ $agent->bvn }}</span>
                                 </td>
-                                <td class="py-2.5 text-nowrap">
+                                <td class="py-2.5">
                                     @if($agent->machine_imei)
-                                        <code class="text-warning text-2xs px-1.5 py-0.5 bg-dark rounded border border-white-5 font-monospace">{{ $agent->machine_imei }}</code>
+                                        @php
+                                            preg_match_all('/\b\d{14,17}\b/', $agent->machine_imei, $imeiMatches);
+                                            $imeis = !empty($imeiMatches[0]) ? $imeiMatches[0] : [trim($agent->machine_imei)];
+                                        @endphp
+                                        <div class="d-flex flex-column gap-1" style="min-width: 125px; max-width: 165px;">
+                                            @foreach($imeis as $imei)
+                                                <code class="text-warning text-3xs px-1.5 py-0.5 bg-dark rounded border border-white-10 font-monospace d-inline-block text-truncate" title="{{ $imei }}">{{ $imei }}</code>
+                                            @endforeach
+                                        </div>
                                     @else
                                         <span class="text-muted text-2xs">Not set</span>
                                     @endif
@@ -209,7 +217,7 @@
                                     <span class="d-block text-success font-weight-bold text-xs">{{ number_format($agent->total_enrollments) }} total</span>
                                     <span class="d-block text-muted text-2xs">({{ number_format($agent->monthly_enrollments) }}/mo)</span>
                                 </td>
-                                <td class="pe-3 pe-md-4 py-2.5 text-end table-action-col">
+                                <td class="pe-3 pe-md-4 py-2.5 text-end text-nowrap">
                                     <div class="d-inline-flex align-items-center justify-content-end gap-1">
                                         <a href="{{ route('admin.agents.show', $agent->id) }}" class="btn btn-sm btn-outline-info text-info rounded-10 p-0" title="View Dossier" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;">
                                             <i class="fa-solid fa-eye"></i>
@@ -308,42 +316,24 @@ document.addEventListener('DOMContentLoaded', function () {
     .agent-table-responsive {
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
-        position: relative;
     }
     .agent-table-responsive::-webkit-scrollbar {
         height: 6px;
     }
     .agent-table-responsive::-webkit-scrollbar-track {
-        background: rgba(255, 255, 255, 0.03);
+        background: rgba(255, 255, 255, 0.04);
+        border-radius: 4px;
     }
     .agent-table-responsive::-webkit-scrollbar-thumb {
-        background: rgba(255, 255, 255, 0.2);
+        background: rgba(59, 130, 246, 0.4);
         border-radius: 4px;
     }
     .agent-table-responsive::-webkit-scrollbar-thumb:hover {
-        background: rgba(59, 130, 246, 0.6);
+        background: rgba(59, 130, 246, 0.7);
     }
     .table-agents {
-        min-width: 980px;
+        min-width: 960px;
         width: 100%;
-    }
-    .table-agents .table-action-col {
-        position: sticky;
-        right: 0;
-        z-index: 5;
-        background-color: #0b1120 !important;
-        box-shadow: -10px 0 16px -4px rgba(0, 0, 0, 0.7);
-        white-space: nowrap;
-        min-width: 145px;
-        width: 145px;
-        text-align: right;
-    }
-    .table-agents thead th.table-action-col {
-        background-color: #162033 !important;
-        z-index: 6;
-    }
-    .table-agents tbody tr:hover .table-action-col {
-        background-color: #1e293b !important;
     }
     .text-3xs {
         font-size: 0.68rem;
