@@ -99,7 +99,7 @@
     <div class="card-body pt-0 pb-3">
         <div class="row g-3">
             {{-- DataVerify Card --}}
-            <div class="col-md-6">
+            <div class="col-lg-4 col-md-6">
                 <div class="p-3 rounded-3 border bg-light-subtle h-100 d-flex flex-column justify-content-between">
                     <div>
                         <div class="d-flex justify-content-between align-items-center mb-2">
@@ -130,13 +130,13 @@
             </div>
 
             {{-- RobostTech Card --}}
-            <div class="col-md-6">
+            <div class="col-lg-4 col-md-6">
                 <div class="p-3 rounded-3 border bg-light-subtle h-100 d-flex flex-column justify-content-between">
                     <div>
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <div class="d-flex align-items-center gap-2">
                                 <span class="fw-bold text-dark">RobostTech API</span>
-                                <span class="badge bg-secondary-subtle text-secondary small">NIN / Clearance / Validation</span>
+                                <span class="badge bg-secondary-subtle text-secondary small">NIN / Validation / Clearance</span>
                             </div>
                             <span id="robost-badge" class="badge {{ $providerBalances['robosttech']['badge_class'] ?? 'bg-secondary' }} rounded-pill px-2 py-1 small">
                                 {{ $providerBalances['robosttech']['status_label'] ?? 'Unknown' }}
@@ -155,6 +155,37 @@
                                 <button type="button" class="btn btn-xs btn-outline-primary py-0 px-2" style="font-size: 11px;" data-bs-toggle="modal" data-bs-target="#editApiKeysModal" data-toggle="modal" data-target="#editApiKeysModal">Configure Key</button>
                             @endif
                             <a href="https://robosttech.com" target="_blank" rel="noopener" class="text-decoration-none small">Top Up &nearr;</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Vuvaa Card --}}
+            <div class="col-lg-4 col-md-12">
+                <div class="p-3 rounded-3 border bg-light-subtle h-100 d-flex flex-column justify-content-between">
+                    <div>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="fw-bold text-dark">VUVAA API</span>
+                                <span class="badge bg-secondary-subtle text-secondary small">NIN / In-Person (Selfie)</span>
+                            </div>
+                            <span id="vuvaa-badge" class="badge {{ $providerBalances['vuvaa']['badge_class'] ?? 'bg-secondary' }} rounded-pill px-2 py-1 small">
+                                {{ $providerBalances['vuvaa']['status_label'] ?? 'Unknown' }}
+                            </span>
+                        </div>
+                        <div class="d-flex align-items-baseline gap-2 mb-1">
+                            <h3 class="mb-0 fw-bold text-dark" id="vuvaa-balance-val">
+                                {{ $providerBalances['vuvaa']['formatted'] ?? '—' }}
+                            </h3>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center text-muted small mt-2 pt-2 border-top">
+                        <span id="vuvaa-msg" class="text-truncate me-2" style="max-width: 70%;">{{ $providerBalances['vuvaa']['message'] ?? '' }}</span>
+                        <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                            @if(empty($providerBalances['vuvaa']['configured']) || ($providerBalances['vuvaa']['status'] ?? '') === 'error')
+                                <button type="button" class="btn btn-xs btn-outline-primary py-0 px-2" style="font-size: 11px;" data-bs-toggle="modal" data-bs-target="#editApiKeysModal" data-toggle="modal" data-target="#editApiKeysModal">Configure</button>
+                            @endif
+                            <a href="https://premiere.vuvaa.com" target="_blank" rel="noopener" class="text-decoration-none small">Portal &nearr;</a>
                         </div>
                     </div>
                 </div>
@@ -397,6 +428,25 @@
                     <div class="col-md-6">
                         <label class="form-label small fw-semibold text-dark">RobostTech Validation Endpoint</label>
                         <input type="text" name="robosttech_endpoint_validation" class="form-control font-monospace" value="{{ $apiCenter->robosttech_endpoint_validation ?? 'https://robosttech.com/api' }}" placeholder="https://robosttech.com/api">
+                    </div>
+                    <div class="col-12 pt-2 border-top">
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <span class="fw-bold small text-dark">VUVAA Credentials</span>
+                            <span class="badge bg-secondary-subtle text-secondary small">Demo / Live</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold text-dark">VUVAA Username</label>
+                        <input type="text" name="vuvaa_username" class="form-control font-monospace" value="{{ \App\Models\SystemSetting::get('vuvaa_username', 'fuwa_demo_0417190741') }}" placeholder="fuwa_demo_0417190741">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold text-dark">VUVAA Password</label>
+                        <input type="text" name="vuvaa_password" class="form-control font-monospace" value="{{ \App\Models\SystemSetting::get('vuvaa_password', 'Password') }}" placeholder="Password">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label small fw-semibold text-dark">VUVAA Base Endpoint</label>
+                        <input type="text" name="vuvaa_endpoint" class="form-control font-monospace" value="{{ \App\Models\SystemSetting::get('vuvaa_endpoint', 'https://premiere.vuvaa.com/demo/NIN_Validation_LIVE') }}" placeholder="https://premiere.vuvaa.com/demo/NIN_Validation_LIVE">
+                        <div class="form-text small">Default demo endpoint: <code>https://premiere.vuvaa.com/demo/NIN_Validation_LIVE</code></div>
                     </div>
                 </div>
             </div>
@@ -1044,6 +1094,18 @@
                         }
                         const robMsg = document.getElementById('robost-msg');
                         if (robMsg) robMsg.innerText = data.robosttech.message || '';
+                    }
+
+                    if (data.vuvaa) {
+                        const vuvaaVal = document.getElementById('vuvaa-balance-val');
+                        if (vuvaaVal) vuvaaVal.innerText = data.vuvaa.formatted || '—';
+                        const badge = document.getElementById('vuvaa-badge');
+                        if (badge) {
+                            badge.className = 'badge ' + (data.vuvaa.badge_class || 'bg-secondary') + ' rounded-pill px-2 py-1 small';
+                            badge.innerText = data.vuvaa.status_label || 'Unknown';
+                        }
+                        const vuvaaMsg = document.getElementById('vuvaa-msg');
+                        if (vuvaaMsg) vuvaaMsg.innerText = data.vuvaa.message || '';
                     }
 
                     if (data.checked_at) {

@@ -39,6 +39,8 @@ class AdminProviderBalanceMonitorTest extends TestCase
             'robosttech_endpoint_nin' => 'https://robosttech.com/api',
         ]);
 
+        $crypto = new \App\Services\Vuvaa\VuvaaCrypto('FD!-F=15B46BAD21', '0123456789012345');
+
         Http::fake([
             'https://dataverify.org/api/developers/balance.php*' => Http::response([
                 'status' => 'success',
@@ -47,6 +49,27 @@ class AdminProviderBalanceMonitorTest extends TestCase
             'https://robosttech.com/api/balance*' => Http::response([
                 'status' => 'success',
                 'balance' => '42000.50',
+            ], 200),
+            'https://premiere.vuvaa.com/*/login' => Http::response([
+                'payload' => $crypto->encryptToBase64([
+                    'status' => 200,
+                    'message' => 'Login Successful',
+                    'data' => [
+                        'access_token' => 'mock_token',
+                    ],
+                ]),
+            ], 200),
+            'https://premiere.vuvaa.com/*/get_wallet_details' => Http::response([
+                'payload' => $crypto->encryptToBase64([
+                    'status' => '00',
+                    'message' => 'Successful',
+                    'data' => [
+                        [
+                            'username' => 'fuwa_demo_0417190741',
+                            'validation_units' => 63,
+                        ],
+                    ],
+                ]),
             ], 200),
         ]);
 
@@ -68,6 +91,12 @@ class AdminProviderBalanceMonitorTest extends TestCase
                 'formatted' => 'NGN 42,000.50',
                 'status' => 'ok',
             ],
+            'vuvaa' => [
+                'configured' => true,
+                'balance' => 63,
+                'formatted' => '63 Units',
+                'status' => 'ok',
+            ],
         ]);
     }
 
@@ -82,6 +111,8 @@ class AdminProviderBalanceMonitorTest extends TestCase
             'robosttech_api_key' => 'test_robost_key_2',
         ]);
 
+        $crypto = new \App\Services\Vuvaa\VuvaaCrypto('FD!-F=15B46BAD21', '0123456789012345');
+
         Http::fake([
             'https://dataverify.org/api/developers/balance.php*' => Http::response([
                 'status' => 'success',
@@ -91,6 +122,27 @@ class AdminProviderBalanceMonitorTest extends TestCase
                 'status' => 'success',
                 'balance' => '18500.00',
             ], 200),
+            'https://premiere.vuvaa.com/*/login' => Http::response([
+                'payload' => $crypto->encryptToBase64([
+                    'status' => 200,
+                    'message' => 'Login Successful',
+                    'data' => [
+                        'access_token' => 'mock_token',
+                    ],
+                ]),
+            ], 200),
+            'https://premiere.vuvaa.com/*/get_wallet_details' => Http::response([
+                'payload' => $crypto->encryptToBase64([
+                    'status' => '00',
+                    'message' => 'Successful',
+                    'data' => [
+                        [
+                            'username' => 'fuwa_demo_0417190741',
+                            'validation_units' => 63,
+                        ],
+                    ],
+                ]),
+            ], 200),
         ]);
 
         $response = $this->actingAs($admin, 'admin')->get(route('admin.dashboard', ['refresh' => 1]));
@@ -99,8 +151,10 @@ class AdminProviderBalanceMonitorTest extends TestCase
         $response->assertSee('API Provider Balance Monitor');
         $response->assertSee('DataVerify API');
         $response->assertSee('RobostTech API');
+        $response->assertSee('VUVAA API');
         $response->assertSee('NGN 12,000.00');
         $response->assertSee('NGN 18,500.00');
+        $response->assertSee('63 Units');
         $response->assertSee('Check Live Balances');
     }
 
@@ -206,5 +260,74 @@ class AdminProviderBalanceMonitorTest extends TestCase
             'dataverify_api_key' => 'new_dv_key_live',
             'robosttech_api_key' => 'new_robost_key_live',
         ]);
+    }
+
+    public function test_vuvaa_balance_monitor_fetches_units_from_demo_account(): void
+    {
+        $admin = Admin::factory()->create([
+            'is_super_admin' => true,
+        ]);
+
+        $crypto = new \App\Services\Vuvaa\VuvaaCrypto('FD!-F=15B46BAD21', '0123456789012345');
+
+        Http::fake([
+            'https://dataverify.org/api/developers/balance.php*' => Http::response([
+                'status' => 'success',
+                'balance' => '10000.00',
+            ], 200),
+            'https://robosttech.com/api/balance*' => Http::response([
+                'status' => 'success',
+                'balance' => '20000.00',
+            ], 200),
+            'https://premiere.vuvaa.com/*/login' => Http::response([
+                'payload' => $crypto->encryptToBase64([
+                    'status' => 200,
+                    'message' => 'Login Successful',
+                    'data' => [
+                        'access_token' => 'mock_vuvaa_jwt_token',
+                    ],
+                ]),
+            ], 200),
+            'https://premiere.vuvaa.com/*/get_wallet_details' => Http::response([
+                'payload' => $crypto->encryptToBase64([
+                    'status' => '00',
+                    'message' => 'Successful',
+                    'data' => [
+                        [
+                            'username' => 'fuwa_demo_0417190741',
+                            'validation_units' => 63,
+                        ],
+                    ],
+                ]),
+            ], 200),
+        ]);
+
+        $response = $this->actingAs($admin, 'admin')->getJson(route('admin.provider_balances', ['refresh' => 1]));
+
+        $response->assertStatus(200);
+        $response->assertJsonPath('vuvaa.status', 'ok');
+        $response->assertJsonPath('vuvaa.balance', 63);
+        $response->assertJsonPath('vuvaa.formatted', '63 Units');
+        $response->assertJsonPath('vuvaa.status_label', 'Operational');
+    }
+
+    public function test_admin_can_update_vuvaa_credentials_from_dashboard(): void
+    {
+        $admin = Admin::factory()->create([
+            'is_super_admin' => true,
+        ]);
+
+        $response = $this->actingAs($admin, 'admin')->post(route('admin.api_credentials.update'), [
+            'vuvaa_username' => 'custom_vuvaa_user',
+            'vuvaa_password' => 'custom_vuvaa_pass',
+            'vuvaa_endpoint' => 'https://premiere.vuvaa.com/live/NIN_Validation',
+        ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success');
+
+        $this->assertEquals('custom_vuvaa_user', \App\Models\SystemSetting::get('vuvaa_username'));
+        $this->assertEquals('custom_vuvaa_pass', \App\Models\SystemSetting::get('vuvaa_password'));
+        $this->assertEquals('https://premiere.vuvaa.com/live/NIN_Validation', \App\Models\SystemSetting::get('vuvaa_endpoint'));
     }
 }

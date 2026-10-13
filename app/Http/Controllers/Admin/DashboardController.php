@@ -342,15 +342,36 @@ class DashboardController extends Controller
             'robosttech_endpoint_nin' => ['nullable', 'string', 'max:500'],
             'robosttech_endpoint_validation' => ['nullable', 'string', 'max:500'],
             'robosttech_endpoint_clearance' => ['nullable', 'string', 'max:500'],
+            'vuvaa_username' => ['nullable', 'string', 'max:500'],
+            'vuvaa_password' => ['nullable', 'string', 'max:500'],
+            'vuvaa_endpoint' => ['nullable', 'string', 'max:500'],
         ]);
 
-        $data = array_filter($validated, fn ($v) => $v !== null && trim((string) $v) !== '');
+        $apiCenterFields = [
+            'dataverify_api_key',
+            'robosttech_api_key',
+            'robosttech_endpoint_nin',
+            'robosttech_endpoint_validation',
+            'robosttech_endpoint_clearance',
+        ];
+        $apiCenterData = [];
+        foreach ($apiCenterFields as $field) {
+            if (isset($validated[$field]) && $validated[$field] !== null && trim((string) $validated[$field]) !== '') {
+                $apiCenterData[$field] = $validated[$field];
+            }
+        }
 
-        if (!empty($data)) {
+        if (!empty($apiCenterData)) {
             DB::table('api_centers')->updateOrInsert(
                 ['id' => DB::table('api_centers')->min('id') ?? 1],
-                $data
+                $apiCenterData
             );
+        }
+
+        foreach (['vuvaa_username', 'vuvaa_password', 'vuvaa_endpoint'] as $vuvaaField) {
+            if ($request->filled($vuvaaField)) {
+                SystemSetting::set($vuvaaField, $request->input($vuvaaField), 'integrations');
+            }
         }
 
         Cache::forget('admin_dashboard_bi_v1');
@@ -650,9 +671,97 @@ class DashboardController extends Controller
             $robost['message'] = $e->getMessage();
         }
 
+        // 3. Vuvaa (Demo / Live)
+        $vuvaa = [
+            'name' => 'VUVAA (Demo / Live)',
+            'configured' => false,
+            'balance' => null,
+            'formatted' => 'Not Configured',
+            'status' => 'not_configured',
+            'status_label' => 'Not Configured',
+            'badge_class' => 'bg-secondary',
+            'message' => 'Credentials not configured',
+        ];
+
+        try {
+            $customVuvaa = CustomApi::where(function ($q) {
+                $q->where('provider_identifier', 'vuvaa')
+                  ->orWhere('name', 'like', '%vuvaa%');
+            })->first();
+
+            $vuvaaUser = trim((string) (
+                SystemSetting::get('vuvaa_username', '')
+                ?: env('VUVAA_USERNAME', '')
+                ?: ($customVuvaa?->config['username'] ?? '')
+                ?: 'fuwa_demo_0417190741'
+            ));
+
+            if (!empty($vuvaaUser)) {
+                $vuvaa['configured'] = true;
+                $provider = $customVuvaa ?? new CustomApi([
+                    'name' => 'VUVAA',
+                    'provider_identifier' => 'vuvaa',
+                    'endpoint' => SystemSetting::get('vuvaa_endpoint') ?: env('VUVAA_LIVE_URL') ?: 'https://premiere.vuvaa.com/demo/NIN_Validation_LIVE',
+                    'config' => [
+                        'username' => $vuvaaUser,
+                        'password' => SystemSetting::get('vuvaa_password') ?: env('VUVAA_PASSWORD') ?: 'Password',
+                        'encryption_key' => SystemSetting::get('vuvaa_encryption_key') ?: env('VUVAA_ENCRYPTION_KEY') ?: 'FD!-F=15B46BAD21',
+                        'encryption_iv' => SystemSetting::get('vuvaa_encryption_iv') ?: env('VUVAA_ENCRYPTION_IV') ?: '0123456789012345',
+                    ],
+                ]);
+
+                $vuvaaClient = new \App\Services\Vuvaa\VuvaaClient($provider);
+                $res = $vuvaaClient->getWalletDetails();
+
+                if ($res['ok']) {
+                    $units = $res['data']['wallet_units'] 
+                        ?? $res['data']['data'][0]['validation_units'] 
+                        ?? $res['data']['data']['validation_units'] 
+                        ?? $res['data']['validation_units'] 
+                        ?? null;
+
+                    if ($units !== null && is_numeric($units)) {
+                        $unitsVal = (float) $units;
+                        $vuvaa['balance'] = $unitsVal;
+                        $vuvaa['formatted'] = number_format($unitsVal) . ' Units';
+                        if ($unitsVal < 10) {
+                            $vuvaa['status'] = 'low';
+                            $vuvaa['status_label'] = 'Low Units (< 10)';
+                            $vuvaa['badge_class'] = 'bg-warning text-dark';
+                        } else {
+                            $vuvaa['status'] = 'ok';
+                            $vuvaa['status_label'] = 'Operational';
+                            $vuvaa['badge_class'] = 'bg-success';
+                        }
+                        $isDemo = str_contains($vuvaaUser, 'demo');
+                        $vuvaa['message'] = ($isDemo ? 'Demo: ' : 'Live: ') . $vuvaaUser;
+                    } else {
+                        $vuvaa['status'] = 'ok';
+                        $vuvaa['status_label'] = 'Connected';
+                        $vuvaa['badge_class'] = 'bg-success';
+                        $vuvaa['formatted'] = 'Connected';
+                        $vuvaa['message'] = $res['message'] ?? 'Connected successfully';
+                    }
+                } else {
+                    $vuvaa['status'] = 'error';
+                    $vuvaa['status_label'] = 'Check Failed';
+                    $vuvaa['badge_class'] = 'bg-danger';
+                    $vuvaa['formatted'] = 'Unavailable';
+                    $vuvaa['message'] = (string) ($res['message'] ?? 'Could not retrieve Vuvaa wallet balance');
+                }
+            }
+        } catch (\Throwable $e) {
+            $vuvaa['status'] = 'error';
+            $vuvaa['status_label'] = 'Error';
+            $vuvaa['badge_class'] = 'bg-danger';
+            $vuvaa['formatted'] = 'Error';
+            $vuvaa['message'] = $e->getMessage();
+        }
+
         return [
             'dataverify' => $dataverify,
             'robosttech' => $robost,
+            'vuvaa' => $vuvaa,
             'checked_at' => now()->format('h:i A'),
         ];
     }
