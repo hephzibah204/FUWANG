@@ -516,6 +516,7 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
             Route::post('/security/2fa/enable', [App\Http\Controllers\Admin\TwoFactorSetupController::class, 'enable'])->name('settings.security.2fa.enable');
             Route::post('/security/2fa/disable', [App\Http\Controllers\Admin\TwoFactorSetupController::class, 'disable'])->name('settings.security.2fa.disable');
             Route::get('/dashboard',                   [App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard');
+            Route::get('/provider-balances',           [App\Http\Controllers\Admin\DashboardController::class, 'providerBalances'])->name('provider_balances');
 
             Route::get('/chatbot/metrics',             [App\Http\Controllers\Admin\ChatbotAdminController::class, 'dashboardMetrics'])
                 ->middleware('super_admin')

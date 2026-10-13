@@ -31,6 +31,9 @@
     $searchKeywords = $dashboardData['searchKeywords'] ?? collect();
     $totalSearches30d = $dashboardData['totalSearches30d'] ?? 0;
     $totalSearchesToday = $dashboardData['totalSearchesToday'] ?? 0;
+
+    // API Provider Balances
+    $providerBalances = $dashboardData['providerBalances'] ?? [];
 @endphp
 
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
@@ -45,6 +48,84 @@
             </svg>
             <span>Refresh Live Stats</span>
         </a>
+    </div>
+</div>
+
+{{-- API PROVIDER BALANCE MONITOR --}}
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-2">
+            <div class="bg-primary-subtle text-primary p-2 rounded-3 d-inline-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                </svg>
+            </div>
+            <div>
+                <h5 class="mb-0 fw-bold">API Provider Balance Monitor</h5>
+                <small class="text-muted">Live external API balances for continuous identity & NIN services</small>
+            </div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <span class="text-muted small" id="provider-balance-checked-at">Last checked: {{ $providerBalances['checked_at'] ?? now()->format('h:i A') }}</span>
+            <button type="button" id="btn-refresh-balances" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1 shadow-sm">
+                <svg id="refresh-spinner-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <span>Check Live Balances</span>
+            </button>
+            <a href="{{ route('admin.settings.index') }}" class="btn btn-sm btn-light border text-muted">API Settings</a>
+        </div>
+    </div>
+    <div class="card-body pt-0 pb-3">
+        <div class="row g-3">
+            {{-- DataVerify Card --}}
+            <div class="col-md-6">
+                <div class="p-3 rounded-3 border bg-light-subtle h-100">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="fw-bold text-dark">DataVerify API</span>
+                            <span class="badge bg-secondary-subtle text-secondary small">NIN / BVN Retrieval</span>
+                        </div>
+                        <span id="dataverify-badge" class="badge {{ $providerBalances['dataverify']['badge_class'] ?? 'bg-secondary' }} rounded-pill px-2 py-1 small">
+                            {{ $providerBalances['dataverify']['status_label'] ?? 'Unknown' }}
+                        </span>
+                    </div>
+                    <div class="d-flex align-items-baseline gap-2 mb-1">
+                        <h3 class="mb-0 fw-bold text-dark" id="dataverify-balance-val">
+                            {{ $providerBalances['dataverify']['formatted'] ?? '—' }}
+                        </h3>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center text-muted small mt-2">
+                        <span id="dataverify-msg">{{ $providerBalances['dataverify']['message'] ?? '' }}</span>
+                        <a href="https://dataverify.org" target="_blank" rel="noopener" class="text-decoration-none small">Top Up Portal &nearr;</a>
+                    </div>
+                </div>
+            </div>
+
+            {{-- RobostTech Card --}}
+            <div class="col-md-6">
+                <div class="p-3 rounded-3 border bg-light-subtle h-100">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="fw-bold text-dark">RobostTech API</span>
+                            <span class="badge bg-secondary-subtle text-secondary small">NIN / Clearance / Validation</span>
+                        </div>
+                        <span id="robost-badge" class="badge {{ $providerBalances['robosttech']['badge_class'] ?? 'bg-secondary' }} rounded-pill px-2 py-1 small">
+                            {{ $providerBalances['robosttech']['status_label'] ?? 'Unknown' }}
+                        </span>
+                    </div>
+                    <div class="d-flex align-items-baseline gap-2 mb-1">
+                        <h3 class="mb-0 fw-bold text-dark" id="robost-balance-val">
+                            {{ $providerBalances['robosttech']['formatted'] ?? '—' }}
+                        </h3>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center text-muted small mt-2">
+                        <span id="robost-msg">{{ $providerBalances['robosttech']['message'] ?? '' }}</span>
+                        <a href="https://robosttech.com" target="_blank" rel="noopener" class="text-decoration-none small">Top Up Portal &nearr;</a>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -643,6 +724,65 @@
                 }
             });
         }
+
+        // Live Provider Balances Refresh
+        const refreshBalancesBtn = document.getElementById('btn-refresh-balances');
+        if (refreshBalancesBtn) {
+            refreshBalancesBtn.addEventListener('click', function() {
+                const btn = this;
+                const spinner = document.getElementById('refresh-spinner-icon');
+                btn.disabled = true;
+                if (spinner) spinner.style.animation = 'spin-kf 0.8s linear infinite';
+
+                fetch("{{ route('admin.provider_balances', ['refresh' => 1]) }}", {
+                    headers: { 'Accept': 'application/json' }
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.dataverify) {
+                        const dvVal = document.getElementById('dataverify-balance-val');
+                        if (dvVal) dvVal.innerText = data.dataverify.formatted || '—';
+                        const badge = document.getElementById('dataverify-badge');
+                        if (badge) {
+                            badge.className = 'badge ' + (data.dataverify.badge_class || 'bg-secondary') + ' rounded-pill px-2 py-1 small';
+                            badge.innerText = data.dataverify.status_label || 'Unknown';
+                        }
+                        const dvMsg = document.getElementById('dataverify-msg');
+                        if (dvMsg) dvMsg.innerText = data.dataverify.message || '';
+                    }
+
+                    if (data.robosttech) {
+                        const robVal = document.getElementById('robost-balance-val');
+                        if (robVal) robVal.innerText = data.robosttech.formatted || '—';
+                        const badge = document.getElementById('robost-badge');
+                        if (badge) {
+                            badge.className = 'badge ' + (data.robosttech.badge_class || 'bg-secondary') + ' rounded-pill px-2 py-1 small';
+                            badge.innerText = data.robosttech.status_label || 'Unknown';
+                        }
+                        const robMsg = document.getElementById('robost-msg');
+                        if (robMsg) robMsg.innerText = data.robosttech.message || '';
+                    }
+
+                    if (data.checked_at) {
+                        const checkedAt = document.getElementById('provider-balance-checked-at');
+                        if (checkedAt) checkedAt.innerText = 'Last checked: ' + data.checked_at;
+                    }
+                })
+                .catch(err => {
+                    console.error('Error refreshing provider balances:', err);
+                })
+                .finally(() => {
+                    btn.disabled = false;
+                    if (spinner) spinner.style.animation = '';
+                });
+            });
+        }
     });
 </script>
+<style>
+@keyframes spin-kf {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+</style>
 @endpush

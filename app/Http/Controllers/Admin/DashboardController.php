@@ -4,17 +4,21 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AgentLicenseTransaction;
+use App\Models\ApiCenter;
 use App\Models\AuctionLot;
+use App\Models\CustomApi;
 use App\Models\SearchKeywordLog;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Models\VerificationResult;
 use App\Models\WebsiteTrafficLog;
+use App\Services\DataVerify\DataVerifyClient;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
 
 class DashboardController extends Controller
@@ -23,6 +27,7 @@ class DashboardController extends Controller
     {
         if ($request->has('refresh') || $request->boolean('refresh')) {
             Cache::forget('admin_dashboard_bi_v1');
+            Cache::forget('admin_provider_balances_v1');
         }
 
         $dashboardData = Cache::remember('admin_dashboard_bi_v1', now()->addSeconds(60), function () {
@@ -278,9 +283,185 @@ class DashboardController extends Controller
                 'searchKeywords' => $searchKeywords,
                 'totalSearches30d' => $totalSearches30d,
                 'totalSearchesToday' => $totalSearchesToday,
+
+                // API Provider Balances
+                'providerBalances' => Cache::remember('admin_provider_balances_v1', now()->addMinutes(3), function () {
+                    return $this->fetchProviderBalances();
+                }),
             ];
         });
 
         return view('admin.dashboard', compact('dashboardData'));
+    }
+
+    public function providerBalances(Request $request)
+    {
+        $force = $request->boolean('refresh');
+        if ($force) {
+            Cache::forget('admin_provider_balances_v1');
+        }
+
+        $balances = Cache::remember('admin_provider_balances_v1', now()->addMinutes(3), function () {
+            return $this->fetchProviderBalances();
+        });
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json($balances);
+        }
+
+        return back()->with('success', 'Provider balances refreshed.');
+    }
+
+    public function fetchProviderBalances(): array
+    {
+        // 1. DataVerify
+        $dataverify = [
+            'name' => 'DataVerify',
+            'configured' => false,
+            'balance' => null,
+            'formatted' => 'Not Configured',
+            'status' => 'not_configured',
+            'status_label' => 'Not Configured',
+            'badge_class' => 'bg-secondary',
+            'message' => 'API Key not configured',
+        ];
+
+        try {
+            $apiCenter = ApiCenter::first();
+            $customDv = CustomApi::where(function ($q) {
+                $q->where('provider_identifier', 'dataverify')
+                  ->orWhere('name', 'like', '%dataverify%');
+            })->first();
+
+            $dvKey = $apiCenter?->dataverify_api_key ?: $customDv?->api_key;
+            if (!empty($dvKey)) {
+                $dataverify['configured'] = true;
+                $client = new DataVerifyClient($customDv);
+                $res = $client->checkBalance();
+
+                if ($res['ok'] && $res['balance'] !== null) {
+                    $bal = (float) $res['balance'];
+                    $dataverify['balance'] = $bal;
+                    $dataverify['formatted'] = 'NGN ' . number_format($bal, 2);
+                    if ($bal < 5000) {
+                        $dataverify['status'] = 'low';
+                        $dataverify['status_label'] = 'Low Balance (< ₦5,000)';
+                        $dataverify['badge_class'] = 'bg-warning text-dark';
+                    } else {
+                        $dataverify['status'] = 'ok';
+                        $dataverify['status_label'] = 'Operational';
+                        $dataverify['badge_class'] = 'bg-success';
+                    }
+                    $dataverify['message'] = 'Operational & Connected';
+                } else {
+                    $dataverify['status'] = 'error';
+                    $dataverify['status_label'] = 'Check Failed';
+                    $dataverify['badge_class'] = 'bg-danger';
+                    $dataverify['formatted'] = 'Unavailable';
+                    $dataverify['message'] = $res['message'] ?? 'Unable to retrieve balance';
+                }
+            }
+        } catch (\Throwable $e) {
+            $dataverify['status'] = 'error';
+            $dataverify['status_label'] = 'Error';
+            $dataverify['badge_class'] = 'bg-danger';
+            $dataverify['formatted'] = 'Error';
+            $dataverify['message'] = $e->getMessage();
+        }
+
+        // 2. RobostTech
+        $robost = [
+            'name' => 'RobostTech',
+            'configured' => false,
+            'balance' => null,
+            'formatted' => 'Not Configured',
+            'status' => 'not_configured',
+            'status_label' => 'Not Configured',
+            'badge_class' => 'bg-secondary',
+            'message' => 'API Key not configured',
+        ];
+
+        try {
+            $apiCenter = $apiCenter ?? ApiCenter::first();
+            $customRobost = CustomApi::where(function ($q) {
+                $q->where('provider_identifier', 'robosttech')
+                  ->orWhere('name', 'like', '%robost%');
+            })->first();
+
+            $robostKey = $apiCenter?->robosttech_api_key ?: $customRobost?->api_key;
+            if (!empty($robostKey)) {
+                $robost['configured'] = true;
+                $endpoint = (string) ($apiCenter?->robosttech_endpoint_nin ?: $customRobost?->endpoint ?: 'https://robosttech.com/api');
+                $endpoint = rtrim($endpoint, '/');
+                if (str_ends_with($endpoint, '/nin_verify')) {
+                    $endpoint = substr($endpoint, 0, -strlen('/nin_verify'));
+                }
+
+                $headers = [
+                    'api-key' => $robostKey,
+                    'Accept' => 'application/json',
+                    'Content-Type' => 'application/json',
+                ];
+
+                $balanceUrl = $endpoint . '/balance';
+                $res = Http::timeout(8)->withHeaders($headers)->get($balanceUrl);
+
+                if ($res->status() === 404 || $res->status() === 405) {
+                    $res = Http::timeout(8)->withHeaders($headers)->post($balanceUrl);
+                }
+                if ($res->status() === 404) {
+                    $res = Http::timeout(8)->withHeaders($headers)->get($endpoint . '/wallet');
+                }
+
+                $json = $res->json();
+                if ($res->successful() && is_array($json)) {
+                    $rawBal = $json['balance'] ?? $json['data']['balance'] ?? $json['wallet_balance'] ?? $json['data']['wallet_balance'] ?? null;
+                    if ($rawBal !== null && is_numeric($rawBal)) {
+                        $bal = (float) $rawBal;
+                        $robost['balance'] = $bal;
+                        $robost['formatted'] = 'NGN ' . number_format($bal, 2);
+                        if ($bal < 5000) {
+                            $robost['status'] = 'low';
+                            $robost['status_label'] = 'Low Balance (< ₦5,000)';
+                            $robost['badge_class'] = 'bg-warning text-dark';
+                        } else {
+                            $robost['status'] = 'ok';
+                            $robost['status_label'] = 'Operational';
+                            $robost['badge_class'] = 'bg-success';
+                        }
+                        $robost['message'] = 'Operational & Connected';
+                    } else {
+                        $robost['status'] = 'ok';
+                        $robost['status_label'] = 'Connected';
+                        $robost['badge_class'] = 'bg-info text-white';
+                        $robost['formatted'] = is_string($rawBal) ? $rawBal : 'Connected';
+                        $robost['message'] = $json['message'] ?? 'API connected successfully';
+                    }
+                } else {
+                    $errMsg = is_array($json) ? ($json['message'] ?? $json['detail'] ?? null) : null;
+                    if (is_array($errMsg)) {
+                        $errMsg = reset($errMsg);
+                        if (is_array($errMsg)) $errMsg = reset($errMsg);
+                    }
+                    $robost['status'] = 'error';
+                    $robost['status_label'] = 'Check Failed';
+                    $robost['badge_class'] = 'bg-danger';
+                    $robost['formatted'] = 'Unavailable';
+                    $robost['message'] = (string) ($errMsg ?: ('HTTP ' . $res->status()));
+                }
+            }
+        } catch (\Throwable $e) {
+            $robost['status'] = 'error';
+            $robost['status_label'] = 'Error';
+            $robost['badge_class'] = 'bg-danger';
+            $robost['formatted'] = 'Error';
+            $robost['message'] = $e->getMessage();
+        }
+
+        return [
+            'dataverify' => $dataverify,
+            'robosttech' => $robost,
+            'checked_at' => now()->format('h:i A'),
+        ];
     }
 }
