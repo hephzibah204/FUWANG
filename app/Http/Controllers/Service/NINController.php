@@ -14,6 +14,7 @@ use App\Services\DataVerify\DataVerifyClient;
 use App\Services\PaidActionService;
 use App\Services\Vuvaa\VuvaaClient;
 use App\Services\VerificationResultService;
+use App\Services\Verification\SmartSwitcherService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -33,15 +34,9 @@ class NINController extends Controller
     {
         $legacyPricing = VerificationPrice::first();
 
-        $ninProviders = CustomApi::whereIn('service_type', ['nin', 'nin_verification', 'nin_face_verification', 'nin_validation', 'validation', 'identity'])
-                            ->where('status', true)
-                            ->orderBy('priority', 'asc')
-                            ->get();
-
         try {
             $this->ensureDefaultNinProviders();
-            CustomApi::where('provider_identifier', '!=', 'vuvaa')->where('priority', '<=', 1)->update(['priority' => 10]);
-            CustomApi::where('provider_identifier', 'vuvaa')->update(['priority' => 1, 'status' => true]);
+            SmartSwitcherService::revertVuvaaToDemo();
 
             $ninProviders = CustomApi::whereIn('service_type', ['nin', 'nin_verification', 'nin_face_verification', 'nin_validation', 'validation', 'identity'])
                                 ->where('status', true)
@@ -49,6 +44,10 @@ class NINController extends Controller
                                 ->get();
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning('NINController: failed initializing providers: ' . $e->getMessage());
+            $ninProviders = CustomApi::whereIn('service_type', ['nin', 'nin_verification', 'nin_face_verification', 'nin_validation', 'validation', 'identity'])
+                                ->where('status', true)
+                                ->orderBy('priority', 'asc')
+                                ->get();
         }
 
         $providerModes = $ninProviders->mapWithKeys(function ($provider) {
@@ -217,7 +216,11 @@ class NINController extends Controller
             return back()->withErrors(['nin' => $msg])->withInput();
         }
 
-        if (!$provider && $mode !== 'nin' && $mode !== 'phone' && $mode !== 'tracking') {
+        $candidates = app(SmartSwitcherService::class)->getCandidateProviders($mode, $provider?->id);
+        $hasLegacy = !in_array($mode, ['validation', 'validation_status', 'selfie', 'share_code', 'requery'], true)
+            && (ApiCenter::first()?->dataverify_api_key || env('DATAVERIFY_API_KEY') || \App\Models\SystemSetting::get('dataverify_api_key'));
+
+        if ($candidates->isEmpty() && !$hasLegacy) {
              $msg = 'No active verification provider configured for this mode. Contact admin.';
              if ($wantsJsonResponse) {
                  return response()->json(['status' => false, 'message' => $msg], 503);
@@ -245,66 +248,10 @@ class NINController extends Controller
                 $selfieMeta = $this->processSelfie($request, $user->id);
             }
 
-            // --- SMART ROUTING LOGIC ---
-            $query = CustomApi::whereIn('service_type', ['nin', 'nin_verification', 'nin_face_verification', 'nin_validation', 'validation', 'identity'])
-                ->where('status', true)
-                ->orderBy('priority', 'asc');
+            // Execute verification via SmartSwitcherService with intelligent multi-API failover
+            $response = app(SmartSwitcherService::class)->verifyNin($request, $mode, $provider, $selfieMeta);
 
-            if (in_array($mode, ['validation', 'validation_status'], true)) {
-                $query->where('provider_identifier', 'robosttech');
-            }
-
-            $allActiveProviders = $query->get()
-                ->filter(fn (CustomApi $candidate) => $this->providerSupportsMode($candidate, $mode))
-                ->values();
-
-            if ($provider) {
-                // If user specifically picked a provider, try it first, followed by others as failover
-                $activeProviders = collect([$provider])
-                    ->concat($allActiveProviders->reject(fn (CustomApi $c) => $c->id === $provider->id))
-                    ->values();
-            } else {
-                $activeProviders = $allActiveProviders;
-            }
-
-            $response = ['status' => false, 'message' => 'No active verification provider is configured.'];
-            $errors = [];
-
-            // Try each custom provider in order
-            foreach ($activeProviders as $p) {
-                try {
-                    $res = $this->callCustomProvider($p, $request, $mode, $selfieMeta);
-                    if (!empty($res['status'])) {
-                        $response = $res;
-                        break; // Success!
-                    }
-                    $errMsg = $res['message'] ?? 'Verification failed';
-                    $errors[] = $p->name . ': ' . $errMsg;
-                    Log::info("Provider {$p->name} unsuccessful for NIN mode {$mode}: {$errMsg}");
-                } catch (\Throwable $e) {
-                    $errors[] = $p->name . ': ' . $e->getMessage();
-                    Log::warning("Provider failover: {$p->name} failed.", ['error' => $e->getMessage()]);
-                }
-            }
-
-            // Fallback to Legacy API if all custom providers failed and mode is supported by Legacy API
-            if (!$response['status'] && !in_array($mode, ['validation', 'validation_status', 'selfie', 'share_code', 'requery'], true)) {
-                $apiCenter = ApiCenter::first();
-                if ($apiCenter && ($apiCenter->dataverify_api_key || $apiCenter->dataverify_endpoint_nin || env('DATAVERIFY_API_KEY') || \App\Models\SystemSetting::get('dataverify_api_key'))) {
-                    try {
-                        $legacyRes = $this->callLegacyApi($apiCenter, $request, $mode);
-                        if (!empty($legacyRes['status'])) {
-                            $response = $legacyRes;
-                        } else {
-                            $errors[] = 'Legacy API: ' . ($legacyRes['message'] ?? 'Unknown error');
-                        }
-                    } catch (\Throwable $e) {
-                        $errors[] = 'Legacy API: ' . $e->getMessage();
-                    }
-                }
-            }
-
-            if ($response['status']) {
+            if (!empty($response['status'])) {
                 $data = $response['data'];
                 $photoBase64 = null;
                 if ($mode === 'selfie') {
@@ -368,6 +315,7 @@ class NINController extends Controller
                 return $payload;
             }
 
+            $errors = $response['errors'] ?? [];
             if (!empty($errors)) {
                 Log::warning('NIN verification providers failed', [
                     'user_id' => $user->id,
@@ -376,13 +324,7 @@ class NINController extends Controller
                 ]);
             }
 
-            $finalMessage = $this->formatVerificationError($errors, (string) ($response['message'] ?? 'Verification failed.'));
-            if ($request->filled('api_provider_id') && count($errors) === 1 && str_contains($errors[0], ': ')) {
-                $candidate = explode(': ', $errors[0], 2)[1];
-                if (!$this->isTechnicalError($candidate)) {
-                    $finalMessage = $candidate;
-                }
-            }
+            $finalMessage = (string) ($response['message'] ?? 'Verification failed across available providers.');
             throw new \Exception($finalMessage);
         });
 
@@ -892,13 +834,13 @@ class NINController extends Controller
                 'name' => 'VUVAA Identity API',
                 'service_type' => 'nin_verification',
                 'provider_identifier' => 'vuvaa',
-                'endpoint' => 'https://verificationservice.vuvaa.com/NIN_Validation',
+                'endpoint' => 'https://premiere.vuvaa.com/demo/NIN_Validation_LIVE',
                 'config' => [
-                    'username' => 'fuwalive',
-                    'password' => 'FuwaLive2026!Secure',
-                    'encryption_key' => 'JQvbJNbRHGYOMmFR9iTgLwakXKjGti8bmsglWKyKP7o=',
+                    'username' => 'fuwa_demo_0417190741',
+                    'password' => 'Password',
+                    'encryption_key' => 'FD!-F=15B46BAD21',
                     'encryption_iv' => '0123456789012345',
-                    'enterprise_id' => 'FUWAENNT00918',
+                    'enterprise_id' => '',
                     'verify_nin_path' => 'verify_nin',
                     'in_person_path' => 'in_person_verification',
                     'share_code_path' => 'share_code',
@@ -946,18 +888,18 @@ class NINController extends Controller
                     $data['id'] = $nextId;
                     CustomApi::create($data);
                 } elseif ($data['provider_identifier'] === 'vuvaa') {
+                    $cfg = is_array($existing->config) ? $existing->config : [];
                     $needsUpdate = empty($existing->endpoint)
-                        || str_contains($existing->endpoint, 'api.vuvaa.com/v1')
+                        || str_contains((string) $existing->endpoint, 'verificationservice.vuvaa.com')
+                        || ($cfg['username'] ?? '') === 'fuwalive'
                         || empty($existing->config)
-                        || !$existing->status
-                        || $existing->priority !== 1;
+                        || !$existing->status;
                     if ($needsUpdate) {
                         $existing->update([
                             'endpoint' => $data['endpoint'],
-                            'config' => array_merge($existing->config ?? [], $data['config'] ?? []),
+                            'config' => array_merge($cfg, $data['config'] ?? []),
                             'supported_modes' => $data['supported_modes'] ?? ['nin', 'selfie', 'share_code', 'requery'],
                             'status' => true,
-                            'priority' => 1,
                         ]);
                     }
                 } elseif ($data['provider_identifier'] === 'dataverify') {

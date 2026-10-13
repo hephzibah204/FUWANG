@@ -43,6 +43,46 @@ class PdfReportController extends Controller
 
         $result->response_data = $this->normalizeNinSlipPayload($result->response_data, (string) $result->identifier);
 
+        $rawProvider = strtolower(
+            (string) ($result->getRawOriginal('provider_name')
+                ?: $result->provider_name
+                ?: $result->response_data['provider']
+                ?? $result->response_data['_provider']
+                ?? '')
+        );
+        $isRobost = str_contains($rawProvider, 'robosttech') || str_contains($rawProvider, 'robost');
+
+        if ($isRobost) {
+            // Robosttech verifications strictly use our in-house premium slip
+            if (request()->boolean('html') || request()->boolean('print')) {
+                $autoPrint = request()->boolean('print');
+                return response()->view('pdf.nin_premium_slip', compact('result', 'autoPrint'));
+            }
+
+            $cachedResponse = $this->serveCachedNinSlip($result, 'premium_slip');
+            if ($cachedResponse !== null) {
+                $cachedSource = data_get($result->response_data, '_cached_slips.premium_slip.source');
+                if ($cachedSource === 'in_house_premium_slip' || $cachedSource === 'internal_fallback') {
+                    return $cachedResponse;
+                }
+            }
+
+            Log::info('NIN slip generating in-house premium slip for Robosttech', [
+                'result_id' => $result->id,
+                'reference_id' => $result->reference_id,
+                'provider_name' => $result->provider_name,
+            ]);
+
+            $pdf = Pdf::loadView('pdf.nin_premium_slip', compact('result'));
+            $bin = $pdf->output();
+            $this->cacheNinSlipBinary($result, $type, $bin, 'in_house_premium_slip');
+            if ($type !== 'premium_slip') {
+                $this->cacheNinSlipBinary($result, 'premium_slip', $bin, 'in_house_premium_slip');
+            }
+
+            return $this->buildPdfResponse($bin, 'premium_slip', (string) $result->reference_id);
+        }
+
         if (request()->boolean('html') || request()->boolean('print')) {
             $view = match ($type) {
                 'premium_slip' => 'pdf.nin_premium_slip',

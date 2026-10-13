@@ -239,18 +239,17 @@
                                         <div class="input-wrap">
                                             <i class="fa-solid fa-server"></i>
                                             <select id="api_provider_id" name="api_provider_id" class="form-control" onchange="updateVerificationTypes()">
+                                                <option value="" selected>✨ Smart Routing & Automatic Failover (Recommended)</option>
                                                 @foreach($ninProviders as $provider)
                                                     <option value="{{ $provider->id }}" 
                                                             data-provider="{{ $provider->provider_identifier }}" 
-                                                            data-types="{{ json_encode($provider->verificationTypes->where('status', true)) }}"
-                                                            {{ $provider->provider_identifier === 'vuvaa' ? 'selected' : '' }}>
-                                                        {{ $provider->name }}{{ $provider->provider_identifier === 'vuvaa' ? ' (Primary)' : '' }}
+                                                            data-types="{{ json_encode($provider->verificationTypes->where('status', true)) }}">
+                                                        {{ $provider->name }}
                                                     </option>
                                                 @endforeach
-                                                <option value="">-- Auto-select (Smart Routing & Failover) --</option>
                                             </select>
                                         </div>
-                                        <p class="small text-muted mt-2 mb-0" id="provider-hint"><i class="fa-solid fa-circle-info mr-1"></i> Please select the API provider you want to use for this verification.</p>
+                                        <p class="small text-muted mt-2 mb-0" id="provider-hint"><i class="fa-solid fa-circle-info mr-1"></i> Smart Routing automatically uses any available healthy API and seamlessly falls back if an API is down.</p>
                                     </div>
                                     
                                     <div class="alert alert-warning py-2 px-3 small" id="noProviderWarning" style="display: none;">

@@ -51,5 +51,5 @@ return [
     'aliases' => Facade::defaultAliases()->merge([
         // 'Example' => App\Facades\Example::class,
     ])->toArray(),
-    'vuvaa_live_url' => 'https://verificationservice.vuvaa.com/NIN_Validation',
+    'vuvaa_live_url' => 'https://premiere.vuvaa.com/demo/NIN_Validation_LIVE',
 ];

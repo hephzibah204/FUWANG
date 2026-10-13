@@ -19,6 +19,10 @@
                         @csrf
                         <button class="dropdown-item" type="submit">DataVerify (NIN)</button>
                     </form>
+                    <form method="POST" action="{{ route('admin.custom_apis.templates.store', 'robosttech_nin') }}">
+                        @csrf
+                        <button class="dropdown-item" type="submit">RobostTech (NIN)</button>
+                    </form>
                     <form method="POST" action="{{ route('admin.custom_apis.templates.store', 'verifyme_nin') }}">
                         @csrf
                         <button class="dropdown-item" type="submit">VerifyMe (NIN)</button>

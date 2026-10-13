@@ -1136,7 +1136,6 @@
         <script src="{{ $assetPrefix . '/assets/nexus/js/payment-modal.js?v=' . @filemtime(public_path('assets/nexus/js/payment-modal.js')) }}"></script>
         <script src="{{ $assetPrefix . '/assets/nexus/js/nexus-ai.js?v=' . @filemtime(public_path('assets/nexus/js/nexus-ai.js')) }}"></script>
     @endif
-    @stack('scripts')
     <script nonce="{{ $cspNonce ?? '' }}">
         window.__toggleNexusSidebar = function (event) {
             if (event) {
@@ -1297,6 +1296,30 @@
                 dropdown.style.display = 'block';
             };
 
+            var searchLogTimer = null;
+            var lastLoggedQuery = '';
+            var logSearchQuery = function (q, count) {
+                if (!q || q.length < 2 || q === lastLoggedQuery) return;
+                lastLoggedQuery = q;
+                try {
+                    fetch('/analytics/search-keyword', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                        body: JSON.stringify({ keyword: q, source: 'search_hub', results_count: count })
+                    }).catch(function () {});
+                } catch (e) {}
+            };
+
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    const query = (input.value || '').trim();
+                    if (query.length >= 2) {
+                        clearTimeout(searchLogTimer);
+                        logSearchQuery(query, dropdown.querySelectorAll('.search-result-item').length);
+                    }
+                }
+            });
+
             input.addEventListener('input', () => {
                 const query = (input.value || '').toLowerCase().trim();
 
@@ -1309,6 +1332,13 @@
                     s.title.toLowerCase().includes(query) ||
                     s.cat.toLowerCase().includes(query)
                 );
+
+                clearTimeout(searchLogTimer);
+                if (query.length >= 2) {
+                    searchLogTimer = setTimeout(() => {
+                        logSearchQuery(query, filtered.length);
+                    }, 800);
+                }
 
                 if (filtered.length > 0) {
                     dropdown.innerHTML = filtered.map((s) => {

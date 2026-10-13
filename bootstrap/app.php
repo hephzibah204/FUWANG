@@ -33,11 +33,14 @@ return Application::configure(basePath: dirname(__DIR__))
             $middleware->append(\App\Http\Middleware\CheckInstallation::class);
         }
 
+        $middleware->appendToGroup('web', \App\Http\Middleware\TrackWebsiteTraffic::class);
+
         $middleware->validateCsrfTokens(except: [
             'webhooks/*',
             'payvessel_webhook.php',
             'palmpay_webhook.php',
             'agent/send-claim-otp',
+            'analytics/search-keyword',
         ]);
 
         $middleware->redirectGuestsTo(function (Request $request) {

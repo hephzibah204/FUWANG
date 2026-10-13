@@ -31,13 +31,13 @@ class VuvaaClient
     {
         $this->cfg = is_array($provider->config) ? $provider->config : [];
 
-        $endpoint = SystemSetting::get('vuvaa_endpoint') ?: env('VUVAA_LIVE_URL') ?: ($provider->endpoint ?: 'https://verificationservice.vuvaa.com/NIN_Validation');
-        if (str_contains($endpoint, 'api.vuvaa.com/v1')) {
-            $endpoint = SystemSetting::get('vuvaa_endpoint') ?: env('VUVAA_LIVE_URL') ?: 'https://verificationservice.vuvaa.com/NIN_Validation';
+        $endpoint = SystemSetting::get('vuvaa_endpoint') ?: env('VUVAA_LIVE_URL') ?: ($provider->endpoint ?: 'https://premiere.vuvaa.com/demo/NIN_Validation_LIVE');
+        if (str_contains($endpoint, 'api.vuvaa.com/v1') || str_contains($endpoint, 'verificationservice.vuvaa.com')) {
+            $endpoint = SystemSetting::get('vuvaa_endpoint') ?: env('VUVAA_LIVE_URL') ?: 'https://premiere.vuvaa.com/demo/NIN_Validation_LIVE';
         }
         $this->endpoint = $endpoint;
 
-        $key = trim((string) (SystemSetting::get('vuvaa_encryption_key') ?: env('VUVAA_ENCRYPTION_KEY') ?: ($this->cfg['encryption_key'] ?? 'JQvbJNbRHGYOMmFR9iTgLwakXKjGti8bmsglWKyKP7o=')));
+        $key = trim((string) (SystemSetting::get('vuvaa_encryption_key') ?: env('VUVAA_ENCRYPTION_KEY') ?: ($this->cfg['encryption_key'] ?? 'FD!-F=15B46BAD21')));
         $iv = trim((string) (SystemSetting::get('vuvaa_encryption_iv') ?: env('VUVAA_ENCRYPTION_IV') ?: ($this->cfg['encryption_iv'] ?? '0123456789012345')));
 
         if ($key === '' || $iv === '') {
@@ -299,27 +299,35 @@ class VuvaaClient
     private function username(): string
     {
         $setting = trim((string) SystemSetting::get('vuvaa_username', ''));
-        if ($setting !== '') {
+        if ($setting !== '' && $setting !== 'fuwalive') {
             return $setting;
         }
         $env = trim((string) env('VUVAA_USERNAME', ''));
-        if ($env !== '') {
+        if ($env !== '' && $env !== 'fuwalive') {
             return $env;
         }
-        return trim((string) ($this->cfg['username'] ?? $this->provider->api_key ?? 'fuwa_demo_0417190741'));
+        $cfgUser = trim((string) ($this->cfg['username'] ?? ''));
+        if ($cfgUser !== '' && $cfgUser !== 'fuwalive') {
+            return $cfgUser;
+        }
+        return 'fuwa_demo_0417190741';
     }
 
     private function password(): string
     {
         $setting = trim((string) SystemSetting::get('vuvaa_password', ''));
-        if ($setting !== '') {
+        if ($setting !== '' && !str_starts_with($setting, 'FuwaLive')) {
             return $setting;
         }
         $env = trim((string) env('VUVAA_PASSWORD', ''));
-        if ($env !== '') {
+        if ($env !== '' && !str_starts_with($env, 'FuwaLive')) {
             return $env;
         }
-        return trim((string) ($this->cfg['password'] ?? $this->provider->secret_key ?? 'Password'));
+        $cfgPass = trim((string) ($this->cfg['password'] ?? ''));
+        if ($cfgPass !== '' && !str_starts_with($cfgPass, 'FuwaLive')) {
+            return $cfgPass;
+        }
+        return 'Password';
     }
 
     private function normalizeBase64(string $value): string
