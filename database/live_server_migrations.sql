@@ -651,6 +651,12 @@ INSERT IGNORE INTO `migrations` (`migration`, `batch`) VALUES
 -- ------------------------------------------------------------------------------
 ALTER TABLE `users` MODIFY `username` VARCHAR(60) NULL;
 
+-- ------------------------------------------------------------------------------
+-- Migration [66]: 2026_10_13_190000_repair_feature_toggles_auto_increment
+-- ------------------------------------------------------------------------------
+ALTER TABLE `feature_toggles` MODIFY `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT;
+
+
 
 -- ==============================================================================
 -- CLEANUP HELPER PROCEDURES

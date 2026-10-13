@@ -130,8 +130,7 @@ class ServiceManagementController extends Controller
         $toggle->offline_message = $request->offline_message ?? $toggle->offline_message;
         $toggle->save();
 
-        Cache::forget('feature_toggle:' . $featureKey);
-        Cache::forget('admin:feature_toggles');
+        FeatureToggle::clearCache($featureKey);
 
         return back()->with('success', 'Service availability updated.');
     }
