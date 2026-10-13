@@ -8,6 +8,7 @@ use App\Models\ApiCenter;
 use App\Models\AuctionLot;
 use App\Models\CustomApi;
 use App\Models\SearchKeywordLog;
+use App\Models\SystemSetting;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Models\VerificationResult;
@@ -70,6 +71,34 @@ class DashboardController extends Controller
             }
 
             $totalRevenue = round($serviceRevenue + $agentLicenseRevenue, 2);
+
+            // Invested vs. Made (Profitability & ROI)
+            $manualCapital = (float) SystemSetting::get('total_capital_invested', 0);
+            $autoFulfillmentCost = 0.0;
+            try {
+                if (Schema::hasTable('verification_results')) {
+                    $successVerifications = (int) VerificationResult::whereIn(DB::raw('LOWER(status)'), ['success', 'successful', 'completed', 'approved'])->count();
+                    $autoFulfillmentCost = round($successVerifications * 100.0, 2);
+                }
+            } catch (\Throwable $e) {
+                $autoFulfillmentCost = 0.0;
+            }
+
+            $totalInvested = $manualCapital > 0 ? $manualCapital : $autoFulfillmentCost;
+            $netProfit = round($totalRevenue - $totalInvested, 2);
+            $roi = ($totalInvested > 0) ? round((($totalRevenue - $totalInvested) / $totalInvested) * 100, 1) : 0.0;
+            $profitMargin = ($totalRevenue > 0) ? round(($netProfit / $totalRevenue) * 100, 1) : 0.0;
+
+            $investmentStats = [
+                'made' => $totalRevenue,
+                'invested' => $totalInvested,
+                'manual_capital' => $manualCapital,
+                'auto_fulfillment_cost' => $autoFulfillmentCost,
+                'net_profit' => $netProfit,
+                'roi' => $roi,
+                'profit_margin' => $profitMargin,
+                'is_profitable' => $netProfit >= 0,
+            ];
 
             $today = Carbon::today();
 
@@ -288,10 +317,25 @@ class DashboardController extends Controller
                 'providerBalances' => Cache::remember('admin_provider_balances_v1', now()->addMinutes(3), function () {
                     return $this->fetchProviderBalances();
                 }),
+
+                // Investment vs. Made Stats
+                'investmentStats' => $investmentStats,
             ];
         });
 
         return view('admin.dashboard', compact('dashboardData'));
+    }
+
+    public function updateCapitalInvestment(Request $request)
+    {
+        $validated = $request->validate([
+            'amount' => ['required', 'numeric', 'min:0'],
+        ]);
+
+        SystemSetting::set('total_capital_invested', $validated['amount'], 'financial', 'number', 'Total Capital Invested');
+        Cache::forget('admin_dashboard_bi_v1');
+
+        return back()->with('success', 'Capital investment updated to NGN ' . number_format((float) $validated['amount'], 2) . '.');
     }
 
     public function providerBalances(Request $request)

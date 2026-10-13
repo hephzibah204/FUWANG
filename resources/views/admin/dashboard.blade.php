@@ -34,7 +34,20 @@
 
     // API Provider Balances
     $providerBalances = $dashboardData['providerBalances'] ?? [];
+
+    // Investment vs. Made Stats
+    $investmentStats = $dashboardData['investmentStats'] ?? [];
 @endphp
+
+@if(session('success'))
+    <div class="alert alert-success alert-dismissible fade show d-flex align-items-center justify-content-between mb-4 shadow-sm" role="alert">
+        <div>
+            <i class="fa-solid fa-circle-check me-2"></i>
+            {{ session('success') }}
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" data-dismiss="alert" aria-label="Close"></button>
+    </div>
+@endif
 
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
     <div>
@@ -126,6 +139,163 @@
                 </div>
             </div>
         </div>
+    </div>
+</div>
+
+{{-- SECTION: CAPITAL INVESTMENT VS REVENUE MADE (PROFITABILITY & ROI ANALYSIS) --}}
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-2">
+            <div class="bg-success-subtle text-success p-2 rounded-3 d-inline-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+            <div>
+                <h5 class="mb-0 fw-bold">Investment vs. Revenue Analysis</h5>
+                <small class="text-muted">Compare capital & provider API investments against gross sales to calculate net profit & ROI</small>
+            </div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <button type="button" class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1 shadow-sm" data-bs-toggle="modal" data-bs-target="#editInvestmentModal" data-toggle="modal" data-target="#editInvestmentModal">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                <span>Set Capital Invested</span>
+            </button>
+        </div>
+    </div>
+    <div class="card-body pt-0 pb-3">
+        <div class="row g-3 mb-3">
+            {{-- Total Invested Card --}}
+            <div class="col-lg-3 col-sm-6">
+                <div class="p-3 rounded-3 border bg-light-subtle h-100">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="text-muted small text-uppercase fw-semibold">Total Invested</span>
+                        <span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-0 small">Outlay</span>
+                    </div>
+                    <h3 class="mb-1 fw-bold text-dark">
+                        NGN {{ number_format($investmentStats['invested'] ?? 0, 2) }}
+                    </h3>
+                    <div class="text-muted small">
+                        @if(($investmentStats['manual_capital'] ?? 0) > 0)
+                            Manual capital recorded
+                        @else
+                            Est. API fulfillment costs
+                        @endif
+                    </div>
+                </div>
+            </div>
+
+            {{-- Total Made (Revenue) Card --}}
+            <div class="col-lg-3 col-sm-6">
+                <div class="p-3 rounded-3 border bg-light-subtle h-100">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="text-muted small text-uppercase fw-semibold">Total Made</span>
+                        <span class="badge bg-success-subtle text-success rounded-pill px-2 py-0 small">Gross Sales</span>
+                    </div>
+                    <h3 class="mb-1 fw-bold text-success">
+                        NGN {{ number_format($investmentStats['made'] ?? 0, 2) }}
+                    </h3>
+                    <div class="text-muted small">
+                        Services & accreditations
+                    </div>
+                </div>
+            </div>
+
+            {{-- Net Profit Card --}}
+            <div class="col-lg-3 col-sm-6">
+                <div class="p-3 rounded-3 border bg-light-subtle h-100">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="text-muted small text-uppercase fw-semibold">Net Profit</span>
+                        <span class="badge {{ ($investmentStats['is_profitable'] ?? false) ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger' }} rounded-pill px-2 py-0 small">
+                            {{ ($investmentStats['is_profitable'] ?? false) ? 'Profitable' : 'Deficit' }}
+                        </span>
+                    </div>
+                    <h3 class="mb-1 fw-bold {{ ($investmentStats['is_profitable'] ?? false) ? 'text-success' : 'text-danger' }}">
+                        {{ ($investmentStats['net_profit'] ?? 0) < 0 ? '-' : '' }}NGN {{ number_format(abs($investmentStats['net_profit'] ?? 0), 2) }}
+                    </h3>
+                    <div class="text-muted small">
+                        Margin: <strong>{{ number_format($investmentStats['profit_margin'] ?? 0, 1) }}%</strong>
+                    </div>
+                </div>
+            </div>
+
+            {{-- ROI Card --}}
+            <div class="col-lg-3 col-sm-6">
+                <div class="p-3 rounded-3 border bg-light-subtle h-100">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="text-muted small text-uppercase fw-semibold">Return on Investment</span>
+                        <span class="badge {{ ($investmentStats['roi'] ?? 0) >= 0 ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger' }} rounded-pill px-2 py-0 small">
+                            ROI Ratio
+                        </span>
+                    </div>
+                    <h3 class="mb-1 fw-bold {{ ($investmentStats['roi'] ?? 0) >= 0 ? 'text-success' : 'text-danger' }}">
+                        {{ ($investmentStats['roi'] ?? 0) > 0 ? '+' : '' }}{{ number_format($investmentStats['roi'] ?? 0, 1) }}%
+                    </h3>
+                    <div class="text-muted small">
+                        {{ ($investmentStats['is_profitable'] ?? false) ? 'Capital returned + surplus' : 'Recovering capital' }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Visual Ratio Bar --}}
+        @php
+            $invAmount = max(0, (float) ($investmentStats['invested'] ?? 0));
+            $madeAmount = max(0, (float) ($investmentStats['made'] ?? 0));
+            $barTotal = max(1, $invAmount + $madeAmount);
+            $invPct = round(($invAmount / $barTotal) * 100);
+            $madePct = 100 - $invPct;
+        @endphp
+        <div class="p-3 rounded-3 bg-white border">
+            <div class="d-flex justify-content-between align-items-center mb-2 small">
+                <span>
+                    <strong class="text-primary">&#9632; Invested:</strong> NGN {{ number_format($invAmount, 2) }} ({{ $invPct }}%)
+                </span>
+                <span>
+                    <strong class="text-success">&#9632; Made (Revenue):</strong> NGN {{ number_format($madeAmount, 2) }} ({{ $madePct }}%)
+                </span>
+            </div>
+            <div class="progress" style="height: 12px; border-radius: 6px; overflow: hidden;">
+                <div class="progress-bar bg-primary" role="progressbar" style="width: {{ $invPct }}%;" aria-valuenow="{{ $invPct }}" aria-valuemin="0" aria-valuemax="100"></div>
+                <div class="progress-bar bg-success" role="progressbar" style="width: {{ $madePct }}%;" aria-valuenow="{{ $madePct }}" aria-valuemin="0" aria-valuemax="100"></div>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mt-2 text-muted" style="font-size: 11.5px;">
+                <span>Total Capital / Provider Outlay</span>
+                <span>Gross Realized Turnover</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- MODAL: Set Capital Invested --}}
+<div class="modal fade" id="editInvestmentModal" tabindex="-1" aria-labelledby="editInvestmentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="POST" action="{{ route('admin.capital_investment.update') }}" class="modal-content border-0 shadow">
+            @csrf
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold" id="editInvestmentModalLabel">Set Capital Invested</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">
+                    Record your total capital investment (e.g. initial capital injected, bank transfers to DataVerify/RobostTech/VTU provider wallets). The dashboard will use this to accurately compute Net Profit & ROI.
+                </p>
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Total Capital Invested (NGN)</label>
+                    <div class="input-group">
+                        <span class="input-group-text">NGN</span>
+                        <input type="number" step="0.01" min="0" name="amount" class="form-control font-monospace" value="{{ $investmentStats['manual_capital'] ?? '' }}" placeholder="e.g. 200000" required>
+                    </div>
+                    <div class="form-text small">Enter 0 to automatically use calculated API fulfillment costs.</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-sm btn-light border" data-bs-dismiss="modal" data-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-sm btn-primary px-3">Save Capital Investment</button>
+            </div>
+        </form>
     </div>
 </div>
 
