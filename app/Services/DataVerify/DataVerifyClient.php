@@ -499,15 +499,37 @@ class DataVerifyClient
 
         $headers = is_array($this->provider?->headers) ? $this->provider->headers : [];
         $headers['Authorization'] = 'Bearer ' . $apiKey;
+        $headers['X-API-Key'] = $apiKey;
+        $headers['api-key'] = $apiKey;
+        $headers['Accept'] = 'application/json';
         $headers['Content-Type'] = $headers['Content-Type'] ?? 'application/json';
 
+        $timeout = (int) ($this->provider?->timeout_seconds ?: 30);
+        $res = null;
+
         try {
-            $res = Http::timeout((int) ($this->provider?->timeout_seconds ?: 30))
+            // Note: DataVerify strictly rejects api_key in query string ("Do not send the API key in the query string.
+            // Use the Authorization: Bearer header, the X-API-Key header, or a JSON body.")
+            // 1. Try GET with headers only (no query string)
+            $res = Http::timeout($timeout)
                 ->acceptJson()
                 ->withHeaders($headers)
-                ->get($url, [
-                    'api_key' => $apiKey,
-                ]);
+                ->get($url);
+
+            // 2. If GET returns 405 (Method Not Allowed) or fails, try POST with JSON body
+            if (!$res->successful() || $res->status() === 405) {
+                $postRes = Http::timeout($timeout)
+                    ->acceptJson()
+                    ->asJson()
+                    ->withHeaders($headers)
+                    ->post($url, [
+                        'api_key' => $apiKey,
+                    ]);
+
+                if ($postRes->successful() || $res->status() === 405) {
+                    $res = $postRes;
+                }
+            }
         } catch (\Throwable $e) {
             return [
                 'ok' => false,
@@ -517,21 +539,55 @@ class DataVerifyClient
             ];
         }
 
-        $json = $res->json();
-        if (!$res->successful() || !is_array($json)) {
+        $json = $res ? $res->json() : null;
+        if (!$res || !$res->successful() || !is_array($json)) {
+            $errMsg = is_array($json) ? ($json['message'] ?? $json['detail'] ?? 'Failed to check balance') : ($res ? ('HTTP ' . $res->status() . ' - Invalid response from DataVerify') : 'No response from DataVerify');
             return [
                 'ok' => false,
                 'balance' => null,
-                'message' => is_array($json) ? ($json['message'] ?? 'Failed to check balance') : 'Invalid response from DataVerify',
+                'message' => is_string($errMsg) ? $errMsg : json_encode($errMsg),
                 'data' => is_array($json) ? $json : [],
             ];
         }
 
-        $balance = $json['balance'] ?? $json['data']['balance'] ?? $json['wallet_balance'] ?? null;
+        $rawBalance = $json['balance']
+            ?? $json['data']['balance']
+            ?? $json['data']['wallet_balance']
+            ?? $json['wallet_balance']
+            ?? $json['wallet']
+            ?? $json['data']['wallet']
+            ?? $json['user']['wallet_balance']
+            ?? $json['data']['user']['wallet_balance']
+            ?? null;
+
+        $parsedBalance = null;
+        if ($rawBalance !== null) {
+            if (is_numeric($rawBalance)) {
+                $parsedBalance = (float) $rawBalance;
+            } elseif (is_string($rawBalance)) {
+                $cleaned = preg_replace('/[^0-9.]/', '', str_replace(',', '', $rawBalance));
+                if (is_numeric($cleaned)) {
+                    $parsedBalance = (float) $cleaned;
+                }
+            }
+        }
+
+        $statusVal = strtolower((string) ($json['status'] ?? ''));
+        $responseCode = (string) ($json['response_code'] ?? '');
+        $isSuccess = $statusVal === 'success' || $statusVal === 'true' || $responseCode === '00' || $responseCode === '0' || $parsedBalance !== null;
+
+        if (!$isSuccess && $parsedBalance === null) {
+            return [
+                'ok' => false,
+                'balance' => null,
+                'message' => (string) ($json['message'] ?? 'DataVerify returned unsuccessful status.'),
+                'data' => $json,
+            ];
+        }
 
         return [
             'ok' => true,
-            'balance' => is_numeric($balance) ? (float) $balance : null,
+            'balance' => $parsedBalance,
             'message' => (string) ($json['message'] ?? 'Balance fetched successfully.'),
             'data' => $json,
         ];

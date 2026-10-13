@@ -405,13 +405,13 @@ class NINController extends Controller
             return $provider;
         }
 
-        if (in_array($mode, ['validation', 'validation_status'], true)) {
-            return CustomApi::whereIn('service_type', ['nin_verification', 'nin', 'nin_validation', 'validation', 'identity'])
+        if (in_array($mode, ['validation', 'validation_status', 'clearance', 'clearance_status', 'ipe', 'ipe_clearance'], true)) {
+            return CustomApi::whereIn('service_type', ['nin_verification', 'nin', 'nin_validation', 'validation', 'identity', 'clearance', 'ipe_clearance'])
                 ->where('status', true)
                 ->where('provider_identifier', 'robosttech')
                 ->orderBy('priority', 'asc')
                 ->first()
-                ?? CustomApi::whereIn('service_type', ['nin_verification', 'nin', 'nin_validation', 'validation', 'identity'])
+                ?? CustomApi::whereIn('service_type', ['nin_verification', 'nin', 'nin_validation', 'validation', 'identity', 'clearance', 'ipe_clearance'])
                 ->where('status', true)
                 ->orderBy('priority', 'asc')
                 ->first();
@@ -436,7 +436,7 @@ class NINController extends Controller
         }
 
         if ((string) $provider->provider_identifier === 'robosttech') {
-            return in_array($mode, ['nin', 'phone', 'demographic', 'tracking', 'vnin', 'validation', 'validation_status', 'clearance'], true);
+            return in_array($mode, ['nin', 'phone', 'demographic', 'tracking', 'vnin', 'validation', 'validation_status', 'clearance', 'clearance_status', 'ipe', 'ipe_clearance'], true);
         }
 
         return $provider->service_type === 'nin_face_verification'

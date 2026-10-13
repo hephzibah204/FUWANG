@@ -542,7 +542,7 @@
                 submitBtn.innerHTML = ninSubmitLabel(mode);
             }
             
-            // If validation mode, RobostTech is specifically needed
+            // If validation mode, RobostTech is specifically selected by default
             if (mode === 'validation' || mode === 'validation_status') {
                 const robost = Array.from(providerSelect.options).find(opt => {
                     if (opt.value === '' || opt.style.display === 'none') return false;
@@ -552,17 +552,9 @@
                     providerSelect.value = robost.value;
                 }
             } else {
-                // Prioritize Vuvaa (Primary / Provider 1) if supported for this mode
-                const vuvaa = Array.from(providerSelect.options).find(opt => {
-                    if (opt.value === '' || opt.style.display === 'none') return false;
-                    return (opt.getAttribute('data-provider') || '').toLowerCase() === 'vuvaa';
-                });
-
                 const currentOpt = previousVal ? providerSelect.querySelector(`option[value="${previousVal}"]`) : null;
                 if (previousVal && currentOpt && currentOpt.style.display !== 'none') {
                     providerSelect.value = previousVal;
-                } else if (vuvaa) {
-                    providerSelect.value = vuvaa.value;
                 } else if (availableCount === 1) {
                     const availableOption = Array.from(providerSelect.options).find(opt => opt.style.display !== 'none' && opt.value !== '');
                     if (availableOption) {

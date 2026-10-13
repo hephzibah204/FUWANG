@@ -77,27 +77,32 @@ class DashboardController extends Controller
             $autoFulfillmentCost = 0.0;
             try {
                 if (Schema::hasTable('verification_results')) {
-                    $successVerifications = (int) VerificationResult::whereIn(DB::raw('LOWER(status)'), ['success', 'successful', 'completed', 'approved'])->count();
-                    $autoFulfillmentCost = round($successVerifications * 100.0, 2);
+                    $costSetting = (float) SystemSetting::get('cost_per_verification', 0);
+                    if ($costSetting > 0) {
+                        $successVerifications = (int) VerificationResult::whereIn(DB::raw('LOWER(status)'), ['success', 'successful', 'completed', 'approved'])->count();
+                        $autoFulfillmentCost = round($successVerifications * $costSetting, 2);
+                    }
                 }
             } catch (\Throwable $e) {
                 $autoFulfillmentCost = 0.0;
             }
 
             $totalInvested = $manualCapital > 0 ? $manualCapital : $autoFulfillmentCost;
-            $netProfit = round($totalRevenue - $totalInvested, 2);
+            $hasCost = $totalInvested > 0;
+            $netProfit = $hasCost ? round($totalRevenue - $totalInvested, 2) : 0.0;
             $roi = ($totalInvested > 0) ? round((($totalRevenue - $totalInvested) / $totalInvested) * 100, 1) : 0.0;
-            $profitMargin = ($totalRevenue > 0) ? round(($netProfit / $totalRevenue) * 100, 1) : 0.0;
+            $profitMargin = ($totalRevenue > 0 && $totalInvested > 0) ? round(($netProfit / $totalRevenue) * 100, 1) : 0.0;
 
             $investmentStats = [
                 'made' => $totalRevenue,
                 'invested' => $totalInvested,
                 'manual_capital' => $manualCapital,
                 'auto_fulfillment_cost' => $autoFulfillmentCost,
+                'has_capital' => $hasCost,
                 'net_profit' => $netProfit,
                 'roi' => $roi,
                 'profit_margin' => $profitMargin,
-                'is_profitable' => $netProfit >= 0,
+                'is_profitable' => $hasCost ? ($netProfit >= 0) : null,
             ];
 
             $today = Carbon::today();
@@ -320,10 +325,45 @@ class DashboardController extends Controller
 
                 // Investment vs. Made Stats
                 'investmentStats' => $investmentStats,
+
+                // Current API center settings
+                'apiCenter' => ApiCenter::first(),
             ];
         });
 
         return view('admin.dashboard', compact('dashboardData'));
+    }
+
+    public function updateApiCredentials(Request $request)
+    {
+        $validated = $request->validate([
+            'dataverify_api_key' => ['nullable', 'string', 'max:500'],
+            'robosttech_api_key' => ['nullable', 'string', 'max:500'],
+            'robosttech_endpoint_nin' => ['nullable', 'string', 'max:500'],
+            'robosttech_endpoint_validation' => ['nullable', 'string', 'max:500'],
+            'robosttech_endpoint_clearance' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $data = array_filter($validated, fn ($v) => $v !== null && trim((string) $v) !== '');
+
+        if (!empty($data)) {
+            DB::table('api_centers')->updateOrInsert(
+                ['id' => DB::table('api_centers')->min('id') ?? 1],
+                $data
+            );
+        }
+
+        Cache::forget('admin_dashboard_bi_v1');
+        Cache::forget('admin_provider_balances_v1');
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'status' => true,
+                'message' => 'API credentials updated successfully.',
+            ]);
+        }
+
+        return back()->with('success', 'API credentials updated successfully. Checking balances...');
     }
 
     public function updateCapitalInvestment(Request $request)
@@ -377,7 +417,13 @@ class DashboardController extends Controller
                   ->orWhere('name', 'like', '%dataverify%');
             })->first();
 
-            $dvKey = $apiCenter?->dataverify_api_key ?: $customDv?->api_key;
+            $dvKey = trim((string) (
+                $apiCenter?->dataverify_api_key
+                ?: $customDv?->api_key
+                ?: env('DATAVERIFY_API_KEY')
+                ?: SystemSetting::get('dataverify_api_key', '')
+            ));
+
             if (!empty($dvKey)) {
                 $dataverify['configured'] = true;
                 $client = new DataVerifyClient($customDv);
@@ -429,59 +475,147 @@ class DashboardController extends Controller
             $apiCenter = $apiCenter ?? ApiCenter::first();
             $customRobost = CustomApi::where(function ($q) {
                 $q->where('provider_identifier', 'robosttech')
-                  ->orWhere('name', 'like', '%robost%');
+                  ->orWhere('name', 'like', '%robost%')
+                  ->orWhere('endpoint', 'like', '%robosttech%');
             })->first();
 
-            $robostKey = $apiCenter?->robosttech_api_key ?: $customRobost?->api_key;
+            $robostKey = trim((string) (
+                $apiCenter?->robosttech_api_key
+                ?: $customRobost?->api_key
+                ?: config('services.robosttech.api_key')
+                ?: env('ROBOSTTECH_API_KEY')
+                ?: SystemSetting::get('robosttech_api_key', '')
+                ?: SystemSetting::get('robost_api_key', '')
+            ));
+
             if (!empty($robostKey)) {
                 $robost['configured'] = true;
-                $endpoint = (string) ($apiCenter?->robosttech_endpoint_nin ?: $customRobost?->endpoint ?: 'https://robosttech.com/api');
-                $endpoint = rtrim($endpoint, '/');
-                if (str_ends_with($endpoint, '/nin_verify')) {
-                    $endpoint = substr($endpoint, 0, -strlen('/nin_verify'));
+
+                // Determine clean base URL
+                $rawEndpoint = (string) (
+                    $customRobost?->endpoint
+                    ?: $apiCenter?->robosttech_endpoint_nin
+                    ?: $apiCenter?->robosttech_endpoint_validation
+                    ?: $apiCenter?->robosttech_endpoint_clearance
+                    ?: config('services.robosttech.base_url')
+                    ?: 'https://robosttech.com/api'
+                );
+
+                $endpoint = rtrim(trim($rawEndpoint), '/');
+                foreach (['/nin_verify', '/nin', '/clearance_status', '/clearance', '/validation', '/personalization', '/balance', '/wallet'] as $suffix) {
+                    if (str_ends_with(strtolower($endpoint), $suffix)) {
+                        $endpoint = substr($endpoint, 0, -strlen($suffix));
+                    }
                 }
 
                 $headers = [
                     'api-key' => $robostKey,
+                    'x-api-key' => $robostKey,
+                    'Authorization' => 'Bearer ' . $robostKey,
                     'Accept' => 'application/json',
                     'Content-Type' => 'application/json',
                 ];
 
-                $balanceUrl = $endpoint . '/balance';
-                $res = Http::timeout(8)->withHeaders($headers)->get($balanceUrl);
+                $urlsToTry = [
+                    $endpoint . '/balance',
+                    $endpoint . '/wallet',
+                    $endpoint . '/wallet_balance',
+                    $endpoint . '/user/balance',
+                    $endpoint . '/check_balance',
+                ];
 
-                if ($res->status() === 404 || $res->status() === 405) {
-                    $res = Http::timeout(8)->withHeaders($headers)->post($balanceUrl);
-                }
-                if ($res->status() === 404) {
-                    $res = Http::timeout(8)->withHeaders($headers)->get($endpoint . '/wallet');
+                $res = null;
+                foreach ($urlsToTry as $bUrl) {
+                    try {
+                        $attempt = Http::timeout(6)->withHeaders($headers)->get($bUrl);
+                        if ($attempt->successful()) {
+                            $res = $attempt;
+                            break;
+                        }
+                        if ($attempt->status() === 405 || $attempt->status() === 400) {
+                            $attemptPost = Http::timeout(6)->withHeaders($headers)->asJson()->post($bUrl, [
+                                'api-key' => $robostKey,
+                                'api_key' => $robostKey,
+                            ]);
+                            if ($attemptPost->successful()) {
+                                $res = $attemptPost;
+                                break;
+                            }
+                        }
+                    } catch (\Throwable $te) {}
                 }
 
-                $json = $res->json();
-                if ($res->successful() && is_array($json)) {
-                    $rawBal = $json['balance'] ?? $json['data']['balance'] ?? $json['wallet_balance'] ?? $json['data']['wallet_balance'] ?? null;
-                    if ($rawBal !== null && is_numeric($rawBal)) {
-                        $bal = (float) $rawBal;
-                        $robost['balance'] = $bal;
-                        $robost['formatted'] = 'NGN ' . number_format($bal, 2);
-                        if ($bal < 5000) {
-                            $robost['status'] = 'low';
-                            $robost['status_label'] = 'Low Balance (< ₦5,000)';
-                            $robost['badge_class'] = 'bg-warning text-dark';
+                if (!$res) {
+                    // Try direct POST to /balance and /wallet if GETs weren't successful
+                    try {
+                        $attemptPost = Http::timeout(6)->withHeaders($headers)->asJson()->post($endpoint . '/balance', [
+                            'api-key' => $robostKey,
+                            'api_key' => $robostKey,
+                        ]);
+                        if ($attemptPost->successful()) {
+                            $res = $attemptPost;
+                        }
+                    } catch (\Throwable $te) {}
+                }
+
+                if ($res && $res->successful()) {
+                    $json = $res->json();
+                    if (is_array($json)) {
+                        $rawBal = $json['balance']
+                            ?? $json['data']['balance']
+                            ?? $json['wallet_balance']
+                            ?? $json['data']['wallet_balance']
+                            ?? $json['wallet']['balance']
+                            ?? $json['data']['wallet']['balance']
+                            ?? $json['user']['balance']
+                            ?? $json['data']['user']['balance']
+                            ?? $json['user']['wallet_balance']
+                            ?? $json['data']['user']['wallet_balance']
+                            ?? $json['wallet']
+                            ?? $json['data']['wallet']
+                            ?? null;
+
+                        $balFloat = null;
+                        if ($rawBal !== null) {
+                            if (is_numeric($rawBal)) {
+                                $balFloat = (float) $rawBal;
+                            } elseif (is_string($rawBal)) {
+                                $cleaned = preg_replace('/[^0-9.]/', '', str_replace(',', '', $rawBal));
+                                if (is_numeric($cleaned)) {
+                                    $balFloat = (float) $cleaned;
+                                }
+                            }
+                        }
+
+                        if ($balFloat !== null) {
+                            $robost['balance'] = $balFloat;
+                            $robost['formatted'] = 'NGN ' . number_format($balFloat, 2);
+                            if ($balFloat < 5000) {
+                                $robost['status'] = 'low';
+                                $robost['status_label'] = 'Low Balance (< ₦5,000)';
+                                $robost['badge_class'] = 'bg-warning text-dark';
+                            } else {
+                                $robost['status'] = 'ok';
+                                $robost['status_label'] = 'Operational';
+                                $robost['badge_class'] = 'bg-success';
+                            }
+                            $robost['message'] = 'Operational & Connected';
                         } else {
                             $robost['status'] = 'ok';
-                            $robost['status_label'] = 'Operational';
-                            $robost['badge_class'] = 'bg-success';
+                            $robost['status_label'] = 'Connected';
+                            $robost['badge_class'] = 'bg-info text-white';
+                            $robost['formatted'] = is_string($rawBal) ? $rawBal : 'Connected';
+                            $robost['message'] = $json['message'] ?? 'API connected successfully';
                         }
-                        $robost['message'] = 'Operational & Connected';
                     } else {
-                        $robost['status'] = 'ok';
-                        $robost['status_label'] = 'Connected';
-                        $robost['badge_class'] = 'bg-info text-white';
-                        $robost['formatted'] = is_string($rawBal) ? $rawBal : 'Connected';
-                        $robost['message'] = $json['message'] ?? 'API connected successfully';
+                        $robost['status'] = 'error';
+                        $robost['status_label'] = 'Check Failed';
+                        $robost['badge_class'] = 'bg-danger';
+                        $robost['formatted'] = 'Unavailable';
+                        $robost['message'] = 'Invalid response format';
                     }
                 } else {
+                    $json = $res ? $res->json() : null;
                     $errMsg = is_array($json) ? ($json['message'] ?? $json['detail'] ?? null) : null;
                     if (is_array($errMsg)) {
                         $errMsg = reset($errMsg);
@@ -491,7 +625,7 @@ class DashboardController extends Controller
                     $robost['status_label'] = 'Check Failed';
                     $robost['badge_class'] = 'bg-danger';
                     $robost['formatted'] = 'Unavailable';
-                    $robost['message'] = (string) ($errMsg ?: ('HTTP ' . $res->status()));
+                    $robost['message'] = (string) ($errMsg ?: ($res ? ('HTTP ' . $res->status()) : 'Could not reach RobostTech server'));
                 }
             }
         } catch (\Throwable $e) {

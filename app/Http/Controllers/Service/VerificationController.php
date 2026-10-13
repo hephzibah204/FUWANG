@@ -976,7 +976,7 @@ class VerificationController extends Controller
                         ->get();
 
         $price = VerificationPrice::first()->validation_price ?? 700;
-        $validationMode = \App\Models\SystemSetting::get('nin_validation_mode', 'manual');
+        $validationMode = \App\Models\SystemSetting::get('nin_validation_mode', 'robosttech');
         $activeProvider = $this->preferredValidationProvider();
         $providerLabel = $validationMode === 'manual' ? 'Manual Reporting' : ($activeProvider?->name ?: 'Robosttech');
 
@@ -1001,7 +1001,7 @@ class VerificationController extends Controller
         $user = Auth::user();
         $ninNumber = trim((string) $request->number);
         $reason = trim((string) $request->input('validation_reason', 'NIN Validation'));
-        $validationMode = \App\Models\SystemSetting::get('nin_validation_mode', 'manual');
+        $validationMode = \App\Models\SystemSetting::get('nin_validation_mode', 'robosttech');
 
         // Status check mode
         if ($mode === 'status') {
@@ -1302,7 +1302,7 @@ class VerificationController extends Controller
                         ->get();
 
         $price = VerificationPrice::first()->ipe_clearance_price ?? 700;
-        $ipeMode = \App\Models\SystemSetting::get('ipe_clearance_mode', 'manual');
+        $ipeMode = \App\Models\SystemSetting::get('ipe_clearance_mode', 'robosttech');
 
         return view('services.identity.clearance', compact('history', 'price', 'ipeMode'));
     }
@@ -1325,7 +1325,7 @@ class VerificationController extends Controller
         $trackingId = trim((string) $request->number);
         $nin = trim((string) $request->input('nin', ''));
         $category = trim((string) $request->input('category', 'Improcessing Error'));
-        $ipeClearanceMode = \App\Models\SystemSetting::get('ipe_clearance_mode', 'manual');
+        $ipeClearanceMode = \App\Models\SystemSetting::get('ipe_clearance_mode', 'robosttech');
 
         // Status check mode: retrieve existing review record and optionally sync from API
         if ($mode === 'status') {
@@ -1347,14 +1347,17 @@ class VerificationController extends Controller
             // If Robosttech mode or existing request was submitted via Robosttech, check Robosttech status API
             if ($ipeClearanceMode === 'robosttech' || ($existing && $existing->provider_name === 'Robosttech' && in_array($existing->status, ['pending', 'waiting_for_review']))) {
                 $apiCenter = ApiCenter::first();
-                if ($apiCenter && $apiCenter->robosttech_api_key) {
+                $customRobost = CustomApi::where('provider_identifier', 'robosttech')->where('status', true)->first();
+                $apiKey = $customRobost?->api_key ?: $apiCenter?->robosttech_api_key ?: env('ROBOSTTECH_API_KEY') ?: \App\Models\SystemSetting::get('robosttech_api_key');
+
+                if ($apiKey) {
                     try {
                         $endpoint = $this->resolveRobostEndpoint(
-                            (string) ($apiCenter->robosttech_endpoint_clearance_status ?: 'https://robosttech.com/api'),
+                            (string) ($customRobost?->endpoint ?: $apiCenter?->robosttech_endpoint_clearance_status ?: 'https://robosttech.com/api'),
                             'clearance_status'
                         );
                         $apiRes = Http::timeout(25)->withHeaders([
-                            'api-key' => $apiCenter->robosttech_api_key,
+                            'api-key' => $apiKey,
                             'Content-Type' => 'application/json'
                         ])->post($endpoint, [
                             'tracking_id' => $trackingId,
@@ -1447,17 +1450,20 @@ class VerificationController extends Controller
 
             if ($ipeClearanceMode === 'robosttech') {
                 $apiCenter = ApiCenter::first();
-                if (!$apiCenter || !$apiCenter->robosttech_api_key) {
-                    throw new \App\Exceptions\ServiceNotConfiguredException('Robosttech API credentials not configured in Admin Settings.');
+                $customRobost = CustomApi::where('provider_identifier', 'robosttech')->where('status', true)->first();
+                $apiKey = $customRobost?->api_key ?: $apiCenter?->robosttech_api_key ?: env('ROBOSTTECH_API_KEY') ?: \App\Models\SystemSetting::get('robosttech_api_key');
+
+                if (!$apiKey) {
+                    throw new \App\Exceptions\ServiceNotConfiguredException('Robosttech API credentials not configured.');
                 }
 
                 $endpoint = $this->resolveRobostEndpoint(
-                    (string) ($apiCenter->robosttech_endpoint_clearance ?: 'https://robosttech.com/api'),
+                    (string) ($customRobost?->endpoint ?: $apiCenter?->robosttech_endpoint_clearance ?: 'https://robosttech.com/api'),
                     'clearance'
                 );
 
                 $response = Http::timeout(45)->withHeaders([
-                    'api-key' => $apiCenter->robosttech_api_key,
+                    'api-key' => $apiKey,
                     'Content-Type' => 'application/json'
                 ])->post($endpoint, [
                     'tracking_id' => $trackingId,
@@ -1746,13 +1752,17 @@ class VerificationController extends Controller
     private function preferredValidationProvider(): ?CustomApi
     {
         return CustomApi::query()
-            ->where('service_type', 'validation')
+            ->where(function ($q) {
+                $q->where('service_type', 'validation')
+                  ->orWhere('service_type', 'nin_validation')
+                  ->orWhere('service_type', 'nin_verification');
+            })
             ->where('status', true)
             ->orderByRaw("
                 CASE
-                    WHEN LOWER(provider_identifier) LIKE '%vuvaa%' THEN 1
+                    WHEN LOWER(provider_identifier) LIKE '%robosttech%' THEN 1
                     WHEN LOWER(provider_identifier) LIKE '%dataverify%' THEN 2
-                    WHEN LOWER(provider_identifier) LIKE '%robosttech%' THEN 3
+                    WHEN LOWER(provider_identifier) LIKE '%vuvaa%' THEN 3
                     ELSE 4
                 END
             ")

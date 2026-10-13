@@ -40,7 +40,7 @@ class NinValidationAdminController extends Controller
         }
 
         $requests = $query->paginate(20)->withQueryString();
-        $currentMode = SystemSetting::get('nin_validation_mode', 'manual');
+        $currentMode = SystemSetting::get('nin_validation_mode', 'robosttech');
 
         return view('admin.verifications.nin_validation.index', compact('requests', 'currentMode'));
     }

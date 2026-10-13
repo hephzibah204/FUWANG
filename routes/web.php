@@ -518,6 +518,7 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
             Route::get('/dashboard',                   [App\Http\Controllers\Admin\DashboardController::class, 'index'])->name('dashboard');
             Route::get('/provider-balances',           [App\Http\Controllers\Admin\DashboardController::class, 'providerBalances'])->name('provider_balances');
             Route::post('/capital-investment',         [App\Http\Controllers\Admin\DashboardController::class, 'updateCapitalInvestment'])->name('capital_investment.update');
+            Route::post('/api-credentials',            [App\Http\Controllers\Admin\DashboardController::class, 'updateApiCredentials'])->name('api_credentials.update');
 
             Route::get('/chatbot/metrics',             [App\Http\Controllers\Admin\ChatbotAdminController::class, 'dashboardMetrics'])
                 ->middleware('super_admin')

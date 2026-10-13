@@ -47,8 +47,8 @@ class SettingsController extends Controller
             ->get();
 
         $bvnRetrievalPrice = (float) SystemSetting::get('bvn_retrieval_price', 800);
-        $ipeClearanceMode = (string) SystemSetting::get('ipe_clearance_mode', 'manual');
-        $ninValidationMode = (string) SystemSetting::get('nin_validation_mode', 'manual');
+        $ipeClearanceMode = (string) SystemSetting::get('ipe_clearance_mode', 'robosttech');
+        $ninValidationMode = (string) SystemSetting::get('nin_validation_mode', 'robosttech');
         $agentLicensePromoPrice = (float) SystemSetting::get('agent_license_promo_price', 100000);
         $agentLicenseRegularPrice = (float) SystemSetting::get('agent_license_regular_price', 150000);
         $agentLicensePromoEndsAt = (string) SystemSetting::get('agent_license_promo_ends_at', '2026-10-10 23:59:59');

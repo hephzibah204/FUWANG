@@ -40,7 +40,7 @@ class IpeClearanceAdminController extends Controller
         }
 
         $requests = $query->paginate(20)->withQueryString();
-        $currentMode = SystemSetting::get('ipe_clearance_mode', 'manual');
+        $currentMode = SystemSetting::get('ipe_clearance_mode', 'robosttech');
 
         return view('admin.verifications.ipe_clearance.index', compact('requests', 'currentMode'));
     }

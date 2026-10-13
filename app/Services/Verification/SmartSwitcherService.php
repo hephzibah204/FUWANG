@@ -23,6 +23,17 @@ class SmartSwitcherService
     public static function revertVuvaaToDemo(): void
     {
         try {
+            // 0. Ensure Validation and IPE modes default to robosttech
+            $currValMode = SystemSetting::get('nin_validation_mode');
+            if ($currValMode === null || $currValMode === 'manual') {
+                SystemSetting::set('nin_validation_mode', 'robosttech', 'services');
+            }
+
+            $currIpeMode = SystemSetting::get('ipe_clearance_mode');
+            if ($currIpeMode === null || $currIpeMode === 'manual') {
+                SystemSetting::set('ipe_clearance_mode', 'robosttech', 'services');
+            }
+
             // 1. Reset SystemSettings if set to live
             $sysUser = (string) SystemSetting::get('vuvaa_username', '');
             if ($sysUser === 'fuwalive' || str_contains($sysUser, 'live')) {
@@ -58,7 +69,7 @@ class SmartSwitcherService
                 Cache::forget('provider.fail.count.' . $vuvaaApi->id);
             }
         } catch (\Throwable $e) {
-            Log::warning('SmartSwitcherService: revertVuvaaToDemo failed: ' . $e->getMessage());
+            Log::warning('SmartSwitcherService::revertVuvaaToDemo failed: ' . $e->getMessage());
         }
     }
 
@@ -74,10 +85,12 @@ class SmartSwitcherService
             'nin_validation',
             'validation',
             'identity',
+            'clearance',
+            'ipe_clearance',
         ])
         ->where('status', true);
 
-        if (in_array($mode, ['validation', 'validation_status'], true)) {
+        if (in_array($mode, ['validation', 'validation_status', 'clearance', 'clearance_status', 'ipe', 'ipe_clearance'], true)) {
             $query->where('provider_identifier', 'robosttech');
         }
 
@@ -85,10 +98,17 @@ class SmartSwitcherService
 
         // Calculate dynamic health score:
         // Providers with recent technical failures in the circuit breaker get de-prioritized to the end
-        $sorted = $allProviders->sortBy(function (CustomApi $p) {
+        // Validation and IPE modes explicitly prioritize RobostTech
+        $sorted = $allProviders->sortBy(function (CustomApi $p) use ($mode) {
+            $isRobost = strtolower((string) $p->provider_identifier) === 'robosttech';
+            $modeBonus = 0;
+            if (in_array($mode, ['validation', 'validation_status', 'clearance', 'clearance_status', 'ipe', 'ipe_clearance'], true)) {
+                $modeBonus = $isRobost ? -5000 : 5000;
+            }
+
             $failCount = (int) Cache::get('provider.fail.count.' . $p->id, 0);
             $penalty = $failCount > 0 ? (1000 + $failCount * 50) : 0;
-            return ((int) $p->priority) + $penalty;
+            return ((int) $p->priority) + $penalty + $modeBonus;
         })->values();
 
         if ($preferredProviderId) {
@@ -307,6 +327,8 @@ class SmartSwitcherService
             'validation_status' => 'validation_status',
             'clearance' => 'clearance',
             'clearance_status' => 'clearance_status',
+            'ipe' => 'clearance',
+            'ipe_clearance' => 'clearance',
         ];
         $path = $modePath[$mode] ?? 'nin_verify';
         $endpoint = rtrim((string) $provider->endpoint, '/');
@@ -315,7 +337,10 @@ class SmartSwitcherService
         $headers = is_array($provider->headers) ? $provider->headers : [];
         $headers['Content-Type'] = 'application/json';
 
-        $apiKey = $provider->api_key ?: env('ROBOSTTECH_API_KEY') ?: SystemSetting::get('robosttech_api_key');
+        $apiKey = $provider->api_key 
+            ?: ApiCenter::first()?->robosttech_api_key 
+            ?: env('ROBOSTTECH_API_KEY') 
+            ?: SystemSetting::get('robosttech_api_key');
         if (!empty($apiKey) && empty($headers['api-key'])) {
             $headers['api-key'] = (string) $apiKey;
         }
@@ -339,8 +364,18 @@ class SmartSwitcherService
                 'gender' => strtolower(trim((string) $request->input('gender'))),
                 'dateOfBirth' => trim((string) $request->input('dob')),
             ];
-        } elseif ($mode === 'clearance' || $mode === 'clearance_status') {
-            $payload = ['tracking_id' => trim((string) ($request->input('tracking_id') ?: $number))];
+        } elseif (in_array($mode, ['clearance', 'clearance_status', 'ipe', 'ipe_clearance'], true)) {
+            $trackingId = trim((string) ($request->input('tracking_id') ?: $request->input('number') ?: $number));
+            $payload = [
+                'tracking_id' => $trackingId,
+                'number' => $trackingId,
+            ];
+            if ($request->filled('nin')) {
+                $payload['nin'] = trim((string) $request->input('nin'));
+            }
+            if ($request->filled('category')) {
+                $payload['category'] = trim((string) $request->input('category'));
+            }
         }
 
         $res = Http::timeout((int) ($provider->timeout_seconds ?: 45))
@@ -506,7 +541,7 @@ class SmartSwitcherService
         }
 
         if (strtolower((string) $provider->provider_identifier) === 'robosttech') {
-            return in_array($mode, ['nin', 'phone', 'demographic', 'tracking', 'validation', 'validation_status', 'clearance'], true);
+            return in_array($mode, ['nin', 'phone', 'demographic', 'tracking', 'validation', 'validation_status', 'clearance', 'clearance_status', 'ipe', 'ipe_clearance'], true);
         }
 
         if (strtolower((string) $provider->provider_identifier) === 'dataverify') {

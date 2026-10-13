@@ -37,6 +37,7 @@
 
     // Investment vs. Made Stats
     $investmentStats = $dashboardData['investmentStats'] ?? [];
+    $apiCenter = $dashboardData['apiCenter'] ?? null;
 @endphp
 
 @if(session('success'))
@@ -86,6 +87,12 @@
                 </svg>
                 <span>Check Live Balances</span>
             </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1 shadow-sm" data-bs-toggle="modal" data-bs-target="#editApiKeysModal" data-toggle="modal" data-target="#editApiKeysModal">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                </svg>
+                <span>Configure Keys</span>
+            </button>
             <a href="{{ route('admin.settings.index') }}" class="btn btn-sm btn-light border text-muted">API Settings</a>
         </div>
     </div>
@@ -93,48 +100,62 @@
         <div class="row g-3">
             {{-- DataVerify Card --}}
             <div class="col-md-6">
-                <div class="p-3 rounded-3 border bg-light-subtle h-100">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="fw-bold text-dark">DataVerify API</span>
-                            <span class="badge bg-secondary-subtle text-secondary small">NIN / BVN Retrieval</span>
+                <div class="p-3 rounded-3 border bg-light-subtle h-100 d-flex flex-column justify-content-between">
+                    <div>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="fw-bold text-dark">DataVerify API</span>
+                                <span class="badge bg-secondary-subtle text-secondary small">NIN / BVN Retrieval</span>
+                            </div>
+                            <span id="dataverify-badge" class="badge {{ $providerBalances['dataverify']['badge_class'] ?? 'bg-secondary' }} rounded-pill px-2 py-1 small">
+                                {{ $providerBalances['dataverify']['status_label'] ?? 'Unknown' }}
+                            </span>
                         </div>
-                        <span id="dataverify-badge" class="badge {{ $providerBalances['dataverify']['badge_class'] ?? 'bg-secondary' }} rounded-pill px-2 py-1 small">
-                            {{ $providerBalances['dataverify']['status_label'] ?? 'Unknown' }}
-                        </span>
+                        <div class="d-flex align-items-baseline gap-2 mb-1">
+                            <h3 class="mb-0 fw-bold text-dark" id="dataverify-balance-val">
+                                {{ $providerBalances['dataverify']['formatted'] ?? '—' }}
+                            </h3>
+                        </div>
                     </div>
-                    <div class="d-flex align-items-baseline gap-2 mb-1">
-                        <h3 class="mb-0 fw-bold text-dark" id="dataverify-balance-val">
-                            {{ $providerBalances['dataverify']['formatted'] ?? '—' }}
-                        </h3>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center text-muted small mt-2">
-                        <span id="dataverify-msg">{{ $providerBalances['dataverify']['message'] ?? '' }}</span>
-                        <a href="https://dataverify.org" target="_blank" rel="noopener" class="text-decoration-none small">Top Up Portal &nearr;</a>
+                    <div class="d-flex justify-content-between align-items-center text-muted small mt-2 pt-2 border-top">
+                        <span id="dataverify-msg" class="text-truncate me-2" style="max-width: 70%;">{{ $providerBalances['dataverify']['message'] ?? '' }}</span>
+                        <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                            @if(empty($providerBalances['dataverify']['configured']) || ($providerBalances['dataverify']['status'] ?? '') === 'error')
+                                <button type="button" class="btn btn-xs btn-outline-primary py-0 px-2" style="font-size: 11px;" data-bs-toggle="modal" data-bs-target="#editApiKeysModal" data-toggle="modal" data-target="#editApiKeysModal">Edit Key</button>
+                            @endif
+                            <a href="https://dataverify.org" target="_blank" rel="noopener" class="text-decoration-none small">Top Up &nearr;</a>
+                        </div>
                     </div>
                 </div>
             </div>
 
             {{-- RobostTech Card --}}
             <div class="col-md-6">
-                <div class="p-3 rounded-3 border bg-light-subtle h-100">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="fw-bold text-dark">RobostTech API</span>
-                            <span class="badge bg-secondary-subtle text-secondary small">NIN / Clearance / Validation</span>
+                <div class="p-3 rounded-3 border bg-light-subtle h-100 d-flex flex-column justify-content-between">
+                    <div>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="fw-bold text-dark">RobostTech API</span>
+                                <span class="badge bg-secondary-subtle text-secondary small">NIN / Clearance / Validation</span>
+                            </div>
+                            <span id="robost-badge" class="badge {{ $providerBalances['robosttech']['badge_class'] ?? 'bg-secondary' }} rounded-pill px-2 py-1 small">
+                                {{ $providerBalances['robosttech']['status_label'] ?? 'Unknown' }}
+                            </span>
                         </div>
-                        <span id="robost-badge" class="badge {{ $providerBalances['robosttech']['badge_class'] ?? 'bg-secondary' }} rounded-pill px-2 py-1 small">
-                            {{ $providerBalances['robosttech']['status_label'] ?? 'Unknown' }}
-                        </span>
+                        <div class="d-flex align-items-baseline gap-2 mb-1">
+                            <h3 class="mb-0 fw-bold text-dark" id="robost-balance-val">
+                                {{ $providerBalances['robosttech']['formatted'] ?? '—' }}
+                            </h3>
+                        </div>
                     </div>
-                    <div class="d-flex align-items-baseline gap-2 mb-1">
-                        <h3 class="mb-0 fw-bold text-dark" id="robost-balance-val">
-                            {{ $providerBalances['robosttech']['formatted'] ?? '—' }}
-                        </h3>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center text-muted small mt-2">
-                        <span id="robost-msg">{{ $providerBalances['robosttech']['message'] ?? '' }}</span>
-                        <a href="https://robosttech.com" target="_blank" rel="noopener" class="text-decoration-none small">Top Up Portal &nearr;</a>
+                    <div class="d-flex justify-content-between align-items-center text-muted small mt-2 pt-2 border-top">
+                        <span id="robost-msg" class="text-truncate me-2" style="max-width: 70%;">{{ $providerBalances['robosttech']['message'] ?? '' }}</span>
+                        <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                            @if(empty($providerBalances['robosttech']['configured']) || ($providerBalances['robosttech']['status'] ?? '') === 'error')
+                                <button type="button" class="btn btn-xs btn-outline-primary py-0 px-2" style="font-size: 11px;" data-bs-toggle="modal" data-bs-target="#editApiKeysModal" data-toggle="modal" data-target="#editApiKeysModal">Configure Key</button>
+                            @endif
+                            <a href="https://robosttech.com" target="_blank" rel="noopener" class="text-decoration-none small">Top Up &nearr;</a>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -180,8 +201,10 @@
                     <div class="text-muted small">
                         @if(($investmentStats['manual_capital'] ?? 0) > 0)
                             Manual capital recorded
-                        @else
+                        @elseif(($investmentStats['auto_fulfillment_cost'] ?? 0) > 0)
                             Est. API fulfillment costs
+                        @else
+                            <a href="#" data-bs-toggle="modal" data-bs-target="#editInvestmentModal" data-toggle="modal" data-target="#editInvestmentModal" class="text-primary text-decoration-none small">Set capital investment &rarr;</a>
                         @endif
                     </div>
                 </div>
@@ -208,16 +231,31 @@
                 <div class="p-3 rounded-3 border bg-light-subtle h-100">
                     <div class="d-flex justify-content-between align-items-center mb-1">
                         <span class="text-muted small text-uppercase fw-semibold">Net Profit</span>
-                        <span class="badge {{ ($investmentStats['is_profitable'] ?? false) ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger' }} rounded-pill px-2 py-0 small">
-                            {{ ($investmentStats['is_profitable'] ?? false) ? 'Profitable' : 'Deficit' }}
-                        </span>
+                        @if($investmentStats['has_capital'] ?? false)
+                            <span class="badge {{ ($investmentStats['is_profitable'] ?? false) ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger' }} rounded-pill px-2 py-0 small">
+                                {{ ($investmentStats['is_profitable'] ?? false) ? 'Profitable' : 'Deficit' }}
+                            </span>
+                        @else
+                            <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0 small">
+                                Awaiting Outlay
+                            </span>
+                        @endif
                     </div>
-                    <h3 class="mb-1 fw-bold {{ ($investmentStats['is_profitable'] ?? false) ? 'text-success' : 'text-danger' }}">
-                        {{ ($investmentStats['net_profit'] ?? 0) < 0 ? '-' : '' }}NGN {{ number_format(abs($investmentStats['net_profit'] ?? 0), 2) }}
-                    </h3>
-                    <div class="text-muted small">
-                        Margin: <strong>{{ number_format($investmentStats['profit_margin'] ?? 0, 1) }}%</strong>
-                    </div>
+                    @if($investmentStats['has_capital'] ?? false)
+                        <h3 class="mb-1 fw-bold {{ ($investmentStats['is_profitable'] ?? false) ? 'text-success' : 'text-danger' }}">
+                            {{ ($investmentStats['net_profit'] ?? 0) < 0 ? '-' : '' }}NGN {{ number_format(abs($investmentStats['net_profit'] ?? 0), 2) }}
+                        </h3>
+                        <div class="text-muted small">
+                            Margin: <strong>{{ number_format($investmentStats['profit_margin'] ?? 0, 1) }}%</strong>
+                        </div>
+                    @else
+                        <h3 class="mb-1 fw-bold text-dark">
+                            NGN {{ number_format($investmentStats['made'] ?? 0, 2) }}
+                        </h3>
+                        <div class="text-muted small">
+                            Gross turnover before outlay deduction
+                        </div>
+                    @endif
                 </div>
             </div>
 
@@ -226,16 +264,31 @@
                 <div class="p-3 rounded-3 border bg-light-subtle h-100">
                     <div class="d-flex justify-content-between align-items-center mb-1">
                         <span class="text-muted small text-uppercase fw-semibold">Return on Investment</span>
-                        <span class="badge {{ ($investmentStats['roi'] ?? 0) >= 0 ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger' }} rounded-pill px-2 py-0 small">
-                            ROI Ratio
-                        </span>
+                        @if($investmentStats['has_capital'] ?? false)
+                            <span class="badge {{ ($investmentStats['roi'] ?? 0) >= 0 ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger' }} rounded-pill px-2 py-0 small">
+                                ROI Ratio
+                            </span>
+                        @else
+                            <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2 py-0 small">
+                                Pending
+                            </span>
+                        @endif
                     </div>
-                    <h3 class="mb-1 fw-bold {{ ($investmentStats['roi'] ?? 0) >= 0 ? 'text-success' : 'text-danger' }}">
-                        {{ ($investmentStats['roi'] ?? 0) > 0 ? '+' : '' }}{{ number_format($investmentStats['roi'] ?? 0, 1) }}%
-                    </h3>
-                    <div class="text-muted small">
-                        {{ ($investmentStats['is_profitable'] ?? false) ? 'Capital returned + surplus' : 'Recovering capital' }}
-                    </div>
+                    @if($investmentStats['has_capital'] ?? false)
+                        <h3 class="mb-1 fw-bold {{ ($investmentStats['roi'] ?? 0) >= 0 ? 'text-success' : 'text-danger' }}">
+                            {{ ($investmentStats['roi'] ?? 0) > 0 ? '+' : '' }}{{ number_format($investmentStats['roi'] ?? 0, 1) }}%
+                        </h3>
+                        <div class="text-muted small">
+                            {{ ($investmentStats['is_profitable'] ?? false) ? 'Capital returned + surplus' : 'Recovering capital' }}
+                        </div>
+                    @else
+                        <h3 class="mb-1 fw-bold text-muted">
+                            —
+                        </h3>
+                        <div class="text-muted small">
+                            Set capital invested to compute ROI
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -244,22 +297,36 @@
         @php
             $invAmount = max(0, (float) ($investmentStats['invested'] ?? 0));
             $madeAmount = max(0, (float) ($investmentStats['made'] ?? 0));
+            $hasCap = !empty($investmentStats['has_capital']);
             $barTotal = max(1, $invAmount + $madeAmount);
-            $invPct = round(($invAmount / $barTotal) * 100);
-            $madePct = 100 - $invPct;
+            $invPct = $hasCap ? round(($invAmount / $barTotal) * 100) : 0;
+            $madePct = $hasCap ? (100 - $invPct) : 100;
         @endphp
         <div class="p-3 rounded-3 bg-white border">
             <div class="d-flex justify-content-between align-items-center mb-2 small">
-                <span>
-                    <strong class="text-primary">&#9632; Invested:</strong> NGN {{ number_format($invAmount, 2) }} ({{ $invPct }}%)
-                </span>
-                <span>
-                    <strong class="text-success">&#9632; Made (Revenue):</strong> NGN {{ number_format($madeAmount, 2) }} ({{ $madePct }}%)
-                </span>
+                @if($hasCap)
+                    <span>
+                        <strong class="text-primary">&#9632; Invested:</strong> NGN {{ number_format($invAmount, 2) }} ({{ $invPct }}%)
+                    </span>
+                    <span>
+                        <strong class="text-success">&#9632; Made (Revenue):</strong> NGN {{ number_format($madeAmount, 2) }} ({{ $madePct }}%)
+                    </span>
+                @else
+                    <span>
+                        <strong class="text-muted">&#9632; Capital Invested:</strong> Not yet recorded
+                    </span>
+                    <span>
+                        <strong class="text-success">&#9632; Gross Realized Revenue:</strong> NGN {{ number_format($madeAmount, 2) }}
+                    </span>
+                @endif
             </div>
             <div class="progress" style="height: 12px; border-radius: 6px; overflow: hidden;">
-                <div class="progress-bar bg-primary" role="progressbar" style="width: {{ $invPct }}%;" aria-valuenow="{{ $invPct }}" aria-valuemin="0" aria-valuemax="100"></div>
-                <div class="progress-bar bg-success" role="progressbar" style="width: {{ $madePct }}%;" aria-valuenow="{{ $madePct }}" aria-valuemin="0" aria-valuemax="100"></div>
+                @if($hasCap)
+                    <div class="progress-bar bg-primary" role="progressbar" style="width: {{ $invPct }}%;" aria-valuenow="{{ $invPct }}" aria-valuemin="0" aria-valuemax="100"></div>
+                    <div class="progress-bar bg-success" role="progressbar" style="width: {{ $madePct }}%;" aria-valuenow="{{ $madePct }}" aria-valuemin="0" aria-valuemax="100"></div>
+                @else
+                    <div class="progress-bar bg-success" role="progressbar" style="width: 100%;" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
+                @endif
             </div>
             <div class="d-flex justify-content-between align-items-center mt-2 text-muted" style="font-size: 11.5px;">
                 <span>Total Capital / Provider Outlay</span>
@@ -288,12 +355,54 @@
                         <span class="input-group-text">NGN</span>
                         <input type="number" step="0.01" min="0" name="amount" class="form-control font-monospace" value="{{ $investmentStats['manual_capital'] ?? '' }}" placeholder="e.g. 200000" required>
                     </div>
-                    <div class="form-text small">Enter 0 to automatically use calculated API fulfillment costs.</div>
+                    <div class="form-text small">Enter your actual capital outlay to calculate accurate net profit and ROI.</div>
                 </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-sm btn-light border" data-bs-dismiss="modal" data-dismiss="modal">Cancel</button>
                 <button type="submit" class="btn btn-sm btn-primary px-3">Save Capital Investment</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{{-- MODAL: Configure API Keys --}}
+<div class="modal fade" id="editApiKeysModal" tabindex="-1" aria-labelledby="editApiKeysModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <form method="POST" action="{{ route('admin.api_credentials.update') }}" class="modal-content border-0 shadow">
+            @csrf
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold" id="editApiKeysModalLabel">Configure Provider API Credentials</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">
+                    Enter your live API credentials for DataVerify and RobostTech to enable real-time wallet balance monitoring and automated verifications.
+                </p>
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label small fw-semibold text-dark">DataVerify API Key</label>
+                        <input type="text" name="dataverify_api_key" class="form-control font-monospace" value="{{ $apiCenter->dataverify_api_key ?? '' }}" placeholder="Paste your DataVerify API Key">
+                        <div class="form-text small">Used for NIN, BVN, and VNIN retrieval. Header authentication will be applied automatically.</div>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label small fw-semibold text-dark">RobostTech API Key</label>
+                        <input type="text" name="robosttech_api_key" class="form-control font-monospace" value="{{ $apiCenter->robosttech_api_key ?? '' }}" placeholder="Paste your RobostTech API Key">
+                        <div class="form-text small">Used for NIN validation, clearance, and personalization.</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold text-dark">RobostTech NIN / Base Endpoint</label>
+                        <input type="text" name="robosttech_endpoint_nin" class="form-control font-monospace" value="{{ $apiCenter->robosttech_endpoint_nin ?? 'https://robosttech.com/api' }}" placeholder="https://robosttech.com/api">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold text-dark">RobostTech Validation Endpoint</label>
+                        <input type="text" name="robosttech_endpoint_validation" class="form-control font-monospace" value="{{ $apiCenter->robosttech_endpoint_validation ?? 'https://robosttech.com/api' }}" placeholder="https://robosttech.com/api">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-sm btn-light border" data-bs-dismiss="modal" data-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-sm btn-primary px-3">Save & Refresh Balances</button>
             </div>
         </form>
     </div>
@@ -661,9 +770,10 @@
 @endsection
 
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
+<script nonce="{{ $cspNonce ?? '' }}" src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script nonce="{{ $cspNonce ?? '' }}">
     document.addEventListener('DOMContentLoaded', function () {
+        if (typeof Chart !== 'undefined') {
         // Universal color palettes
         var serviceColors = [
             '#4f46e5', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', 
@@ -893,6 +1003,9 @@
                     }
                 }
             });
+        }
+        } else {
+            console.warn('Chart.js library not available; skipping dashboard chart rendering.');
         }
 
         // Live Provider Balances Refresh
