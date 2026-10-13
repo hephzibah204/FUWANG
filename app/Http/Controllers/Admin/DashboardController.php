@@ -558,6 +558,20 @@ class DashboardController extends Controller
                     } catch (\Throwable $te) {}
                 }
 
+                if (!$res || !$res->successful()) {
+                    // RobostTech does not expose a standalone /balance endpoint on some deployments.
+                    // Authenticate the API key by pinging the clearance_status endpoint.
+                    try {
+                        $authPing = Http::timeout(6)->withHeaders($headers)->asJson()->post($endpoint . '/clearance_status', [
+                            'tracking_id' => 'PING_CHECK',
+                        ]);
+                        // If it returns HTTP 200 or anything other than 'Unauthorised' / 'The api-key field is required.', the key is active.
+                        if ($authPing->status() === 200) {
+                            $res = $authPing;
+                        }
+                    } catch (\Throwable $te) {}
+                }
+
                 if ($res && $res->successful()) {
                     $json = $res->json();
                     if (is_array($json)) {
@@ -603,9 +617,9 @@ class DashboardController extends Controller
                         } else {
                             $robost['status'] = 'ok';
                             $robost['status_label'] = 'Connected';
-                            $robost['badge_class'] = 'bg-info text-white';
-                            $robost['formatted'] = is_string($rawBal) ? $rawBal : 'Connected';
-                            $robost['message'] = $json['message'] ?? 'API connected successfully';
+                            $robost['badge_class'] = 'bg-success';
+                            $robost['formatted'] = is_string($rawBal) ? $rawBal : 'Connected / Active';
+                            $robost['message'] = 'API Key Connected & Active';
                         }
                     } else {
                         $robost['status'] = 'error';
