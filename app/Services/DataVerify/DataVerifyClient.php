@@ -46,6 +46,21 @@ class DataVerifyClient
             || str_contains($endpoint, 'dataverify.ng');
     }
 
+    public function verifyNin(string $nin, ?string $validationType = null): array
+    {
+        return $this->verify('nin', [
+            'number' => $nin,
+            'validation_type' => $validationType,
+        ]);
+    }
+
+    public function verifyPhone(string $phone): array
+    {
+        return $this->verify('phone', [
+            'number' => $phone,
+        ]);
+    }
+
     /**
      * @param array{
      *   number?: string,
@@ -642,7 +657,17 @@ class DataVerifyClient
         return str_contains($message, 'insufficient balance')
             || str_contains($message, 'insufficient fund')
             || str_contains($message, 'invalid api key')
-            || str_contains($message, 'ip address blocked');
+            || str_contains($message, 'ip address blocked')
+            || str_contains($message, 'invalid nin')
+            || str_contains($message, 'nin not found')
+            || str_contains($message, 'record not found')
+            || str_contains($message, 'no record found')
+            || str_contains($message, 'record does not exist')
+            || str_contains($message, 'identity not found')
+            || str_contains($message, 'invalid bvn')
+            || str_contains($message, 'bvn not found')
+            || str_contains($message, 'invalid phone')
+            || str_contains($message, 'does not match');
     }
 
     private function resolveBvnPath(?string $requestedType): string

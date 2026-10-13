@@ -10,6 +10,7 @@ use App\Services\PaidActionService;
 use App\Services\Vuvaa\VuvaaClient;
 use App\Services\VerificationResultService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\URL;
@@ -55,45 +56,70 @@ class VerificationController extends Controller
             100.0
         );
 
-        $paid = app(PaidActionService::class)->run($user, $price, 'API: NIN Verification', 'NINAPI', function () use ($activeProviders, $request, $user) {
-            $errors = [];
-            foreach ($activeProviders as $provider) {
-                try {
-                    $result = $this->tryProvider($provider, $request, $user);
-                    if ($result['status']) {
-                        return $result;
-                    }
-                    $errors[] = $provider->name . ': ' . ($result['message'] ?? 'Unknown error');
-                } catch (\Throwable $e) {
-                    $msg = $e->getMessage();
-                    $lower = strtolower($msg);
-                    if (str_contains($lower, 'curl error') || str_contains($lower, 'could not resolve host') || str_contains($lower, 'connection timed out') || str_contains($lower, 'failed to connect')) {
-                        $msg = 'Provider service temporarily unavailable.';
-                    }
-                    $errors[] = $provider->name . ': ' . $msg;
-                    Log::warning("API Provider failover: {$provider->name} failed.", ['error' => $e->getMessage()]);
-                }
-            }
+        // Concurrency lock: prevent duplicate debits from rapid API client retries
+        $lockKey = "api_nin_lock_{$user->id}_{$request->mode}_" . md5((string) $request->number);
+        $lock = Cache::lock($lockKey, 20);
 
-            // Prioritize user/data errors if present
-            $prioritized = null;
-            foreach ($errors as $err) {
-                $lowerErr = strtolower($err);
-                if (str_contains($lowerErr, 'invalid nin') || str_contains($lowerErr, 'not found') || str_contains($lowerErr, 'no record')) {
-                    $prioritized = str_contains($err, ': ') ? explode(': ', $err, 2)[1] : $err;
-                    break;
-                }
-            }
-
-            throw new \RuntimeException($prioritized ?: ('All verification providers failed: ' . implode(' | ', $errors)));
-        });
-
-        if (!$paid['ok']) {
-            $code = isset($paid['txId']) ? 502 : 402;
-            return response()->json(['status' => false, 'message' => $paid['message']], $code);
+        if (!$lock->get()) {
+            return response()->json(['status' => false, 'message' => 'A verification request for this query is already in progress. Please wait.'], 429);
         }
 
-        return response()->json($paid['result']);
+        try {
+            $paid = app(PaidActionService::class)->run($user, $price, 'API: NIN Verification', 'NINAPI', function () use ($activeProviders, $request, $user) {
+                $errors = [];
+                foreach ($activeProviders as $provider) {
+                    try {
+                        $result = $this->tryProvider($provider, $request, $user);
+                        if ($result['status']) {
+                            return $result;
+                        }
+                        $errMsg = (string) ($result['message'] ?? 'Unknown error');
+                        $errors[] = $provider->name . ': ' . $errMsg;
+
+                        // If terminal identity error from live provider, halt failover to avoid API overcharge
+                        $isTerminal = $this->isTerminalIdentityError($errMsg);
+                        $isVuvaaDemo = VuvaaClient::isVuvaaProvider($provider) && (str_contains(strtolower((string) $provider->endpoint), 'demo') || \App\Models\SystemSetting::get('vuvaa_demo_mode', true));
+                        if ($isTerminal && !$isVuvaaDemo) {
+                            Log::info("API Provider {$provider->name} returned terminal result: '{$errMsg}'. Halting failover to prevent API overcharge.");
+                            throw new \RuntimeException($errMsg);
+                        }
+                    } catch (\Throwable $e) {
+                        $msg = $e->getMessage();
+                        $lower = strtolower($msg);
+                        if (str_contains($lower, 'curl error') || str_contains($lower, 'could not resolve host') || str_contains($lower, 'connection timed out') || str_contains($lower, 'failed to connect')) {
+                            $msg = 'Provider service temporarily unavailable.';
+                        }
+                        $errors[] = $provider->name . ': ' . $msg;
+                        Log::warning("API Provider failover: {$provider->name} failed.", ['error' => $e->getMessage()]);
+
+                        if ($this->isTerminalIdentityError($msg)) {
+                            throw $e;
+                        }
+                    }
+                }
+
+                // Prioritize user/data errors if present
+                $prioritized = null;
+                foreach ($errors as $err) {
+                    $lowerErr = strtolower($err);
+                    if (str_contains($lowerErr, 'invalid nin') || str_contains($lowerErr, 'not found') || str_contains($lowerErr, 'no record')) {
+                        $prioritized = str_contains($err, ': ') ? explode(': ', $err, 2)[1] : $err;
+                        break;
+                    }
+                }
+
+                throw new \RuntimeException($prioritized ?: ('All verification providers failed: ' . implode(' | ', $errors)));
+            });
+
+            if (!$paid['ok']) {
+                $code = isset($paid['txId']) ? 502 : 402;
+                return response()->json(['status' => false, 'message' => $paid['message']], $code);
+            }
+
+            return response()->json($paid['result']);
+        } finally {
+            optional($lock)->release();
+        }
     }
 
     private function tryProvider(CustomApi $provider, Request $request, $user): array
@@ -467,5 +493,22 @@ class VerificationController extends Controller
             'status' => true,
             'data' => $result,
         ]);
+    }
+
+    private function isTerminalIdentityError(string $message): bool
+    {
+        $lower = strtolower($message);
+        $patterns = [
+            'invalid nin', 'nin not found', 'record not found', 'no record found',
+            'record does not exist', 'identity not found', 'data not found',
+            'user not found', 'not found in database', 'invalid bvn', 'bvn not found',
+            'invalid phone', 'phone not found', 'unregistered', 'does not exist'
+        ];
+        foreach ($patterns as $p) {
+            if (str_contains($lower, $p)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

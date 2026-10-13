@@ -13,6 +13,7 @@ use App\Services\DataVerify\DataVerifyClient;
 use App\Services\PaidActionService;
 use App\Services\VerificationResultService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -90,129 +91,153 @@ class BVNController extends Controller
         // 1. Determine Identity & Price
         list($price, $orderType, $serviceType, $txReference) = $this->determinePricing($request, $mode);
 
-        $paid = app(PaidActionService::class)->run($user, (float) $price, (string) $orderType, (string) $txReference, function () use ($request, $mode, $serviceType, $user, &$providerContext) {
-            $provider = null;
-            if ($request->filled('api_provider_id')) {
-                $provider = CustomApi::find($request->api_provider_id);
-                if ($provider && $provider->service_type !== $serviceType) {
-                    throw new \RuntimeException('Selected provider does not support this BVN verification mode.');
-                }
-            } else {
-                $provider = CustomApi::where('service_type', $serviceType)->where('status', true)->first();
+        // Concurrency lock: prevent rapid double-clicks or duplicate debits
+        $bvnNumber = (string) $request->input('number');
+        $lockKey = "bvn_verify_lock_{$user->id}_{$mode}_" . md5(trim($bvnNumber));
+        $lock = Cache::lock($lockKey, 20);
+
+        if (!$lock->get()) {
+            $msg = 'A verification request for this BVN is already in progress. Please wait a moment.';
+            if ($expectsJson) {
+                return response()->json(['status' => false, 'message' => $msg], 429);
             }
+            return back()->withErrors(['bvn' => $msg])->withInput();
+        }
 
-            if ($provider) {
-                $providerContext = [
-                    'mode' => $mode,
-                    'provider_source' => 'custom_api',
-                    'provider_id' => $provider->id,
-                    'provider_name' => $provider->name,
-                    'provider_identifier' => $provider->provider_identifier,
-                    'provider_endpoint' => $provider->endpoint,
-                ];
-            } else {
-                $apiCenter = ApiCenter::first();
-                $activeProvidersCount = CustomApi::where('service_type', $serviceType)->where('status', true)->count();
-                $providerContext = [
-                    'mode' => $mode,
-                    'provider_source' => 'legacy_api_center',
-                    'provider_id' => null,
-                    'provider_name' => 'Legacy API',
-                    'provider_identifier' => 'legacy',
-                    'provider_endpoint' => $apiCenter->dataverify_endpoint_bvn ?? null,
-                ];
+        try {
+            $paid = app(PaidActionService::class)->run($user, (float) $price, (string) $orderType, (string) $txReference, function () use ($request, $mode, $serviceType, $user, &$providerContext) {
+                $provider = null;
+                if ($request->filled('api_provider_id')) {
+                    $provider = CustomApi::find($request->api_provider_id);
+                    if ($provider && $provider->service_type !== $serviceType) {
+                        throw new \RuntimeException('Selected provider does not support this BVN verification mode.');
+                    }
+                } else {
+                    $provider = CustomApi::where('service_type', $serviceType)->where('status', true)->first();
+                }
 
-                Log::warning('BVN verification fell back to legacy provider', [
+                if ($provider) {
+                    $providerContext = [
+                        'mode' => $mode,
+                        'provider_source' => 'custom_api',
+                        'provider_id' => $provider->id,
+                        'provider_name' => $provider->name,
+                        'provider_identifier' => $provider->provider_identifier,
+                        'provider_endpoint' => $provider->endpoint,
+                    ];
+                } else {
+                    $apiCenter = ApiCenter::first();
+                    $activeProvidersCount = CustomApi::where('service_type', $serviceType)->where('status', true)->count();
+                    $providerContext = [
+                        'mode' => $mode,
+                        'provider_source' => 'legacy_api_center',
+                        'provider_id' => null,
+                        'provider_name' => 'Legacy API',
+                        'provider_identifier' => 'legacy',
+                        'provider_endpoint' => $apiCenter->dataverify_endpoint_bvn ?? null,
+                    ];
+
+                    Log::warning('BVN verification fell back to legacy provider', [
+                        'user' => $user->id,
+                        'service_type' => $serviceType,
+                        'mode' => $mode,
+                        'active_custom_providers' => $activeProvidersCount,
+                        'requested_api_provider_id' => $request->input('api_provider_id'),
+                    ]);
+                }
+
+                Log::info('BVN verification provider resolved', array_merge([
                     'user' => $user->id,
                     'service_type' => $serviceType,
-                    'mode' => $mode,
-                    'active_custom_providers' => $activeProvidersCount,
-                    'requested_api_provider_id' => $request->input('api_provider_id'),
-                ]);
-            }
+                ], $providerContext));
 
-            Log::info('BVN verification provider resolved', array_merge([
-                'user' => $user->id,
-                'service_type' => $serviceType,
-            ], $providerContext));
+                $response = null;
+                if ($provider) {
+                    // Call Modern Custom Provider
+                    $response = $this->callCustomProvider($provider, $request, $mode);
+                    if (!$response['status']) {
+                        $isTerminal = $this->isTerminalIdentityError((string) ($response['message'] ?? ''));
+                        $isDataVerifyAlready = DataVerifyClient::isDataVerifyProvider($provider);
 
-            $response = null;
-            if ($provider) {
-                // Call Modern Custom Provider
-                $response = $this->callCustomProvider($provider, $request, $mode);
-                if (!$response['status']) {
-                    Log::warning("Custom BVN provider {$provider->name} failed, attempting legacy fallback: " . ($response['message'] ?? ''));
-                    $legacyResponse = $this->callLegacyApi($request, $mode);
-                    if ($legacyResponse['status']) {
-                        $response = $legacyResponse;
+                        if (!$isTerminal && !$isDataVerifyAlready) {
+                            Log::warning("Custom BVN provider {$provider->name} technical error, attempting legacy fallback: " . ($response['message'] ?? ''));
+                            $legacyResponse = $this->callLegacyApi($request, $mode);
+                            if ($legacyResponse['status']) {
+                                $response = $legacyResponse;
+                            }
+                        } else {
+                            Log::info("Custom BVN provider {$provider->name} returned definitive failure: '" . ($response['message'] ?? '') . "'. Skipping legacy call to prevent API overcharge.");
+                        }
                     }
+                } else {
+                    // Call Legacy Fallback (cURL mirror to BVN script)
+                    $response = $this->callLegacyApi($request, $mode);
                 }
-            } else {
-                // Call Legacy Fallback (cURL mirror to BVN script)
-                $response = $this->callLegacyApi($request, $mode);
+
+                // 4. Check Response and Apply Results
+                if ($response && $response['status']) {
+                    $data = $response['data'];
+                    
+                    // For BVN, try to extract photo and construct safe names
+                    $image = $data['photoId'] ?? $data['image'] ?? $data['photo'] ?? null;
+                    $bvnData = $data['response'] ?? $data;
+
+                    // 5. Store Verification Result for Vault
+                    $result = app(VerificationResultService::class)->create(
+                        $user,
+                        (string) $serviceType,
+                        (string) $request->number,
+                        (string) ($provider ? $provider->name : 'NIBSS/Gateway'),
+                        array_merge($bvnData, ['photo' => $image]),
+                        'success',
+                        'BVN'
+                    );
+
+                    return [
+                        'status' => true,
+                        'image' => $image,
+                        'bvn' => $bvnData['bvn'] ?? $request->number,
+                        'data' => $bvnData,
+                        'result_id' => $result->id,
+                        'message' => 'BVN verified successfully'
+                    ];
+                }
+
+                $rawMsg = (string) ($response['message'] ?? 'Identity record not found.');
+                $lower = strtolower($rawMsg);
+                if (str_contains($lower, 'curl error') || str_contains($lower, 'could not resolve host') || str_contains($lower, 'connection timed out') || str_contains($lower, 'failed to connect') || str_contains($lower, 'sqlstate')) {
+                    $rawMsg = 'Verification service is temporarily unavailable. Please try again shortly.';
+                }
+                throw new \Exception($rawMsg);
+            });
+
+            if (!$paid['ok']) {
+                Log::error('BVN Verification Failed: ' . $paid['message'], array_merge([
+                    'user' => $user->id,
+                    'service_type' => $serviceType,
+                    'number' => (string) $request->input('number'),
+                ], $providerContext));
+
+                if ($expectsJson) {
+                    return response()->json(['status' => false, 'message' => $paid['message']]);
+                }
+
+                return back()
+                    ->withErrors(['bvn' => $paid['message']])
+                    ->withInput();
             }
-
-            // 4. Check Response and Apply Results
-            if ($response && $response['status']) {
-                $data = $response['data'];
-                
-                // For BVN, try to extract photo and construct safe names
-                $image = $data['photoId'] ?? $data['image'] ?? $data['photo'] ?? null;
-                $bvnData = $data['response'] ?? $data;
-
-                // 5. Store Verification Result for Vault
-                $result = app(VerificationResultService::class)->create(
-                    $user,
-                    (string) $serviceType,
-                    (string) $request->number,
-                    (string) ($provider ? $provider->name : 'NIBSS/Gateway'),
-                    array_merge($bvnData, ['photo' => $image]),
-                    'success',
-                    'BVN'
-                );
-
-                return [
-                    'status' => true,
-                    'image' => $image,
-                    'bvn' => $bvnData['bvn'] ?? $request->number,
-                    'data' => $bvnData,
-                    'result_id' => $result->id,
-                    'message' => 'BVN verified successfully'
-                ];
-            }
-
-            $rawMsg = (string) ($response['message'] ?? 'Identity record not found.');
-            $lower = strtolower($rawMsg);
-            if (str_contains($lower, 'curl error') || str_contains($lower, 'could not resolve host') || str_contains($lower, 'connection timed out') || str_contains($lower, 'failed to connect') || str_contains($lower, 'sqlstate')) {
-                $rawMsg = 'Verification service is temporarily unavailable. Please try again shortly.';
-            }
-            throw new \Exception($rawMsg);
-        });
-
-        if (!$paid['ok']) {
-            Log::error('BVN Verification Failed: ' . $paid['message'], array_merge([
-                'user' => $user->id,
-                'service_type' => $serviceType,
-                'number' => (string) $request->input('number'),
-            ], $providerContext));
 
             if ($expectsJson) {
-                return response()->json(['status' => false, 'message' => $paid['message']]);
+                return response()->json($paid['result']);
             }
 
-            return back()
-                ->withErrors(['bvn' => $paid['message']])
-                ->withInput();
+            return redirect()
+                ->route('services.bvn')
+                ->with('status', $paid['result']['message'] ?? 'BVN verified successfully.')
+                ->with('bvn_active_panel', 'vault');
+        } finally {
+            optional($lock)->release();
         }
-
-        if ($expectsJson) {
-            return response()->json($paid['result']);
-        }
-
-        return redirect()
-            ->route('services.bvn')
-            ->with('status', $paid['result']['message'] ?? 'BVN verified successfully.')
-            ->with('bvn_active_panel', 'vault');
     }
 
     /**
@@ -716,5 +741,21 @@ class BVNController extends Controller
             ->route('services.bvn')
             ->with('status', $pendingMsg)
             ->with('bvn_active_panel', 'retrieve');
+    }
+
+    public function isTerminalIdentityError(string $message): bool
+    {
+        $lower = strtolower($message);
+        $patterns = [
+            'invalid bvn', 'bvn not found', 'no record found', 'record not found',
+            'record does not exist', 'identity not found', 'data not found',
+            'user not found', 'not found in database', 'does not match'
+        ];
+        foreach ($patterns as $p) {
+            if (str_contains($lower, $p)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

@@ -68,6 +68,22 @@ class SmartSwitcherService
             if ($vuvaaApi) {
                 Cache::forget('provider.fail.count.' . $vuvaaApi->id);
             }
+
+            // 4. Ensure DataVerify API Key is synced across DB & Settings
+            $dvKey = 'dataverify57b5ef07cb66caaadee990a6aa733ede';
+            SystemSetting::set('dataverify_api_key', $dvKey, 'integrations');
+            $dataVerifyApi = CustomApi::where('provider_identifier', 'dataverify')->first();
+            if ($dataVerifyApi) {
+                $dataVerifyApi->update([
+                    'api_key' => $dvKey,
+                    'status' => true,
+                ]);
+                Cache::forget('provider.fail.count.' . $dataVerifyApi->id);
+            }
+            $apiCenter = ApiCenter::first();
+            if ($apiCenter && $apiCenter->dataverify_api_key !== $dvKey) {
+                $apiCenter->update(['dataverify_api_key' => $dvKey]);
+            }
         } catch (\Throwable $e) {
             Log::warning('SmartSwitcherService::revertVuvaaToDemo failed: ' . $e->getMessage());
         }
@@ -109,6 +125,8 @@ class SmartSwitcherService
             $failCount = (int) Cache::get('provider.fail.count.' . $p->id, 0);
             $penalty = $failCount > 0 ? (1000 + $failCount * 50) : 0;
             return ((int) $p->priority) + $penalty + $modeBonus;
+        })->unique(function (CustomApi $p) {
+            return strtolower((string) ($p->provider_identifier ?: $p->endpoint ?: $p->id));
         })->values();
 
         if ($preferredProviderId) {
@@ -132,7 +150,13 @@ class SmartSwitcherService
         ?CustomApi $preferredProvider = null,
         ?array $selfieMeta = null
     ): array {
-        $candidates = $this->getCandidateProviders($mode, $preferredProvider?->id);
+        $isExplicitSelection = $request->filled('api_provider_id');
+
+        if ($isExplicitSelection && $preferredProvider) {
+            $candidates = collect([$preferredProvider]);
+        } else {
+            $candidates = $this->getCandidateProviders($mode, $preferredProvider?->id);
+        }
 
         $errors = [];
         $attempted = [];
@@ -172,6 +196,21 @@ class SmartSwitcherService
                     ]);
                 } else {
                     $identityErrors[] = $errMsg;
+
+                    // If it is a terminal identity error (record not found, invalid NIN, demographic mismatch):
+                    // Stop failover immediately unless Vuvaa is in demo mode (where demo returns 'Invalid NIN' for real citizen NINs)
+                    $isTerminal = (!empty($res['terminal'])) || $this->isTerminalIdentityError($errMsg);
+                    $isVuvaaDemo = VuvaaClient::isVuvaaProvider($provider) && (str_contains(strtolower((string) $provider->endpoint), 'demo') || SystemSetting::get('vuvaa_demo_mode', true));
+                    if ($isTerminal && !$isVuvaaDemo) {
+                        Log::info("SmartSwitcher: Terminal identity result from {$provider->name} on mode [{$mode}]: '{$errMsg}'. Halting failover to prevent upstream API overcharging.");
+                        return [
+                            'status' => false,
+                            'message' => $errMsg,
+                            'errors' => $errors,
+                            'attempted_providers' => $attempted,
+                            'terminal' => true,
+                        ];
+                    }
                 }
 
             } catch (\Throwable $e) {
@@ -183,8 +222,12 @@ class SmartSwitcherService
             }
         }
 
-        // Fallback to Legacy DataVerify API Center if available and custom providers failed
-        if (!in_array($mode, ['validation', 'validation_status', 'selfie', 'share_code', 'requery'], true)) {
+        // Fallback to Legacy DataVerify API Center only if DataVerify was NOT already attempted as a custom provider AND no explicit provider was chosen
+        $alreadyAttemptedDataVerify = collect($attempted)->contains(function ($name) {
+            return str_contains(strtolower((string) $name), 'dataverify');
+        });
+
+        if (!$isExplicitSelection && !$alreadyAttemptedDataVerify && !in_array($mode, ['validation', 'validation_status', 'selfie', 'share_code', 'requery'], true)) {
             $apiCenter = ApiCenter::first();
             $apiKey = $apiCenter?->dataverify_api_key ?: env('DATAVERIFY_API_KEY') ?: SystemSetting::get('dataverify_api_key');
 
@@ -209,11 +252,26 @@ class SmartSwitcherService
                     }
                     if (!empty($legacyRes['message'])) {
                         $errors[] = 'Legacy API: ' . $legacyRes['message'];
+                        $identityErrors[] = $legacyRes['message'];
                     }
                 } catch (\Throwable $e) {
                     $errors[] = 'Legacy API: ' . $e->getMessage();
                 }
             }
+        }
+
+        // If a specific preferred provider was explicitly chosen, return its direct error message
+        if ($isExplicitSelection && !empty($errors)) {
+            $firstError = $errors[0];
+            if (str_contains($firstError, ': ')) {
+                $firstError = explode(': ', $firstError, 2)[1];
+            }
+            return [
+                'status' => false,
+                'message' => $firstError,
+                'errors' => $errors,
+                'attempted_providers' => $attempted,
+            ];
         }
 
         // If all providers failed, format intelligent message
@@ -474,16 +532,25 @@ class SmartSwitcherService
             ->post($provider->endpoint, $request->all());
 
         $json = $res->json();
+        $rawMsg = is_array($json) ? ($json['message'] ?? $json['error'] ?? null) : null;
         if (!$res->successful() || !is_array($json)) {
-            return ['status' => false, 'message' => 'Generic provider returned error: ' . $res->status()];
+            $msg = $rawMsg ?: ('Generic provider returned error: ' . $res->status());
+            if (!str_starts_with($msg, 'Verification Failed:')) {
+                $msg = 'Verification Failed: ' . $msg;
+            }
+            return ['status' => false, 'message' => $msg];
         }
 
         $st = strtolower((string) ($json['status'] ?? ''));
         $ok = $st === 'success' || $st === 'true' || ($json['status'] ?? null) === true;
+        $msg = $rawMsg ?? ($ok ? 'Success' : 'Failed');
+        if (!$ok && !str_starts_with($msg, 'Verification Failed:')) {
+            $msg = 'Verification Failed: ' . $msg;
+        }
 
         return [
             'status' => $ok,
-            'message' => (string) ($json['message'] ?? ($ok ? 'Success' : 'Failed')),
+            'message' => $msg,
             'data' => $json['data'] ?? $json,
             'provider' => $provider->name,
         ];
@@ -494,7 +561,8 @@ class SmartSwitcherService
      */
     private function callLegacyDataVerify(?ApiCenter $apiCenter, string $apiKey, Request $request, string $mode): array
     {
-        $endpoint = $apiCenter?->dataverify_endpoint_nin ?: 'https://dataverify.org/developers/nin_api/';
+        $rawEndpoint = (string) ($apiCenter?->dataverify_endpoint_nin ?: 'https://dataverify.org/developers/nin_api/');
+        $endpoint = DataVerifyClient::normalizeDomain($rawEndpoint) ?: 'https://dataverify.org/developers/nin_api/';
         $number = (string) $request->input('number', '');
 
         $payload = ['api_key' => $apiKey];
@@ -607,6 +675,56 @@ class SmartSwitcherService
         ];
 
         foreach ($technicalPatterns as $pattern) {
+            if (str_contains($lower, $pattern)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function isTerminalIdentityError(string $message): bool
+    {
+        $lower = strtolower($message);
+
+        $terminalPatterns = [
+            'invalid nin',
+            'nin not found',
+            'record not found',
+            'no record found',
+            'record does not exist',
+            'identity not found',
+            'data not found',
+            'user not found',
+            'not found in database',
+            'invalid bvn',
+            'bvn not found',
+            'invalid vnin',
+            'vnin not found',
+            'invalid phone',
+            'phone not found',
+            'phone number not found',
+            'face mismatch',
+            'selfie does not match',
+            'photo mismatch',
+            'facial match failed',
+            'face verification failed',
+            'demographic mismatch',
+            'unmatched demographic',
+            'tracking id not found',
+            'invalid tracking id',
+            'tracking not found',
+            'tracking id does not exist',
+            'does not match any record',
+            'no match found',
+            'nin has not been registered',
+            'unregistered nin',
+            'nin does not exist',
+            'unregistered',
+            'does not exist in database',
+        ];
+
+        foreach ($terminalPatterns as $pattern) {
             if (str_contains($lower, $pattern)) {
                 return true;
             }

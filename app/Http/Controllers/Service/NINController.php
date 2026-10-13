@@ -16,6 +16,7 @@ use App\Services\Vuvaa\VuvaaClient;
 use App\Services\VerificationResultService;
 use App\Services\Verification\SmartSwitcherService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -242,124 +243,141 @@ class NINController extends Controller
             $orderType = 'NIN ' . ucfirst($mode) . ' Verification';
         }
 
-        $paid = app(PaidActionService::class)->run($user, $price, $orderType, 'NIN', function () use ($mode, $provider, $request, $user) {
-            $selfieMeta = null;
-            if ($mode === 'selfie') {
-                $selfieMeta = $this->processSelfie($request, $user->id);
-            }
+        // Concurrency lock: prevent rapid double-clicks or concurrent duplicate debits for the same query
+        $idNumber = (string) ($request->input('number') ?: $request->input('share_code') ?: $request->input('reference_id') ?: $request->input('firstname'));
+        $lockKey = "nin_verify_lock_{$user->id}_{$mode}_" . md5(trim($idNumber));
+        $lock = Cache::lock($lockKey, 20);
 
-            // Execute verification via SmartSwitcherService with intelligent multi-API failover
-            $response = app(SmartSwitcherService::class)->verifyNin($request, $mode, $provider, $selfieMeta);
-
-            if (!empty($response['status'])) {
-                $data = $response['data'];
-                $photoBase64 = null;
-                if ($mode === 'selfie') {
-                    $photoBase64 = $data['photo'] ?? null;
-                    $data = PhotoComplianceFilter::sanitize($data);
-                }
-
-                if (is_array($data)) {
-                    $data['_verification_mode'] = $mode;
-                    $data['_requested_output_type'] = (string) $request->input('output_type', 'info_page');
-                    if ($mode === 'validation') {
-                        $data['_validation_reason'] = (string) $request->input('validation_reason', '');
-                    }
-                }
-
-                $result = app(VerificationResultService::class)->create(
-                    $user,
-                    $mode === 'selfie'
-                        ? 'nin_face_verification'
-                        : ($mode === 'validation' || $mode === 'validation_status' ? 'nin_validation' : 'nin_verification'),
-                    (string) ($request->number ?? $request->share_code ?? $request->reference_id),
-                    (string) ($response['provider'] ?? 'Unknown Provider'),
-                    $data,
-                    ($mode === 'validation' || $mode === 'validation_status') ? 'pending' : 'success',
-                    'NIN'
-                );
-
-                $outputType = (string) $request->input('output_type', 'info_page');
-                $slipTypes = ['standard_slip', 'regular_slip', 'premium_slip', 'vnin_slip'];
-                $wantsSlip = in_array($outputType, $slipTypes, true);
-
-                $payload = [
-                    'status' => true,
-                    'message' => ($mode === 'validation' || $mode === 'validation_status')
-                        ? ($response['message'] ?? 'Validation submitted.')
-                        : 'Verification Successful',
-                    'output_type' => $outputType,
-                    'data' => $data,
-                    'photo' => $photoBase64,
-                    'result_id' => $result->id,
-                    'reference_id' => $result->reference_id,
-                ];
-
-                if (!in_array($mode, ['validation', 'validation_status'], true)) {
-                    $selectedSlip = $wantsSlip ? $outputType : 'premium_slip';
-                    $payload['slip_url'] = route('services.nin.slip', ['id' => $result->id, 'type' => $selectedSlip]);
-                    $payload['premium_slip_url'] = route('services.nin.slip', ['id' => $result->id, 'type' => 'premium_slip']);
-                    $payload['standard_slip_url'] = route('services.nin.slip', ['id' => $result->id, 'type' => 'standard_slip']);
-                    if ($wantsSlip) {
-                        // Full record stays in DB; omit huge base64 from JSON so responses stay parseable.
-                        $payload['data'] = $this->stripLargeMediaFromNinPayload($data);
-                        $payload['photo'] = null;
-                    }
-                }
-
-                if ($mode === 'validation') {
-                    $payload['ui_state'] = 'validation_submitted';
-                    $payload['status_url'] = route('services.nin.validation.status');
-                }
-
-                return $payload;
-            }
-
-            $errors = $response['errors'] ?? [];
-            if (!empty($errors)) {
-                Log::warning('NIN verification providers failed', [
-                    'user_id' => $user->id,
-                    'mode' => $mode,
-                    'errors' => $errors,
-                ]);
-            }
-
-            $finalMessage = (string) ($response['message'] ?? 'Verification failed across available providers.');
-            throw new \Exception($finalMessage);
-        });
-
-        if (!$paid['ok']) {
+        if (!$lock->get()) {
+            $msg = 'A verification request for this query is already currently processing. Please wait a moment.';
             if ($wantsJsonResponse) {
-                return response()->json(['status' => false, 'message' => $paid['message']]);
+                return response()->json(['status' => false, 'message' => $msg], 429);
             }
-
-            return back()->withErrors(['nin' => $paid['message']])->withInput();
+            return back()->withErrors(['nin' => $msg])->withInput();
         }
 
-        $result = $paid['result'];
-        $outputType = (string) $request->input('output_type', 'info_page');
-        $slipTypes = ['standard_slip', 'regular_slip', 'premium_slip', 'vnin_slip'];
+        try {
+            $paid = app(PaidActionService::class)->run($user, $price, $orderType, 'NIN', function () use ($mode, $provider, $request, $user) {
+                $selfieMeta = null;
+                if ($mode === 'selfie') {
+                    $selfieMeta = $this->processSelfie($request, $user->id);
+                }
 
-        if (!$wantsJsonResponse) {
-            if (in_array($outputType, $slipTypes, true) && !empty($result['result_id'])) {
+                // Execute verification via SmartSwitcherService with intelligent multi-API failover
+                $response = app(SmartSwitcherService::class)->verifyNin($request, $mode, $provider, $selfieMeta);
+
+                if (!empty($response['status'])) {
+                    $data = $response['data'];
+                    $photoBase64 = null;
+                    if ($mode === 'selfie') {
+                        $photoBase64 = $data['photo'] ?? null;
+                        $data = PhotoComplianceFilter::sanitize($data);
+                    }
+
+                    if (is_array($data)) {
+                        $data['_verification_mode'] = $mode;
+                        $data['_requested_output_type'] = (string) $request->input('output_type', 'info_page');
+                        if ($mode === 'validation') {
+                            $data['_validation_reason'] = (string) $request->input('validation_reason', '');
+                        }
+                    }
+
+                    $result = app(VerificationResultService::class)->create(
+                        $user,
+                        $mode === 'selfie'
+                            ? 'nin_face_verification'
+                            : ($mode === 'validation' || $mode === 'validation_status' ? 'nin_validation' : 'nin_verification'),
+                        (string) ($request->number ?? $request->share_code ?? $request->reference_id),
+                        (string) ($response['provider'] ?? 'Unknown Provider'),
+                        $data,
+                        ($mode === 'validation' || $mode === 'validation_status') ? 'pending' : 'success',
+                        'NIN'
+                    );
+
+                    $outputType = (string) $request->input('output_type', 'info_page');
+                    $slipTypes = ['standard_slip', 'regular_slip', 'premium_slip', 'vnin_slip'];
+                    $wantsSlip = in_array($outputType, $slipTypes, true);
+
+                    $payload = [
+                        'status' => true,
+                        'message' => ($mode === 'validation' || $mode === 'validation_status')
+                            ? ($response['message'] ?? 'Validation submitted.')
+                            : 'Verification Successful',
+                        'output_type' => $outputType,
+                        'data' => $data,
+                        'photo' => $photoBase64,
+                        'result_id' => $result->id,
+                        'reference_id' => $result->reference_id,
+                    ];
+
+                    if (!in_array($mode, ['validation', 'validation_status'], true)) {
+                        $selectedSlip = $wantsSlip ? $outputType : 'premium_slip';
+                        $payload['slip_url'] = route('services.nin.slip', ['id' => $result->id, 'type' => $selectedSlip]);
+                        $payload['premium_slip_url'] = route('services.nin.slip', ['id' => $result->id, 'type' => 'premium_slip']);
+                        $payload['standard_slip_url'] = route('services.nin.slip', ['id' => $result->id, 'type' => 'standard_slip']);
+                        if ($wantsSlip) {
+                            // Full record stays in DB; omit huge base64 from JSON so responses stay parseable.
+                            $payload['data'] = $this->stripLargeMediaFromNinPayload($data);
+                            $payload['photo'] = null;
+                        }
+                    }
+
+                    if ($mode === 'validation') {
+                        $payload['ui_state'] = 'validation_submitted';
+                        $payload['status_url'] = route('services.nin.validation.status');
+                    }
+
+                    return $payload;
+                }
+
+                $errors = $response['errors'] ?? [];
+                if (!empty($errors)) {
+                    Log::warning('NIN verification providers failed', [
+                        'user_id' => $user->id,
+                        'mode' => $mode,
+                        'errors' => $errors,
+                    ]);
+                }
+
+                $finalMessage = (string) ($response['message'] ?? 'Verification failed across available providers.');
+                throw new \Exception($finalMessage);
+            });
+
+            if (!$paid['ok']) {
+                if ($wantsJsonResponse) {
+                    return response()->json(['status' => false, 'message' => $paid['message']]);
+                }
+
+                return back()->withErrors(['nin' => $paid['message']])->withInput();
+            }
+
+            $result = $paid['result'];
+            $outputType = (string) $request->input('output_type', 'info_page');
+            $slipTypes = ['standard_slip', 'regular_slip', 'premium_slip', 'vnin_slip'];
+
+            if (!$wantsJsonResponse) {
+                if (in_array($outputType, $slipTypes, true) && !empty($result['result_id'])) {
+                    return redirect()
+                        ->route('services.nin')
+                        ->with('status', $result['message'] ?? 'Verification successful.')
+                        ->with('nin_slip_download_url', URL::temporarySignedRoute('services.nin.slip', now()->addDays(7), ['id' => $result['result_id'], 'type' => $outputType]))
+                        ->with('nin_result', $result['data'] ?? null)
+                        ->with('nin_result_id', $result['result_id'] ?? null)
+                        ->with('nin_reference_id', $result['reference_id'] ?? null);
+                }
+
                 return redirect()
                     ->route('services.nin')
-                    ->with('status', $result['message'] ?? 'Verification successful.')
-                    ->with('nin_slip_download_url', URL::temporarySignedRoute('services.nin.slip', now()->addDays(7), ['id' => $result['result_id'], 'type' => $outputType]))
+                    ->with('status', $result['message'] ?? 'Verification Successful')
                     ->with('nin_result', $result['data'] ?? null)
                     ->with('nin_result_id', $result['result_id'] ?? null)
                     ->with('nin_reference_id', $result['reference_id'] ?? null);
             }
 
-            return redirect()
-                ->route('services.nin')
-                ->with('status', $result['message'] ?? 'Verification Successful')
-                ->with('nin_result', $result['data'] ?? null)
-                ->with('nin_result_id', $result['result_id'] ?? null)
-                ->with('nin_reference_id', $result['reference_id'] ?? null);
+            return response()->json($result);
+        } finally {
+            optional($lock)->release();
         }
-
-        return response()->json($result);
     }
 
     public function requery(Request $request)
@@ -770,15 +788,47 @@ class NINController extends Controller
 
     private function determinePrice(string $mode, ?CustomApi $provider, ?string $typeKey): float
     {
-        if ($provider && $typeKey) {
-            $type = $provider->verificationTypes()->where('type_key', $typeKey)->first();
-            if ($type) return (float) $type->price;
+        // 1. Free status check & requery modes
+        if (in_array($mode, ['validation_status', 'requery'], true)) {
+            return 0.0;
         }
-        if ($provider && $provider->price) {
-            return (float) $provider->price;
+
+        // 2. Explicit custom verification type price or provider price
+        if ($provider) {
+            $type = $provider->verificationTypes()
+                ->where('type_key', $typeKey ?: $mode)
+                ->where('status', true)
+                ->first();
+            if ($type && $type->price !== null) {
+                return (float) $type->price;
+            }
+
+            if ($provider->price !== null && (float) $provider->price > 0 && !in_array($mode, ['validation', 'selfie', 'tracking'], true)) {
+                return (float) $provider->price;
+            }
         }
+
+        // 3. Mode-specific prices matching dashboard/UI settings exactly
         $legacyPricing = VerificationPrice::first();
-        return (float) ($legacyPricing->{'nin_by_' . $mode . '_price'} ?? 200);
+
+        switch ($mode) {
+            case 'phone':
+                return (float) ($legacyPricing->nin_by_number_price ?? 200.0);
+            case 'tracking':
+                return (float) ($legacyPricing->verify_by_tracking_id ?? 300.0);
+            case 'validation':
+                return (float) \App\Models\SystemSetting::get('nin_validation_price', 200.0);
+            case 'selfie':
+                return (float) \App\Models\SystemSetting::get('nin_face_verification_price', 500.0);
+            case 'share_code':
+            case 'nin':
+            case 'demographic':
+            default:
+                if ($legacyPricing && $legacyPricing->nin_by_nin_price !== null) {
+                    return (float) $legacyPricing->nin_by_nin_price;
+                }
+                return 200.0;
+        }
     }
 
     /**
@@ -856,6 +906,7 @@ class NINController extends Controller
                 'service_type' => 'nin_verification',
                 'provider_identifier' => 'dataverify',
                 'endpoint' => 'https://dataverify.org/developers/nin_slips/nin_premium',
+                'api_key' => 'dataverify57b5ef07cb66caaadee990a6aa733ede',
                 'status' => true,
                 'priority' => 10,
                 'supported_modes' => ['nin', 'phone', 'demographic', 'tracking'],
@@ -904,8 +955,19 @@ class NINController extends Controller
                     }
                 } elseif ($data['provider_identifier'] === 'dataverify') {
                     $normalized = DataVerifyClient::normalizeDomain((string) $existing->endpoint);
+                    $dvKey = 'dataverify57b5ef07cb66caaadee990a6aa733ede';
+                    $updates = [];
                     if ($normalized !== $existing->endpoint) {
-                        $existing->update(['endpoint' => $normalized]);
+                        $updates['endpoint'] = $normalized;
+                    }
+                    if (($existing->api_key ?? '') !== $dvKey) {
+                        $updates['api_key'] = $dvKey;
+                    }
+                    if (!$existing->status) {
+                        $updates['status'] = true;
+                    }
+                    if (!empty($updates)) {
+                        $existing->update($updates);
                     }
                 }
             } catch (\Throwable $e) {
