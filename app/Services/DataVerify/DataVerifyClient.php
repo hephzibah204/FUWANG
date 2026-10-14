@@ -61,6 +61,14 @@ class DataVerifyClient
         ]);
     }
 
+    public function verifyTracking(string $trackingId): array
+    {
+        return $this->verify('tracking', [
+            'number' => $trackingId,
+            'tracking_id' => $trackingId,
+        ]);
+    }
+
     /**
      * @param array{
      *   number?: string,
@@ -73,7 +81,7 @@ class DataVerifyClient
      */
     public function verify(string $mode, array $input, ?string $requestedType = null): array
     {
-        if (!in_array($mode, ['nin', 'phone', 'demographic'], true)) {
+        if (!in_array($mode, ['nin', 'phone', 'demographic', 'tracking', 'tid'], true)) {
             return ['ok' => false, 'message' => 'Selected mode is not supported by DataVerify.', 'data' => []];
         }
 
@@ -97,6 +105,10 @@ class DataVerifyClient
             }
         } elseif ($mode === 'phone') {
             $payload['phone'] = preg_replace('/\D/', '', (string) ($input['number'] ?? ''));
+        } elseif ($mode === 'tracking' || $mode === 'tid') {
+            $tid = trim((string) ($input['tracking_id'] ?? $input['number'] ?? $input['tid'] ?? ''));
+            $payload['tracking_id'] = $tid;
+            $payload['tid'] = $tid;
         } else {
             $payload['firstname'] = strtoupper(trim((string) ($input['firstname'] ?? '')));
             $payload['lastname'] = strtoupper(trim((string) ($input['lastname'] ?? '')));
@@ -614,6 +626,8 @@ class DataVerifyClient
             'nin' => 'nin_premium',
             'phone' => 'nin_premium_phone',
             'demographic' => 'nin_premium_demo.php',
+            'tracking' => 'fetch_by_tid',
+            'tid' => 'fetch_by_tid',
         ];
         $path = $pathMap[$mode] ?? 'nin_premium';
 
@@ -722,6 +736,9 @@ class DataVerifyClient
         if (in_array($last, $known, true)) {
             $base = (string) preg_replace('#/[^/]+$#', '', $trimmed);
             if ($last === 'nin_api') {
+                if ($suffix === 'fetch_by_tid') {
+                    return rtrim($trimmed, '/') . '/' . $suffix;
+                }
                 return rtrim($base, '/') . '/nin_slips/' . $suffix;
             }
             return rtrim($base, '/') . '/' . $suffix;

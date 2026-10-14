@@ -87,6 +87,41 @@ class RobosttechAndDataverifyTest extends TestCase
         $this->assertSame(50000.0, (float) $balance['balance']);
     }
 
+    public function test_dataverify_client_verifies_tracking_by_tid_without_nin(): void
+    {
+        Http::fake([
+            'https://dataverify.org/developers/nin_api/fetch_by_tid*' => function (\Illuminate\Http\Client\Request $request) {
+                $data = $request->data();
+                $this->assertEquals('BTX947E60001020', $data['tracking_id']);
+                $this->assertArrayNotHasKey('nin', $data);
+                return Http::response([
+                    'status' => 'success',
+                    'data' => [
+                        'tracking_id' => 'BTX947E60001020',
+                        'firstname' => 'Fatima',
+                        'lastname' => 'Aliyu',
+                    ],
+                ], 200);
+            },
+        ]);
+
+        $customApi = CustomApi::create([
+            'name' => 'DataVerify TID Test',
+            'provider_identifier' => 'dataverify',
+            'service_type' => 'nin_verification',
+            'endpoint' => 'https://dataverify.org/developers/nin_api/',
+            'api_key' => 'dv_test_key_123',
+            'status' => true,
+        ]);
+
+        $client = new DataVerifyClient($customApi);
+        $result = $client->verifyTracking('BTX947E60001020');
+
+        $this->assertTrue($result['ok']);
+        $this->assertSame('BTX947E60001020', $result['data']['tracking_id']);
+        $this->assertSame('Fatima', $result['data']['firstname']);
+    }
+
     public function test_robosttech_nin_verification_end_to_end(): void
     {
         $user = User::create([

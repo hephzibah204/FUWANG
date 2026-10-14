@@ -341,6 +341,9 @@ class SmartSwitcherService
                     'dob' => (string) $request->input('dob'),
                     'gender' => (string) ($request->input('gender') ?? ''),
                 ]);
+            } elseif (in_array($mode, ['tracking', 'tid'], true)) {
+                $tid = (string) ($request->input('tracking_id') ?: $request->input('number') ?: $number);
+                $res = $client->verifyTracking($tid);
             } else {
                 return ['status' => false, 'message' => "Mode [{$mode}] not supported by DataVerify."];
             }
@@ -390,7 +393,24 @@ class SmartSwitcherService
         ];
         $path = $modePath[$mode] ?? 'nin_verify';
         $endpoint = rtrim((string) $provider->endpoint, '/');
-        $url = str_ends_with($endpoint, $path) ? $endpoint : ($endpoint . '/' . $path);
+        $knownActions = [
+            'nin_verify',
+            'nin_phone',
+            'nin_demo',
+            'validation_status',
+            'validation',
+            'clearance_status',
+            'clearance',
+            'personalization',
+            'balance',
+        ];
+        foreach ($knownActions as $action) {
+            if (str_ends_with(strtolower($endpoint), '/' . $action)) {
+                $endpoint = substr($endpoint, 0, -strlen('/' . $action));
+                break;
+            }
+        }
+        $url = rtrim($endpoint, '/') . '/' . ltrim($path, '/');
 
         $headers = is_array($provider->headers) ? $provider->headers : [];
         $headers['Content-Type'] = 'application/json';
@@ -428,9 +448,6 @@ class SmartSwitcherService
                 'tracking_id' => $trackingId,
                 'number' => $trackingId,
             ];
-            if ($request->filled('nin')) {
-                $payload['nin'] = trim((string) $request->input('nin'));
-            }
             if ($request->filled('category')) {
                 $payload['category'] = trim((string) $request->input('category'));
             }

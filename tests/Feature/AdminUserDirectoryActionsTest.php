@@ -80,5 +80,39 @@ class AdminUserDirectoryActionsTest extends TestCase
             ->assertStatus(200)
             ->assertJson(['status' => 'success']);
     }
+
+    public function test_admin_can_search_users_by_email_and_number(): void
+    {
+        $admin = $this->makeAdmin();
+        $user = User::create([
+            'fullname' => 'Friday Essiet',
+            'username' => 'fridayessiet',
+            'email' => 'fridayessiet08@gmail.com',
+            'number' => '08012345678',
+            'password' => 'userpass123',
+            'user_status' => 'active',
+        ]);
+
+        $res = $this->actingAs($admin, 'admin')
+            ->get(route('admin.users.index', ['search' => 'fridayessiet08@gmail.com']));
+
+        $res->assertOk();
+        $res->assertSee('Friday Essiet');
+        $res->assertSee('fridayessiet08@gmail.com');
+
+        $resPhone = $this->actingAs($admin, 'admin')
+            ->get(route('admin.users.index', ['search' => '08012345678']));
+
+        $resPhone->assertOk();
+        $resPhone->assertSee('Friday Essiet');
+    }
+
+    public function test_user_phone_accessor_maps_to_number(): void
+    {
+        $user = new User();
+        $user->phone = '08099998888';
+        $this->assertEquals('08099998888', $user->number);
+        $this->assertEquals('08099998888', $user->phone);
+    }
 }
 

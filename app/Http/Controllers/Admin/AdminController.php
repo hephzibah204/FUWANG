@@ -126,12 +126,12 @@ class AdminController extends Controller
             ->with('balance')
             ->withExists(['transactions as has_transactions']);
 
-        if ($request->has('search')) {
-            $search = $request->get('search');
+        if ($request->filled('search')) {
+            $search = trim((string) $request->get('search'));
             $query->where(function($q) use ($search) {
                 $q->where('fullname', 'like', "%{$search}%")
                   ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('phone', 'like', "%{$search}%")
+                  ->orWhere('number', 'like', "%{$search}%")
                   ->orWhere('username', 'like', "%{$search}%");
             });
         }

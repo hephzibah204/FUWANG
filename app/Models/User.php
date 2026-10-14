@@ -280,4 +280,17 @@ class User extends Authenticatable implements CanResetPasswordContract, MustVeri
     {
         return (float) ($this->balance?->user_balance ?? 0);
     }
+
+    /**
+     * Alias 'phone' to 'number' column for backwards compatibility and view access.
+     */
+    public function getPhoneAttribute(): ?string
+    {
+        return $this->number;
+    }
+
+    public function setPhoneAttribute($value): void
+    {
+        $this->attributes['number'] = $value;
+    }
 }

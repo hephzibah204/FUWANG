@@ -24,6 +24,7 @@ class IpeClearanceManualFlowTest extends TestCase
         VerificationPrice::create([
             'ipe_clearance_price' => 700.00,
         ]);
+        SystemSetting::set('ipe_clearance_mode', 'manual');
     }
 
     private function makeUser(float $initialBalance = 1500.00): User
@@ -46,7 +47,7 @@ class IpeClearanceManualFlowTest extends TestCase
         return $user;
     }
 
-    public function test_user_can_submit_ipe_clearance_with_nin_and_category(): void
+    public function test_user_can_submit_ipe_clearance_with_only_tracking_id_and_category(): void
     {
         $user = $this->makeUser(1500.00);
 
@@ -54,7 +55,6 @@ class IpeClearanceManualFlowTest extends TestCase
             'mode' => 'submit',
             'category' => 'New Enrollment for ID Retrieval',
             'number' => 'BTX947E60001020',
-            'nin' => '11223344556',
         ]);
 
         $response->assertOk();
@@ -75,7 +75,8 @@ class IpeClearanceManualFlowTest extends TestCase
         ]);
 
         $record = VerificationResult::where('identifier', 'BTX947E60001020')->first();
-        $this->assertEquals('11223344556', $record->response_data['nin']);
+        $this->assertEquals('BTX947E60001020', $record->identifier);
+        $this->assertArrayNotHasKey('nin', $record->response_data);
 
         // User balance should have been debited 700: 1500 - 700 = 800
         $balance = AccountBalance::where('user_id', $user->id)->value('user_balance');
@@ -220,10 +221,15 @@ class IpeClearanceManualFlowTest extends TestCase
         ]);
 
         Http::fake([
-            'https://robosttech.com/api/clearance' => Http::response([
-                'status' => 'success',
-                'message' => 'Request queued for processing',
-            ], 200),
+            'https://robosttech.com/api/clearance' => function (\Illuminate\Http\Client\Request $request) {
+                $data = $request->data();
+                $this->assertEquals('BTX-ROBO-999', $data['tracking_id']);
+                $this->assertArrayNotHasKey('nin', $data);
+                return Http::response([
+                    'status' => 'success',
+                    'message' => 'Request queued for processing',
+                ], 200);
+            },
         ]);
 
         $user = $this->makeUser(1000.00);
@@ -232,7 +238,6 @@ class IpeClearanceManualFlowTest extends TestCase
             'mode' => 'submit',
             'category' => 'Improcessing Error',
             'number' => 'BTX-ROBO-999',
-            'nin' => '55443322110',
         ]);
 
         $response->assertOk();
@@ -249,6 +254,9 @@ class IpeClearanceManualFlowTest extends TestCase
             'provider_name' => 'Robosttech',
             'status' => 'waiting_for_review',
         ]);
+
+        $record = VerificationResult::where('identifier', 'BTX-ROBO-999')->first();
+        $this->assertArrayNotHasKey('nin', $record->response_data);
 
         // Balance debited 700: 1000 - 700 = 300
         $balance = AccountBalance::where('user_id', $user->id)->value('user_balance');

@@ -717,7 +717,7 @@ class NINController extends Controller
         }
 
         $trimmed = rtrim($configured, '/');
-        foreach (['nin_verify', 'nin_phone', 'nin_demo', 'validation', 'validation_status'] as $knownPath) {
+        foreach (['nin_verify', 'nin_phone', 'nin_demo', 'validation', 'validation_status', 'clearance', 'clearance_status', 'personalization', 'balance'] as $knownPath) {
             if (str_ends_with(strtolower($trimmed), '/' . $knownPath) || strtolower($trimmed) === 'https://robosttech.com/api/' . $knownPath) {
                 return preg_replace('#/' . preg_quote($knownPath, '#') . '$#i', '/' . $path, $trimmed) ?? ('https://robosttech.com/api/' . $path);
             }

@@ -18,7 +18,7 @@ class NinValidationAdminController extends Controller
     public function index(Request $request)
     {
         $query = VerificationResult::whereIn('service_type', ['validation', 'nin_validation'])
-            ->with(['user:id,fullname,email,phone'])
+            ->with(['user:id,fullname,email,number'])
             ->orderBy('created_at', 'desc');
 
         if ($request->filled('status')) {
@@ -66,7 +66,7 @@ class NinValidationAdminController extends Controller
      */
     public function show($id)
     {
-        $request = VerificationResult::with(['user:id,fullname,email,phone'])->findOrFail($id);
+        $request = VerificationResult::with(['user:id,fullname,email,number'])->findOrFail($id);
         return view('admin.verifications.nin_validation.show', compact('request'));
     }
 
@@ -127,7 +127,7 @@ class NinValidationAdminController extends Controller
     public function exportCsv(Request $request): StreamedResponse
     {
         $query = VerificationResult::whereIn('service_type', ['validation', 'nin_validation'])
-            ->with(['user:id,fullname,email,phone'])
+            ->with(['user:id,fullname,email,number'])
             ->orderBy('created_at', 'desc');
 
         if ($request->filled('status')) {

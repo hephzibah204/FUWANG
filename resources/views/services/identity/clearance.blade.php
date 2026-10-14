@@ -45,21 +45,15 @@
                 </div>
 
                 <!-- Enter Tracking ID -->
-                <div class="col-md-7 mb-3">
+                <div class="col-12 mb-3">
                     <label for="number" class="font-weight-600 mb-2 small text-muted">Enter Tracking ID</label>
                     <div class="input-wrap">
                         <i class="fa-solid fa-hashtag"></i>
                         <input type="text" id="number" name="number" class="form-control form-control-lg" placeholder="Enter Tracking ID e.g BTX947E60001020" required>
                     </div>
-                </div>
-
-                <!-- Optional NIN Number -->
-                <div class="col-md-5 mb-3">
-                    <label for="nin" class="font-weight-600 mb-2 small text-muted">NIN Number (Optional if known)</label>
-                    <div class="input-wrap">
-                        <i class="fa-solid fa-id-card"></i>
-                        <input type="text" id="nin" name="nin" class="form-control form-control-lg" placeholder="11-digit NIN (Optional)" maxlength="15">
-                    </div>
+                    <small class="text-white-50 d-block mt-1">
+                        <i class="fa-solid fa-circle-info text-warning me-1"></i> NIN number is not required for IPE clearance. Only submit your NIMC enrollment Tracking ID.
+                    </small>
                 </div>
 
                 <!-- Action Buttons: Go Back & Submit Tracking -->
@@ -156,7 +150,6 @@
                             <th>Reference</th>
                             <th>Original Tracking ID</th>
                             <th>New Tracking ID</th>
-                            <th>NIN</th>
                             <th>IPE Category</th>
                             <th>Status</th>
                             <th>Admin Remarks / Note</th>
@@ -175,13 +168,6 @@
                                         <span class="badge bg-success font-monospace px-2.5 py-1">
                                             <i class="fa-solid fa-key me-1"></i> {{ $d['new_tracking_id'] }}
                                         </span>
-                                    @else
-                                        <span class="text-white-50">—</span>
-                                    @endif
-                                </td>
-                                <td>
-                                    @if(!empty($d['nin']))
-                                        <span class="font-monospace text-info">{{ $d['nin'] }}</span>
                                     @else
                                         <span class="text-white-50">—</span>
                                     @endif
@@ -214,7 +200,7 @@
                             </tr>
                         @empty
                             <tr id="emptyRow">
-                                <td colspan="9" class="text-center py-5 text-muted">
+                                <td colspan="8" class="text-center py-5 text-muted">
                                     <i class="fa-solid fa-folder-open fa-2x mb-2 d-block opacity-50"></i>
                                     No IPE records found. Submit a tracking ID above to initiate clearance.
                                 </td>
@@ -313,7 +299,6 @@
 
     function quickCheckStatus() {
         let trackingId = $('#number').val().trim();
-        let nin = $('#nin').val().trim();
 
         if (!trackingId) {
             Swal.fire({
@@ -342,8 +327,7 @@
             data: {
                 _token: "{{ csrf_token() }}",
                 mode: 'status',
-                number: trackingId,
-                nin: nin
+                number: trackingId
             },
             success: function(res) {
                 if (res.status && res.data) {
@@ -370,7 +354,6 @@
         let query = $('#tableSearchInput').val().toLowerCase().trim();
         let rows = $('.result-row');
         let matched = 0;
-
         rows.each(function() {
             let text = $(this).text().toLowerCase();
             if (text.indexOf(query) !== -1) {
@@ -383,7 +366,7 @@
 
         if (matched === 0 && rows.length > 0) {
             if ($('#noMatchRow').length === 0) {
-                $('#ipeResultsTable tbody').append('<tr id="noMatchRow"><td colspan="9" class="text-center py-4 text-muted">No matching tracking IDs found.</td></tr>');
+                $('#ipeResultsTable tbody').append('<tr id="noMatchRow"><td colspan="8" class="text-center py-4 text-muted">No matching tracking IDs found.</td></tr>');
             }
         } else {
             $('#noMatchRow').remove();

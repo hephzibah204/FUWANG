@@ -1322,19 +1322,15 @@ class VerificationController extends Controller
 
         $mode = $request->input('mode', 'submit');
         $user = Auth::user();
-        $trackingId = trim((string) $request->number);
-        $nin = trim((string) $request->input('nin', ''));
+        $trackingId = trim((string) ($request->input('tracking_id') ?: $request->input('number')));
         $category = trim((string) $request->input('category', 'Improcessing Error'));
         $ipeClearanceMode = \App\Models\SystemSetting::get('ipe_clearance_mode', 'robosttech');
 
         // Status check mode: retrieve existing review record and optionally sync from API
         if ($mode === 'status') {
-            $existing = VerificationResult::where(function ($query) use ($trackingId, $nin) {
+            $existing = VerificationResult::where(function ($query) use ($trackingId) {
                     $query->where('identifier', $trackingId)
                           ->orWhere('reference_id', $trackingId);
-                    if ($nin !== '') {
-                        $query->orWhere('response_data->nin', $nin);
-                    }
                 })
                 ->whereIn('service_type', ['ipe_clearance', 'clearance', 'clearance_request', 'clearance_status'])
                 ->where(function ($q) use ($user) {
@@ -1353,7 +1349,7 @@ class VerificationController extends Controller
                 if ($apiKey) {
                     try {
                         $endpoint = $this->resolveRobostEndpoint(
-                            (string) ($customRobost?->endpoint ?: $apiCenter?->robosttech_endpoint_clearance_status ?: 'https://robosttech.com/api'),
+                            (string) ($apiCenter?->robosttech_endpoint_clearance_status ?: $customRobost?->endpoint ?: 'https://robosttech.com/api'),
                             'clearance_status'
                         );
                         $apiRes = Http::timeout(25)->withHeaders([
@@ -1458,7 +1454,7 @@ class VerificationController extends Controller
                 }
 
                 $endpoint = $this->resolveRobostEndpoint(
-                    (string) ($customRobost?->endpoint ?: $apiCenter?->robosttech_endpoint_clearance ?: 'https://robosttech.com/api'),
+                    (string) ($apiCenter?->robosttech_endpoint_clearance ?: $customRobost?->endpoint ?: 'https://robosttech.com/api'),
                     'clearance'
                 );
 
@@ -1468,7 +1464,6 @@ class VerificationController extends Controller
                 ])->post($endpoint, [
                     'tracking_id' => $trackingId,
                     'number' => $trackingId,
-                    'nin' => $nin ?: null,
                     'category' => $category,
                 ]);
 
@@ -1481,7 +1476,6 @@ class VerificationController extends Controller
 
                     $payload = [
                         'tracking_id' => $trackingId,
-                        'nin' => $nin !== '' ? $nin : null,
                         'new_tracking_id' => $newTid,
                         'category' => $category,
                         'user_name' => $user->fullname,
@@ -1517,7 +1511,6 @@ class VerificationController extends Controller
                             'status_label' => $isSuccess ? 'Cleared / Successful' : 'Processing via Robosttech API',
                             'admin_note' => $apiData['message'] ?? 'Submitted to Robosttech API.',
                             'new_tracking_id' => $newTid,
-                            'nin' => $nin ?: null,
                         ],
                         'result_id' => $result->id
                     ]);
@@ -1530,7 +1523,6 @@ class VerificationController extends Controller
                 // Manual Review Mode
                 $payload = [
                     'tracking_id' => $trackingId,
-                    'nin' => $nin !== '' ? $nin : null,
                     'new_tracking_id' => null,
                     'category' => $category,
                     'user_name' => $user->fullname,
@@ -1735,18 +1727,38 @@ class VerificationController extends Controller
     public function resolveRobostEndpoint(string $configured, string $path): string
     {
         $configured = trim($configured);
+        $path = ltrim(trim($path), '/');
+
         if ($configured === '') {
-            return 'https://robosttech.com/api/' . ltrim($path, '/');
+            return 'https://robosttech.com/api/' . $path;
         }
 
         $trimmed = rtrim($configured, '/');
-        $path = ltrim($path, '/');
 
         if (str_ends_with(strtolower($trimmed), '/' . strtolower($path))) {
             return $trimmed;
         }
 
-        return $trimmed . '/' . $path;
+        $knownActions = [
+            'nin_verify',
+            'nin_phone',
+            'nin_demo',
+            'validation_status',
+            'validation',
+            'clearance_status',
+            'clearance',
+            'personalization',
+            'balance',
+        ];
+
+        foreach ($knownActions as $action) {
+            if (str_ends_with(strtolower($trimmed), '/' . $action)) {
+                $trimmed = substr($trimmed, 0, -strlen('/' . $action));
+                break;
+            }
+        }
+
+        return rtrim($trimmed, '/') . '/' . $path;
     }
 
     private function preferredValidationProvider(): ?CustomApi
