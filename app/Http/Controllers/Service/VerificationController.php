@@ -1314,7 +1314,6 @@ class VerificationController extends Controller
     {
         $request->validate([
             'number' => ['required', 'string', 'max:120'],
-            'nin' => ['nullable', 'string', 'max:20'],
             'category' => ['nullable', 'string', 'max:150'],
             'mode' => ['nullable', 'string', 'in:submit,status'],
             'remarks' => ['nullable', 'string', 'max:1000'],

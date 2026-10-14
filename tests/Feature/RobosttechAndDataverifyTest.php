@@ -193,6 +193,7 @@ class RobosttechAndDataverifyTest extends TestCase
             'number' => '98765432101',
             'mode' => 'nin',
             'output_type' => 'premium_slip',
+            'api_provider_id' => $robostApi->id,
         ]);
 
         $response->assertStatus(200);

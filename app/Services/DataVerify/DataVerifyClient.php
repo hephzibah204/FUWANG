@@ -507,6 +507,163 @@ class DataVerifyClient
     }
 
     /**
+     * Submit an IPE Clearance request to DataVerify
+     *
+     * @param string $trackingId Alphanumeric NIMC tracking ID (max 20 characters)
+     * @return array{ok: bool, tracking_id: string, transaction_id: ?string, price: ?float, message: string, data: array}
+     */
+    public function submitIpeClearance(string $trackingId): array
+    {
+        $url = 'https://dataverify.org/api/developers/ipe.php';
+        $apiKey = $this->apiKey();
+        if ($apiKey === '') {
+            return [
+                'ok' => false,
+                'tracking_id' => $trackingId,
+                'transaction_id' => null,
+                'price' => null,
+                'message' => 'DataVerify API key is missing.',
+                'data' => [],
+            ];
+        }
+
+        $headers = is_array($this->provider?->headers) ? $this->provider->headers : [];
+        $headers['Content-Type'] = $headers['Content-Type'] ?? 'application/json';
+
+        $payload = [
+            'api_key' => $apiKey,
+            'trackingID' => trim($trackingId),
+        ];
+
+        try {
+            $res = Http::timeout((int) ($this->provider?->timeout_seconds ?: 60))
+                ->acceptJson()
+                ->asJson()
+                ->withHeaders($headers)
+                ->post($url, $payload);
+        } catch (\Throwable $e) {
+            return [
+                'ok' => false,
+                'tracking_id' => $trackingId,
+                'transaction_id' => null,
+                'price' => null,
+                'message' => 'Connection to DataVerify failed: ' . $e->getMessage(),
+                'data' => [],
+            ];
+        }
+
+        $json = $res->json();
+        if (!$res->successful() || !is_array($json) || empty($json['status'])) {
+            $msg = is_array($json) ? ($json['message'] ?? $json['detail'] ?? 'DataVerify IPE submission failed.') : ('HTTP ' . $res->status());
+            return [
+                'ok' => false,
+                'tracking_id' => $trackingId,
+                'transaction_id' => null,
+                'price' => null,
+                'message' => (string) $msg,
+                'data' => is_array($json) ? $json : [],
+            ];
+        }
+
+        return [
+            'ok' => true,
+            'tracking_id' => (string) ($json['trackingID'] ?? $trackingId),
+            'transaction_id' => (string) ($json['transaction_id'] ?? ''),
+            'price' => isset($json['price']) ? (float) $json['price'] : null,
+            'message' => (string) ($json['message'] ?? 'IPE Clearance request submitted successfully.'),
+            'data' => $json,
+        ];
+    }
+
+    /**
+     * Check status of an IPE Clearance request on DataVerify
+     *
+     * @param string $trackingId
+     * @return array{ok: bool, request_status: string, status: string, tracking_id: string, new_tracking_id: ?string, new_nin: ?string, message: string, data: array}
+     */
+    public function checkIpeClearanceStatus(string $trackingId): array
+    {
+        $url = 'https://dataverify.org/api/developers/ipe_status.php';
+        $apiKey = $this->apiKey();
+        if ($apiKey === '') {
+            return [
+                'ok' => false,
+                'request_status' => 'error',
+                'status' => 'pending',
+                'tracking_id' => $trackingId,
+                'new_tracking_id' => null,
+                'new_nin' => null,
+                'message' => 'DataVerify API key is missing.',
+                'data' => [],
+            ];
+        }
+
+        $headers = is_array($this->provider?->headers) ? $this->provider->headers : [];
+        $headers['Content-Type'] = $headers['Content-Type'] ?? 'application/json';
+
+        $payload = [
+            'api_key' => $apiKey,
+            'trackingID' => trim($trackingId),
+        ];
+
+        try {
+            $res = Http::timeout((int) ($this->provider?->timeout_seconds ?: 45))
+                ->acceptJson()
+                ->asJson()
+                ->withHeaders($headers)
+                ->post($url, $payload);
+        } catch (\Throwable $e) {
+            return [
+                'ok' => false,
+                'request_status' => 'error',
+                'status' => 'pending',
+                'tracking_id' => $trackingId,
+                'new_tracking_id' => null,
+                'new_nin' => null,
+                'message' => 'Connection to DataVerify failed: ' . $e->getMessage(),
+                'data' => [],
+            ];
+        }
+
+        $json = $res->json();
+        if (!$res->successful() || !is_array($json)) {
+            $msg = is_array($json) ? ($json['message'] ?? 'Status check failed') : ('HTTP ' . $res->status());
+            return [
+                'ok' => false,
+                'request_status' => 'error',
+                'status' => 'pending',
+                'tracking_id' => $trackingId,
+                'new_tracking_id' => null,
+                'new_nin' => null,
+                'message' => (string) $msg,
+                'data' => is_array($json) ? $json : [],
+            ];
+        }
+
+        $rawReqStatus = strtolower((string) ($json['request_status'] ?? ''));
+        $newTid = $json['newTrackingID'] ?? $json['new_tracking_id'] ?? null;
+        $newNin = $json['newNIN'] ?? $json['new_nin'] ?? null;
+
+        $normalizedStatus = 'waiting_for_review';
+        if ($rawReqStatus === 'completed' || !empty($newTid) || !empty($newNin)) {
+            $normalizedStatus = 'successful';
+        } elseif ($rawReqStatus === 'failed' || $rawReqStatus === 'rejected') {
+            $normalizedStatus = 'failed';
+        }
+
+        return [
+            'ok' => true,
+            'request_status' => $rawReqStatus,
+            'status' => $normalizedStatus,
+            'tracking_id' => (string) ($json['trackingID'] ?? $trackingId),
+            'new_tracking_id' => $newTid ? (string) $newTid : null,
+            'new_nin' => $newNin ? (string) $newNin : null,
+            'message' => (string) ($json['message'] ?? 'Status retrieved'),
+            'data' => $json,
+        ];
+    }
+
+    /**
      * Check wallet balance on DataVerify (free inquiry)
      *
      * @return array{ok: bool, balance: ?float, message: string, data: array}
