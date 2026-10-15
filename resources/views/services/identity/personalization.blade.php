@@ -148,55 +148,102 @@
         });
     }
 
+    function resetPersonalization() {
+        $('#resultArea').hide();
+        $('#searchPanel').fadeIn();
+        $('#tracking_id').val('').focus();
+    }
+
     function viewResult(data, refId = null, trackingId = null, dateStr = null, reportUrl = null) {
         let tid = trackingId || (data && (data.tracking_id || data.number)) || $('#tracking_id').val() || 'N/A';
         let ref = refId || (data && data.reference_id) || 'CONFIRMED';
-        let msg = (data && data.message) ? data.message : 'Identity record successfully personalized and activated on NIMC database.';
+        let msg = (data && (data.message || data.detail)) ? (data.message || data.detail) : 'Identity record successfully personalized and activated on NIMC database.';
         let repUrl = reportUrl || (data && data.report_url) || null;
+        let dateDisplay = dateStr || 'Just now';
+
+        // Extract any extra API key-value fields to display in a clean report table
+        let extraRows = '';
+        if (data && typeof data === 'object') {
+            let detailsObj = (data.data && typeof data.data === 'object') ? data.data : data;
+            const skipKeys = ['_transaction_id', 'report_url', 'reference_id', 'result_id', 'status', 'message'];
+            
+            for (let [k, v] of Object.entries(detailsObj)) {
+                if (skipKeys.includes(k) || typeof v === 'object' || v === null || v === undefined) continue;
+                let formattedKey = k.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                extraRows += `
+                    <tr>
+                        <th class="text-white-50 small py-2 px-3">${formattedKey}:</th>
+                        <td class="text-white font-weight-600 py-2 px-3">${v}</td>
+                    </tr>
+                `;
+            }
+        }
 
         let html = `
-            <div class="p-3.5 rounded-3 mb-4" style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(124, 58, 237, 0.08)); border: 1px solid rgba(139, 92, 246, 0.3);">
-                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3 pb-2 border-bottom border-white-10">
-                    <span class="badge bg-success text-white px-3 py-1.5 font-weight-bold">
-                        <i class="fa-solid fa-circle-check mr-1"></i> Personalization Active
-                    </span>
+            <div class="p-4 rounded-4 mb-4" style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.12), rgba(124, 58, 237, 0.05)); border: 1px solid rgba(139, 92, 246, 0.35); box-shadow: 0 10px 30px -10px rgba(139, 92, 246, 0.2);">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3 pb-3 border-bottom border-white-10">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-success text-white px-3 py-1.5 font-weight-bold">
+                            <i class="fa-solid fa-circle-check mr-1"></i> Personalization Report
+                        </span>
+                        <span class="text-white-50 small">${dateDisplay}</span>
+                    </div>
                     <code class="text-primary font-weight-bold font-monospace fs-6">${ref}</code>
                 </div>
 
-                <div class="row g-3 mb-3">
+                <!-- API Response Headline -->
+                <div class="p-3 rounded-3 mb-4" style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25);">
+                    <small class="text-success d-block mb-1 font-weight-bold"><i class="fa-solid fa-circle-check mr-1"></i> API Confirmation:</small>
+                    <p class="mb-0 text-white font-weight-500 fs-6">${msg}</p>
+                </div>
+
+                <!-- Core Details Grid -->
+                <div class="row g-3 mb-4">
                     <div class="col-md-6">
-                        <small class="text-muted d-block font-weight-600 mb-1">Personalized NIMC Tracking ID</small>
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="font-monospace fs-4 text-white font-weight-bold tracking-wider">${tid}</span>
-                            <button class="btn btn-xs btn-outline-light" onclick="copyText('${tid}')" title="Copy ID">
-                                <i class="fa-solid fa-copy"></i>
-                            </button>
+                        <div class="p-3 rounded-3" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);">
+                            <small class="text-muted d-block font-weight-600 mb-1">Personalized NIMC Tracking ID</small>
+                            <div class="d-flex align-items-center justify-content-between">
+                                <span class="font-monospace fs-4 text-warning font-weight-bold tracking-wider">${tid}</span>
+                                <button type="button" class="btn btn-sm btn-outline-light px-2.5" onclick="copyText('${tid}')" title="Copy ID">
+                                    <i class="fa-solid fa-copy mr-1"></i> Copy
+                                </button>
+                            </div>
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <small class="text-muted d-block font-weight-600 mb-1">Status &amp; Verification</small>
-                        <span class="badge badge-success px-2.5 py-1 text-white font-weight-bold">Profile Configured</span>
+                        <div class="p-3 rounded-3" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);">
+                            <small class="text-muted d-block font-weight-600 mb-1">Status on Identity Records</small>
+                            <div class="d-flex align-items-center gap-2 mt-1">
+                                <span class="badge bg-success text-white px-3 py-1 font-weight-bold">Active &amp; Configured</span>
+                                <small class="text-white-50">Ready for NIN retrieval</small>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <div class="p-3 rounded-3 mb-3" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);">
-                    <small class="text-warning d-block mb-1 font-weight-600"><i class="fa-solid fa-circle-info mr-1"></i> Gateway Confirmation:</small>
-                    <p class="mb-0 text-white font-weight-500">${msg}</p>
-                </div>
+                ${extraRows ? `
+                    <!-- Extra Details Returned from Gateway -->
+                    <div class="table-responsive rounded-3 mb-4" style="border: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.2);">
+                        <table class="table table-borderless table-sm mb-0">
+                            <tbody>
+                                ${extraRows}
+                            </tbody>
+                        </table>
+                    </div>
+                ` : ''}
 
-                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 pt-2 border-top border-white-10">
+                <!-- Actions: NO REDIRECT - stays on page -->
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 pt-3 border-top border-white-10">
                     <div class="d-flex align-items-center gap-2 flex-wrap">
-                        ${repUrl ? `
-                            <a href="${repUrl}" target="_blank" class="btn btn-info font-weight-bold px-3 py-2">
-                                <i class="fa-solid fa-file-invoice mr-1"></i> View / Print Certificate
-                            </a>
-                        ` : ''}
                         <a href="{{ route('services.nin.suite') }}" class="btn btn-primary font-weight-bold px-3 py-2">
                             <i class="fa-solid fa-id-card mr-1"></i> Retrieve NIN Slip
                         </a>
+                        <button type="button" class="btn btn-outline-info font-weight-bold px-3 py-2" onclick="window.print()">
+                            <i class="fa-solid fa-print mr-1"></i> Print Report
+                        </button>
                     </div>
-                    <button class="btn btn-outline-light px-3 py-2" onclick="window.location.reload()">
-                        <i class="fa-solid fa-plus mr-1"></i> New Setup
+                    <button type="button" class="btn btn-outline-light px-3 py-2" onclick="resetPersonalization()">
+                        <i class="fa-solid fa-plus mr-1"></i> Personalize Another ID
                     </button>
                 </div>
             </div>
@@ -237,23 +284,25 @@
                             btn.prop('disabled', false).html(originalHtml);
                             if (response.status) {
                                 let repUrl = response.report_url || (response.result_id ? `{{ url('/services/personalization/report') }}/${response.result_id}` : null);
+                                
+                                // Display report from API right on the page (no redirect anywhere)
                                 viewResult(response.data, response.reference_id, response.tracking_id || submittedTid, 'Just now', repUrl);
 
+                                // Smooth scroll down to result area
+                                $('html, body').animate({
+                                    scrollTop: $("#resultArea").offset().top - 80
+                                }, 300);
+
+                                // Lightweight toast - user stays right on this page
                                 Swal.fire({
-                                    title: 'Personalization Completed!',
-                                    text: response.message || 'Identity personalization set up successfully.',
+                                    toast: true,
+                                    position: 'top-end',
                                     icon: 'success',
-                                    showCancelButton: true,
-                                    confirmButtonColor: '#8b5cf6',
-                                    cancelButtonColor: '#2563eb',
-                                    confirmButtonText: '<i class="fa-solid fa-file-invoice mr-1"></i> View Official Certificate',
-                                    cancelButtonText: 'Stay on Page',
-                                    background: '#0a0a0f',
+                                    title: response.message || 'Personalization Successful',
+                                    showConfirmButton: false,
+                                    timer: 3000,
+                                    background: '#0f172a',
                                     color: '#fff'
-                                }).then((choice) => {
-                                    if (choice.isConfirmed && repUrl) {
-                                        window.open(repUrl, '_blank');
-                                    }
                                 });
                             } else {
                                 Swal.fire({ title: 'Setup Failed', text: response.message, icon: 'error', background: '#0a0a0f', color: '#fff' });

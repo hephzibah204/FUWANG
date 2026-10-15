@@ -1795,13 +1795,9 @@ class VerificationController extends Controller
             throw new \App\Exceptions\ServiceNotConfiguredException('Personalization service is currently unavailable. Please contact support.');
         }
 
-        $wantsRedirect = $request->boolean('redirect') && !$request->expectsJson() && !$request->ajax();
         $wallet = app(WalletService::class);
         $debit = $wallet->debit($user, (float) $price, 'Personalization', 'PERS');
         if (!$debit['ok']) {
-            if ($wantsRedirect) {
-                return back()->with('error', $debit['message'])->withInput();
-            }
             return response()->json(['status' => false, 'message' => $debit['message']]);
         }
 
@@ -1827,15 +1823,14 @@ class VerificationController extends Controller
                 $wallet->markTransactionSuccess($debit['txId']);
 
                 $reportUrl = route('services.personalization.report', $result->id);
-
-                if ($wantsRedirect) {
-                    return redirect()->route('services.personalization.report', $result->id)
-                        ->with('status', 'Personalization completed successfully.');
-                }
+                $apiMsg = is_array($data) && !empty($data['message']) 
+                    ? $data['message'] 
+                    : 'Identity record successfully personalized and activated on NIMC database.';
+                $cleanMsg = preg_replace('/robosttech|dataverify|vuvaa/i', 'Gateway', (string) $apiMsg);
 
                 return response()->json([
                     'status' => true,
-                    'message' => 'Personalization Successful',
+                    'message' => $cleanMsg,
                     'data' => $data,
                     'result_id' => $result->id,
                     'reference_id' => $result->reference_id,
@@ -1852,9 +1847,6 @@ class VerificationController extends Controller
         } catch (\Exception $e) {
             $wallet->failAndRefund($user, (float) $price, 'Personalization', $debit['txId']);
             $msg = preg_replace('/robosttech|dataverify|vuvaa/i', 'Gateway', $e->getMessage());
-            if ($wantsRedirect) {
-                return back()->with('error', $msg)->withInput();
-            }
             return response()->json(['status' => false, 'message' => $msg]);
         }
     }
