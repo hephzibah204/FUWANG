@@ -93,5 +93,106 @@ class PersonalizationTrackingIdTest extends TestCase
             ->assertSee('ABC12345XYZ')
             ->assertSee('View / Print Official Report');
     }
+
+    public function test_personalization_pending_submission_and_status_polling_returns_printable_nin_slip(): void
+    {
+        $user = User::create([
+            'fullname' => 'Adewale Johnson',
+            'username' => 'u_pers_async',
+            'email' => 'async@example.com',
+            'password' => Hash::make('Password@123'),
+        ]);
+        $user->forceFill(['email_verified_at' => now()])->save();
+
+        $balance = AccountBalance::create([
+            'user_id' => $user->id,
+            'email' => $user->email,
+            'user_balance' => 5000,
+            'api_key' => 'user',
+        ]);
+
+        ApiCenter::create([
+            'robosttech_api_key' => 'robost_key_123',
+            'robosttech_endpoint_personalization' => 'https://robosttech.com/api',
+        ]);
+
+        $dummyPdfBase64 = base64_encode('%PDF-1.4 %Dummy PDF binary representation for test slip generation');
+
+        Http::fake([
+            'https://robosttech.com/api/personalization' => Http::response([
+                'status' => 'pending',
+                'request_status' => 'pending',
+                'message' => 'Ticket accepted for processing',
+                'tracking_id' => 'TRK99887766',
+            ], 200),
+            'https://robosttech.com/api/personalization_status' => Http::response([
+                'status' => 'completed',
+                'request_status' => 'completed',
+                'message' => 'Personalization completed successfully',
+                'nin' => '12345678901',
+                'user_data' => [
+                    'firstname' => 'Adewale',
+                    'lastname' => 'Johnson',
+                    'middlename' => 'Kola',
+                    'birthdate' => '1992-05-14',
+                    'gender' => 'Male',
+                    'nin' => '12345678901',
+                ],
+                'pdf_base64' => $dummyPdfBase64,
+            ], 200),
+        ]);
+
+        // 1. Initial submission: Provider returns pending, user charged, record is pending
+        $submitResp = $this->actingAs($user)
+            ->post(route('services.personalization.verify'), ['tracking_id' => 'TRK99887766'])
+            ->assertOk()
+            ->assertJsonPath('status', true)
+            ->assertJsonPath('is_pending', true)
+            ->assertJsonPath('request_status', 'pending');
+
+        $resultId = $submitResp->json('result_id');
+        $this->assertNotNull($resultId);
+
+        $freshBalance = $balance->fresh()->user_balance;
+        $this->assertEquals(4900, $freshBalance, 'User must be charged on submission per provider policy');
+
+        // 2. Poll status endpoint: mode=status (must NOT debit wallet again)
+        $pollResp = $this->actingAs($user)
+            ->post(route('services.personalization.verify'), [
+                'mode' => 'status',
+                'tracking_id' => 'TRK99887766',
+                'result_id' => $resultId,
+            ])
+            ->assertOk()
+            ->assertJsonPath('status', true)
+            ->assertJsonPath('is_completed', true)
+            ->assertJsonPath('request_status', 'completed')
+            ->assertJsonPath('nin', '12345678901');
+
+        $this->assertEquals(4900, $balance->fresh()->user_balance, 'Status check must not debit wallet balance');
+
+        // 3. Verify slip endpoints are available
+        $regularSlipUrl = route('services.nin.slip', ['id' => $resultId, 'type' => 'regular_slip', 'print' => 1]);
+        $premiumSlipUrl = route('services.nin.slip', ['id' => $resultId, 'type' => 'premium_slip', 'print' => 1]);
+
+        $regularSlipResp = $this->actingAs($user)->get($regularSlipUrl);
+        $regularSlipResp->assertOk()
+            ->assertSee('1234 567 8901')
+            ->assertSee('REGULAR NIN SLIP');
+
+        $premiumSlipResp = $this->actingAs($user)->get($premiumSlipUrl);
+        $premiumSlipResp->assertOk()
+            ->assertSee('1234 567 8901');
+
+        // 4. Verify HTML report displays printable NIN slip with NIN and print links
+        $reportUrl = route('services.personalization.report', $resultId);
+        $reportResp = $this->actingAs($user)->get($reportUrl);
+        $reportResp->assertOk()
+            ->assertSee('1234 567 8901')
+            ->assertSee('TRK99887766')
+            ->assertSee('Print Regular Slip')
+            ->assertSee('Print Premium ID Plastic Slip')
+            ->assertSee('Download PDF Slip');
+    }
 }
 

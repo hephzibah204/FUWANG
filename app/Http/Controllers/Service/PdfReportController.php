@@ -113,34 +113,58 @@ class PdfReportController extends Controller
         $isRobost = str_contains($rawProvider, 'robosttech') || str_contains($rawProvider, 'robost');
 
         if ($isRobost) {
-            // Robosttech verifications strictly use our in-house premium slip
-            if (request()->boolean('html') || request()->boolean('print')) {
-                $autoPrint = request()->boolean('print');
-                return response()->view('pdf.nin_premium_slip', compact('result', 'autoPrint'));
+            $viewName = match ($type) {
+                'regular_slip' => 'pdf.nin_regular_slip',
+                'standard_slip' => 'pdf.nin_standard_slip',
+                'vnin_slip' => 'pdf.nin_vnin_slip',
+                default => 'pdf.nin_premium_slip',
+            };
+
+            $pdfBase64 = $result->response_data['pdf_base64']
+                ?? $result->response_data['data']['pdf_base64']
+                ?? $result->response_data['user_data']['pdf_base64']
+                ?? null;
+
+            if (!empty($pdfBase64) && is_string($pdfBase64) && request()->boolean('download')) {
+                $bin = base64_decode($pdfBase64);
+                if ($bin !== false && strlen($bin) > 100) {
+                    return $this->buildPdfResponse($bin, $type, (string) $result->reference_id);
+                }
             }
 
-            $cachedResponse = $this->serveCachedNinSlip($result, 'premium_slip');
+            if (request()->boolean('html') || request()->boolean('print')) {
+                $autoPrint = request()->boolean('print');
+                return response()->view($viewName, compact('result', 'autoPrint'));
+            }
+
+            $cachedResponse = $this->serveCachedNinSlip($result, $type);
             if ($cachedResponse !== null) {
-                $cachedSource = data_get($result->response_data, '_cached_slips.premium_slip.source');
-                if ($cachedSource === 'in_house_premium_slip' || $cachedSource === 'internal_fallback') {
+                $cachedSource = data_get($result->response_data, '_cached_slips.' . $type . '.source');
+                if ($cachedSource === 'in_house_slip' || $cachedSource === 'provider_pdf_base64' || $cachedSource === 'internal_fallback') {
                     return $cachedResponse;
                 }
             }
 
-            Log::info('NIN slip generating in-house premium slip for Robosttech', [
+            if (!empty($pdfBase64) && is_string($pdfBase64) && in_array($type, ['regular_slip', 'standard_slip'], true)) {
+                $bin = base64_decode($pdfBase64);
+                if ($bin !== false && strlen($bin) > 100) {
+                    $this->cacheNinSlipBinary($result, $type, $bin, 'provider_pdf_base64');
+                    return $this->buildPdfResponse($bin, $type, (string) $result->reference_id);
+                }
+            }
+
+            Log::info('NIN slip generating in-house slip for Robosttech', [
                 'result_id' => $result->id,
                 'reference_id' => $result->reference_id,
                 'provider_name' => $result->provider_name,
+                'type' => $type,
             ]);
 
-            $pdf = Pdf::loadView('pdf.nin_premium_slip', compact('result'));
+            $pdf = Pdf::loadView($viewName, compact('result'));
             $bin = $pdf->output();
-            $this->cacheNinSlipBinary($result, $type, $bin, 'in_house_premium_slip');
-            if ($type !== 'premium_slip') {
-                $this->cacheNinSlipBinary($result, 'premium_slip', $bin, 'in_house_premium_slip');
-            }
+            $this->cacheNinSlipBinary($result, $type, $bin, 'in_house_slip');
 
-            return $this->buildPdfResponse($bin, 'premium_slip', (string) $result->reference_id);
+            return $this->buildPdfResponse($bin, $type, (string) $result->reference_id);
         }
 
         if (request()->boolean('html') || request()->boolean('print')) {
@@ -401,7 +425,7 @@ class PdfReportController extends Controller
     {
         $data = is_array($payload) ? $payload : [];
         $nestedCandidates = [];
-        foreach (['data', 'result', 'payload', 'response', 'record', 'details'] as $k) {
+        foreach (['data', 'result', 'payload', 'response', 'record', 'details', 'user_data', 'user'] as $k) {
             if (isset($data[$k]) && is_array($data[$k])) {
                 $nestedCandidates[] = $data[$k];
             }
@@ -428,7 +452,11 @@ class PdfReportController extends Controller
         }
         if (strlen($ninDigits) === 11) {
             $data['nin'] = $ninDigits;
+        } elseif (!empty($nin)) {
+            $data['nin'] = $nin;
         }
+
+        $data['tracking_id'] = $data['tracking_id'] ?? $get(['tracking_id', 'trackingId', 'trackingNo', 'tracking_no']) ?? $identifier;
 
         $data['firstname'] = $data['firstname'] ?? $get(['firstname', 'first_name', 'firstName', 'given_name', 'givenName']);
         $data['middlename'] = $data['middlename'] ?? $get(['middlename', 'middle_name', 'middleName']);

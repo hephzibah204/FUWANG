@@ -1780,19 +1780,142 @@ class VerificationController extends Controller
     public function verifyPersonalization(Request $request)
     {
         $request->validate([
-            'tracking_id' => ['required_without:number', 'string', 'max:20', 'regex:/^[A-Za-z0-9]+$/'],
-            'number' => ['nullable', 'string', 'max:20'],
+            'tracking_id' => ['required_without:number', 'string', 'max:30', 'regex:/^[A-Za-z0-9]+$/'],
+            'number' => ['nullable', 'string', 'max:30'],
+            'mode' => ['nullable', 'string', 'in:submit,status'],
+            'result_id' => ['nullable', 'integer'],
         ]);
 
         $user = Auth::user();
-        $price = 100;
-        if (Schema::hasTable('verification_prices')) {
-            $price = VerificationPrice::first()->personalization_price ?? 100;
-        }
         $apiCenter = ApiCenter::first();
 
         if (!$apiCenter || !$apiCenter->robosttech_api_key) {
             throw new \App\Exceptions\ServiceNotConfiguredException('Personalization service is currently unavailable. Please contact support.');
+        }
+
+        $trackingId = trim((string) ($request->tracking_id ?: $request->number));
+        $isStatusCheck = $request->input('mode') === 'status' || $request->input('action') === 'status';
+
+        // STATUS CHECK / POLLING MODE (Free - does not debit wallet)
+        if ($isStatusCheck) {
+            $result = null;
+            if ($request->filled('result_id')) {
+                $result = VerificationResult::where('user_id', $user->id)->where('id', $request->result_id)->first();
+            }
+            if (!$result) {
+                $result = VerificationResult::where('user_id', $user->id)
+                    ->where('service_type', 'personalization')
+                    ->where('identifier', $trackingId)
+                    ->latest()
+                    ->first();
+            }
+
+            if (!$result) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'No personalization submission found for Tracking ID ' . $trackingId,
+                ], 404);
+            }
+
+            $endpoint = $this->resolveRobostEndpoint(
+                (string) ($apiCenter->robosttech_endpoint_personalization ?: 'https://robosttech.com/api'),
+                'personalization_status'
+            );
+
+            try {
+                $response = Http::timeout(35)->withHeaders([
+                    'api-key' => $apiCenter->robosttech_api_key,
+                    'Content-Type' => 'application/json'
+                ])->post($endpoint, [
+                    'tracking_id' => $trackingId,
+                    'number' => $trackingId,
+                ]);
+
+                if ($response->successful()) {
+                    $apiData = $response->json();
+                    $resStatus = strtolower((string) ($apiData['request_status'] ?? $apiData['status'] ?? $apiData['data']['request_status'] ?? $apiData['data']['status'] ?? ''));
+
+                    $isCompleted = in_array($resStatus, ['completed', 'complete', 'successful', 'success', 'done', 'approved', 'active'], true);
+                    $isFailed = in_array($resStatus, ['failed', 'fail', 'rejected', 'error', 'record_not_found', 'not_found'], true);
+
+                    $currentData = is_array($result->response_data) ? $result->response_data : [];
+                    $mergedData = array_merge($currentData, is_array($apiData) ? $apiData : []);
+
+                    if ($isCompleted) {
+                        $result->status = 'successful';
+                        $userData = $apiData['user_data'] ?? $apiData['data']['user_data'] ?? $apiData['data'] ?? [];
+                        $nin = $apiData['nin'] ?? $apiData['data']['nin'] ?? ($userData['nin'] ?? null);
+                        if ($nin) {
+                            $mergedData['nin'] = $nin;
+                        }
+                        if (!empty($userData) && is_array($userData)) {
+                            $mergedData['user_data'] = $userData;
+                        }
+                        $pdfBase64 = $apiData['pdf_base64'] ?? $apiData['data']['pdf_base64'] ?? ($userData['pdf_base64'] ?? null);
+                        if (!empty($pdfBase64)) {
+                            $mergedData['pdf_base64'] = $pdfBase64;
+                        }
+                        $result->admin_note = $apiData['message'] ?? 'Personalization completed. NIN and profile active on NIMC.';
+                    } elseif ($isFailed) {
+                        $result->status = 'failed';
+                        $result->admin_note = $apiData['message'] ?? 'Personalization request failed or record not found.';
+                    } else {
+                        $result->status = 'pending';
+                        $result->admin_note = $apiData['message'] ?? 'Personalization in progress. Awaiting NIMC gateway completion.';
+                    }
+
+                    $result->response_data = $mergedData;
+                    $result->save();
+
+                    $cleanMsg = preg_replace('/robosttech|dataverify|vuvaa/i', 'Gateway', (string) ($apiData['message'] ?? ($isCompleted ? 'Personalization completed.' : 'Personalization in progress.')));
+
+                    return response()->json([
+                        'status' => true,
+                        'request_status' => $result->status === 'successful' ? 'completed' : ($result->status === 'failed' ? 'failed' : 'pending'),
+                        'is_completed' => $result->status === 'successful',
+                        'is_pending' => in_array($result->status, ['pending', 'waiting_for_review', 'processing']),
+                        'is_failed' => $result->status === 'failed',
+                        'message' => $cleanMsg,
+                        'nin' => $mergedData['nin'] ?? null,
+                        'user_data' => $mergedData['user_data'] ?? null,
+                        'data' => $mergedData,
+                        'result_id' => $result->id,
+                        'reference_id' => $result->reference_id,
+                        'tracking_id' => $trackingId,
+                        'report_url' => route('services.personalization.report', $result->id),
+                        'slips' => [
+                            'regular' => route('services.nin.slip', ['id' => $result->id, 'type' => 'regular_slip', 'print' => 1]),
+                            'premium' => route('services.nin.slip', ['id' => $result->id, 'type' => 'premium_slip', 'print' => 1]),
+                            'standard' => route('services.nin.slip', ['id' => $result->id, 'type' => 'standard_slip', 'print' => 1]),
+                            'pdf_download' => route('services.nin.slip', ['id' => $result->id, 'type' => 'regular_slip', 'download' => 1]),
+                        ]
+                    ]);
+                } else {
+                    $payload = $response->json();
+                    $rawMsg = (is_array($payload) ? ($payload['message'] ?? $payload['detail'] ?? null) : null)
+                        ?: ('Status check failed (HTTP ' . $response->status() . ')');
+                    $cleanMsg = preg_replace('/robosttech|dataverify|vuvaa/i', 'Gateway', (string) $rawMsg);
+                    return response()->json([
+                        'status' => false,
+                        'is_pending' => true,
+                        'message' => $cleanMsg,
+                        'result_id' => $result->id,
+                    ]);
+                }
+            } catch (\Exception $e) {
+                return response()->json([
+                    'status' => false,
+                    'is_pending' => true,
+                    'message' => preg_replace('/robosttech|dataverify|vuvaa/i', 'Gateway', $e->getMessage()),
+                    'result_id' => $result->id,
+                ]);
+            }
+        }
+
+        // SUBMIT MODE (Charged on submission, not refunded per provider billing terms)
+        $price = 100;
+        if (Schema::hasTable('verification_prices')) {
+            $price = VerificationPrice::first()->personalization_price ?? 100;
         }
 
         $wallet = app(WalletService::class);
@@ -1802,7 +1925,6 @@ class VerificationController extends Controller
         }
 
         try {
-            $trackingId = trim((string) ($request->tracking_id ?: $request->number));
             $endpoint = $this->resolveRobostEndpoint((string) ($apiCenter->robosttech_endpoint_personalization ?: 'https://robosttech.com/api'), 'personalization');
             $response = Http::timeout(45)
                 ->withHeaders([
@@ -1819,23 +1941,44 @@ class VerificationController extends Controller
                 if (is_array($data)) {
                     $data['_transaction_id'] = $debit['txId'];
                 }
+
+                $resStatus = strtolower((string) ($data['request_status'] ?? $data['status'] ?? $data['data']['request_status'] ?? $data['data']['status'] ?? ''));
+                $isCompleted = in_array($resStatus, ['completed', 'complete', 'successful', 'success', 'done', 'approved', 'active'], true);
+                $isFailed = in_array($resStatus, ['failed', 'fail', 'rejected', 'error'], true);
+                $initialStatus = $isCompleted ? 'successful' : ($isFailed ? 'failed' : 'pending');
+
                 $result = $this->storeResult($user, 'personalization', $trackingId, 'Robosttech', $data);
+                $result->status = $initialStatus;
+                $result->save();
+
                 $wallet->markTransactionSuccess($debit['txId']);
 
                 $reportUrl = route('services.personalization.report', $result->id);
                 $apiMsg = is_array($data) && !empty($data['message']) 
                     ? $data['message'] 
-                    : 'Identity record successfully personalized and activated on NIMC database.';
+                    : ($isCompleted 
+                        ? 'Identity record successfully personalized and activated on NIMC database.' 
+                        : 'Personalization ticket accepted for processing.');
                 $cleanMsg = preg_replace('/robosttech|dataverify|vuvaa/i', 'Gateway', (string) $apiMsg);
 
                 return response()->json([
                     'status' => true,
+                    'request_status' => $initialStatus === 'successful' ? 'completed' : ($initialStatus === 'failed' ? 'failed' : 'pending'),
+                    'is_completed' => $initialStatus === 'successful',
+                    'is_pending' => $initialStatus === 'pending',
+                    'is_failed' => $initialStatus === 'failed',
                     'message' => $cleanMsg,
                     'data' => $data,
                     'result_id' => $result->id,
                     'reference_id' => $result->reference_id,
                     'tracking_id' => $trackingId,
-                    'report_url' => $reportUrl
+                    'report_url' => $reportUrl,
+                    'slips' => [
+                        'regular' => route('services.nin.slip', ['id' => $result->id, 'type' => 'regular_slip', 'print' => 1]),
+                        'premium' => route('services.nin.slip', ['id' => $result->id, 'type' => 'premium_slip', 'print' => 1]),
+                        'standard' => route('services.nin.slip', ['id' => $result->id, 'type' => 'standard_slip', 'print' => 1]),
+                        'pdf_download' => route('services.nin.slip', ['id' => $result->id, 'type' => 'regular_slip', 'download' => 1]),
+                    ]
                 ]);
             } else {
                 $payload = $response->json();
@@ -1952,6 +2095,7 @@ class VerificationController extends Controller
             'validation',
             'clearance_status',
             'clearance',
+            'personalization_status',
             'personalization',
             'balance',
         ];

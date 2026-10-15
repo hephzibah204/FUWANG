@@ -3,10 +3,10 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NIMC Identity Personalization Certificate - {{ $result->reference_id }}</title>
+    <title>NIMC Identity Personalization &amp; NIN Slip - {{ $result->reference_id }}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     
     <style>
@@ -15,6 +15,8 @@
             --primary-dark: #7c3aed;
             --primary-light: #ede9fe;
             --success: #059669;
+            --warning: #d97706;
+            --danger: #dc2626;
             --slate-900: #0f172a;
             --slate-800: #1e293b;
             --slate-700: #334155;
@@ -43,7 +45,7 @@
 
         .action-bar {
             width: 100%;
-            max-width: 780px;
+            max-width: 840px;
             display: flex;
             flex-wrap: wrap;
             align-items: center;
@@ -57,7 +59,7 @@
             align-items: center;
             gap: 8px;
             padding: 10px 18px;
-            font-size: 14px;
+            font-size: 13.5px;
             font-weight: 600;
             border-radius: 8px;
             text-decoration: none;
@@ -92,29 +94,38 @@
             background: #047857;
         }
 
-        .btn-suite {
-            background: #8b5cf6;
+        .btn-premium {
+            background: #7c3aed;
             color: #fff;
         }
-        .btn-suite:hover {
-            background: #7c3aed;
+        .btn-premium:hover {
+            background: #6d28d9;
+        }
+
+        .btn-warning {
+            background: #d97706;
+            color: #fff;
+        }
+        .btn-warning:hover {
+            background: #b45309;
         }
 
         /* Certificate Container */
         .cert-card {
             width: 100%;
-            max-width: 780px;
+            max-width: 840px;
             background: #ffffff;
             border-radius: 16px;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
             position: relative;
             overflow: hidden;
             border: 1px solid rgba(226, 232, 240, 0.8);
+            margin-bottom: 30px;
         }
 
         .cert-top-bar {
             height: 6px;
-            background: linear-gradient(90deg, #8b5cf6 0%, #a78bfa 50%, #8b5cf6 100%);
+            background: linear-gradient(90deg, #8b5cf6 0%, #10b981 50%, #8b5cf6 100%);
         }
 
         .cert-inner {
@@ -187,10 +198,35 @@
 
         @php
             $d = $result->response_data ?? [];
-            $status = $result->status ?? 'successful';
-            $isSuccess = in_array(strtolower((string)$status), ['successful', 'success', 'cleared', 'active', 'completed']);
-            $applicantName = $result->user?->fullname ?? 'Applicant';
-            $apiMessage = $d['message'] ?? 'Identity record successfully personalized.';
+            if (!is_array($d)) $d = [];
+            $status = strtolower((string)($result->status ?? 'pending'));
+            $isSuccess = in_array($status, ['successful', 'success', 'cleared', 'active', 'completed']);
+            $isPending = in_array($status, ['pending', 'waiting_for_review', 'processing', 'in_progress', 'queued']);
+            $isFailed = in_array($status, ['failed', 'rejected', 'error']);
+
+            $userData = $d['user_data'] ?? $d['data']['user_data'] ?? $d['data'] ?? [];
+            if (!is_array($userData)) $userData = [];
+
+            $nin = $d['nin'] ?? $userData['nin'] ?? $d['data']['nin'] ?? null;
+            $firstname = $userData['firstname'] ?? $userData['first_name'] ?? $d['firstname'] ?? $d['first_name'] ?? null;
+            $lastname = $userData['lastname'] ?? $userData['last_name'] ?? $userData['surname'] ?? $d['lastname'] ?? $d['surname'] ?? null;
+            $middlename = $userData['middlename'] ?? $userData['middle_name'] ?? $d['middlename'] ?? null;
+            $dob = $userData['birthdate'] ?? $userData['dob'] ?? $d['birthdate'] ?? $d['dob'] ?? null;
+            $gender = $userData['gender'] ?? $userData['sex'] ?? $d['gender'] ?? null;
+            $photo = $userData['photo'] ?? $userData['image'] ?? $d['photo'] ?? $d['image'] ?? null;
+            $pdfBase64 = $d['pdf_base64'] ?? $userData['pdf_base64'] ?? $d['data']['pdf_base64'] ?? null;
+
+            $applicantName = ($firstname || $lastname) ? trim("$lastname $firstname $middlename") : ($result->user?->fullname ?? 'Applicant');
+            $apiMessage = $d['message'] ?? ($isSuccess ? 'Identity record successfully personalized and activated.' : ($isPending ? 'Personalization ticket accepted for processing.' : 'Personalization processing could not be completed.'));
+
+            // Clean vendor names
+            $cleanApiMessage = preg_replace('/robosttech|dataverify|vuvaa/i', 'Gateway', (string) $apiMessage);
+
+            // Format NIN with spaces
+            $rawNin = preg_replace('/\D+/', '', (string)($nin ?? ''));
+            $formattedNin = (strlen($rawNin) === 11)
+                ? (substr($rawNin, 0, 4) . ' ' . substr($rawNin, 4, 3) . ' ' . substr($rawNin, 7))
+                : ($nin ?: 'Pending Verification');
         @endphp
 
         /* Status Hero */
@@ -202,8 +238,21 @@
             align-items: center;
             justify-content: space-between;
             gap: 16px;
-            background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
-            border: 1px solid #ddd6fe;
+        }
+
+        .status-hero.success {
+            background: linear-gradient(135deg, #f5f3ff 0%, #ecfdf5 100%);
+            border: 1px solid #a7f3d0;
+        }
+
+        .status-hero.pending {
+            background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+            border: 1px solid #fde68a;
+        }
+
+        .status-hero.failed {
+            background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+            border: 1px solid #fecaca;
         }
 
         .status-hero-text h2 {
@@ -213,8 +262,11 @@
             align-items: center;
             gap: 8px;
             margin-bottom: 4px;
-            color: #5b21b6;
         }
+
+        .status-hero.success .status-hero-text h2 { color: #065f46; }
+        .status-hero.pending .status-hero-text h2 { color: #92400e; }
+        .status-hero.failed .status-hero-text h2 { color: #991b1b; }
 
         .status-hero-text p {
             font-size: 13.5px;
@@ -230,8 +282,146 @@
             letter-spacing: 0.04em;
             text-transform: uppercase;
             white-space: nowrap;
-            background: #7c3aed;
-            color: #ffffff;
+        }
+
+        .status-tag.success { background: #059669; color: #ffffff; }
+        .status-tag.pending { background: #d97706; color: #ffffff; }
+        .status-tag.failed { background: #dc2626; color: #ffffff; }
+
+        /* Pending Alert Box */
+        .pending-box {
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 28px;
+            text-align: center;
+        }
+        .pending-spinner {
+            font-size: 36px;
+            color: #d97706;
+            margin-bottom: 12px;
+        }
+
+        /* Printable Slip Section */
+        .slip-preview-card {
+            background: #ffffff;
+            border: 2px solid #008751;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 135, 81, 0.12);
+            padding: 24px;
+            margin-bottom: 28px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .slip-preview-header {
+            text-align: center;
+            border-bottom: 2px solid #008751;
+            padding-bottom: 14px;
+            margin-bottom: 20px;
+        }
+
+        .slip-country {
+            font-size: 15px;
+            font-weight: 800;
+            color: #008751;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .slip-subtitle {
+            font-size: 11px;
+            font-weight: 700;
+            color: #475569;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .slip-grid {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+
+        .slip-photo {
+            width: 105px;
+            height: 125px;
+            border-radius: 6px;
+            border: 1px solid #cbd5e1;
+            background: #f8fafc;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .slip-photo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .slip-fields {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px 18px;
+        }
+
+        .slip-field-item label {
+            display: block;
+            font-size: 10px;
+            text-transform: uppercase;
+            color: #64748b;
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+
+        .slip-field-item span {
+            font-size: 13.5px;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        .slip-nin-highlight {
+            grid-column: span 2;
+            background: #ecfdf5;
+            border: 1px solid #a7f3d0;
+            border-radius: 8px;
+            padding: 10px 16px;
+            margin-top: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .slip-nin-highlight .nin-label {
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            color: #065f46;
+            letter-spacing: 0.04em;
+        }
+
+        .slip-nin-highlight .nin-digits {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: 2px;
+            color: #047857;
+        }
+
+        .slip-actions-strip {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            justify-content: flex-end;
+            margin-top: 18px;
+            padding-top: 16px;
+            border-top: 1px dashed #cbd5e1;
         }
 
         /* Tracking Spotlight */
@@ -446,10 +636,10 @@
 
         @media print {
             body { background: #ffffff !important; padding: 0 !important; }
-            .action-bar { display: none !important; }
+            .action-bar, .slip-actions-strip, .btn-copy-id { display: none !important; }
             .cert-card { box-shadow: none !important; border: 1px solid #cbd5e1 !important; max-width: 100% !important; border-radius: 0 !important; }
             .spotlight-box { box-shadow: none !important; background: #6d28d9 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-            .btn-copy-id { display: none !important; }
+            .slip-preview-card { box-shadow: none !important; border: 2px solid #008751 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
     </style>
 </head>
@@ -461,15 +651,24 @@
             <i class="fa-solid fa-arrow-left"></i> Back to Personalization
         </a>
         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-            <button type="button" class="btn btn-print" onclick="window.print()">
-                <i class="fa-solid fa-print"></i> Print Certificate
+            @if($isSuccess)
+                <a href="{{ route('services.nin.slip', ['id' => $result->id, 'type' => 'regular_slip', 'print' => 1]) }}" target="_blank" class="btn btn-pdf">
+                    <i class="fa-solid fa-print"></i> Print Regular Slip
+                </a>
+                <a href="{{ route('services.nin.slip', ['id' => $result->id, 'type' => 'premium_slip', 'print' => 1]) }}" target="_blank" class="btn btn-premium">
+                    <i class="fa-solid fa-id-card"></i> Print Premium ID Slip
+                </a>
+                <a href="{{ route('services.nin.slip', ['id' => $result->id, 'type' => 'regular_slip', 'download' => 1]) }}" class="btn btn-print">
+                    <i class="fa-solid fa-file-pdf"></i> Download PDF Slip
+                </a>
+            @elseif($isPending)
+                <button type="button" class="btn btn-warning" id="checkStatusBtn" onclick="checkLiveStatus()">
+                    <i class="fa-solid fa-arrows-rotate"></i> Check Gateway Status
+                </button>
+            @endif
+            <button type="button" class="btn btn-back" onclick="window.print()">
+                <i class="fa-solid fa-print"></i> Print Full Certificate
             </button>
-            <a href="{{ route('services.personalization.report', ['id' => $result->id, 'download' => 1]) }}" class="btn btn-pdf">
-                <i class="fa-solid fa-file-pdf"></i> Download PDF
-            </a>
-            <a href="{{ route('services.nin.suite') }}" class="btn btn-suite">
-                <i class="fa-solid fa-id-card"></i> Proceed to NIN Suite
-            </a>
         </div>
     </div>
 
@@ -496,15 +695,107 @@
             </div>
 
             <!-- Status Banner -->
-            <div class="status-hero">
+            <div class="status-hero {{ $isSuccess ? 'success' : ($isPending ? 'pending' : 'failed') }}">
                 <div class="status-hero-text">
-                    <h2><i class="fa-solid fa-circle-check"></i> Identity Personalization Completed</h2>
-                    <p>{{ $apiMessage }} The profile configuration has been committed to NIMC identity records.</p>
+                    @if($isSuccess)
+                        <h2><i class="fa-solid fa-circle-check"></i> Identity Personalization Completed</h2>
+                        <p>{{ $cleanApiMessage }} Profile configuration and National Identification Number are active on NIMC records.</p>
+                    @elseif($isPending)
+                        <h2><i class="fa-solid fa-spinner fa-spin"></i> Personalization In Progress</h2>
+                        <p id="pendingText">Your personalization request was accepted by the provider and is currently being processed by the NIMC gateway. Auto-checking status...</p>
+                    @else
+                        <h2><i class="fa-solid fa-circle-xmark"></i> Personalization Failed</h2>
+                        <p>{{ $cleanApiMessage }} (Per provider terms, tickets are billed on submission).</p>
+                    @endif
                 </div>
-                <span class="status-tag">
-                    Personalized
+                <span class="status-tag {{ $isSuccess ? 'success' : ($isPending ? 'pending' : 'failed') }}">
+                    {{ $isSuccess ? 'Completed / Active' : ($isPending ? 'Processing' : 'Failed') }}
                 </span>
             </div>
+
+            @if($isPending)
+                <!-- Live Polling Progress Box -->
+                <div class="pending-box">
+                    <div class="pending-spinner">
+                        <i class="fa-solid fa-circle-notch fa-spin"></i>
+                    </div>
+                    <h3 style="font-size: 16px; font-weight: 800; color: #92400e; margin-bottom: 6px;">Processing Identity Personalization</h3>
+                    <p style="font-size: 13px; color: #78350f; max-width: 520px; margin: 0 auto 16px;">
+                        The verification gateway has accepted your ticket and is generating your verified identity record and printable NIN slip. This page is live-polling and will automatically show your NIN slip as soon as completed.
+                    </p>
+                    <button type="button" class="btn btn-warning" onclick="checkLiveStatus()">
+                        <i class="fa-solid fa-rotate mr-1"></i> Refresh Status Now
+                    </button>
+                </div>
+            @endif
+
+            @if($isSuccess)
+                <!-- OFFICIAL PRINTABLE NIN SLIP RESULT (Expected Deliverable) -->
+                <div class="data-section-title">
+                    <i class="fa-solid fa-id-card-clip text-success"></i> Official Printable NIN Slip Result
+                </div>
+
+                <div class="slip-preview-card">
+                    <div class="slip-preview-header">
+                        <div class="slip-country">FEDERAL REPUBLIC OF NIGERIA</div>
+                        <div class="slip-subtitle">NATIONAL IDENTITY MANAGEMENT COMMISSION • REGULAR NIN SLIP</div>
+                    </div>
+
+                    <div class="slip-grid">
+                        <div class="slip-photo">
+                            @if($photo)
+                                <img src="{{ str_starts_with($photo, 'http') || str_starts_with($photo, 'data:') ? $photo : 'data:image/jpeg;base64,' . $photo }}" alt="NIN Photo">
+                            @else
+                                <i class="fa-solid fa-user" style="font-size: 48px; color: #cbd5e1;"></i>
+                            @endif
+                        </div>
+
+                        <div class="slip-fields">
+                            <div class="slip-field-item">
+                                <label>Surname / Nom</label>
+                                <span>{{ strtoupper($lastname ?: ($result->user?->fullname ? explode(' ', $result->user->fullname)[0] : '—')) }}</span>
+                            </div>
+                            <div class="slip-field-item">
+                                <label>Given Names / Prénoms</label>
+                                <span>{{ strtoupper(trim(($firstname ?: '') . ' ' . ($middlename ?: '')) ?: '—') }}</span>
+                            </div>
+                            <div class="slip-field-item">
+                                <label>Date of Birth</label>
+                                <span>{{ strtoupper($dob ?: '—') }}</span>
+                            </div>
+                            <div class="slip-field-item">
+                                <label>Sex / Sexe</label>
+                                <span>{{ $gender && $gender !== '—' ? strtoupper(substr($gender, 0, 1)) : '—' }}</span>
+                            </div>
+                            <div class="slip-field-item">
+                                <label>Tracking ID</label>
+                                <span style="font-family: 'JetBrains Mono', monospace;">{{ $result->identifier }}</span>
+                            </div>
+                            <div class="slip-field-item">
+                                <label>Issue Date</label>
+                                <span>{{ strtoupper($result->created_at->format('d M Y')) }}</span>
+                            </div>
+
+                            <div class="slip-nin-highlight">
+                                <span class="nin-label"><i class="fa-solid fa-fingerprint mr-1"></i> National Identification Number (NIN)</span>
+                                <span class="nin-digits">{{ $formattedNin }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="slip-actions-strip">
+                        <a href="{{ route('services.nin.slip', ['id' => $result->id, 'type' => 'regular_slip', 'print' => 1]) }}" target="_blank" class="btn btn-pdf">
+                            <i class="fa-solid fa-print"></i> Print Regular Slip
+                        </a>
+                        <a href="{{ route('services.nin.slip', ['id' => $result->id, 'type' => 'premium_slip', 'print' => 1]) }}" target="_blank" class="btn btn-premium">
+                            <i class="fa-solid fa-id-card"></i> Print Premium ID Plastic Slip
+                        </a>
+                        <a href="{{ route('services.nin.slip', ['id' => $result->id, 'type' => 'regular_slip', 'download' => 1]) }}" class="btn btn-print">
+                            <i class="fa-solid fa-download"></i> Download PDF Slip
+                        </a>
+                    </div>
+                </div>
+            @endif
 
             <!-- Tracking ID Spotlight Box -->
             <div class="spotlight-box">
@@ -512,11 +803,17 @@
                     <div class="spotlight-title">Personalized NIMC Tracking ID</div>
                     <div class="tracking-number" id="spotlightTrackingId">{{ $result->identifier }}</div>
                     <div class="spotlight-sub">
-                        Your identity profile has been successfully personalized. You can now retrieve your NIN slip.
+                        @if($isSuccess)
+                            Identity profile personalized. Use your Tracking ID or NIN above for official verifications.
+                        @elseif($isPending)
+                            Ticket accepted for processing. Status is being live-polled against the NIMC database.
+                        @else
+                            Personalization ticket recorded. Tracking ID: {{ $result->identifier }}.
+                        @endif
                     </div>
                 </div>
                 <button type="button" class="btn-copy-id" onclick="copyTrackingId('{{ $result->identifier }}')">
-                    <i class="fa-solid fa-copy"></i> Copy ID
+                    <i class="fa-solid fa-copy"></i> Copy Tracking ID
                 </button>
             </div>
 
@@ -530,6 +827,12 @@
                         <th>Applicant Full Name</th>
                         <td>{{ $applicantName }}</td>
                     </tr>
+                    @if($nin)
+                        <tr>
+                            <th>Generated / Active NIN</th>
+                            <td><strong style="color: #059669; font-family: 'JetBrains Mono', monospace; font-size: 15px;">{{ $formattedNin }}</strong></td>
+                        </tr>
+                    @endif
                     <tr>
                         <th>NIMC Tracking ID</th>
                         <td><code>{{ $result->identifier }}</code></td>
@@ -544,7 +847,15 @@
                     </tr>
                     <tr>
                         <th>Status</th>
-                        <td><span style="color: #059669; font-weight: 700;"><i class="fa-solid fa-circle-check mr-1"></i> Active / Personalized</span></td>
+                        <td>
+                            @if($isSuccess)
+                                <span style="color: #059669; font-weight: 700;"><i class="fa-solid fa-circle-check mr-1"></i> Active / Completed</span>
+                            @elseif($isPending)
+                                <span style="color: #d97706; font-weight: 700;"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Processing via NIMC Gateway</span>
+                            @else
+                                <span style="color: #dc2626; font-weight: 700;"><i class="fa-solid fa-circle-xmark mr-1"></i> Failed</span>
+                            @endif
+                        </td>
                     </tr>
                     <tr>
                         <th>Timestamp</th>
@@ -557,7 +868,7 @@
             <div class="note-box">
                 <span class="note-label"><i class="fa-solid fa-circle-info"></i> Gateway Confirmation:</span>
                 <p class="note-content">
-                    {{ $apiMessage }} Personalization was processed through the official verification gateway. Use your Tracking ID in the NIN Suite to print your official slips.
+                    {{ $cleanApiMessage }} Personalization was processed through the official identity verification gateway.
                 </p>
             </div>
 
@@ -598,7 +909,79 @@
             }
         }
 
-        @if(!empty($autoPrint))
+        @if($isPending)
+            let pollCount = 0;
+            const maxPolls = 30; // poll up to 2.5 minutes
+            let pollInterval = null;
+
+            function checkLiveStatus() {
+                const btn = document.getElementById('checkStatusBtn');
+                if (btn) {
+                    btn.disabled = true;
+                    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Checking...';
+                }
+
+                fetch('{{ route('services.personalization.verify') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({
+                        mode: 'status',
+                        tracking_id: '{{ $result->identifier }}',
+                        result_id: {{ $result->id }}
+                    })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> Check Gateway Status';
+                    }
+
+                    if (data.is_completed || data.request_status === 'completed') {
+                        if (pollInterval) clearInterval(pollInterval);
+                        const pText = document.getElementById('pendingText');
+                        if (pText) pText.innerText = 'Personalization completed! Reloading with your NIN slip...';
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 800);
+                    } else if (data.is_failed || data.request_status === 'failed') {
+                        if (pollInterval) clearInterval(pollInterval);
+                        window.location.reload();
+                    } else {
+                        const pText = document.getElementById('pendingText');
+                        if (pText) {
+                            pText.innerText = 'Checked at ' + new Date().toLocaleTimeString() + ' — Request is still processing on NIMC gateway...';
+                        }
+                    }
+                })
+                .catch(err => {
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> Check Gateway Status';
+                    }
+                });
+            }
+
+            // Start auto-poll every 5 seconds
+            pollInterval = setInterval(() => {
+                pollCount++;
+                if (pollCount > maxPolls) {
+                    clearInterval(pollInterval);
+                    const pText = document.getElementById('pendingText');
+                    if (pText) {
+                        pText.innerText = 'Still processing. You can check back shortly or click "Check Gateway Status" above.';
+                    }
+                    return;
+                }
+                checkLiveStatus();
+            }, 5000);
+        @endif
+
+        @if(!empty($autoPrint) && $isSuccess)
             window.addEventListener('DOMContentLoaded', () => {
                 setTimeout(() => { window.print(); }, 400);
             });
