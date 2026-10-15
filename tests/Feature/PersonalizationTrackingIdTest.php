@@ -84,6 +84,14 @@ class PersonalizationTrackingIdTest extends TestCase
             'password' => Hash::make('Password@123'),
         ]);
         $this->actingAs($otherUser)->get($reportUrl)->assertForbidden();
+
+        // Verify transaction history show page works seamlessly for Personalization (no VTU crash)
+        $tx = \App\Models\Transaction::where('order_type', 'Personalization')->latest()->firstOrFail();
+        $historyResp = $this->actingAs($user)->get(route('history.show', $tx->transaction_id));
+        $historyResp->assertOk()
+            ->assertSee($tx->transaction_id)
+            ->assertSee('ABC12345XYZ')
+            ->assertSee('View / Print Official Report');
     }
 }
 

@@ -1820,6 +1820,9 @@ class VerificationController extends Controller
 
             if ($response->successful()) {
                 $data = $response->json();
+                if (is_array($data)) {
+                    $data['_transaction_id'] = $debit['txId'];
+                }
                 $result = $this->storeResult($user, 'personalization', $trackingId, 'Robosttech', $data);
                 $wallet->markTransactionSuccess($debit['txId']);
 
