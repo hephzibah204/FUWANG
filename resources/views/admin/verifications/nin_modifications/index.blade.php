@@ -4,7 +4,7 @@
 
 @section('content')
 <div class="container-fluid py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <div>
             <h3 class="font-weight-bold text-white mb-1"><i class="fa-solid fa-id-card text-warning me-2"></i>NIN Modification Requests</h3>
             <p class="text-white-50 small mb-0">Manage customer NIMC data update and modification requests.</p>
@@ -24,29 +24,51 @@
                     <thead style="background: rgba(255,255,255,0.05);">
                         <tr>
                             <th>Reference</th>
-                            <th>User ID</th>
-                            <th>Service</th>
+                            <th>Applicant</th>
+                            <th>NIN & Modification</th>
                             <th>Status</th>
-                            <th>Created At</th>
+                            <th>Submitted</th>
                             <th class="text-end">Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($requests as $req)
+                            @php
+                                $d = is_array($req->response_data) ? $req->response_data : [];
+                                $modLabels = [
+                                    'name' => 'Change of Name',
+                                    'dob' => 'Date of Birth',
+                                    'address' => 'Change of Address',
+                                    'phone' => 'Change of Phone',
+                                    'email' => 'Change of Email',
+                                ];
+                                $label = $modLabels[$d['modification_type'] ?? ''] ?? ucfirst(str_replace('_', ' ', $d['modification_type'] ?? 'General'));
+                            @endphp
                             <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-                                <td><code>{{ $req->reference_id ?? ('REF-' . $req->id) }}</code></td>
-                                <td>User #{{ $req->user_id }}</td>
-                                <td>NIN Modification</td>
+                                <td>
+                                    <code>{{ $req->reference_id ?? ('REF-' . $req->id) }}</code>
+                                </td>
+                                <td>
+                                    <strong>{{ $req->user?->fullname ?? $req->user?->name ?? ('User #' . $req->user_id) }}</strong>
+                                    <div class="text-white-50 small">{{ $req->user?->email }}</div>
+                                </td>
+                                <td>
+                                    <code>{{ $d['nin'] ?? $req->identifier }}</code>
+                                    <div><span class="badge bg-info text-dark mt-1">{{ $label }}</span></div>
+                                </td>
                                 <td>
                                     @if($req->status === 'successful')
                                         <span class="badge bg-success px-2.5 py-1">Successful</span>
                                     @elseif($req->status === 'failed')
                                         <span class="badge bg-danger px-2.5 py-1">Failed</span>
                                     @else
-                                        <span class="badge bg-warning text-dark px-2.5 py-1">Pending</span>
+                                        <span class="badge bg-warning text-dark px-2.5 py-1">Pending Review</span>
                                     @endif
                                 </td>
-                                <td>{{ $req->created_at->format('M d, Y H:i') }}</td>
+                                <td>
+                                    <span class="text-white-50 small">{{ $req->created_at->format('M d, Y') }}</span>
+                                    <div class="text-white-50 text-2xs">{{ $req->created_at->format('h:i A') }}</div>
+                                </td>
                                 <td class="text-end">
                                     <a href="{{ route('admin.verifications.nin_modifications.show', $req->id) }}" class="btn btn-sm btn-outline-light">
                                         <i class="fa-solid fa-eye me-1"></i> Review

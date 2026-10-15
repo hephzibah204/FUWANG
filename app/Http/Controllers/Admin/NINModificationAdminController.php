@@ -12,7 +12,8 @@ class NINModificationAdminController extends Controller
 {
     public function index()
     {
-        $requests = VerificationResult::where('service_type', 'nin_modification')
+        $requests = VerificationResult::with('user')
+            ->where('service_type', 'nin_modification')
             ->orderBy('created_at', 'desc')
             ->paginate(20);
 
@@ -21,14 +22,14 @@ class NINModificationAdminController extends Controller
 
     public function show($id)
     {
-        $request = VerificationResult::findOrFail($id);
+        $request = VerificationResult::with('user')->findOrFail($id);
         return view('admin.verifications.nin_modifications.show', compact('request'));
     }
 
     public function updateStatus(Request $request, $id)
     {
         $request->validate([
-            'status' => 'required|string|in:pending,successful,failed',
+            'status' => 'required|string|in:pending,waiting_for_review,successful,failed',
             'admin_note' => 'nullable|string|max:1000'
         ]);
 

@@ -20,10 +20,10 @@ class NINModificationController extends Controller
     public function acceptConsent(Request $request)
     {
         $user = Auth::user();
-        $user->update([
+        $user->forceFill([
             'nin_mod_consent' => true,
             'nin_mod_consent_at' => now()
-        ]);
+        ])->save();
 
         return response()->json(['status' => true, 'message' => 'Terms accepted successfully.']);
     }

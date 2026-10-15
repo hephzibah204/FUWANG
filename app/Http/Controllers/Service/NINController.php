@@ -424,12 +424,24 @@ class NINController extends Controller
         }
 
         if (in_array($mode, ['validation', 'validation_status', 'clearance', 'clearance_status', 'ipe', 'ipe_clearance'], true)) {
-            return CustomApi::whereIn('service_type', ['nin_verification', 'nin', 'nin_validation', 'validation', 'identity', 'clearance', 'ipe_clearance'])
+            $apiCenter = ApiCenter::first();
+            $hasDv = !empty(env('DATAVERIFY_API_KEY')) || !empty($apiCenter?->dataverify_api_key) || !empty(\App\Models\SystemSetting::get('dataverify_api_key'));
+            $hasRobost = !empty(env('ROBOSTTECH_API_KEY')) || !empty($apiCenter?->robosttech_api_key) || !empty(\App\Models\SystemSetting::get('robosttech_api_key'));
+
+            $providers = CustomApi::whereIn('service_type', ['nin_verification', 'nin', 'nin_validation', 'validation', 'identity', 'clearance', 'ipe_clearance'])
                 ->where('status', true)
-                ->where('provider_identifier', 'robosttech')
+                ->whereIn('provider_identifier', ['robosttech', 'dataverify'])
                 ->orderBy('priority', 'asc')
-                ->first()
-                ?? CustomApi::whereIn('service_type', ['nin_verification', 'nin', 'nin_validation', 'validation', 'identity', 'clearance', 'ipe_clearance'])
+                ->get();
+
+            $matched = $providers->sortBy(function (CustomApi $p) use ($hasDv, $hasRobost) {
+                $isDv = strtolower((string) $p->provider_identifier) === 'dataverify';
+                $isRobost = strtolower((string) $p->provider_identifier) === 'robosttech';
+                $hasKey = ($isDv && $hasDv) || ($isRobost && $hasRobost) || !empty($p->api_key);
+                return $hasKey ? 0 : 1;
+            })->first();
+
+            return $matched ?? CustomApi::whereIn('service_type', ['nin_verification', 'nin', 'nin_validation', 'validation', 'identity', 'clearance', 'ipe_clearance'])
                 ->where('status', true)
                 ->orderBy('priority', 'asc')
                 ->first();
@@ -518,13 +530,36 @@ class NINController extends Controller
         }
         if (DataVerifyClient::isDataVerifyProvider($provider)) {
             $client = new DataVerifyClient($provider);
-            $result = $client->verify($mode, [
-                'number' => (string) $request->input('number'),
-                'firstname' => (string) $request->input('firstname'),
-                'lastname' => (string) $request->input('lastname'),
-                'dob' => (string) $request->input('dob'),
-                'gender' => (string) $request->input('gender'),
-            ], (string) $request->input('verification_type', ''));
+
+            if ($mode === 'validation') {
+                $validationType = (string) ($request->input('validation_reason') ?: $request->input('validation_type') ?: 'no_record_found');
+                $normalizedType = match(strtolower($validationType)) {
+                    'sim_validation', 'sim', 'sim card', 'sim validation', 'sim card validation' => 'sim_validation',
+                    'bank_validation', 'bank', 'bvn', 'bvn validation', 'bank validation' => 'bank_validation',
+                    'modification_validation', 'modification', 'data modification', 'name modification' => 'modification_validation',
+                    'photographic_error', 'photo', 'photo error', 'photographic error' => 'photographic_error',
+                    default => 'no_record_found'
+                };
+                $result = $client->submitNinValidation((string) $request->input('number'), $normalizedType);
+            } elseif ($mode === 'validation_status') {
+                $txId = (string) ($request->input('transaction_id') ?: $request->input('reference_id') ?: '');
+                $result = $client->checkNinValidationStatus((string) $request->input('number'), $txId ?: null);
+            } elseif (in_array($mode, ['clearance', 'ipe', 'ipe_clearance'], true)) {
+                $trackingId = (string) ($request->input('tracking_id') ?: $request->input('number'));
+                $result = $client->submitIpeClearance($trackingId);
+            } elseif (in_array($mode, ['clearance_status', 'ipe_status'], true)) {
+                $trackingId = (string) ($request->input('tracking_id') ?: $request->input('number'));
+                $txId = (string) ($request->input('transaction_id') ?: $request->input('reference_id') ?: '');
+                $result = $client->checkIpeClearanceStatus($trackingId, $txId ?: null);
+            } else {
+                $result = $client->verify($mode, [
+                    'number' => (string) $request->input('number'),
+                    'firstname' => (string) $request->input('firstname'),
+                    'lastname' => (string) $request->input('lastname'),
+                    'dob' => (string) $request->input('dob'),
+                    'gender' => (string) $request->input('gender'),
+                ], (string) $request->input('verification_type', ''));
+            }
 
             return [
                 'status' => $result['ok'],
@@ -673,11 +708,32 @@ class NINController extends Controller
         $user = Auth::user();
         $provider = $this->pickProviderForMode('validation_status');
         if (!$provider) {
-            return response()->json(['status' => false, 'message' => 'No RobostTech provider configured for validation status.'], 503);
+            return response()->json(['status' => false, 'message' => 'No provider configured for validation status.'], 503);
         }
 
         $req = new Request(['number' => $validated['nin']]);
-        $response = $this->callRobostTechProvider($provider, $req, 'validation_status');
+        if (DataVerifyClient::isDataVerifyProvider($provider)) {
+            $client = new DataVerifyClient($provider);
+            $txId = null;
+            if (!empty($validated['result_id'])) {
+                $resRec = VerificationResult::find($validated['result_id']);
+                $txId = $resRec?->response_data['transaction_id'] ?? null;
+            }
+            $dvRes = $client->checkNinValidationStatus($validated['nin'], $txId);
+            $response = [
+                'status' => $dvRes['ok'] || !empty($dvRes['data']),
+                'message' => $dvRes['message'],
+                'data' => [
+                    'success' => $dvRes['status'] === 'successful',
+                    'in-progress' => $dvRes['status'] === 'pending',
+                    'data' => $dvRes['data'],
+                    'message' => $dvRes['message'],
+                ],
+                'provider' => $provider->name,
+            ];
+        } else {
+            $response = $this->callRobostTechProvider($provider, $req, 'validation_status');
+        }
 
         if (!$response['status']) {
             return response()->json(['status' => false, 'message' => $response['message'] ?? 'Status check failed.'], 502);

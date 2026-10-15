@@ -107,19 +107,27 @@ class SmartSwitcherService
         ->where('status', true);
 
         if (in_array($mode, ['validation', 'validation_status', 'clearance', 'clearance_status', 'ipe', 'ipe_clearance'], true)) {
-            $query->where('provider_identifier', 'robosttech');
+            $query->whereIn('provider_identifier', ['robosttech', 'dataverify']);
         }
 
         $allProviders = $query->get()->filter(fn (CustomApi $c) => $this->providerSupportsMode($c, $mode))->values();
 
         // Calculate dynamic health score:
         // Providers with recent technical failures in the circuit breaker get de-prioritized to the end
-        // Validation and IPE modes explicitly prioritize RobostTech
+        // Validation and IPE modes prioritize whichever provider has active credentials
         $sorted = $allProviders->sortBy(function (CustomApi $p) use ($mode) {
             $isRobost = strtolower((string) $p->provider_identifier) === 'robosttech';
+            $isDv = strtolower((string) $p->provider_identifier) === 'dataverify' || str_contains(strtolower((string) $p->endpoint), 'dataverify');
             $modeBonus = 0;
             if (in_array($mode, ['validation', 'validation_status', 'clearance', 'clearance_status', 'ipe', 'ipe_clearance'], true)) {
-                $modeBonus = $isRobost ? -5000 : 5000;
+                $apiCenter = ApiCenter::first();
+                $hasKey = false;
+                if ($isDv) {
+                    $hasKey = !empty($p->api_key) || !empty($apiCenter?->dataverify_api_key) || !empty(env('DATAVERIFY_API_KEY')) || !empty(\App\Models\SystemSetting::get('dataverify_api_key'));
+                } elseif ($isRobost) {
+                    $hasKey = !empty($p->api_key) || !empty($apiCenter?->robosttech_api_key) || !empty(env('ROBOSTTECH_API_KEY')) || !empty(\App\Models\SystemSetting::get('robosttech_api_key'));
+                }
+                $modeBonus = $hasKey ? -5000 : 5000;
             }
 
             $failCount = (int) Cache::get('provider.fail.count.' . $p->id, 0);
@@ -344,6 +352,26 @@ class SmartSwitcherService
             } elseif (in_array($mode, ['tracking', 'tid'], true)) {
                 $tid = (string) ($request->input('tracking_id') ?: $request->input('number') ?: $number);
                 $res = $client->verifyTracking($tid);
+            } elseif ($mode === 'validation') {
+                $validationType = (string) ($request->input('validation_reason') ?: $request->input('validation_type') ?: 'no_record_found');
+                $normalizedType = match(strtolower($validationType)) {
+                    'sim_validation', 'sim', 'sim card', 'sim validation', 'sim card validation' => 'sim_validation',
+                    'bank_validation', 'bank', 'bvn', 'bvn validation', 'bank validation' => 'bank_validation',
+                    'modification_validation', 'modification', 'data modification', 'name modification' => 'modification_validation',
+                    'photographic_error', 'photo', 'photo error', 'photographic error' => 'photographic_error',
+                    default => 'no_record_found'
+                };
+                $res = $client->submitNinValidation($number, $normalizedType);
+            } elseif ($mode === 'validation_status') {
+                $txId = (string) ($request->input('transaction_id') ?: $request->input('reference_id') ?: '');
+                $res = $client->checkNinValidationStatus($number, $txId ?: null);
+            } elseif (in_array($mode, ['clearance', 'ipe', 'ipe_clearance'], true)) {
+                $trackingId = (string) ($request->input('tracking_id') ?: $request->input('number') ?: $number);
+                $res = $client->submitIpeClearance($trackingId);
+            } elseif (in_array($mode, ['clearance_status', 'ipe_status'], true)) {
+                $trackingId = (string) ($request->input('tracking_id') ?: $request->input('number') ?: $number);
+                $txId = (string) ($request->input('transaction_id') ?: $request->input('reference_id') ?: '');
+                $res = $client->checkIpeClearanceStatus($trackingId, $txId ?: null);
             } else {
                 return ['status' => false, 'message' => "Mode [{$mode}] not supported by DataVerify."];
             }

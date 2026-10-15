@@ -1021,10 +1021,19 @@ class VerificationController extends Controller
             $providerIdent = strtolower((string) ($existing?->provider_name ?? ''));
             $exData = $existing?->response_data ?? [];
 
+            $dvProvider = CustomApi::where('provider_identifier', 'dataverify')->where('status', true)->first();
+            $robostProvider = CustomApi::where('provider_identifier', 'robosttech')->where('status', true)->first();
+            $hasDv = $this->hasDataVerifyCredentials($dvProvider);
+            $hasRobost = $this->hasRobosttechCredentials($robostProvider);
+
+            $shouldCheckDataVerify = str_contains($providerIdent, 'dataverify') 
+                || !empty($exData['transaction_id']) 
+                || !empty($exData['api_response']['transaction_id'])
+                || ($hasDv && !str_contains($providerIdent, 'robosttech'));
+
             // 1. DataVerify Provider Status Check
-            if ($existing && str_contains($providerIdent, 'dataverify')) {
+            if ($existing && $shouldCheckDataVerify && $hasDv) {
                 try {
-                    $dvProvider = CustomApi::where('provider_identifier', 'dataverify')->where('status', true)->first();
                     $dvClient = new \App\Services\DataVerify\DataVerifyClient($dvProvider);
                     $txId = $exData['transaction_id'] ?? $exData['api_response']['transaction_id'] ?? null;
                     $ninToQuery = $existing->identifier ?: ($exData['nin'] ?? $ninNumber);
@@ -1058,13 +1067,18 @@ class VerificationController extends Controller
                 }
             }
             // 2. Robosttech Provider Status Check
-            elseif ($validationMode === 'robosttech' || ($existing && str_contains($providerIdent, 'robosttech') && in_array($existing->status, ['pending', 'waiting_for_review']))) {
-                $apiCenter = ApiCenter::first();
-                $robostKey = $apiCenter?->robosttech_api_key;
-                if ($robostKey) {
+            elseif ($existing && (str_contains($providerIdent, 'robosttech') || (!$shouldCheckDataVerify && $hasRobost)) && in_array($existing->status, ['pending', 'waiting_for_review'])) {
+                if ($hasRobost) {
                     try {
+                        $apiCenter = ApiCenter::first();
+                        $robostKey = trim((string) (
+                            $robostProvider?->api_key 
+                            ?: $apiCenter?->robosttech_api_key 
+                            ?: env('ROBOSTTECH_API_KEY') 
+                            ?: \App\Models\SystemSetting::get('robosttech_api_key', '')
+                        ));
                         $endpoint = $this->resolveRobostEndpoint(
-                            (string) ($apiCenter->robosttech_endpoint_validation ?: 'https://robosttech.com/api'),
+                            (string) ($robostProvider?->endpoint ?: $apiCenter?->robosttech_endpoint_validation ?: 'https://robosttech.com/api'),
                             'validation_status'
                         );
                         $ninToQuery = $existing ? ($exData['nin'] ?? $existing->identifier) : $ninNumber;
@@ -1161,11 +1175,7 @@ class VerificationController extends Controller
         try {
             $referenceId = 'VAL-' . strtoupper(bin2hex(random_bytes(4)));
 
-            if ($validationMode === 'robosttech' || $validationMode === 'api' || $validationMode === 'dataverify') {
-                $customProvider = $this->preferredValidationProvider();
-                $identifier = strtolower((string) ($customProvider?->provider_identifier ?? ''));
-                $providerName = $customProvider?->name ?: 'Robosttech';
-
+            if (in_array($validationMode, ['robosttech', 'api', 'dataverify', 'auto'], true)) {
                 // Map reason to official validation categories
                 $normalizedValidationType = match(strtolower($reason)) {
                     'sim_validation', 'sim', 'sim card', 'sim validation', 'sim card validation' => 'sim_validation',
@@ -1175,157 +1185,207 @@ class VerificationController extends Controller
                     default => 'no_record_found'
                 };
 
-                // Case 1: DataVerify Provider
-                if (str_contains($identifier, 'dataverify') || $validationMode === 'dataverify') {
-                    $client = new \App\Services\DataVerify\DataVerifyClient($customProvider);
-                    $subRes = $client->submitNinValidation($ninNumber, $normalizedValidationType);
+                $dvProvider = CustomApi::query()->whereIn('service_type', ['validation', 'nin_validation', 'nin_verification'])->where('status', true)->where(function ($q) {
+                    $q->where('provider_identifier', 'dataverify')->orWhere('endpoint', 'like', '%dataverify%');
+                })->first();
 
+                $robostProvider = CustomApi::query()->whereIn('service_type', ['validation', 'nin_validation', 'nin_verification'])->where('status', true)->where(function ($q) {
+                    $q->where('provider_identifier', 'robosttech')->orWhere('endpoint', 'like', '%robosttech%');
+                })->first();
+
+                $hasDv = $this->hasDataVerifyCredentials($dvProvider);
+                $hasRobost = $this->hasRobosttechCredentials($robostProvider);
+
+                $executeDataVerify = function () use ($dvProvider, $ninNumber, $normalizedValidationType, $reason, $user, $price, $request) {
+                    $client = new \App\Services\DataVerify\DataVerifyClient($dvProvider);
+                    $subRes = $client->submitNinValidation($ninNumber, $normalizedValidationType);
                     if (!$subRes['ok']) {
-                        throw new \Exception($subRes['message'] ?: 'DataVerify validation submission failed.');
+                        return [
+                            'ok' => false,
+                            'message' => $subRes['message'] ?: 'DataVerify validation submission failed.',
+                            'data' => $subRes['data'] ?? [],
+                        ];
+                    }
+                    $data = $subRes['data'];
+                    $providerName = $dvProvider?->name ?: 'DataVerify';
+                    return [
+                        'ok' => true,
+                        'provider_name' => $providerName,
+                        'status' => 'waiting_for_review',
+                        'admin_note' => $data['message'] ?? 'Submitted to DataVerify validation team (processing).',
+                        'data' => $data,
+                        'response_data' => [
+                            'nin' => $ninNumber,
+                            'validation_reason' => $reason,
+                            'validation_type' => $normalizedValidationType,
+                            'transaction_id' => $subRes['transaction_id'] ?? null,
+                            'user_name' => $user->fullname,
+                            'user_email' => $user->email,
+                            'user_phone' => $user->phone,
+                            'remarks' => $request->input('remarks'),
+                            'service_mode' => 'DataVerify API',
+                            'amount_paid' => (float) $price,
+                            'api_response' => $data,
+                        ],
+                    ];
+                };
+
+                $executeRobosttech = function () use ($robostProvider, $ninNumber, $reason, $user, $price, $request) {
+                    $apiCenter = ApiCenter::first();
+                    $robostKey = trim((string) (
+                        $robostProvider?->api_key 
+                        ?: $apiCenter?->robosttech_api_key 
+                        ?: env('ROBOSTTECH_API_KEY') 
+                        ?: \App\Models\SystemSetting::get('robosttech_api_key', '')
+                    ));
+                    if ($robostKey === '') {
+                        return [
+                            'ok' => false,
+                            'message' => 'Robosttech API credentials not configured in Admin Settings.',
+                            'data' => [],
+                        ];
                     }
 
-                    $data = $subRes['data'];
-                    $providerName = $customProvider?->name ?: 'DataVerify';
-                    $initialStatus = 'waiting_for_review';
+                    $providerName = $robostProvider?->name ?: 'Robosttech';
+                    $endpoint = $this->resolveRobostEndpoint(
+                        (string) ($robostProvider?->endpoint ?: $apiCenter?->robosttech_endpoint_validation ?: 'https://robosttech.com/api'),
+                        'validation'
+                    );
 
-                    $resPayload = [
+                    $headers = [
+                        'api-key' => $robostKey,
+                        'Content-Type' => 'application/json'
+                    ];
+                    $payload = [
                         'nin' => $ninNumber,
+                        'number' => $ninNumber,
                         'validation_reason' => $reason,
-                        'validation_type' => $normalizedValidationType,
-                        'transaction_id' => $subRes['transaction_id'] ?? null,
-                        'user_name' => $user->fullname,
-                        'user_email' => $user->email,
-                        'user_phone' => $user->phone,
-                        'remarks' => $request->input('remarks'),
-                        'service_mode' => 'DataVerify API',
-                        'amount_paid' => (float) $price,
-                        'api_response' => $data,
                     ];
 
-                    $result = VerificationResult::create([
-                        'user_id' => $user->id,
-                        'service_type' => 'validation',
-                        'identifier' => $ninNumber,
-                        'provider_name' => $providerName,
-                        'status' => $initialStatus,
-                        'reference_id' => $referenceId,
-                        'admin_note' => $data['message'] ?? 'Submitted to DataVerify validation team (processing).',
-                        'response_data' => $resPayload,
-                    ]);
-
-                    $wallet->markTransactionSuccess($debit['txId']);
-
-                    if ($expectsJson) {
-                        return response()->json([
-                            'status' => true,
-                            'message' => 'Validation request submitted successfully to DataVerify queue.',
-                            'provider' => $providerName,
-                            'data' => [
-                                'nin' => $ninNumber,
-                                'reference_id' => $referenceId,
-                                'status' => $initialStatus,
-                                'status_label' => 'Processing via Provider Queue',
-                                'admin_note' => $data['message'] ?? 'Submitted to DataVerify validation team.',
-                            ],
-                            'result_id' => $result->id,
-                            'reference_id' => $result->reference_id,
-                        ]);
+                    $response = Http::timeout(45)->withHeaders($headers)->post($endpoint, $payload);
+                    $data = $response->json();
+                    if (!$response->successful() || (is_array($data) && isset($data['success']) && $data['success'] === false)) {
+                        $msg = (is_array($data) ? ($data['message'] ?? $data['detail'] ?? null) : null)
+                            ?: ('Robosttech validation failed (HTTP ' . $response->status() . ')');
+                        return [
+                            'ok' => false,
+                            'message' => $msg,
+                            'data' => is_array($data) ? $data : [],
+                        ];
                     }
 
-                    return redirect()
-                        ->route('services.validation')
-                        ->with('status', 'Validation Submitted Successfully')
-                        ->with('validation_provider', $providerName)
-                        ->with('validation_result', $data)
-                        ->with('validation_result_id', $result->id)
-                        ->with('validation_reference_id', $result->reference_id);
-                }
-
-                // Case 2: Robosttech Provider
-                $apiCenter = ApiCenter::first();
-                $robostKey = $customProvider?->api_key ?: $apiCenter?->robosttech_api_key;
-                if (!$robostKey) {
-                    throw new \App\Exceptions\ServiceNotConfiguredException('Validation API credentials not configured in Admin Settings.');
-                }
-
-                $providerName = $customProvider?->name ?: 'Robosttech';
-                $endpoint = $this->resolveRobostEndpoint(
-                    (string) ($customProvider?->endpoint ?: $apiCenter?->robosttech_endpoint_validation ?: 'https://robosttech.com/api'),
-                    'validation'
-                );
-
-                $headers = [
-                    'api-key' => $robostKey,
-                    'Content-Type' => 'application/json'
-                ];
-                $payload = [
-                    'nin' => $ninNumber,
-                    'number' => $ninNumber,
-                    'validation_reason' => $reason,
-                ];
-
-                $response = Http::timeout(45)->withHeaders($headers)->post($endpoint, $payload);
-
-                if ($response->successful()) {
-                    $data = $response->json();
                     $apiStatus = strtolower((string) ($data['status'] ?? $data['data']['status'] ?? 'waiting_for_review'));
                     $isSuccess = in_array($apiStatus, ['validated', 'completed', 'valid']) || !empty($data['nin_data']);
                     $initialStatus = $isSuccess ? 'successful' : 'waiting_for_review';
 
-                    $resPayload = [
-                        'nin' => $ninNumber,
-                        'validation_reason' => $reason,
-                        'user_name' => $user->fullname,
-                        'user_email' => $user->email,
-                        'user_phone' => $user->phone,
-                        'remarks' => $request->input('remarks'),
-                        'service_mode' => 'Robosttech API',
-                        'amount_paid' => (float) $price,
-                        'api_response' => $data,
-                    ];
-
-                    $result = VerificationResult::create([
-                        'user_id' => $user->id,
-                        'service_type' => 'validation',
-                        'identifier' => $ninNumber,
+                    return [
+                        'ok' => true,
                         'provider_name' => $providerName,
                         'status' => $initialStatus,
-                        'reference_id' => $referenceId,
                         'admin_note' => $data['message'] ?? 'Submitted to validation API.',
-                        'response_data' => $resPayload,
-                    ]);
+                        'data' => $data,
+                        'response_data' => [
+                            'nin' => $ninNumber,
+                            'validation_reason' => $reason,
+                            'user_name' => $user->fullname,
+                            'user_email' => $user->email,
+                            'user_phone' => $user->phone,
+                            'remarks' => $request->input('remarks'),
+                            'service_mode' => 'Robosttech API',
+                            'amount_paid' => (float) $price,
+                            'api_response' => $data,
+                        ],
+                    ];
+                };
 
-                    $wallet->markTransactionSuccess($debit['txId']);
-
-                    if ($expectsJson) {
-                        return response()->json([
-                            'status' => true,
-                            'message' => 'Validation request processed successfully.',
-                            'provider' => $providerName,
-                            'data' => [
-                                'nin' => $ninNumber,
-                                'reference_id' => $referenceId,
-                                'status' => $initialStatus,
-                                'status_label' => $isSuccess ? 'Validated / Successful' : 'Processing via API',
-                                'admin_note' => $data['message'] ?? 'Submitted to validation provider.',
-                            ],
-                            'result_id' => $result->id,
-                            'reference_id' => $result->reference_id,
-                        ]);
+                // Determine primary engine based on configuration and active credentials
+                $primary = 'dataverify';
+                if ($validationMode === 'robosttech') {
+                    $primary = $hasRobost ? 'robosttech' : ($hasDv ? 'dataverify' : 'robosttech');
+                } elseif ($validationMode === 'dataverify') {
+                    $primary = $hasDv ? 'dataverify' : ($hasRobost ? 'robosttech' : 'dataverify');
+                } else { // auto or api
+                    if ($hasDv && !$hasRobost) {
+                        $primary = 'dataverify';
+                    } elseif ($hasRobost && !$hasDv) {
+                        $primary = 'robosttech';
+                    } else {
+                        $primary = 'dataverify';
                     }
-
-                    return redirect()
-                        ->route('services.validation')
-                        ->with('status', 'Validation Submitted Successfully')
-                        ->with('validation_provider', $providerName)
-                        ->with('validation_result', $data)
-                        ->with('validation_result_id', $result->id)
-                        ->with('validation_reference_id', $result->reference_id);
-                } else {
-                    $payload = $response->json();
-                    throw new \Exception((is_array($payload) ? ($payload['message'] ?? $payload['detail'] ?? null) : null)
-                        ?: ('Verification failed (HTTP ' . $response->status() . ')'));
                 }
+
+                $attempt = null;
+                if ($primary === 'dataverify') {
+                    if ($hasDv) {
+                        $attempt = $executeDataVerify();
+                    }
+                    if ((!$attempt || !$attempt['ok']) && $hasRobost) {
+                        Log::warning('DataVerify validation submission unsuccessful or missing key; failing over to Robosttech', [
+                            'error' => $attempt['message'] ?? 'No credentials',
+                            'nin' => $ninNumber,
+                        ]);
+                        $attempt = $executeRobosttech();
+                    }
+                } else { // primary === 'robosttech'
+                    if ($hasRobost) {
+                        $attempt = $executeRobosttech();
+                    }
+                    if ((!$attempt || !$attempt['ok']) && $hasDv) {
+                        Log::warning('Robosttech validation submission unsuccessful or missing key; failing over to DataVerify', [
+                            'error' => $attempt['message'] ?? 'No credentials',
+                            'nin' => $ninNumber,
+                        ]);
+                        $attempt = $executeDataVerify();
+                    }
+                }
+
+                if (!$attempt || !$attempt['ok']) {
+                    $errorMsg = $attempt['message'] ?? 'Validation API credentials not configured in Admin Settings. Please configure DataVerify or Robosttech credentials.';
+                    throw new \Exception($errorMsg);
+                }
+
+                $providerName = $attempt['provider_name'];
+                $initialStatus = $attempt['status'];
+                $resPayload = $attempt['response_data'];
+                $data = $attempt['data'];
+
+                $result = VerificationResult::create([
+                    'user_id' => $user->id,
+                    'service_type' => 'validation',
+                    'identifier' => $ninNumber,
+                    'provider_name' => $providerName,
+                    'status' => $initialStatus,
+                    'reference_id' => $referenceId,
+                    'admin_note' => $attempt['admin_note'],
+                    'response_data' => $resPayload,
+                ]);
+
+                $wallet->markTransactionSuccess($debit['txId']);
+
+                if ($expectsJson) {
+                    return response()->json([
+                        'status' => true,
+                        'message' => 'Validation request submitted successfully to ' . $providerName . ' queue.',
+                        'provider' => $providerName,
+                        'data' => [
+                            'nin' => $ninNumber,
+                            'reference_id' => $referenceId,
+                            'status' => $initialStatus,
+                            'status_label' => $initialStatus === 'successful' ? 'Validated / Successful' : 'Processing via Provider Queue',
+                            'admin_note' => $attempt['admin_note'],
+                        ],
+                        'result_id' => $result->id,
+                        'reference_id' => $result->reference_id,
+                    ]);
+                }
+
+                return redirect()
+                    ->route('services.validation')
+                    ->with('status', 'Validation Submitted Successfully')
+                    ->with('validation_provider', $providerName)
+                    ->with('validation_result', $data)
+                    ->with('validation_result_id', $result->id)
+                    ->with('validation_reference_id', $result->reference_id);
             } else {
                 // Manual Review Mode
                 $resPayload = [
@@ -1911,23 +1971,122 @@ class VerificationController extends Controller
         return rtrim($trimmed, '/') . '/' . $path;
     }
 
-    private function preferredValidationProvider(): ?CustomApi
+    public function hasRobosttechCredentials(?CustomApi $provider = null): bool
     {
-        return CustomApi::query()
+        $key = trim((string) ($provider?->api_key ?? ''));
+        if ($key !== '') {
+            return true;
+        }
+
+        $apiCenter = ApiCenter::first();
+        $acKey = trim((string) ($apiCenter?->robosttech_api_key ?? ''));
+        if ($acKey !== '') {
+            return true;
+        }
+
+        $envKey = trim((string) (env('ROBOSTTECH_API_KEY') ?: ''));
+        if ($envKey !== '') {
+            return true;
+        }
+
+        $settingKey = trim((string) (\App\Models\SystemSetting::get('robosttech_api_key', '')));
+        return $settingKey !== '';
+    }
+
+    public function hasDataVerifyCredentials(?CustomApi $provider = null): bool
+    {
+        $key = trim((string) ($provider?->api_key ?? ''));
+        if ($key !== '') {
+            return true;
+        }
+
+        $apiCenter = ApiCenter::first();
+        $acKey = trim((string) ($apiCenter?->dataverify_api_key ?? ''));
+        if ($acKey !== '') {
+            return true;
+        }
+
+        $envKey = trim((string) (env('DATAVERIFY_API_KEY') ?: ''));
+        if ($envKey !== '') {
+            return true;
+        }
+
+        $settingKey = trim((string) (\App\Models\SystemSetting::get('dataverify_api_key', '')));
+        return $settingKey !== '';
+    }
+
+    public function preferredValidationProvider(): ?CustomApi
+    {
+        $mode = \App\Models\SystemSetting::get('nin_validation_mode', 'auto');
+
+        $dvProvider = CustomApi::query()
             ->where(function ($q) {
                 $q->where('service_type', 'validation')
                   ->orWhere('service_type', 'nin_validation')
                   ->orWhere('service_type', 'nin_verification');
             })
             ->where('status', true)
-            ->orderByRaw("
-                CASE
-                    WHEN LOWER(provider_identifier) LIKE '%robosttech%' THEN 1
-                    WHEN LOWER(provider_identifier) LIKE '%dataverify%' THEN 2
-                    WHEN LOWER(provider_identifier) LIKE '%vuvaa%' THEN 3
-                    ELSE 4
-                END
-            ")
+            ->where(function ($q) {
+                $q->where('provider_identifier', 'dataverify')
+                  ->orWhere('endpoint', 'like', '%dataverify%');
+            })
+            ->orderBy('priority', 'asc')
+            ->first();
+
+        $robostProvider = CustomApi::query()
+            ->where(function ($q) {
+                $q->where('service_type', 'validation')
+                  ->orWhere('service_type', 'nin_validation')
+                  ->orWhere('service_type', 'nin_verification');
+            })
+            ->where('status', true)
+            ->where(function ($q) {
+                $q->where('provider_identifier', 'robosttech')
+                  ->orWhere('endpoint', 'like', '%robosttech%');
+            })
+            ->orderBy('priority', 'asc')
+            ->first();
+
+        $hasDv = $this->hasDataVerifyCredentials($dvProvider);
+        $hasRobost = $this->hasRobosttechCredentials($robostProvider);
+
+        if ($mode === 'dataverify') {
+            if ($dvProvider && $hasDv) {
+                return $dvProvider;
+            }
+            if ($robostProvider && $hasRobost) {
+                return $robostProvider;
+            }
+            return $dvProvider ?: $robostProvider;
+        }
+
+        if ($mode === 'robosttech') {
+            if ($robostProvider && $hasRobost) {
+                return $robostProvider;
+            }
+            if ($dvProvider && $hasDv) {
+                return $dvProvider;
+            }
+            return $robostProvider ?: $dvProvider;
+        }
+
+        // Auto mode: prioritize whichever provider actually has active credentials configured
+        if ($hasDv && !$hasRobost) {
+            return $dvProvider ?: $robostProvider;
+        }
+        if ($hasRobost && !$hasDv) {
+            return $robostProvider ?: $dvProvider;
+        }
+        if ($hasDv && $hasRobost) {
+            if ($robostProvider && $dvProvider && $robostProvider->priority < $dvProvider->priority) {
+                return $robostProvider;
+            }
+            return $dvProvider ?: $robostProvider;
+        }
+
+        return $dvProvider ?: $robostProvider ?: CustomApi::query()
+            ->whereIn('service_type', ['validation', 'nin_validation'])
+            ->where('status', true)
             ->orderBy('priority', 'asc')
             ->first();
     }

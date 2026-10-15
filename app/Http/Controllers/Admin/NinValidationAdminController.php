@@ -51,12 +51,17 @@ class NinValidationAdminController extends Controller
     public function updateMode(Request $request)
     {
         $request->validate([
-            'mode' => 'required|string|in:manual,robosttech',
+            'mode' => 'required|string|in:manual,robosttech,dataverify,auto',
         ]);
 
         SystemSetting::set('nin_validation_mode', $request->mode, 'services');
 
-        $label = $request->mode === 'robosttech' ? 'Robosttech API' : 'Manual Reporting';
+        $label = match($request->mode) {
+            'dataverify' => 'DataVerify API',
+            'robosttech' => 'Robosttech API',
+            'auto' => 'Auto (Smart Failover: DataVerify & Robosttech)',
+            default => 'Manual Reporting',
+        };
 
         return back()->with('success', "NIN Validation operating mode switched to {$label}.");
     }
@@ -376,21 +381,29 @@ class NinValidationAdminController extends Controller
         }
 
         // Otherwise sync with Robosttech
+        $controller = new VerificationController();
+        $robostProvider = \App\Models\CustomApi::where('provider_identifier', 'robosttech')->where('status', true)->first();
         $apiCenter = ApiCenter::first();
-        if (!$apiCenter || !$apiCenter->robosttech_api_key) {
+        $robostKey = trim((string) (
+            $robostProvider?->api_key 
+            ?: $apiCenter?->robosttech_api_key 
+            ?: env('ROBOSTTECH_API_KEY') 
+            ?: \App\Models\SystemSetting::get('robosttech_api_key', '')
+        ));
+
+        if ($robostKey === '') {
             return back()->with('error', 'Robosttech API credentials are not configured in Admin Settings.');
         }
 
-        $controller = new VerificationController();
         $endpoint = $controller->resolveRobostEndpoint(
-            (string) ($apiCenter->robosttech_endpoint_validation ?: 'https://robosttech.com/api'),
+            (string) ($robostProvider?->endpoint ?: $apiCenter?->robosttech_endpoint_validation ?: 'https://robosttech.com/api'),
             'validation_status'
         );
 
         try {
             $ninToQuery = $verification->identifier ?: ($responseData['nin'] ?? '');
             $response = Http::timeout(30)->withHeaders([
-                'api-key' => $apiCenter->robosttech_api_key,
+                'api-key' => $robostKey,
                 'Content-Type' => 'application/json'
             ])->post($endpoint, [
                 'nin' => $ninToQuery,

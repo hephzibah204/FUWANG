@@ -30,7 +30,7 @@
         <div class="sh-text">
             <h1 class="h4 font-weight-bold mb-1">Document &amp; NIN Validation</h1>
             <p class="text-muted small mb-0">
-                Verify and validate official identity documents. You will get results in <strong class="text-success font-weight-bold">{{ ($validationMode ?? 'manual') === 'robosttech' ? 'a few minutes' : 'less than 24 hours' }}</strong>.
+                Verify and validate official identity documents. You will get results in <strong class="text-success font-weight-bold">{{ in_array($validationMode ?? 'manual', ['robosttech', 'dataverify', 'auto', 'api'], true) ? 'a few minutes' : 'less than 24 hours' }}</strong>.
             </p>
         </div>
     </div>

@@ -133,6 +133,8 @@ class User extends Authenticatable implements CanResetPasswordContract, MustVeri
         'api_access_status',
         'email_verified_at',
         'api_application_details',
+        'nin_mod_consent',
+        'nin_mod_consent_at',
     ];
 
     /**
@@ -158,6 +160,8 @@ class User extends Authenticatable implements CanResetPasswordContract, MustVeri
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'completed_tours' => 'array',
+            'nin_mod_consent' => 'boolean',
+            'nin_mod_consent_at' => 'datetime',
             'api_application_details' => 'array',
         ];
     }
