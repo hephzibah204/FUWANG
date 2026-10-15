@@ -286,7 +286,13 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+@endsection
 
+@push('scripts')
+<script>
     function switchMainPanel(panel, btn) {
         $('.main-panel').hide().removeClass('active');
         $('#panel-' + panel).show().addClass('active');
