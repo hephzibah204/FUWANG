@@ -350,4 +350,67 @@ class IpeClearanceManualFlowTest extends TestCase
         $this->assertEquals('successful', $record->status);
         $this->assertEquals('BTX-RESOLVED-LIVE-555', $record->response_data['new_tracking_id']);
     }
+
+    public function test_standard_browser_submission_redirects_to_html_clearance_report(): void
+    {
+        $user = $this->makeUser(1500.00);
+
+        // Regular browser POST (not postJson)
+        $response = $this->actingAs($user)->post(route('services.clearance.verify'), [
+            'mode' => 'submit',
+            'category' => 'Improcessing Error',
+            'number' => 'BTX-BROWSER-TEST-123',
+        ]);
+
+        $record = VerificationResult::where('identifier', 'BTX-BROWSER-TEST-123')->first();
+        $this->assertNotNull($record);
+
+        // Must redirect to the HTML clearance report
+        $response->assertRedirect(route('services.clearance.report', $record->id));
+
+        // Visit the report page and verify HTML rendering
+        $reportResponse = $this->actingAs($user)->get(route('services.clearance.report', $record->id));
+        $reportResponse->assertOk();
+        $reportResponse->assertSee('NIMC IPE Clearance Certificate');
+        $reportResponse->assertSee('BTX-BROWSER-TEST-123');
+        $reportResponse->assertSee($record->reference_id);
+        
+        // Assert no provider names are leaked in the HTML
+        $content = $reportResponse->getContent();
+        $this->assertStringNotContainsStringIgnoringCase('Robosttech', $content);
+        $this->assertStringNotContainsStringIgnoringCase('Dataverify', $content);
+        $this->assertStringNotContainsStringIgnoringCase('Vuvaa', $content);
+    }
+
+    public function test_browser_status_check_redirects_to_clearance_report(): void
+    {
+        $user = $this->makeUser(500.00);
+
+        $record = VerificationResult::create([
+            'user_id' => $user->id,
+            'service_type' => 'ipe_clearance',
+            'identifier' => 'BTX-EXISTING-CHECK',
+            'provider_name' => 'ADMIN_MANUAL',
+            'status' => 'successful',
+            'reference_id' => 'CLR-CHECK-777',
+            'response_data' => [
+                'category' => 'Improcessing Error',
+                'new_tracking_id' => 'NEW-TID-777888',
+                'amount_paid' => 700.00,
+            ],
+        ]);
+
+        $response = $this->actingAs($user)->post(route('services.clearance.verify'), [
+            'mode' => 'status',
+            'number' => 'BTX-EXISTING-CHECK',
+        ]);
+
+        $response->assertRedirect(route('services.clearance.report', $record->id));
+
+        $reportResponse = $this->actingAs($user)->get(route('services.clearance.report', $record->id));
+        $reportResponse->assertOk();
+        $reportResponse->assertSee('NEW-TID-777888');
+        $reportResponse->assertSee('Clearance Completed Successfully');
+    }
 }
+

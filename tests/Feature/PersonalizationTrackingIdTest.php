@@ -59,10 +59,31 @@ class PersonalizationTrackingIdTest extends TestCase
             return Http::response(['message' => 'Unexpected request'], 500);
         });
 
-        $this->actingAs($user)
+        $response = $this->actingAs($user)
             ->post(route('services.personalization.verify'), ['tracking_id' => 'ABC12345XYZ'])
             ->assertOk()
             ->assertJsonPath('status', true);
+
+        $reportUrl = $response->json('report_url');
+        $this->assertNotEmpty($reportUrl);
+
+        // Verify the HTML report renders beautifully with no raw JSON or vendor names
+        $reportResponse = $this->actingAs($user)->get($reportUrl);
+        $reportResponse->assertOk()
+            ->assertSee('ABC12345XYZ')
+            ->assertSee('NIMC Identity Personalization Certificate')
+            ->assertDontSee('Robosttech')
+            ->assertDontSee('Dataverify')
+            ->assertDontSee('<pre class="text-white">', false);
+
+        // Verify unauthorized user cannot view report
+        $otherUser = User::create([
+            'fullname' => 'Other User',
+            'username' => 'u_pers_other',
+            'email' => 'other@example.com',
+            'password' => Hash::make('Password@123'),
+        ]);
+        $this->actingAs($otherUser)->get($reportUrl)->assertForbidden();
     }
 }
 

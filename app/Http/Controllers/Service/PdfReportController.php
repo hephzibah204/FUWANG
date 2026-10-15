@@ -23,9 +23,69 @@ class PdfReportController extends Controller
             abort(403, 'Unauthorized access to verification report.');
         }
 
+        // Dedicated user-friendly clearance certificate & report for IPE Clearance
+        if (in_array($result->service_type, ['ipe_clearance', 'clearance', 'clearance_request', 'clearance_status'], true)) {
+            return $this->clearanceReport($request, $id);
+        }
+
+        // Dedicated user-friendly certificate & report for Personalization
+        if ($result->service_type === 'personalization') {
+            return $this->personalizationReport($request, $id);
+        }
+
+        if ($request->boolean('html') || $request->boolean('print') || !$request->has('download')) {
+            $autoPrint = $request->boolean('print');
+            $isPdf = false;
+            return response()->view('pdf.verification_report', compact('result', 'autoPrint', 'isPdf'));
+        }
+
         $pdf = Pdf::loadView('pdf.verification_report', compact('result'));
 
         return $pdf->download('Verification_Report_' . $result->reference_id . '.pdf');
+    }
+
+    /**
+     * Render user-friendly HTML report or PDF certificate for IPE Clearance
+     */
+    public function clearanceReport(Request $request, int $id)
+    {
+        $result = VerificationResult::findOrFail($id);
+
+        if (!$this->authorizeResultAccess($request, $result)) {
+            abort(403, 'Unauthorized access to clearance report.');
+        }
+
+        $autoPrint = $request->boolean('print');
+        $isPdf = $request->boolean('download');
+
+        if ($isPdf) {
+            $pdf = Pdf::loadView('reports.ipe_clearance_report', compact('result', 'isPdf', 'autoPrint'));
+            return $pdf->download('IPE_Clearance_' . $result->reference_id . '.pdf');
+        }
+
+        return response()->view('reports.ipe_clearance_report', compact('result', 'isPdf', 'autoPrint'));
+    }
+
+    /**
+     * Render user-friendly HTML report or PDF certificate for Personalization
+     */
+    public function personalizationReport(Request $request, int $id)
+    {
+        $result = VerificationResult::findOrFail($id);
+
+        if (!$this->authorizeResultAccess($request, $result)) {
+            abort(403, 'Unauthorized access to personalization report.');
+        }
+
+        $autoPrint = $request->boolean('print');
+        $isPdf = $request->boolean('download');
+
+        if ($isPdf) {
+            $pdf = Pdf::loadView('reports.personalization_report', compact('result', 'isPdf', 'autoPrint'));
+            return $pdf->download('Personalization_' . $result->reference_id . '.pdf');
+        }
+
+        return response()->view('reports.personalization_report', compact('result', 'isPdf', 'autoPrint'));
     }
 
     public function ninSlip(Request $request, int $id, string $type)

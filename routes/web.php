@@ -495,6 +495,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 // Supports Owner Session, Admin Guard Session, Valid Signed URLs, and API Tokens.
 Route::get('/services/identity/nin/slip/{id}/{type}', [App\Http\Controllers\Service\PdfReportController::class, 'ninSlip'])->name('services.nin.slip');
 Route::get('/services/nin/slip/{id}/{type}', [App\Http\Controllers\Service\PdfReportController::class, 'ninSlip'])->name('services.nin.slip.alias');
+Route::get('/services/identity/clearance/report/{id}', [App\Http\Controllers\Service\PdfReportController::class, 'clearanceReport'])->name('services.clearance.report');
+Route::get('/services/clearance/report/{id}', [App\Http\Controllers\Service\PdfReportController::class, 'clearanceReport'])->name('services.clearance.report.alias');
+Route::get('/services/identity/personalization/report/{id}', [App\Http\Controllers\Service\PdfReportController::class, 'personalizationReport'])->name('services.personalization.report');
+Route::get('/services/personalization/report/{id}', [App\Http\Controllers\Service\PdfReportController::class, 'personalizationReport'])->name('services.personalization.report.alias');
 Route::get('/services/identity/report/{id}', [App\Http\Controllers\Service\PdfReportController::class, 'verificationReport'])->name('services.identity.report');
 Route::get('/services/verification/report/{id}', [App\Http\Controllers\Service\PdfReportController::class, 'verificationReport'])->name('services.verification.report');
 

@@ -24,6 +24,20 @@
         </div>
     </div>
 
+    @if(session('status') || session('success'))
+        <div class="alert alert-success d-flex align-items-center gap-2 mb-4 rounded-3 text-white" style="background: rgba(16, 185, 129, 0.2); border: 1px solid rgba(16, 185, 129, 0.4);">
+            <i class="fa-solid fa-circle-check fs-5 text-success"></i>
+            <div>{{ session('status') ?? session('success') }}</div>
+        </div>
+    @endif
+
+    @if(session('error'))
+        <div class="alert alert-danger d-flex align-items-center gap-2 mb-4 rounded-3 text-white" style="background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.4);">
+            <i class="fa-solid fa-circle-xmark fs-5 text-danger"></i>
+            <div>{{ session('error') }}</div>
+        </div>
+    @endif
+
     <!-- Main Panel Card with Tabs -->
     <div class="panel-card p-4 mb-4" id="mainCard">
         <!-- Tab Navigation -->
@@ -180,10 +194,13 @@
                         <small class="text-success-emphasis d-block font-weight-bold">Your Newly Assigned Tracking ID:</small>
                         <span id="cardNewTrackingId" class="font-monospace fs-3 text-white font-weight-bold tracking-wider"></span>
                     </div>
-                    <div class="d-flex align-items-center gap-2">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
                         <button type="button" class="btn btn-success font-weight-bold px-3 py-2" onclick="copyText($('#cardNewTrackingId').text(), 'New Tracking ID copied!')">
                             <i class="fa-solid fa-copy mr-1"></i> Copy New ID
                         </button>
+                        <a id="cardPersonalizeBtn" href="{{ route('services.personalization') }}" class="btn font-weight-bold px-3 py-2 text-white" style="background-color: #8b5cf6;">
+                            <i class="fa-solid fa-user-gear mr-1"></i> Proceed to Personalization
+                        </a>
                         <a href="{{ route('services.nin.suite') }}" class="btn btn-outline-light px-3 py-2 font-weight-bold">
                             <i class="fa-solid fa-arrow-right mr-1"></i> Retrieve Slip
                         </a>
@@ -194,9 +211,16 @@
             <!-- Remarks Output Box -->
             <div class="col-12 mt-2">
                 <div class="p-3 rounded-3" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);">
-                    <small class="text-warning d-block mb-1 font-weight-600"><i class="fa-solid fa-circle-info mr-1"></i> Admin / Provider Remarks:</small>
+                    <small class="text-warning d-block mb-1 font-weight-600"><i class="fa-solid fa-circle-info mr-1"></i> Clearance Desk Notes:</small>
                     <p id="cardAdminNote" class="mb-0 text-white font-weight-500"></p>
                 </div>
+            </div>
+
+            <!-- Action Buttons for Result Card -->
+            <div class="col-12 mt-2 d-flex align-items-center justify-content-end gap-2">
+                <a id="cardReportBtn" href="#" target="_blank" class="btn btn-info font-weight-bold px-3 py-2" style="display: none;">
+                    <i class="fa-solid fa-file-invoice mr-1"></i> Print / View Official Report
+                </a>
             </div>
         </div>
     </div>
@@ -315,8 +339,11 @@
                                         <button class="btn btn-outline-primary" onclick='displayCardDetails(@json($res))' title="View details">
                                             <i class="fa-solid fa-eye mr-1"></i> View
                                         </button>
+                                        <a href="{{ route('services.clearance.report', $res->id) }}" class="btn btn-outline-info" target="_blank" title="View official printable report">
+                                            <i class="fa-solid fa-file-invoice mr-1"></i> Report
+                                        </a>
                                         @if($rowStatus !== 'successful' && $rowStatus !== 'failed')
-                                            <button class="btn btn-outline-warning" onclick="checkRowStatus('{{ $res->identifier }}', {{ $res->id }})" title="Check live status from provider">
+                                            <button class="btn btn-outline-warning" onclick="checkRowStatus('{{ $res->identifier }}', {{ $res->id }})" title="Check live status">
                                                 <i class="fa-solid fa-arrows-rotate mr-1"></i> Live Check
                                             </button>
                                         @endif
@@ -397,24 +424,29 @@
                             </tr>
                             <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
                                 <td class="text-muted py-2 px-3">Processing Mode</td>
-                                <td class="py-2 px-3" id="modalServiceMode">Automated Provider</td>
+                                <td class="py-2 px-3" id="modalServiceMode">Automated Processing</td>
                             </tr>
                             <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
                                 <td class="text-muted py-2 px-3">Submitted Timestamp</td>
                                 <td class="py-2 px-3 text-white-50" id="modalSubmittedAt"></td>
                             </tr>
                             <tr>
-                                <td class="text-muted py-2 px-3">Admin / Provider Output</td>
+                                <td class="text-muted py-2 px-3">Clearance Desk Notes</td>
                                 <td class="py-2 px-3 font-weight-500 text-info" id="modalAdminNote"></td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
             </div>
-            <div class="modal-footer border-top border-white-10 py-3 px-4 d-flex justify-content-between">
-                <button type="button" class="btn btn-outline-warning btn-sm" id="modalLiveCheckBtn" onclick="modalLiveCheck()">
-                    <i class="fa-solid fa-arrows-rotate mr-1"></i> Refresh Live Status
-                </button>
+            <div class="modal-footer border-top border-white-10 py-3 px-4 d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-outline-warning btn-sm" id="modalLiveCheckBtn" onclick="modalLiveCheck()">
+                        <i class="fa-solid fa-arrows-rotate mr-1"></i> Refresh Live Status
+                    </button>
+                    <a href="#" id="modalReportBtn" target="_blank" class="btn btn-info btn-sm font-weight-bold" style="display: none;">
+                        <i class="fa-solid fa-file-invoice mr-1"></i> Print / View Report
+                    </a>
+                </div>
                 <button type="button" class="btn btn-secondary btn-sm px-4" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
@@ -528,9 +560,11 @@
         let category = resp.category || data.category || 'Improcessing Error';
         let newTrackingId = resp.new_tracking_id || data.new_tracking_id || null;
         let status = data.status || 'waiting_for_review';
-        let adminNote = data.admin_note || (status === 'successful' ? 'Cleared successfully.' : 'Under review by provider/administrator.');
+        let adminNote = data.admin_note || (status === 'successful' ? 'Cleared successfully.' : 'Under review by verification desk.');
         let submittedAt = data.created_at || data.submitted_at || 'Just now';
-        let serviceMode = resp.service_mode || (data.provider_name ? data.provider_name + ' API' : 'Automated API');
+        let serviceMode = resp.service_mode || 'Automated Processing';
+        let resultId = data.result_id || data.id;
+        let reportUrl = data.report_url || (resultId ? `{{ url('/services/clearance/report') }}/${resultId}` : null);
 
         currentActiveTrackingId = trackingId;
 
@@ -541,8 +575,17 @@
         $('#cardSubmittedAt').text(submittedAt);
         $('#cardAdminNote').text(adminNote);
 
+        if (reportUrl) {
+            $('#cardReportBtn').attr('href', reportUrl).show();
+            $('#modalReportBtn').attr('href', reportUrl).show();
+        } else {
+            $('#cardReportBtn').hide();
+            $('#modalReportBtn').hide();
+        }
+
         if (newTrackingId) {
             $('#cardNewTrackingId').text(newTrackingId);
+            $('#cardPersonalizeBtn').attr('href', `{{ route('services.personalization') }}?tracking_id=${encodeURIComponent(newTrackingId)}`);
             $('#newTrackingCardWrap').show();
         } else {
             $('#newTrackingCardWrap').hide();
@@ -770,6 +813,10 @@
     }
 
     $(document).ready(function() {
+        @if(session('ipe_result'))
+            displayCardDetails(@json(session('ipe_result')));
+        @endif
+
         $('#clearanceForm').on('submit', function(e) {
             e.preventDefault();
             let btn = $('#submitBtn');
@@ -817,14 +864,23 @@
                         success: function(response) {
                             btn.prop('disabled', false).html(originalHtml);
                             if (response.status) {
+                                let reportUrl = response.report_url || (response.data && response.data.report_url) || (response.result_id ? `{{ url('/services/clearance/report') }}/${response.result_id}` : null);
+
                                 Swal.fire({
                                     title: 'Submitted Successfully!',
                                     text: response.message,
                                     icon: 'success',
-                                    confirmButtonText: 'View Clearance Status',
+                                    showCancelButton: true,
+                                    confirmButtonColor: '#059669',
+                                    cancelButtonColor: '#2563eb',
+                                    confirmButtonText: '<i class="fa-solid fa-file-invoice mr-1"></i> View Official Report',
+                                    cancelButtonText: 'View Status on Portal',
                                     background: '#0f172a',
                                     color: '#fff'
-                                }).then(() => {
+                                }).then((choice) => {
+                                    if (choice.isConfirmed && reportUrl) {
+                                        window.open(reportUrl, '_blank');
+                                    }
                                     if (response.data) {
                                         displayCardDetails(response.data);
                                     } else {

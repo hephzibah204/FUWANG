@@ -36,7 +36,7 @@
                                 <label for="tracking_id" class="font-weight-600 mb-2 small text-muted">NIMC Tracking ID</label>
                                 <div class="input-wrap">
                                     <i class="fa-solid fa-hashtag"></i>
-                                    <input type="text" id="tracking_id" name="tracking_id" class="form-control" placeholder="Enter NIMC Tracking ID (e.g., ABC12345XYZ)" required>
+                                    <input type="text" id="tracking_id" name="tracking_id" class="form-control" value="{{ request('tracking_id') ?? request('number') }}" placeholder="Enter NIMC Tracking ID (e.g., ABC12345XYZ)" required>
                                 </div>
                             </div>
                             <div class="col-md-4 text-right mt-2 d-flex align-items-end justify-content-end">
@@ -80,12 +80,17 @@
                                 @forelse($history as $res)
                                     <tr>
                                         <td><code class="text-primary">{{ $res->reference_id }}</code></td>
-                                        <td>{{ $res->identifier }}</td>
-                                        <td>{{ $res->created_at->format('M d, Y') }}</td>
+                                        <td><strong>{{ $res->identifier }}</strong></td>
+                                        <td>{{ $res->created_at->format('M d, Y H:i') }}</td>
                                         <td class="text-right">
-                                            <button class="btn btn-xs btn-outline-primary" onclick='viewResult(@json($res->response_data))'>
-                                                <i class="fa fa-eye"></i> View
-                                            </button>
+                                            <div class="btn-group btn-group-sm">
+                                                <button class="btn btn-outline-primary" onclick='viewResult(@json($res->response_data), "{{ $res->reference_id }}", "{{ $res->identifier }}", "{{ $res->created_at->format('M d, Y H:i') }}", "{{ route('services.personalization.report', $res->id) }}")'>
+                                                    <i class="fa fa-eye mr-1"></i> View
+                                                </button>
+                                                <a href="{{ route('services.personalization.report', $res->id) }}" class="btn btn-outline-info" target="_blank" title="View printable certificate">
+                                                    <i class="fa-solid fa-file-invoice mr-1"></i> Certificate
+                                                </a>
+                                            </div>
                                         </td>
                                     </tr>
                                 @empty
@@ -127,10 +132,79 @@
         $(btn).addClass('active');
     }
 
-    function viewResult(data) {
+    function copyText(text, msg = 'Copied to clipboard!') {
+        if (!text) return;
+        navigator.clipboard.writeText(text.trim()).then(function() {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: msg,
+                showConfirmButton: false,
+                timer: 2000,
+                background: '#0f172a',
+                color: '#fff'
+            });
+        });
+    }
+
+    function viewResult(data, refId = null, trackingId = null, dateStr = null, reportUrl = null) {
+        let tid = trackingId || (data && (data.tracking_id || data.number)) || $('#tracking_id').val() || 'N/A';
+        let ref = refId || (data && data.reference_id) || 'CONFIRMED';
+        let msg = (data && data.message) ? data.message : 'Identity record successfully personalized and activated on NIMC database.';
+        let repUrl = reportUrl || (data && data.report_url) || null;
+
+        let html = `
+            <div class="p-3.5 rounded-3 mb-4" style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(124, 58, 237, 0.08)); border: 1px solid rgba(139, 92, 246, 0.3);">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3 pb-2 border-bottom border-white-10">
+                    <span class="badge bg-success text-white px-3 py-1.5 font-weight-bold">
+                        <i class="fa-solid fa-circle-check mr-1"></i> Personalization Active
+                    </span>
+                    <code class="text-primary font-weight-bold font-monospace fs-6">${ref}</code>
+                </div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <small class="text-muted d-block font-weight-600 mb-1">Personalized NIMC Tracking ID</small>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="font-monospace fs-4 text-white font-weight-bold tracking-wider">${tid}</span>
+                            <button class="btn btn-xs btn-outline-light" onclick="copyText('${tid}')" title="Copy ID">
+                                <i class="fa-solid fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <small class="text-muted d-block font-weight-600 mb-1">Status &amp; Verification</small>
+                        <span class="badge badge-success px-2.5 py-1 text-white font-weight-bold">Profile Configured</span>
+                    </div>
+                </div>
+
+                <div class="p-3 rounded-3 mb-3" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);">
+                    <small class="text-warning d-block mb-1 font-weight-600"><i class="fa-solid fa-circle-info mr-1"></i> Gateway Confirmation:</small>
+                    <p class="mb-0 text-white font-weight-500">${msg}</p>
+                </div>
+
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 pt-2 border-top border-white-10">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        ${repUrl ? `
+                            <a href="${repUrl}" target="_blank" class="btn btn-info font-weight-bold px-3 py-2">
+                                <i class="fa-solid fa-file-invoice mr-1"></i> View / Print Certificate
+                            </a>
+                        ` : ''}
+                        <a href="{{ route('services.nin.suite') }}" class="btn btn-primary font-weight-bold px-3 py-2">
+                            <i class="fa-solid fa-id-card mr-1"></i> Retrieve NIN Slip
+                        </a>
+                    </div>
+                    <button class="btn btn-outline-light px-3 py-2" onclick="window.location.reload()">
+                        <i class="fa-solid fa-plus mr-1"></i> New Setup
+                    </button>
+                </div>
+            </div>
+        `;
+
         $('#searchPanel').hide();
         $('#panel-vault').hide();
-        $('#resultContent').html('<pre class="text-white">' + JSON.stringify(data, null, 4) + '</pre>');
+        $('#resultContent').html(html);
         $('#resultArea').fadeIn();
     }
 
@@ -139,6 +213,7 @@
             e.preventDefault();
             let btn = $('#submit-btn');
             let originalHtml = btn.html();
+            let submittedTid = $('#tracking_id').val().trim();
 
             Swal.fire({
                 title: 'Confirm Personalization',
@@ -146,6 +221,8 @@
                 icon: 'question',
                 showCancelButton: true,
                 confirmButtonColor: '#8b5cf6',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Yes, Personalize ID',
                 background: '#0a0a0f',
                 color: '#fff'
             }).then((result) => {
@@ -157,17 +234,35 @@
                         method: 'POST',
                         data: $(this).serialize(),
                         success: function(response) {
+                            btn.prop('disabled', false).html(originalHtml);
                             if (response.status) {
-                                viewResult(response.data);
-                                Swal.fire({ title: 'Personalization Setup!', icon: 'success', background: '#0a0a0f', color: '#fff' });
+                                let repUrl = response.report_url || (response.result_id ? `{{ url('/services/personalization/report') }}/${response.result_id}` : null);
+                                viewResult(response.data, response.reference_id, response.tracking_id || submittedTid, 'Just now', repUrl);
+
+                                Swal.fire({
+                                    title: 'Personalization Completed!',
+                                    text: response.message || 'Identity personalization set up successfully.',
+                                    icon: 'success',
+                                    showCancelButton: true,
+                                    confirmButtonColor: '#8b5cf6',
+                                    cancelButtonColor: '#2563eb',
+                                    confirmButtonText: '<i class="fa-solid fa-file-invoice mr-1"></i> View Official Certificate',
+                                    cancelButtonText: 'Stay on Page',
+                                    background: '#0a0a0f',
+                                    color: '#fff'
+                                }).then((choice) => {
+                                    if (choice.isConfirmed && repUrl) {
+                                        window.open(repUrl, '_blank');
+                                    }
+                                });
                             } else {
                                 Swal.fire({ title: 'Setup Failed', text: response.message, icon: 'error', background: '#0a0a0f', color: '#fff' });
-                                btn.prop('disabled', false).html(originalHtml);
                             }
                         },
-                        error: function() {
-                            Swal.fire({ title: 'Error', text: 'Personalization service is currently busy.', icon: 'error', background: '#0a0a0f', color: '#fff' });
+                        error: function(xhr) {
                             btn.prop('disabled', false).html(originalHtml);
+                            let msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Personalization service is currently busy.';
+                            Swal.fire({ title: 'Error', text: msg, icon: 'error', background: '#0a0a0f', color: '#fff' });
                         }
                     });
                 }
