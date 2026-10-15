@@ -630,7 +630,7 @@ class SmartSwitcherService
         }
 
         if (strtolower((string) $provider->provider_identifier) === 'dataverify') {
-            return in_array($mode, ['nin', 'phone', 'demographic', 'tracking'], true);
+            return in_array($mode, ['nin', 'phone', 'demographic', 'tracking', 'validation', 'validation_status', 'clearance', 'clearance_status', 'ipe', 'ipe_clearance'], true);
         }
 
         return $provider->service_type === 'nin_face_verification'

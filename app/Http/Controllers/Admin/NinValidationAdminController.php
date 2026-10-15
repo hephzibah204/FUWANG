@@ -321,13 +321,62 @@ class NinValidationAdminController extends Controller
     }
 
     /**
-     * Manually sync a validation request from Robosttech API
+     * Manually sync a validation request from Provider API (Robosttech or DataVerify)
      */
     public function syncRobosttech($id)
     {
         $verification = VerificationResult::findOrFail($id);
-        $apiCenter = ApiCenter::first();
+        $providerName = strtolower((string) ($verification->provider_name ?? ''));
+        $responseData = $verification->response_data ?? [];
 
+        // If provider is DataVerify
+        if (str_contains($providerName, 'dataverify')) {
+            try {
+                $dvProvider = \App\Models\CustomApi::where('provider_identifier', 'dataverify')->where('status', true)->first();
+                $dvClient = new \App\Services\DataVerify\DataVerifyClient($dvProvider);
+                $nin = $verification->identifier ?: ($responseData['nin'] ?? null);
+                $txId = $responseData['transaction_id'] ?? $responseData['api_response']['transaction_id'] ?? null;
+
+                $statusRes = $dvClient->checkNinValidationStatus((string) $nin, $txId);
+                $responseData['dataverify_sync'] = $statusRes['data'] ?? [];
+
+                if ($statusRes['status'] === 'successful') {
+                    $verification->status = 'successful';
+                    $verification->admin_note = $statusRes['message'] ?: 'Validated via DataVerify API sync.';
+                } elseif ($statusRes['status'] === 'failed') {
+                    $verification->status = 'failed';
+                    $verification->admin_note = $statusRes['error_detail'] ?: $statusRes['message'] ?: 'Rejected via DataVerify API sync.';
+                    if (empty($responseData['refunded'])) {
+                        $user = User::find($verification->user_id);
+                        if ($user) {
+                            $refundAmount = (float) ($responseData['amount_paid'] ?? \App\Models\VerificationPrice::first()->validation_price ?? 700);
+                            $wallet = app(WalletService::class);
+                            $ref = $wallet->failAndRefund(
+                                $user,
+                                $refundAmount,
+                                'NIN Validation Rejected (DataVerify Sync): ' . $verification->admin_note,
+                                $verification->reference_id
+                            );
+                            if ($ref['ok'] ?? false) {
+                                $responseData['refunded'] = true;
+                                $responseData['refunded_amount'] = $refundAmount;
+                                $responseData['refunded_at'] = now()->toDateTimeString();
+                            }
+                        }
+                    }
+                }
+
+                $verification->response_data = $responseData;
+                $verification->save();
+
+                return back()->with('success', 'DataVerify API sync completed. Current Status: ' . ucfirst($verification->status));
+            } catch (\Throwable $e) {
+                return back()->with('error', 'DataVerify sync failed: ' . $e->getMessage());
+            }
+        }
+
+        // Otherwise sync with Robosttech
+        $apiCenter = ApiCenter::first();
         if (!$apiCenter || !$apiCenter->robosttech_api_key) {
             return back()->with('error', 'Robosttech API credentials are not configured in Admin Settings.');
         }
@@ -335,29 +384,32 @@ class NinValidationAdminController extends Controller
         $controller = new VerificationController();
         $endpoint = $controller->resolveRobostEndpoint(
             (string) ($apiCenter->robosttech_endpoint_validation ?: 'https://robosttech.com/api'),
-            'validation'
+            'validation_status'
         );
 
         try {
+            $ninToQuery = $verification->identifier ?: ($responseData['nin'] ?? '');
             $response = Http::timeout(30)->withHeaders([
                 'api-key' => $apiCenter->robosttech_api_key,
                 'Content-Type' => 'application/json'
             ])->post($endpoint, [
-                'nin' => $verification->identifier,
-                'number' => $verification->identifier,
+                'nin' => $ninToQuery,
+                'number' => $ninToQuery,
             ]);
 
             if ($response->successful()) {
                 $data = $response->json();
-                $responseData = $verification->response_data ?? [];
                 $responseData['robosttech_sync'] = $data;
 
                 $apiStatus = strtolower((string) ($data['status'] ?? $data['data']['status'] ?? ''));
+                $isSuccess = ($data['success'] ?? false) === true || in_array($apiStatus, ['successful', 'success', 'cleared', 'completed', 'valid', 'true', '1']);
+                $isInProgress = ($data['in-progress'] ?? $data['in_progress'] ?? false) === true || in_array($apiStatus, ['sent', 'uploaded', 'pending', 'processing']);
+                $isFailed = ($data['success'] ?? true) === false && !$isInProgress && in_array($apiStatus, ['failed', 'rejected', 'error', 'invalid', 'false', '0']);
 
-                if (in_array($apiStatus, ['successful', 'success', 'cleared', 'completed', 'valid', 'true', '1'])) {
+                if ($isSuccess) {
                     $verification->status = 'successful';
                     $verification->admin_note = $data['message'] ?? 'Validated via Robosttech API sync.';
-                } elseif (in_array($apiStatus, ['failed', 'rejected', 'error', 'invalid', 'false', '0'])) {
+                } elseif ($isFailed) {
                     $verification->status = 'failed';
                     $verification->admin_note = $data['message'] ?? 'Rejected via Robosttech API sync.';
                     if (empty($responseData['refunded'])) {

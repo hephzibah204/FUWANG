@@ -664,6 +664,199 @@ class DataVerifyClient
     }
 
     /**
+     * Submit NIN Validation request to DataVerify
+     *
+     * @param string $nin 11-digit National Identity Number
+     * @param string $validationType e.g. no_record_found, sim_validation, bank_validation, modification_validation, photographic_error
+     * @return array{ok: bool, nin: string, transaction_id: ?string, request_status: string, price: ?float, message: string, data: array}
+     */
+    public function submitNinValidation(string $nin, string $validationType = 'no_record_found'): array
+    {
+        $url = $this->resolveNinValidationEndpoint();
+        $apiKey = $this->apiKey();
+        if ($apiKey === '') {
+            return [
+                'ok' => false,
+                'nin' => $nin,
+                'transaction_id' => null,
+                'request_status' => 'error',
+                'price' => null,
+                'message' => 'DataVerify API key is missing.',
+                'data' => [],
+            ];
+        }
+
+        $headers = is_array($this->provider?->headers) ? $this->provider->headers : [];
+        $headers['Content-Type'] = $headers['Content-Type'] ?? 'application/json';
+
+        $payload = [
+            'api_key' => $apiKey,
+            'nin' => trim($nin),
+            'validation_type' => $validationType,
+        ];
+
+        try {
+            $res = Http::timeout((int) ($this->provider?->timeout_seconds ?: 60))
+                ->acceptJson()
+                ->asJson()
+                ->withHeaders($headers)
+                ->post($url, $payload);
+        } catch (\Throwable $e) {
+            return [
+                'ok' => false,
+                'nin' => $nin,
+                'transaction_id' => null,
+                'request_status' => 'error',
+                'price' => null,
+                'message' => 'Connection to DataVerify failed: ' . $e->getMessage(),
+                'data' => [],
+            ];
+        }
+
+        $json = $res->json();
+        if (!$res->successful() || !is_array($json) || empty($json['status'])) {
+            $msg = is_array($json) ? ($json['message'] ?? $json['detail'] ?? 'DataVerify validation submission failed.') : ('HTTP ' . $res->status());
+            return [
+                'ok' => false,
+                'nin' => $nin,
+                'transaction_id' => null,
+                'request_status' => 'error',
+                'price' => null,
+                'message' => (string) $msg,
+                'data' => is_array($json) ? $json : [],
+            ];
+        }
+
+        return [
+            'ok' => true,
+            'nin' => (string) ($json['nin'] ?? $nin),
+            'transaction_id' => (string) ($json['transaction_id'] ?? ''),
+            'request_status' => (string) ($json['request_status'] ?? 'pending'),
+            'price' => isset($json['price']) ? (float) $json['price'] : null,
+            'message' => (string) ($json['message'] ?? 'NIN submitted for validation successfully.'),
+            'data' => $json,
+        ];
+    }
+
+    /**
+     * Check status of a NIN Validation request on DataVerify
+     *
+     * @param string $nin
+     * @param ?string $transactionId
+     * @return array{ok: bool, request_status: string, status: string, nin: string, response: ?string, error_detail: ?string, message: string, data: array}
+     */
+    public function checkNinValidationStatus(string $nin, ?string $transactionId = null): array
+    {
+        $url = $this->resolveNinValidationStatusEndpoint();
+        $apiKey = $this->apiKey();
+        if ($apiKey === '') {
+            return [
+                'ok' => false,
+                'request_status' => 'error',
+                'status' => 'pending',
+                'nin' => $nin,
+                'response' => null,
+                'error_detail' => null,
+                'message' => 'DataVerify API key is missing.',
+                'data' => [],
+            ];
+        }
+
+        $headers = is_array($this->provider?->headers) ? $this->provider->headers : [];
+        $headers['Content-Type'] = $headers['Content-Type'] ?? 'application/json';
+
+        $payload = ['api_key' => $apiKey];
+        if (!empty($transactionId)) {
+            $payload['transaction_id'] = trim($transactionId);
+        } else {
+            $payload['nin'] = trim($nin);
+        }
+
+        try {
+            $res = Http::timeout((int) ($this->provider?->timeout_seconds ?: 45))
+                ->acceptJson()
+                ->asJson()
+                ->withHeaders($headers)
+                ->post($url, $payload);
+        } catch (\Throwable $e) {
+            return [
+                'ok' => false,
+                'request_status' => 'error',
+                'status' => 'pending',
+                'nin' => $nin,
+                'response' => null,
+                'error_detail' => null,
+                'message' => 'Connection to DataVerify failed: ' . $e->getMessage(),
+                'data' => [],
+            ];
+        }
+
+        $json = $res->json();
+        if (!$res->successful() || !is_array($json)) {
+            $msg = is_array($json) ? ($json['message'] ?? 'Validation status check failed') : ('HTTP ' . $res->status());
+            return [
+                'ok' => false,
+                'request_status' => 'error',
+                'status' => 'pending',
+                'nin' => $nin,
+                'response' => null,
+                'error_detail' => null,
+                'message' => (string) $msg,
+                'data' => is_array($json) ? $json : [],
+            ];
+        }
+
+        $reqStatus = strtolower((string) ($json['request_status'] ?? ''));
+        $normalizedStatus = 'waiting_for_review';
+        if ($reqStatus === 'validated' || $reqStatus === 'successful' || $reqStatus === 'completed') {
+            $normalizedStatus = 'successful';
+        } elseif ($reqStatus === 'failed' || $reqStatus === 'rejected') {
+            $normalizedStatus = 'failed';
+        }
+
+        return [
+            'ok' => ($json['status'] ?? false) === true || $normalizedStatus === 'successful',
+            'request_status' => $reqStatus ?: 'pending',
+            'status' => $normalizedStatus,
+            'nin' => (string) ($json['nin'] ?? $nin),
+            'response' => $json['response'] ?? null,
+            'error_detail' => $json['error_detail'] ?? null,
+            'message' => (string) ($json['response'] ?? $json['error_detail'] ?? $json['message'] ?? 'Status retrieved'),
+            'data' => $json,
+        ];
+    }
+
+    public function resolveNinValidationEndpoint(): string
+    {
+        $configured = trim((string) (
+            \App\Models\SystemSetting::get('dataverify_endpoint_validation')
+            ?? ApiCenter::query()->value('dataverify_endpoint_validation')
+            ?? ''
+        ));
+
+        if ($configured !== '') {
+            return self::normalizeDomain($configured);
+        }
+
+        return 'https://dataverify.org/api/developers/validation.php';
+    }
+
+    public function resolveNinValidationStatusEndpoint(): string
+    {
+        $configured = trim((string) (
+            \App\Models\SystemSetting::get('dataverify_endpoint_validation_status')
+            ?? ApiCenter::query()->value('dataverify_endpoint_validation_status')
+            ?? ''
+        ));
+
+        if ($configured !== '') {
+            return self::normalizeDomain($configured);
+        }
+
+        return 'https://dataverify.org/api/developers/validation_status.php';
+    }
+
+    /**
      * Check wallet balance on DataVerify (free inquiry)
      *
      * @return array{ok: bool, balance: ?float, message: string, data: array}
