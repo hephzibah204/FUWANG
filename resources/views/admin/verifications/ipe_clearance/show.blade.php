@@ -13,7 +13,7 @@
             <form action="{{ route('admin.verifications.ipe_clearance.sync_robosttech', $request->id) }}" method="POST" class="m-0">
                 @csrf
                 <button type="submit" class="btn btn-outline-info btn-sm">
-                    <i class="fa-solid fa-arrows-rotate me-1"></i> Sync Robosttech API
+                    <i class="fa-solid fa-arrows-rotate me-1"></i> Sync Provider API
                 </button>
             </form>
             <a href="{{ route('admin.verifications.ipe_clearance.index') }}" class="btn btn-outline-light btn-sm">
@@ -37,7 +37,7 @@
     @php 
         $d = $request->response_data ?? []; 
         $currentNin = $d['nin'] ?? null;
-        $currentNewTracking = $d['new_tracking_id'] ?? null;
+        $currentNewTracking = $request->resolved_new_tracking_id ?? ($d['new_tracking_id'] ?? null);
     @endphp
 
     <div class="card glass-card border-0 shadow rounded-4 p-4 mb-4">
@@ -145,7 +145,7 @@
                 </label>
                 <input type="text" name="new_tracking_id" id="new_tracking_id" class="form-control bg-dark text-white border-secondary font-monospace" placeholder="Enter new generated Tracking ID e.g. BTX947E60001099" value="{{ old('new_tracking_id', $currentNewTracking) }}">
                 <div class="form-text text-white-50 small">
-                    When marked <b>Successful</b>, this new Tracking ID will be returned to the applicant on their dashboard and status lookup.
+                    When marked <b>Successful</b>, this new Tracking ID will be returned to the applicant on their dashboard and certificate. <b>Leave blank</b> if NIMC cleared the original Tracking ID directly without assigning a new ID.
                 </div>
             </div>
 

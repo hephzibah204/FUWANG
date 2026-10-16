@@ -191,7 +191,7 @@
         @php
             $d = $result->response_data ?? [];
             $status = $result->status ?? 'waiting_for_review';
-            $newTrackingId = $d['new_tracking_id'] ?? null;
+            $newTrackingId = $result->resolved_new_tracking_id ?? ($d['new_tracking_id'] ?? null);
             $category = $d['category'] ?? 'Improcessing Error';
             $adminNote = $result->admin_note ?: ($d['admin_note'] ?? null);
             $applicantName = $d['user_name'] ?? ($result->user?->fullname ?? 'Applicant');
@@ -558,7 +558,11 @@
                 <div class="status-hero-text">
                     @if($status === 'successful')
                         <h2><i class="fa-solid fa-circle-check"></i> Clearance Completed Successfully</h2>
-                        <p>The enrollment processing issue for this identity has been resolved. A new Tracking ID is active.</p>
+                        @if(!empty($newTrackingId))
+                            <p>The enrollment improcessing error (IPE) for this identity has been resolved. A new NIMC Tracking ID has been issued.</p>
+                        @else
+                            <p>The enrollment improcessing error (IPE) on your Tracking ID has been cleared directly by NIMC. Your original Tracking ID is now active and unlocked for personalization and slip retrieval.</p>
+                        @endif
                     @elseif($status === 'failed')
                         <h2><i class="fa-solid fa-circle-xmark"></i> Clearance Request Unsuccessful</h2>
                         <p>Application could not be cleared. A 100% refund has been credited back to the applicant's wallet.</p>
@@ -582,20 +586,31 @@
             @if($status === 'successful')
                 <div class="spotlight-box">
                     <div class="spotlight-info">
-                        <div class="spotlight-title">{{ !empty($newTrackingId) ? 'Newly Assigned NIMC Tracking ID' : 'Cleared NIMC Tracking ID' }}</div>
+                        <div class="spotlight-title">
+                            @if(!empty($newTrackingId))
+                                <span class="badge" style="background:#059669; color:#fff; font-size:11px; padding:3px 8px; border-radius:4px; margin-right:6px;">NEW ID ISSUED</span> Newly Assigned NIMC Tracking ID
+                            @else
+                                <span class="badge" style="background:#2563eb; color:#fff; font-size:11px; padding:3px 8px; border-radius:4px; margin-right:6px;">DIRECT CLEARANCE</span> Cleared NIMC Tracking ID (Unlocked)
+                            @endif
+                        </div>
                         <div class="tracking-number" id="spotlightTrackingId">{{ $newTrackingId ?: $result->identifier }}</div>
                         <div class="spotlight-sub">
-                            {{ !empty($newTrackingId) 
-                                ? 'Your previous enrollment error was resolved with a new Tracking ID. Use this ID to retrieve your slip in the NIN Suite.' 
-                                : 'Your enrollment record error has been cleared. You can now use your Tracking ID in the NIN Suite.' }}
+                            @if(!empty($newTrackingId))
+                                Your previous enrollment error was resolved with a new Tracking ID. Use this newly issued ID to personalize or retrieve your slip in the NIN Suite.
+                            @else
+                                NIMC has resolved the improcessing error directly on your submitted record. <strong>No new tracking ID is required</strong> because your original Tracking ID has been cleared, validated, and unlocked for Personalization or Slip retrieval.
+                            @endif
                         </div>
                     </div>
                     <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                         <button type="button" class="btn-copy-id" onclick="copyNewTrackingId('{{ $newTrackingId ?: $result->identifier }}')">
-                            <i class="fa-solid fa-copy"></i> Copy Tracking ID
+                            <i class="fa-solid fa-copy"></i> Copy {{ !empty($newTrackingId) ? 'New ID' : 'Tracking ID' }}
                         </button>
                         <a href="{{ route('services.personalization', ['tracking_id' => $newTrackingId ?: $result->identifier]) }}" class="btn-copy-id" style="color: #6d28d9; text-decoration: none;">
                             <i class="fa-solid fa-user-gear"></i> Personalize ID
+                        </a>
+                        <a href="{{ route('services.nin.suite') }}" class="btn-copy-id" style="color: #2563eb; text-decoration: none;">
+                            <i class="fa-solid fa-id-card"></i> Retrieve Slip
                         </a>
                     </div>
                 </div>
@@ -612,15 +627,40 @@
                         <td>{{ $applicantName }}</td>
                     </tr>
                     <tr>
-                        <th>Original Submitted Tracking ID</th>
+                        <th>Submitted Tracking ID</th>
                         <td><code>{{ $result->identifier }}</code></td>
                     </tr>
                     @if(!empty($newTrackingId))
                     <tr style="background: #f0fdf4;">
                         <th style="color: #065f46; font-weight: 700;">New Assigned Tracking ID</th>
-                        <td><strong style="color: #059669; font-family: 'JetBrains Mono', monospace; font-size: 15px;">{{ $newTrackingId }}</strong></td>
+                        <td>
+                            <strong style="color: #059669; font-family: 'JetBrains Mono', monospace; font-size: 15px;">{{ $newTrackingId }}</strong>
+                            <span class="badge" style="background: #dcfce7; color: #166534; font-size: 11px; padding: 2px 6px; margin-left: 6px; border-radius: 4px;">Active for Retrieval</span>
+                        </td>
+                    </tr>
+                    @elseif($status === 'successful')
+                    <tr style="background: #f8fafc;">
+                        <th style="color: #334155;">New Tracking ID Status</th>
+                        <td>
+                            <span style="color: #2563eb; font-weight: 600;"><i class="fa-solid fa-circle-check"></i> Not Required</span>
+                            <small class="text-muted" style="display: block; font-size: 12px; margin-top: 2px;">
+                                Original Tracking ID was directly cleared and unlocked by NIMC without re-indexing.
+                            </small>
+                        </td>
                     </tr>
                     @endif
+                    <tr>
+                        <th>Resolution Type</th>
+                        <td>
+                            @if($status === 'successful')
+                                <strong style="color: #0f172a;">{{ !empty($newTrackingId) ? 'New NIMC Tracking ID Generated' : 'Direct Clearance on Original Tracking ID' }}</strong>
+                            @elseif($status === 'failed')
+                                <span style="color: #dc2626;">Unresolved / Refunded</span>
+                            @else
+                                <span style="color: #d97706;">Vetting in progress (&lt; 24h)</span>
+                            @endif
+                        </td>
+                    </tr>
                     <tr>
                         <th>IPE Issue Category</th>
                         <td>{{ $category }}</td>
@@ -684,7 +724,7 @@
         function copyNewTrackingId(val) {
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(val).then(() => {
-                    alert('New Tracking ID copied: ' . val);
+                    alert('Tracking ID copied: ' + val);
                 }).catch(() => {
                     prompt('Copy Tracking ID:', val);
                 });

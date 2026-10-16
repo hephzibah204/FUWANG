@@ -188,15 +188,15 @@
             <div class="col-12 mt-2" id="newTrackingCardWrap" style="display: none;">
                 <div class="p-3.5 rounded-3 d-flex flex-wrap align-items-center justify-content-between gap-3" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.1)); border: 1px solid rgba(16, 185, 129, 0.4);">
                     <div>
-                        <span class="badge bg-success text-white text-uppercase font-weight-bold px-2 py-1 mb-1">
+                        <span class="badge bg-success text-white text-uppercase font-weight-bold px-2 py-1 mb-1" id="cardSuccessBadge">
                             <i class="fa-solid fa-circle-check mr-1"></i> Clearance Completed
                         </span>
-                        <small class="text-success-emphasis d-block font-weight-bold">Your Newly Assigned Tracking ID:</small>
+                        <small class="text-success-emphasis d-block font-weight-bold" id="cardNewTrackingLabel">Your Newly Assigned Tracking ID:</small>
                         <span id="cardNewTrackingId" class="font-monospace fs-3 text-white font-weight-bold tracking-wider"></span>
                     </div>
                     <div class="d-flex align-items-center gap-2 flex-wrap">
-                        <button type="button" class="btn btn-success font-weight-bold px-3 py-2" onclick="copyText($('#cardNewTrackingId').text(), 'New Tracking ID copied!')">
-                            <i class="fa-solid fa-copy mr-1"></i> Copy New ID
+                        <button type="button" class="btn btn-success font-weight-bold px-3 py-2" onclick="copyText($('#cardNewTrackingId').text(), 'Tracking ID copied!')">
+                            <i class="fa-solid fa-copy mr-1"></i> <span id="cardCopyBtnText">Copy Tracking ID</span>
                         </button>
                         <a id="cardPersonalizeBtn" href="{{ route('services.personalization') }}" class="btn font-weight-bold px-3 py-2 text-white" style="background-color: #8b5cf6;">
                             <i class="fa-solid fa-user-gear mr-1"></i> Proceed to Personalization
@@ -280,7 +280,7 @@
                             @php 
                                 $d = $res->response_data ?? []; 
                                 $rowStatus = $res->status ?? 'waiting_for_review';
-                                $newTid = $d['new_tracking_id'] ?? null;
+                                $newTid = $res->resolved_new_tracking_id ?? ($d['new_tracking_id'] ?? null);
                             @endphp
                             <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);" class="result-row" data-status="{{ $rowStatus }}" id="row-{{ $res->id }}">
                                 <td><code>{{ $res->reference_id }}</code></td>
@@ -304,7 +304,9 @@
                                         </div>
                                     @else
                                         @if($rowStatus === 'successful')
-                                            <span class="text-success small font-weight-bold">Cleared</span>
+                                            <span class="badge bg-primary bg-opacity-25 text-info border border-info border-opacity-50 px-2 py-0.5 small" title="Original Tracking ID was cleared directly by NIMC without re-indexing">
+                                                <i class="fa-solid fa-circle-check me-1"></i> Original Cleared
+                                            </span>
                                         @elseif($rowStatus === 'failed')
                                             <span class="text-danger small">—</span>
                                         @else
@@ -387,16 +389,16 @@
 
                 <!-- Spotlight New Tracking ID (if available) -->
                 <div id="modalNewTrackingWrap" class="p-3.5 rounded-3 mb-3" style="display: none; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.4);">
-                    <small class="text-success-emphasis text-uppercase font-weight-bold d-block mb-1">
+                    <small class="text-success-emphasis text-uppercase font-weight-bold d-block mb-1" id="modalNewTrackingLabel">
                         <i class="fa-solid fa-key mr-1"></i> Your New Tracking ID:
                     </small>
                     <div class="d-flex align-items-center justify-content-between gap-2">
                         <span id="modalNewTrackingId" class="font-monospace fs-3 text-white font-weight-bold tracking-wider"></span>
-                        <button type="button" class="btn btn-success btn-sm font-weight-bold" onclick="copyText($('#modalNewTrackingId').text(), 'New Tracking ID copied!')">
-                            <i class="fa-solid fa-copy mr-1"></i> Copy
+                        <button type="button" class="btn btn-success btn-sm font-weight-bold" onclick="copyText($('#modalNewTrackingId').text(), 'Tracking ID copied!')">
+                            <i class="fa-solid fa-copy mr-1"></i> <span id="modalCopyBtnText">Copy</span>
                         </button>
                     </div>
-                    <small class="text-white-50 mt-1 d-block">
+                    <small class="text-white-50 mt-1 d-block" id="modalNewTrackingHelp">
                         Use this new Tracking ID to print your standard or premium slip from the NIN Suite.
                     </small>
                 </div>
@@ -558,7 +560,7 @@
         let refId = data.reference_id || 'N/A';
         let resp = data.response_data || data.details || {};
         let category = resp.category || data.category || 'Improcessing Error';
-        let newTrackingId = resp.new_tracking_id || data.new_tracking_id || null;
+        let newTrackingId = data.resolved_new_tracking_id || resp.new_tracking_id || data.new_tracking_id || null;
         let status = data.status || 'waiting_for_review';
         let adminNote = data.admin_note || (status === 'successful' ? 'Cleared successfully.' : 'Under review by verification desk.');
         let submittedAt = data.created_at || data.submitted_at || 'Just now';
@@ -583,9 +585,18 @@
             $('#modalReportBtn').hide();
         }
 
-        if (newTrackingId) {
-            $('#cardNewTrackingId').text(newTrackingId);
-            $('#cardPersonalizeBtn').attr('href', `{{ route('services.personalization') }}?tracking_id=${encodeURIComponent(newTrackingId)}`);
+        if (status === 'successful') {
+            if (newTrackingId) {
+                $('#cardNewTrackingLabel').html('<i class="fa-solid fa-key me-1"></i> Newly Assigned Tracking ID:');
+                $('#cardNewTrackingId').text(newTrackingId);
+                $('#cardCopyBtnText').text('Copy New ID');
+                $('#cardPersonalizeBtn').attr('href', `{{ route('services.personalization') }}?tracking_id=${encodeURIComponent(newTrackingId)}`);
+            } else {
+                $('#cardNewTrackingLabel').html('<i class="fa-solid fa-circle-check me-1"></i> Original Tracking ID Cleared & Unlocked (Direct Clearance):');
+                $('#cardNewTrackingId').text(trackingId);
+                $('#cardCopyBtnText').text('Copy Cleared ID');
+                $('#cardPersonalizeBtn').attr('href', `{{ route('services.personalization') }}?tracking_id=${encodeURIComponent(trackingId)}`);
+            }
             $('#newTrackingCardWrap').show();
         } else {
             $('#newTrackingCardWrap').hide();
@@ -618,11 +629,17 @@
             $('#modalStatusTitle').text('Cleared / Ready');
             modalBadge.removeClass('badge-warning badge-danger text-dark').addClass('badge-success text-white').html('<i class="fa-solid fa-circle-check me-1"></i> Success');
             if (newTrackingId) {
+                $('#modalNewTrackingLabel').html('<i class="fa-solid fa-key me-1"></i> Newly Assigned Tracking ID:');
                 $('#modalNewTrackingId').text(newTrackingId);
-                $('#modalNewTrackingWrap').show();
+                $('#modalNewTrackingHelp').text('Use this newly issued Tracking ID to personalize or retrieve your standard/premium slip.');
+                $('#modalCopyBtnText').text('Copy New ID');
             } else {
-                $('#modalNewTrackingWrap').hide();
+                $('#modalNewTrackingLabel').html('<i class="fa-solid fa-circle-check me-1"></i> Original Tracking ID Cleared (Direct Clearance):');
+                $('#modalNewTrackingId').text(trackingId);
+                $('#modalNewTrackingHelp').text('NIMC cleared the error directly on your record. No new tracking ID is required — your original ID is now unlocked and active for personalization and slip retrieval.');
+                $('#modalCopyBtnText').text('Copy Cleared ID');
             }
+            $('#modalNewTrackingWrap').show();
             $('#modalLiveCheckBtn').hide();
         } else if (status === 'failed') {
             banner.css('background', 'linear-gradient(135deg, rgba(239, 68, 68, 0.25), rgba(220, 38, 38, 0.15))').css('border', '1px solid rgba(239, 68, 68, 0.4)');
@@ -736,6 +753,12 @@
                                             <i class="fa-solid fa-copy"></i>
                                         </button>
                                     </div>
+                                `);
+                            } else {
+                                targetRow.find('.new-tracking-cell').html(`
+                                    <span class="badge bg-primary bg-opacity-25 text-info border border-info border-opacity-50 px-2 py-0.5 small" title="Original Tracking ID was cleared directly by NIMC without re-indexing">
+                                        <i class="fa-solid fa-circle-check me-1"></i> Original Cleared
+                                    </span>
                                 `);
                             }
                         } else if (st === 'failed') {

@@ -976,9 +976,15 @@ class VerificationController extends Controller
                         ->get();
 
         $price = VerificationPrice::first()->validation_price ?? 700;
-        $validationMode = \App\Models\SystemSetting::get('nin_validation_mode', 'robosttech');
+        $validationMode = \App\Models\SystemSetting::get('nin_validation_mode', 'auto');
         $activeProvider = $this->preferredValidationProvider();
-        $providerLabel = $validationMode === 'manual' ? 'Manual Reporting' : ($activeProvider?->name ?: 'Robosttech');
+        if ($validationMode === 'manual') {
+            $providerLabel = 'Manual Reporting';
+        } elseif ($validationMode === 'auto') {
+            $providerLabel = 'Auto (' . ($activeProvider?->name ?: 'Smart API Failover') . ')';
+        } else {
+            $providerLabel = $activeProvider?->name ?: ucfirst($validationMode);
+        }
 
         return view('services.identity.validation', compact('history', 'price', 'providerLabel', 'validationMode'));
     }
@@ -1001,7 +1007,7 @@ class VerificationController extends Controller
         $user = Auth::user();
         $ninNumber = trim((string) $request->number);
         $reason = trim((string) $request->input('validation_reason', 'NIN Validation'));
-        $validationMode = \App\Models\SystemSetting::get('nin_validation_mode', 'robosttech');
+        $validationMode = \App\Models\SystemSetting::get('nin_validation_mode', 'auto');
 
         // Status check mode
         if ($mode === 'status') {
@@ -1020,6 +1026,41 @@ class VerificationController extends Controller
 
             $providerIdent = strtolower((string) ($existing?->provider_name ?? ''));
             $exData = $existing?->response_data ?? [];
+            $isManualRecord = ($validationMode === 'manual') || ($existing && in_array($existing->provider_name, ['ADMIN_MANUAL', 'Manual Reporting', 'Manual Vetting', 'Manual Admin Review'], true));
+
+            if ($isManualRecord) {
+                if (!$existing) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'No validation request found with NIN/Reference: ' . $ninNumber . '. Please check the number or submit a new request.'
+                    ]);
+                }
+
+                $readableStatus = match($existing->status) {
+                    'successful' => 'Validated / Successful',
+                    'failed' => 'Rejected / Failed',
+                    default => 'Under Review / In Progress'
+                };
+
+                return response()->json([
+                    'status' => true,
+                    'message' => 'Validation status retrieved (Manual Review).',
+                    'data' => [
+                        'nin' => $existing->identifier,
+                        'reference_id' => $existing->reference_id,
+                        'status' => $existing->status,
+                        'status_label' => $readableStatus,
+                        'can_print_slip' => ($existing->status === 'successful'),
+                        'slip_page_url' => route('services.nin', ['nin' => $existing->identifier]),
+                        'validation_reason' => $exData['validation_reason'] ?? 'NIN Validation',
+                        'admin_note' => $existing->admin_note ?: 'Your application is currently being reviewed by the admin team.',
+                        'submitted_at' => $existing->created_at->format('M d, Y H:i:s'),
+                        'updated_at' => $existing->updated_at->format('M d, Y H:i:s'),
+                        'details' => $exData,
+                    ],
+                    'result_id' => $existing->id
+                ]);
+            }
 
             $dvProvider = CustomApi::where('provider_identifier', 'dataverify')->where('status', true)->first();
             $robostProvider = CustomApi::where('provider_identifier', 'robosttech')->where('status', true)->first();
@@ -1498,8 +1539,58 @@ class VerificationController extends Controller
                 ->latest()
                 ->first();
 
+            $providerNameLower = strtolower((string) ($existing?->provider_name ?? ''));
+            $isDataVerify = ($ipeClearanceMode === 'dataverify' || str_contains($providerNameLower, 'dataverify'));
+            $isRobost = ($ipeClearanceMode === 'robosttech' || str_contains($providerNameLower, 'robosttech'));
+
+            // If DataVerify mode or existing request was submitted via DataVerify, check DataVerify status API
+            if ($isDataVerify && ($existing ? in_array($existing->status, ['pending', 'waiting_for_review']) : true)) {
+                try {
+                    $dvClient = new \App\Services\DataVerify\DataVerifyClient();
+                    $exData = $existing ? ($existing->response_data ?? []) : [];
+                    $txId = $exData['transaction_id'] ?? null;
+                    $dvRes = $dvClient->checkIpeClearanceStatus($trackingId, $txId);
+
+                    if ($dvRes['ok'] ?? false) {
+                        $apiData = $dvRes['data'] ?? [];
+                        $newTid = \App\Models\VerificationResult::extractNewTrackingId($apiData, $trackingId)
+                            ?: ($dvRes['new_tracking_id'] ?? null);
+
+                        if ($existing) {
+                            $exData['provider_last_status'] = $apiData;
+                            if ($dvRes['status'] === 'successful') {
+                                $existing->status = 'successful';
+                                if ($newTid) {
+                                    $exData['new_tracking_id'] = $newTid;
+                                }
+                                if (!empty($dvRes['new_nin'])) {
+                                    $exData['new_nin'] = $dvRes['new_nin'];
+                                }
+                                $existing->admin_note = $dvRes['message'] ?: 'Cleared successfully via DataVerify verification.';
+                            } elseif ($dvRes['status'] === 'failed') {
+                                $existing->status = 'failed';
+                                $existing->admin_note = $dvRes['message'] ?: 'Clearance rejected by DataVerify.';
+                                if (empty($exData['refunded'])) {
+                                    $refundAmount = (float) ($exData['amount_paid'] ?? VerificationPrice::first()->ipe_clearance_price ?? 700);
+                                    $wallet = app(WalletService::class);
+                                    $ref = $wallet->refund($user, $refundAmount, 'IPE Clearance Rejected: ' . $existing->admin_note, 'IPE-REFUND');
+                                    if ($ref['ok'] ?? false) {
+                                        $exData['refunded'] = true;
+                                        $exData['refunded_amount'] = $refundAmount;
+                                        $exData['refunded_at'] = now()->toDateTimeString();
+                                    }
+                                }
+                            }
+                            $existing->response_data = $exData;
+                            $existing->save();
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('DataVerify clearance status check error: ' . $e->getMessage());
+                }
+            }
             // If Robosttech mode or existing request was submitted via Robosttech, check provider status API
-            if ($ipeClearanceMode === 'robosttech' || ($existing && $existing->provider_name === 'Robosttech' && in_array($existing->status, ['pending', 'waiting_for_review']))) {
+            elseif ($isRobost && ($existing ? in_array($existing->status, ['pending', 'waiting_for_review']) : true)) {
                 $apiCenter = ApiCenter::first();
                 $customRobost = CustomApi::where('provider_identifier', 'robosttech')->where('status', true)->first();
                 $apiKey = $customRobost?->api_key ?: $apiCenter?->robosttech_api_key ?: env('ROBOSTTECH_API_KEY') ?: \App\Models\SystemSetting::get('robosttech_api_key');
@@ -1521,7 +1612,7 @@ class VerificationController extends Controller
                         if ($apiRes->successful()) {
                             $apiData = $apiRes->json();
                             $apiStatus = strtolower((string) ($apiData['status'] ?? $apiData['data']['status'] ?? ''));
-                            $newTid = $apiData['new_tracking_id'] ?? $apiData['data']['new_tracking_id'] ?? null;
+                            $newTid = \App\Models\VerificationResult::extractNewTrackingId($apiData, $trackingId);
 
                             if ($existing) {
                                 $exData = $existing->response_data ?? [];
@@ -1573,6 +1664,7 @@ class VerificationController extends Controller
             };
 
             $existingData = $existing->response_data ?? [];
+            $resolvedNewTid = $existing->resolved_new_tracking_id ?? ($existingData['new_tracking_id'] ?? null);
 
             if (!$wantsJson) {
                 return redirect()->route('services.clearance.report', $existing->id);
@@ -1584,7 +1676,7 @@ class VerificationController extends Controller
                 'report_url' => route('services.clearance.report', $existing->id),
                 'data' => [
                     'tracking_id' => $existing->identifier,
-                    'new_tracking_id' => $existingData['new_tracking_id'] ?? null,
+                    'new_tracking_id' => $resolvedNewTid,
                     'nin' => $existingData['nin'] ?? null,
                     'reference_id' => $existing->reference_id,
                     'status' => $existing->status,
@@ -1614,7 +1706,69 @@ class VerificationController extends Controller
         try {
             $referenceId = 'CLR-' . strtoupper(bin2hex(random_bytes(4)));
 
-            if ($ipeClearanceMode === 'robosttech') {
+            if ($ipeClearanceMode === 'dataverify') {
+                $dvClient = new \App\Services\DataVerify\DataVerifyClient();
+                $dvRes = $dvClient->submitIpeClearance($trackingId);
+
+                if ($dvRes['ok'] ?? false) {
+                    $apiData = $dvRes['data'] ?? [];
+                    $newTid = \App\Models\VerificationResult::extractNewTrackingId($apiData, $trackingId);
+                    $isSuccess = ($dvRes['status'] ?? '') === 'successful' || !empty($newTid);
+                    $initialStatus = $isSuccess ? 'successful' : 'waiting_for_review';
+
+                    $payload = [
+                        'tracking_id' => $trackingId,
+                        'new_tracking_id' => $newTid,
+                        'transaction_id' => $dvRes['transaction_id'] ?? null,
+                        'category' => $category,
+                        'user_name' => $user->fullname,
+                        'user_email' => $user->email,
+                        'user_phone' => $user->phone,
+                        'remarks' => $request->input('remarks'),
+                        'service_mode' => 'Automated Processing (DataVerify)',
+                        'amount_paid' => (float) $price,
+                        'api_response' => $apiData,
+                    ];
+
+                    $result = VerificationResult::create([
+                        'user_id' => $user->id,
+                        'service_type' => 'ipe_clearance',
+                        'identifier' => $trackingId,
+                        'provider_name' => 'DataVerify',
+                        'status' => $initialStatus,
+                        'reference_id' => $referenceId,
+                        'admin_note' => $dvRes['message'] ?? 'Submitted to DataVerify. Processing in progress.',
+                        'response_data' => $payload,
+                    ]);
+
+                    $wallet->markTransactionSuccess($debit['txId']);
+
+                    if (!$wantsJson) {
+                        return redirect()->route('services.clearance.report', $result->id)
+                            ->with('status', 'Clearance request submitted successfully.');
+                    }
+
+                    return response()->json([
+                        'status' => true,
+                        'message' => 'Clearance request submitted successfully. Please check status under IPE Results in a few minutes.',
+                        'report_url' => route('services.clearance.report', $result->id),
+                        'data' => [
+                            'tracking_id' => $trackingId,
+                            'reference_id' => $referenceId,
+                            'category' => $category,
+                            'status' => $initialStatus,
+                            'status_label' => $isSuccess ? 'Cleared / Successful' : 'Processing Application',
+                            'admin_note' => $dvRes['message'] ?? 'Submitted for verification.',
+                            'new_tracking_id' => $newTid,
+                            'report_url' => route('services.clearance.report', $result->id),
+                        ],
+                        'result_id' => $result->id
+                    ]);
+                } else {
+                    $cleanErr = preg_replace('/robosttech|dataverify|vuvaa/i', 'Gateway', (string) ($dvRes['message'] ?? 'DataVerify submission failed.'));
+                    throw new \Exception($cleanErr);
+                }
+            } elseif ($ipeClearanceMode === 'robosttech') {
                 $apiCenter = ApiCenter::first();
                 $customRobost = CustomApi::where('provider_identifier', 'robosttech')->where('status', true)->first();
                 $apiKey = $customRobost?->api_key ?: $apiCenter?->robosttech_api_key ?: env('ROBOSTTECH_API_KEY') ?: \App\Models\SystemSetting::get('robosttech_api_key');
@@ -1640,7 +1794,7 @@ class VerificationController extends Controller
                 if ($response->successful()) {
                     $apiData = $response->json();
                     $apiStatus = strtolower((string) ($apiData['status'] ?? $apiData['data']['status'] ?? 'waiting_for_review'));
-                    $newTid = $apiData['new_tracking_id'] ?? $apiData['data']['new_tracking_id'] ?? null;
+                    $newTid = \App\Models\VerificationResult::extractNewTrackingId($apiData, $trackingId);
                     $isSuccess = in_array($apiStatus, ['cleared', 'completed', 'resolved']) || !empty($newTid);
                     $initialStatus = $isSuccess ? 'successful' : 'waiting_for_review';
 

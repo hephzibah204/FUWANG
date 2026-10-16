@@ -412,5 +412,104 @@ class IpeClearanceManualFlowTest extends TestCase
         $reportResponse->assertSee('NEW-TID-777888');
         $reportResponse->assertSee('Clearance Completed Successfully');
     }
+
+    public function test_extract_new_tracking_id_from_various_payload_structures(): void
+    {
+        // 1. Direct key
+        $this->assertEquals('NEW-TID-001', VerificationResult::extractNewTrackingId(['new_tracking_id' => 'NEW-TID-001'], 'ORIG-001'));
+        $this->assertEquals('NEW-TID-002', VerificationResult::extractNewTrackingId(['newTrackingID' => 'NEW-TID-002'], 'ORIG-001'));
+
+        // 2. Nested under data or api_response
+        $this->assertEquals('NEW-TID-003', VerificationResult::extractNewTrackingId([
+            'data' => ['new_tracking_id' => 'NEW-TID-003']
+        ], 'ORIG-001'));
+
+        $this->assertEquals('NEW-TID-004', VerificationResult::extractNewTrackingId([
+            'api_response' => ['data' => ['newTrackingID' => 'NEW-TID-004']]
+        ], 'ORIG-001'));
+
+        // 3. Extracted from remarks/note string
+        $this->assertEquals('BTX9988776655', VerificationResult::extractNewTrackingId('Clearance resolved. New Tracking ID: BTX9988776655', 'ORIG-001'));
+
+        // 4. Ignores original tracking ID
+        $this->assertNull(VerificationResult::extractNewTrackingId(['tracking_id' => 'ORIG-001'], 'ORIG-001'));
+    }
+
+    public function test_ipe_report_displays_proper_messaging_when_cleared_directly_without_new_tracking_id(): void
+    {
+        $user = $this->makeUser(500.00);
+
+        // Clearance record that is successful but has NO new tracking ID (direct clearance on original ID)
+        $record = VerificationResult::create([
+            'user_id' => $user->id,
+            'service_type' => 'ipe_clearance',
+            'identifier' => 'BTX-ORIGINAL-DIRECT',
+            'provider_name' => 'ADMIN_MANUAL',
+            'status' => 'successful',
+            'reference_id' => 'CLR-DIRECT-111',
+            'admin_note' => 'Original Tracking ID cleared directly on NIMC portal.',
+            'response_data' => [
+                'category' => 'Improcessing Error',
+                'amount_paid' => 700.00,
+            ],
+        ]);
+
+        $reportResponse = $this->actingAs($user)->get(route('services.clearance.report', $record->id));
+        $reportResponse->assertOk();
+        $reportResponse->assertSee('BTX-ORIGINAL-DIRECT');
+        $reportResponse->assertSee('Clearance Completed Successfully');
+        $reportResponse->assertSee('Cleared NIMC Tracking ID (Unlocked)');
+        $reportResponse->assertSee('Direct Clearance on Original Tracking ID');
+        $reportResponse->assertSee('Not Required');
+    }
+
+    public function test_status_query_retrieves_nested_new_tracking_id_from_dataverify_api(): void
+    {
+        $user = $this->makeUser(500.00);
+        SystemSetting::set('ipe_clearance_mode', 'dataverify');
+
+        Http::fake([
+            'https://dataverify.org/api/developers/ipe_status.php' => Http::response([
+                'status' => true,
+                'request_status' => 'completed',
+                'trackingID' => 'BTX-DV-SUBMITTED',
+                'data' => [
+                    'newTrackingID' => 'BTX-NEW-FROM-DATAVERIFY',
+                ],
+                'message' => 'IPE clearance finalized successfully.',
+            ], 200),
+        ]);
+
+        $existing = VerificationResult::create([
+            'user_id' => $user->id,
+            'service_type' => 'ipe_clearance',
+            'identifier' => 'BTX-DV-SUBMITTED',
+            'provider_name' => 'DataVerify',
+            'status' => 'waiting_for_review',
+            'reference_id' => 'CLR-DV-999',
+            'response_data' => [
+                'category' => 'Improcessing Error',
+                'amount_paid' => 700.00,
+            ],
+        ]);
+
+        $response = $this->actingAs($user)->postJson(route('services.clearance.verify'), [
+            'mode' => 'status',
+            'number' => 'BTX-DV-SUBMITTED',
+        ]);
+
+        $response->assertOk();
+        $response->assertJson([
+            'status' => true,
+            'data' => [
+                'status' => 'successful',
+                'new_tracking_id' => 'BTX-NEW-FROM-DATAVERIFY',
+            ]
+        ]);
+
+        $existing->refresh();
+        $this->assertEquals('successful', $existing->status);
+        $this->assertEquals('BTX-NEW-FROM-DATAVERIFY', $existing->resolved_new_tracking_id);
+    }
 }
 

@@ -244,15 +244,18 @@
                 <div class="col-md-6 mb-4">
                     <label class="text-white-50 small mb-2">IPE Clearance Provider / Mode</label>
                     <select name="ipe_clearance_mode" class="form-control text-white rounded-3" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
-                        <option value="manual" {{ ($ipeClearanceMode ?? 'manual') === 'manual' ? 'selected' : '' }}>Manual Admin Reporting &amp; Review (Default)</option>
-                        <option value="robosttech" {{ ($ipeClearanceMode ?? 'manual') === 'robosttech' ? 'selected' : '' }}>Robosttech API</option>
+                        <option value="robosttech" {{ ($ipeClearanceMode ?? 'robosttech') === 'robosttech' ? 'selected' : '' }}>Robosttech API (Default)</option>
+                        <option value="dataverify" {{ ($ipeClearanceMode ?? 'robosttech') === 'dataverify' ? 'selected' : '' }}>DataVerify API</option>
+                        <option value="manual" {{ ($ipeClearanceMode ?? 'robosttech') === 'manual' ? 'selected' : '' }}>Manual Admin Reporting &amp; Review</option>
                     </select>
                 </div>
                 <div class="col-md-6 mb-4">
                     <label class="text-white-50 small mb-2">NIN Validation Provider / Mode</label>
                     <select name="nin_validation_mode" class="form-control text-white rounded-3" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
-                        <option value="manual" {{ ($ninValidationMode ?? 'manual') === 'manual' ? 'selected' : '' }}>Manual Admin Reporting &amp; Review (Default)</option>
-                        <option value="robosttech" {{ ($ninValidationMode ?? 'manual') === 'robosttech' ? 'selected' : '' }}>Robosttech API</option>
+                        <option value="auto" {{ in_array(($ninValidationMode ?? 'auto'), ['auto', 'api'], true) ? 'selected' : '' }}>Auto (Smart API Failover: DataVerify &amp; Robosttech) - Default</option>
+                        <option value="dataverify" {{ ($ninValidationMode ?? 'auto') === 'dataverify' ? 'selected' : '' }}>DataVerify API</option>
+                        <option value="robosttech" {{ ($ninValidationMode ?? 'auto') === 'robosttech' ? 'selected' : '' }}>Robosttech API</option>
+                        <option value="manual" {{ ($ninValidationMode ?? 'auto') === 'manual' ? 'selected' : '' }}>Manual Admin Reporting &amp; Review</option>
                     </select>
                 </div>
             </div>

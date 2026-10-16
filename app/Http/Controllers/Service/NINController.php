@@ -706,6 +706,44 @@ class NINController extends Controller
         ]);
 
         $user = Auth::user();
+        $validationMode = \App\Models\SystemSetting::get('nin_validation_mode', 'auto');
+        if ($validationMode === 'manual') {
+            $query = VerificationResult::where(function ($q) use ($validated) {
+                $q->where('identifier', $validated['nin'])
+                  ->orWhere('reference_id', $validated['nin'])
+                  ->orWhere('response_data->nin', $validated['nin']);
+            })->whereIn('service_type', ['validation', 'nin_validation']);
+
+            if (!empty($validated['result_id'])) {
+                $query->where('id', (int) $validated['result_id']);
+            }
+            if ($user) {
+                $query->where('user_id', $user->id);
+            }
+            $record = $query->latest()->first();
+
+            if (!$record) {
+                return response()->json(['status' => false, 'message' => 'No validation record found for review.'], 404);
+            }
+
+            $success = in_array($record->status, ['successful', 'success', 'approved'], true);
+            $failed = in_array($record->status, ['failed', 'rejected'], true);
+            $uiState = $success ? 'completed' : ($failed ? 'failed' : 'in_progress');
+
+            return response()->json([
+                'status' => true,
+                'message' => $record->admin_note ?: ($success ? 'Validation approved by administrator.' : 'Validation is currently awaiting manual admin review.'),
+                'ui_state' => $uiState,
+                'data' => [
+                    'success' => $success,
+                    'in-progress' => !$success && !$failed,
+                    'data' => $record->response_data,
+                    'message' => $record->admin_note ?: ($success ? 'Validation approved.' : 'Awaiting manual admin review.'),
+                ],
+                'provider' => 'ADMIN_MANUAL',
+            ]);
+        }
+
         $provider = $this->pickProviderForMode('validation_status');
         if (!$provider) {
             return response()->json(['status' => false, 'message' => 'No provider configured for validation status.'], 503);

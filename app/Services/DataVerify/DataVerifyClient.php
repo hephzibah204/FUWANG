@@ -579,9 +579,10 @@ class DataVerifyClient
      * Check status of an IPE Clearance request on DataVerify
      *
      * @param string $trackingId
+     * @param ?string $transactionId
      * @return array{ok: bool, request_status: string, status: string, tracking_id: string, new_tracking_id: ?string, new_nin: ?string, message: string, data: array}
      */
-    public function checkIpeClearanceStatus(string $trackingId): array
+    public function checkIpeClearanceStatus(string $trackingId, ?string $transactionId = null): array
     {
         $url = 'https://dataverify.org/api/developers/ipe_status.php';
         $apiKey = $this->apiKey();
@@ -605,6 +606,9 @@ class DataVerifyClient
             'api_key' => $apiKey,
             'trackingID' => trim($trackingId),
         ];
+        if (!empty($transactionId)) {
+            $payload['transaction_id'] = trim($transactionId);
+        }
 
         try {
             $res = Http::timeout((int) ($this->provider?->timeout_seconds ?: 45))
@@ -640,14 +644,14 @@ class DataVerifyClient
             ];
         }
 
-        $rawReqStatus = strtolower((string) ($json['request_status'] ?? ''));
-        $newTid = $json['newTrackingID'] ?? $json['new_tracking_id'] ?? null;
-        $newNin = $json['newNIN'] ?? $json['new_nin'] ?? null;
+        $rawReqStatus = strtolower((string) ($json['request_status'] ?? $json['status'] ?? ''));
+        $newTid = \App\Models\VerificationResult::extractNewTrackingId($json, $trackingId);
+        $newNin = $json['newNIN'] ?? $json['new_nin'] ?? $json['data']['newNIN'] ?? $json['data']['new_nin'] ?? null;
 
         $normalizedStatus = 'waiting_for_review';
-        if ($rawReqStatus === 'completed' || !empty($newTid) || !empty($newNin)) {
+        if (in_array($rawReqStatus, ['completed', 'successful', 'success', 'cleared', 'resolved', '1', 'true']) || !empty($newTid) || !empty($newNin)) {
             $normalizedStatus = 'successful';
-        } elseif ($rawReqStatus === 'failed' || $rawReqStatus === 'rejected') {
+        } elseif (in_array($rawReqStatus, ['failed', 'rejected', 'error', '0', 'false'])) {
             $normalizedStatus = 'failed';
         }
 
@@ -658,7 +662,7 @@ class DataVerifyClient
             'tracking_id' => (string) ($json['trackingID'] ?? $trackingId),
             'new_tracking_id' => $newTid ? (string) $newTid : null,
             'new_nin' => $newNin ? (string) $newNin : null,
-            'message' => (string) ($json['message'] ?? 'Status retrieved'),
+            'message' => (string) ($json['message'] ?? ($normalizedStatus === 'successful' ? 'Clearance completed successfully.' : 'Status retrieved')),
             'data' => $json,
         ];
     }

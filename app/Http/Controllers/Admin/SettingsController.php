@@ -48,7 +48,7 @@ class SettingsController extends Controller
 
         $bvnRetrievalPrice = (float) SystemSetting::get('bvn_retrieval_price', 800);
         $ipeClearanceMode = (string) SystemSetting::get('ipe_clearance_mode', 'robosttech');
-        $ninValidationMode = (string) SystemSetting::get('nin_validation_mode', 'robosttech');
+        $ninValidationMode = (string) SystemSetting::get('nin_validation_mode', 'auto');
         $agentLicensePromoPrice = (float) SystemSetting::get('agent_license_promo_price', 100000);
         $agentLicenseRegularPrice = (float) SystemSetting::get('agent_license_regular_price', 150000);
         $agentLicensePromoEndsAt = (string) SystemSetting::get('agent_license_promo_ends_at', '2026-10-10 23:59:59');
@@ -167,8 +167,8 @@ class SettingsController extends Controller
             'bvn_search_type'    => 'required|string|max:100',
             'data_api_type'      => 'required|string|max:100',
             'airtime_api_type'    => 'nullable|string|max:100',
-            'ipe_clearance_mode'  => 'nullable|string|in:manual,robosttech',
-            'nin_validation_mode' => 'nullable|string|in:manual,robosttech',
+            'ipe_clearance_mode'  => 'nullable|string|in:manual,robosttech,dataverify,auto',
+            'nin_validation_mode' => 'nullable|string|in:manual,robosttech,dataverify,auto',
         ]);
 
         if (\Illuminate\Support\Facades\Schema::hasTable('api_settings')) {

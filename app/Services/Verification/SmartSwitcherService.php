@@ -23,14 +23,14 @@ class SmartSwitcherService
     public static function revertVuvaaToDemo(): void
     {
         try {
-            // 0. Ensure Validation and IPE modes default to robosttech
+            // 0. Ensure Validation and IPE modes default to API (auto/robosttech) unless configured as manual
             $currValMode = SystemSetting::get('nin_validation_mode');
-            if ($currValMode === null || $currValMode === 'manual') {
-                SystemSetting::set('nin_validation_mode', 'robosttech', 'services');
+            if ($currValMode === null || $currValMode === '') {
+                SystemSetting::set('nin_validation_mode', 'auto', 'services');
             }
 
             $currIpeMode = SystemSetting::get('ipe_clearance_mode');
-            if ($currIpeMode === null || $currIpeMode === 'manual') {
+            if ($currIpeMode === null || $currIpeMode === '') {
                 SystemSetting::set('ipe_clearance_mode', 'robosttech', 'services');
             }
 
@@ -159,6 +159,23 @@ class SmartSwitcherService
         ?array $selfieMeta = null
     ): array {
         $isExplicitSelection = $request->filled('api_provider_id');
+
+        // If validation mode is configured to manual review, route directly to manual review queue
+        if ($mode === 'validation' && SystemSetting::get('nin_validation_mode', 'auto') === 'manual') {
+            $ninNum = (string) ($request->input('number') ?: $request->input('nin') ?: '');
+            return [
+                'status' => true,
+                'message' => 'NIN Validation submitted successfully for manual admin review.',
+                'data' => [
+                    'nin' => $ninNum,
+                    'validation_reason' => (string) ($request->input('validation_reason') ?: 'NIN Validation'),
+                    'status' => 'waiting_for_review',
+                    'service_mode' => 'Manual Admin Vetting',
+                ],
+                'provider' => 'ADMIN_MANUAL',
+                'attempted_providers' => ['Manual Admin Queue'],
+            ];
+        }
 
         if ($isExplicitSelection && $preferredProvider) {
             $candidates = collect([$preferredProvider]);
