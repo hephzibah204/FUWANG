@@ -132,4 +132,69 @@ class NinModificationFlowTest extends TestCase
         // Assert refunded back to 5000.00
         $this->assertEquals(5000.00, $user->fresh()->balance->user_balance);
     }
+
+    public function test_user_sees_modification_form_with_visible_submit_button_and_fields(): void
+    {
+        $user = $this->createUser(5000.00);
+
+        $response = $this->actingAs($user)->get(route('services.nin.modification'));
+
+        $response->assertOk()
+            ->assertSee('Submit Modification Request')
+            ->assertSee('id="submitBtn"', false)
+            ->assertSee('Select Modification Type')
+            ->assertSee('Current Detail on Record (Old)')
+            ->assertSee('Requested Update (New)')
+            ->assertSee('Supporting Photo or Document');
+    }
+
+    public function test_user_can_submit_nin_modification_with_pdf_document(): void
+    {
+        $user = $this->createUser(5000.00);
+
+        $pdfFile = UploadedFile::fake()->create('affidavit_change_of_name.pdf', 1024, 'application/pdf');
+
+        $response = $this->actingAs($user)->postJson(route('services.nin.modification.submit'), [
+            'self_service' => 'no',
+            'nin' => '98765432109',
+            'full_name' => 'John Applicant',
+            'modification_type' => 'dob',
+            'old_value' => '1992-05-14',
+            'new_value' => '1995-10-20',
+            'photo' => $pdfFile,
+            'consent' => '1',
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('status', true);
+
+        $record = VerificationResult::where('identifier', '98765432109')->firstOrFail();
+        $this->assertEquals('waiting_for_review', $record->status);
+        $this->assertEquals('application/pdf', $record->response_data['document_mime']);
+        $this->assertEquals('affidavit_change_of_name.pdf', $record->response_data['document_name']);
+    }
+
+    public function test_admin_verifications_index_links_to_nin_modifications_review(): void
+    {
+        $user = $this->createUser(5000.00);
+        $file = UploadedFile::fake()->image('court_affidavit.jpg');
+
+        $this->actingAs($user)->postJson(route('services.nin.modification.submit'), [
+            'self_service' => 'no',
+            'nin' => '11223344556',
+            'full_name' => 'Mariam Bello',
+            'modification_type' => 'name',
+            'old_value' => 'Mariam Bello',
+            'new_value' => 'Mariam Abubakar',
+            'photo' => $file,
+        ]);
+
+        $record = VerificationResult::where('identifier', '11223344556')->firstOrFail();
+        $admin = $this->createAdmin();
+
+        $vaultResp = $this->actingAs($admin, 'admin')->get(route('admin.verifications.index'));
+        $vaultResp->assertOk()
+            ->assertSee(route('admin.verifications.nin_modifications.index'))
+            ->assertSee(route('admin.verifications.nin_modifications.show', $record->id));
+    }
 }

@@ -16,8 +16,29 @@
     },
     {
         "title": "Verifications",
-        "route": "admin.verifications.index",
-        "icon": "fas fa-check-circle"
+        "icon": "fas fa-check-circle",
+        "children": [
+            {
+                "title": "Verification Vault",
+                "route": "admin.verifications.index",
+                "icon": "fas fa-database"
+            },
+            {
+                "title": "NIN Modifications",
+                "route": "admin.verifications.nin_modifications.index",
+                "icon": "fas fa-id-card"
+            },
+            {
+                "title": "IPE Clearance",
+                "route": "admin.verifications.ipe_clearance.index",
+                "icon": "fas fa-certificate"
+            },
+            {
+                "title": "NIN Validation",
+                "route": "admin.verifications.nin_validation.index",
+                "icon": "fas fa-user-check"
+            }
+        ]
     },
     {
         "title": "Settings",

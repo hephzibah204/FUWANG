@@ -11,6 +11,9 @@
         </div>
         <div class="col-md-7 text-md-right mt-3 mt-md-0">
             <a href="{{ route('admin.verifications.index') }}" class="btn btn-outline-primary mr-2">Back</a>
+            @if($result->service_type === 'nin_modification')
+                <a href="{{ route('admin.verifications.nin_modifications.show', $result->id) }}" class="btn btn-warning mr-2"><i class="fa-solid fa-file-pen mr-1"></i>Review Modification Desk</a>
+            @endif
             @if(in_array($result->service_type, ['nin', 'nin_verification', 'vuvaa_verify_nin', 'vuvaa_in_person', 'vuvaa_share_code']))
                 <a href="{{ route('services.nin.slip', ['id' => $result->id, 'type' => 'premium_slip']) }}" target="_blank" class="btn btn-outline-info mr-2"><i class="fa fa-id-card mr-1"></i>Premium Slip</a>
                 <a href="{{ route('services.nin.slip', ['id' => $result->id, 'type' => 'standard_slip']) }}" target="_blank" class="btn btn-outline-secondary mr-2"><i class="fa fa-id-card mr-1"></i>Standard Slip</a>

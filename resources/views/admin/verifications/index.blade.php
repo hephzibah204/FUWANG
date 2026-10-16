@@ -5,9 +5,20 @@
 @section('content')
 <div class="dashboard-wrapper fade-in">
     <div class="row align-items-center mb-4">
-        <div class="col-md-8">
+        <div class="col-md-5">
             <h1 class="h3 font-weight-bold mb-1">Verification Vault</h1>
-            <p class="text-muted mb-0">Audit user verification results and export reports.</p>
+            <p class="text-muted mb-0">Audit user verification results, modification requests, and reports.</p>
+        </div>
+        <div class="col-md-7 text-md-right mt-3 mt-md-0">
+            <a href="{{ route('admin.verifications.nin_modifications.index') }}" class="btn btn-warning mr-2">
+                <i class="fa-solid fa-id-card mr-1"></i> NIN Modifications
+            </a>
+            <a href="{{ route('admin.verifications.ipe_clearance.index') }}" class="btn btn-outline-info mr-2">
+                <i class="fa-solid fa-certificate mr-1"></i> IPE Clearance
+            </a>
+            <a href="{{ route('admin.verifications.nin_validation.index') }}" class="btn btn-outline-light">
+                <i class="fa-solid fa-user-check mr-1"></i> NIN Validation
+            </a>
         </div>
     </div>
 
@@ -75,8 +86,14 @@
                             </td>
                             <td class="align-middle text-muted small">{{ $res->created_at->format('M d, Y H:i') }}</td>
                             <td class="align-middle text-right pr-4">
-                                <a href="{{ route('admin.verifications.show', $res->id) }}" class="btn btn-sm btn-outline-primary">View</a>
-                                <a href="{{ route('admin.verifications.report', $res->id) }}" class="btn btn-sm btn-success"><i class="fa fa-file-pdf mr-1"></i> PDF</a>
+                                @if($res->service_type === 'nin_modification')
+                                    <a href="{{ route('admin.verifications.nin_modifications.show', $res->id) }}" class="btn btn-sm btn-warning font-weight-bold">
+                                        <i class="fa-solid fa-file-pen mr-1"></i> Review
+                                    </a>
+                                @else
+                                    <a href="{{ route('admin.verifications.show', $res->id) }}" class="btn btn-sm btn-outline-primary">View</a>
+                                    <a href="{{ route('admin.verifications.report', $res->id) }}" class="btn btn-sm btn-success"><i class="fa fa-file-pdf mr-1"></i> PDF</a>
+                                @endif
                             </td>
                         </tr>
                     @empty

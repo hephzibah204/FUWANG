@@ -54,7 +54,7 @@
                             <label class="font-weight-600 mb-2">National Identification Number (NIN)</label>
                             <div class="input-wrap">
                                 <i class="fa-solid fa-id-card"></i>
-                                <input type="text" name="nin" class="form-control" placeholder="Enter 11-digit NIN" maxlength="11" required>
+                                <input type="text" name="nin" id="ninInput" class="form-control" placeholder="Enter 11-digit NIN" maxlength="11" required>
                             </div>
                         </div>
 
@@ -62,7 +62,7 @@
                             <label class="font-weight-600 mb-2">Full Name (As on NIN)</label>
                             <div class="input-wrap">
                                 <i class="fa-solid fa-user"></i>
-                                <input type="text" name="full_name" class="form-control" placeholder="Enter full name" required>
+                                <input type="text" name="full_name" id="fullNameInput" class="form-control" placeholder="Enter full name" required>
                             </div>
                         </div>
 
@@ -81,40 +81,42 @@
                             </div>
                         </div>
 
-                        <!-- Dynamic Fields Container -->
-                        <div id="dynamicFields" style="display: none;">
+                        <!-- Modification Details Fields (Always visible, labels update with selection) -->
+                        <div id="dynamicFields">
                             <div class="row">
                                 <div class="col-md-6 mb-4">
-                                    <label class="font-weight-600 mb-2" id="oldValLabel">Old Value</label>
+                                    <label class="font-weight-600 mb-2" id="oldValLabel">Current Detail on Record (Old)</label>
                                     <div class="input-wrap">
                                         <i class="fa-solid fa-clock-rotate-left"></i>
-                                        <input type="text" name="old_value" id="oldValue" class="form-control" placeholder="Current detail on record">
+                                        <input type="text" name="old_value" id="oldValue" class="form-control" placeholder="Current detail on record" required>
                                     </div>
                                 </div>
                                 <div class="col-md-6 mb-4">
-                                    <label class="font-weight-600 mb-2" id="newValLabel">New Value</label>
+                                    <label class="font-weight-600 mb-2" id="newValLabel">Requested Update (New)</label>
                                     <div class="input-wrap">
                                         <i class="fa-solid fa-circle-check"></i>
-                                        <input type="text" name="new_value" id="newValue" class="form-control" placeholder="New detail to be updated">
+                                        <input type="text" name="new_value" id="newValue" class="form-control" placeholder="New detail to be updated" required>
                                     </div>
                                 </div>
                             </div>
 
                             <div class="form-group mb-4">
-                                <label class="font-weight-600 mb-2">Supporting Photo/Document</label>
-                                <div class="custom-file-upload p-4 text-center" style="border: 2px dashed rgba(255,255,255,0.1); background: rgba(255,255,255,0.02); border-radius: 15px;">
+                                <label class="font-weight-600 mb-2">Supporting Photo or Document (JPG, PNG, PDF)</label>
+                                <div class="custom-file-upload p-4 text-center" style="border: 2px dashed rgba(255,255,255,0.18); background: rgba(255,255,255,0.02); border-radius: 15px; cursor: pointer;" onclick="document.getElementById('photoInput').click()">
                                     <i class="fa-solid fa-cloud-arrow-up text-primary mb-2" style="font-size: 2rem;"></i>
-                                    <p class="text-white-50 small mb-2">Upload a clear photo or scanned document for verification</p>
-                                    <input type="file" name="photo" class="form-control-file text-white-50 small" accept="image/*,.pdf" required>
+                                    <p class="text-white-50 small mb-2" id="fileUploadPrompt">Click or drag a clear photo or scanned document (max 10MB)</p>
+                                    <div id="fileSelectedBadge" class="badge badge-success px-3 py-1 font-monospace mt-1" style="display: none;"></div>
+                                    <input type="file" name="photo" id="photoInput" class="form-control-file d-none" accept="image/*,.pdf" required>
                                 </div>
                             </div>
 
                             <div class="alert alert-warning border-0 small mb-4" style="background: rgba(245, 158, 11, 0.1); color: #fbbf24;">
                                 <i class="fa-solid fa-circle-info mr-2"></i> 
-                                Service Fee: <strong>₦{{ number_format($price, 2) }}</strong>. Ensure you have sufficient balance before submitting.
+                                Service Fee: <strong>₦{{ number_format($price, 2) }}</strong>. Billed upon submission. Ensure your wallet has sufficient balance.
                             </div>
 
-                            <button type="submit" class="btn btn-primary btn-lg w-100" id="submitBtn">
+                            <!-- ALWAYS VISIBLE SUBMIT BUTTON -->
+                            <button type="submit" class="btn btn-primary btn-lg w-100 font-weight-bold" id="submitBtn" style="padding: 14px 24px; font-size: 1.05rem; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);">
                                 <i class="fa-solid fa-paper-plane mr-2"></i> Submit Modification Request
                             </button>
                         </div>
@@ -247,132 +249,210 @@
 
 @push('scripts')
 <script>
-    $(document).ready(function() {
-        @if(!$user->nin_mod_consent)
-            $('#consentModal').modal('show');
-        @endif
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('ninModForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const modTypeSelect = document.getElementById('modType');
+    const oldValLabel = document.getElementById('oldValLabel');
+    const newValLabel = document.getElementById('newValLabel');
+    const oldValueInput = document.getElementById('oldValue');
+    const newValueInput = document.getElementById('newValue');
+    const photoInput = document.getElementById('photoInput');
+    const filePrompt = document.getElementById('fileUploadPrompt');
+    const fileBadge = document.getElementById('fileSelectedBadge');
+    const selfServiceYes = document.getElementById('selfServiceYes');
+    const selfServiceNo = document.getElementById('selfServiceNo');
+    const selfServiceWarning = document.getElementById('selfServiceWarning');
+    const formContent = document.getElementById('formContent');
+    const consentModal = document.getElementById('consentModal');
+    const agreeBtn = document.getElementById('agreeBtn');
 
-        // Self Service Logic
-        $('input[name="self_service"]').on('change', function() {
-            if ($(this).val() === 'yes') {
-                $('#selfServiceWarning').fadeIn();
-                $('#formContent').fadeOut();
+    // Consent check
+    @if(!$user->nin_mod_consent)
+        if (consentModal) {
+            consentModal.style.display = 'block';
+            consentModal.classList.add('show');
+            document.body.classList.add('modal-open');
+        }
+    @endif
+
+    if (agreeBtn) {
+        agreeBtn.addEventListener('click', function() {
+            agreeBtn.disabled = true;
+            agreeBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Processing...';
+
+            fetch("{{ route('services.nin.modification.consent') }}", {
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ _token: '{{ csrf_token() }}' })
+            })
+            .then(res => res.json())
+            .then(res => {
+                if (res.status) {
+                    if (consentModal) {
+                        consentModal.style.display = 'none';
+                        consentModal.classList.remove('show');
+                        document.body.classList.remove('modal-open');
+                    }
+                    if (typeof showNexusToast === 'function') {
+                        showNexusToast('Terms accepted successfully!', 'success');
+                    }
+                } else {
+                    alert(res.message || 'Failed to save consent.');
+                    agreeBtn.disabled = false;
+                    agreeBtn.textContent = 'I Agree & Proceed';
+                }
+            })
+            .catch(() => {
+                agreeBtn.disabled = false;
+                agreeBtn.textContent = 'I Agree & Proceed';
+                alert('Connection error. Please try again.');
+            });
+        });
+    }
+
+    // Self Service Toggle
+    function updateSelfService() {
+        if (selfServiceYes && selfServiceYes.checked) {
+            if (selfServiceWarning) selfServiceWarning.style.display = 'block';
+            if (formContent) formContent.style.display = 'none';
+        } else {
+            if (selfServiceWarning) selfServiceWarning.style.display = 'none';
+            if (formContent) formContent.style.display = 'block';
+        }
+    }
+    if (selfServiceYes) selfServiceYes.addEventListener('change', updateSelfService);
+    if (selfServiceNo) selfServiceNo.addEventListener('change', updateSelfService);
+
+    // Dynamic Labels & Placeholders
+    function updateModType() {
+        const type = modTypeSelect ? modTypeSelect.value : '';
+        let oldLabel = 'Current Detail on Record (Old)';
+        let newLabel = 'Requested Update (New)';
+        let oldPlaceholder = 'Current detail on record';
+        let newPlaceholder = 'New detail to be updated';
+
+        switch(type) {
+            case 'name':
+                oldLabel = 'Current Full Name on NIN';
+                newLabel = 'Correct Full Name to Update';
+                oldPlaceholder = 'e.g. John Kowalski';
+                newPlaceholder = 'e.g. John Doe Smith';
+                break;
+            case 'dob':
+                oldLabel = 'Current Date of Birth on NIN';
+                newLabel = 'Correct Date of Birth';
+                oldPlaceholder = 'e.g. 1989-01-31 (YYYY-MM-DD)';
+                newPlaceholder = 'e.g. 1990-05-14 (YYYY-MM-DD)';
+                break;
+            case 'address':
+                oldLabel = 'Current Address on Record';
+                newLabel = 'New Correct Address';
+                oldPlaceholder = 'Enter full old address';
+                newPlaceholder = 'Enter full new address';
+                break;
+            case 'phone':
+                oldLabel = 'Current Phone Number on NIN';
+                newLabel = 'Correct Phone Number';
+                oldPlaceholder = 'e.g. 08012345679';
+                newPlaceholder = 'e.g. 08012345678';
+                break;
+            case 'email':
+                oldLabel = 'Current Email on NIN';
+                newLabel = 'Correct Email Address';
+                oldPlaceholder = 'e.g. old@example.com';
+                newPlaceholder = 'e.g. newuser@example.com';
+                break;
+        }
+
+        if (oldValLabel) oldValLabel.textContent = oldLabel;
+        if (newValLabel) newValLabel.textContent = newLabel;
+        if (oldValueInput) oldValueInput.placeholder = oldPlaceholder;
+        if (newValueInput) newValueInput.placeholder = newPlaceholder;
+    }
+    if (modTypeSelect) {
+        modTypeSelect.addEventListener('change', updateModType);
+        updateModType();
+    }
+
+    // File input selection preview
+    if (photoInput) {
+        photoInput.addEventListener('change', function() {
+            if (photoInput.files && photoInput.files[0]) {
+                const file = photoInput.files[0];
+                const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
+                if (fileBadge) {
+                    fileBadge.textContent = 'Attached: ' + file.name + ' (' + sizeMb + ' MB)';
+                    fileBadge.style.display = 'inline-block';
+                }
+                if (filePrompt) {
+                    filePrompt.textContent = 'File attached. Click to change file.';
+                }
             } else {
-                $('#selfServiceWarning').fadeOut();
-                $('#formContent').fadeIn();
+                if (fileBadge) fileBadge.style.display = 'none';
+                if (filePrompt) filePrompt.textContent = 'Click or drag a clear photo or scanned document (max 10MB)';
             }
         });
+    }
 
-        // Dynamic Fields Logic
-        $('#modType').on('change', function() {
-            const type = $(this).val();
-            if (!type) {
-                $('#dynamicFields').fadeOut();
+    // Form Submission
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            if (!modTypeSelect || !modTypeSelect.value) {
+                alert('Please select a Modification Type from the dropdown.');
+                if (modTypeSelect) modTypeSelect.focus();
                 return;
             }
 
-            let oldLabel = 'Old Value';
-            let newLabel = 'New Value';
-            let oldPlaceholder = 'Current detail on record';
-            let newPlaceholder = 'New detail to be updated';
-
-            switch(type) {
-                case 'name':
-                    oldLabel = 'Current Full Name';
-                    newLabel = 'Correct Full Name';
-                    oldPlaceholder = 'e.g. Jamiu kowalski';
-                    newPlaceholder = 'e.g. John Doe';
-                    break;
-                case 'dob':
-                    oldLabel = 'Current Date of Birth';
-                    newLabel = 'Correct Date of Birth';
-                    oldPlaceholder = 'e.g. 1989-01-31';
-                    newPlaceholder = 'e.g. 1990-01-01';
-                    break;
-                case 'address':
-                    oldLabel = 'Current Address';
-                    newLabel = 'Correct Address';
-                    oldPlaceholder = 'Enter full old address';
-                    newPlaceholder = 'Enter full new address';
-                    break;
-                case 'phone':
-                    oldLabel = 'Current Phone Number';
-                    newLabel = 'Correct Phone Number';
-                    oldPlaceholder = 'e.g. 08012345679';
-                    newPlaceholder = 'e.g. 08012345678';
-                    break;
-                case 'email':
-                    oldLabel = 'Current Email';
-                    newLabel = 'Correct Email';
-                    oldPlaceholder = 'e.g. old@example.com';
-                    newPlaceholder = 'e.g. user@example.com';
-                    break;
+            if (!photoInput || !photoInput.files || !photoInput.files[0]) {
+                alert('Please upload a clear supporting photo or document (JPG, PNG, or PDF).');
+                if (photoInput) photoInput.focus();
+                return;
             }
 
-            $('#oldValLabel').text(oldLabel);
-            $('#newValLabel').text(newLabel);
-            $('#oldValue').attr('placeholder', oldPlaceholder);
-            $('#newValue').attr('placeholder', newPlaceholder);
-            
-            $('#dynamicFields').fadeIn();
-        });
+            const oldHtml = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Submitting Request...';
 
-        $('#agreeBtn').on('click', function() {
-            const btn = $(this);
-            btn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin mr-2"></i> Processing...');
+            const formData = new FormData(form);
+            formData.append('consent', '1');
 
-            $.ajax({
-                url: "{{ route('services.nin.modification.consent') }}",
+            fetch("{{ route('services.nin.modification.submit') }}", {
                 method: "POST",
-                data: { _token: "{{ csrf_token() }}" },
-                success: function(res) {
-                    if (res.status) {
-                        $('#consentModal').modal('hide');
-                        Swal.fire({ title: 'Authorized!', text: 'You can now proceed with NIN modifications.', icon: 'success', background: '#141826', color: '#fff', timer: 2000, showConfirmButton: false });
-                    }
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
                 },
-                error: function() {
-                    btn.prop('disabled', false).text('I Agree & Proceed');
-                    Swal.fire({ title: 'Error', text: 'Failed to save consent. Please try again.', icon: 'error', background: '#141826', color: '#fff' });
+                body: formData
+            })
+            .then(res => res.json())
+            .then(res => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = oldHtml;
+
+                if (res.status) {
+                    if (typeof showNexusToast === 'function') {
+                        showNexusToast(res.message || 'Request submitted successfully!', 'success');
+                    }
+                    alert(res.message || 'Modification request submitted successfully. Our agents will process it shortly.');
+                    window.location.href = res.redirect_url || "{{ route('history') }}";
+                } else {
+                    alert(res.message || 'Submission could not be completed.');
                 }
+            })
+            .catch(err => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = oldHtml;
+                alert('An error occurred during submission. Please check your connection and balance, then try again.');
             });
         });
-
-        $('#ninModForm').on('submit', function(e) {
-            e.preventDefault();
-            const btn = $('#submitBtn');
-            const oldHtml = btn.html();
-            
-            btn.prop('disabled', true).html('<i class="fa-solid fa-spinner fa-spin mr-2"></i> Submitting Request...');
-
-            const formData = new FormData(this);
-
-            $.ajax({
-                url: "{{ route('services.nin.modification.submit') }}",
-                method: "POST",
-                data: formData,
-                processData: false,
-                contentType: false,
-                success: function(res) {
-                    if (res.status) {
-                        Swal.fire({ title: 'Success!', text: res.message, icon: 'success', background: '#141826', color: '#fff' })
-                        .then(() => {
-                            window.location.href = "{{ route('history') }}";
-                        });
-                    } else {
-                        Swal.fire({ title: 'Error', text: res.message, icon: 'error', background: '#141826', color: '#fff' });
-                    }
-                },
-                error: function(xhr) {
-                    let msg = 'Something went wrong. Please try again.';
-                    if(xhr.responseJSON && xhr.responseJSON.message) msg = xhr.responseJSON.message;
-                    Swal.fire({ title: 'Failed', text: msg, icon: 'error', background: '#141826', color: '#fff' });
-                },
-                complete: function() {
-                    btn.prop('disabled', false).html(oldHtml);
-                }
-            });
-        });
-    });
+    }
+});
 </script>
 @endpush
