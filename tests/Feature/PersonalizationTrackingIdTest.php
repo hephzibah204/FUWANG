@@ -193,6 +193,91 @@ class PersonalizationTrackingIdTest extends TestCase
             ->assertSee('Print Regular Slip')
             ->assertSee('Print Premium ID Plastic Slip')
             ->assertSee('Download PDF Slip');
+
+        // 5. Verify PDF download returns valid binary PDF and is never empty
+        $downloadPdfUrl = route('services.nin.slip', ['id' => $resultId, 'type' => 'regular_slip', 'download' => 1]);
+        $pdfResp = $this->actingAs($user)->get($downloadPdfUrl);
+        $pdfResp->assertOk()
+            ->assertHeader('Content-Type', 'application/pdf');
+        $this->assertNotEmpty($pdfResp->getContent());
+        $this->assertStringStartsWith('%PDF', $pdfResp->getContent());
+
+        $downloadReportPdfUrl = route('services.personalization.report', ['id' => $resultId, 'download' => 1]);
+        $reportPdfResp = $this->actingAs($user)->get($downloadReportPdfUrl);
+        $reportPdfResp->assertOk()
+            ->assertHeader('Content-Type', 'application/pdf');
+        $this->assertNotEmpty($reportPdfResp->getContent());
+    }
+
+    public function test_personalization_report_auto_syncs_with_gateway_when_accessed_while_pending(): void
+    {
+        $user = User::create([
+            'fullname' => 'Fatima Aliyu',
+            'username' => 'u_pers_sync',
+            'email' => 'fatima@example.com',
+            'password' => Hash::make('Password@123'),
+        ]);
+        $user->forceFill(['email_verified_at' => now()])->save();
+
+        ApiCenter::create([
+            'robosttech_api_key' => 'robost_key_sync',
+            'robosttech_endpoint_personalization' => 'https://robosttech.com/api',
+        ]);
+
+        $dummyPdf = base64_encode('%PDF-1.4 %Personalization slip test binary for auto sync verification');
+
+        // Create a result that was initially saved as pending
+        $result = \App\Models\VerificationResult::create([
+            'user_id' => $user->id,
+            'service_type' => 'personalization',
+            'identifier' => 'TRKSYNC7788',
+            'provider_name' => 'Robosttech',
+            'status' => 'pending',
+            'reference_id' => 'VR-PERS-SYNC-01',
+            'admin_note' => 'Personalization in progress.',
+            'response_data' => [
+                'status' => 'pending',
+                'request_status' => 'pending',
+                'tracking_id' => 'TRKSYNC7788',
+            ],
+        ]);
+
+        Http::fake([
+            'https://robosttech.com/api/personalization_status' => Http::response([
+                'status' => true,
+                'request_status' => 'completed',
+                'message' => 'Identity personalization successful',
+                'nin' => '98765432109',
+                'user_data' => [
+                    'firstname' => 'Fatima',
+                    'lastname' => 'Aliyu',
+                    'birthdate' => '1995-10-20',
+                    'gender' => 'Female',
+                    'nin' => '98765432109',
+                ],
+                'pdf_base64' => $dummyPdf,
+            ], 200),
+        ]);
+
+        // Access the report page directly while record is pending in DB
+        $reportUrl = route('services.personalization.report', $result->id);
+        $resp = $this->actingAs($user)->get($reportUrl);
+        $resp->assertOk()
+            ->assertSee('9876 543 2109')
+            ->assertSee('Fatima')
+            ->assertSee('Aliyu');
+
+        // Verify the database record was automatically synchronized and updated to successful
+        $fresh = $result->fresh();
+        $this->assertEquals('successful', $fresh->status);
+        $this->assertEquals('98765432109', $fresh->response_data['nin']);
+        $this->assertNotEmpty($fresh->response_data['pdf_base64']);
+
+        // Verify PDF download delivers the ready-to-print PDF
+        $downloadResp = $this->actingAs($user)->get(route('services.personalization.report', ['id' => $result->id, 'download' => 1]));
+        $downloadResp->assertOk()
+            ->assertHeader('Content-Type', 'application/pdf');
+        $this->assertStringStartsWith('%PDF', $downloadResp->getContent());
     }
 }
 

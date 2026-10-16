@@ -77,12 +77,35 @@ class PdfReportController extends Controller
             abort(403, 'Unauthorized access to personalization report.');
         }
 
+        // Live check provider to get real outcome, user_data, NIN, and pdf_base64
+        $result = $this->syncPersonalizationStatus($result);
+
+        // Normalize response data so slip fields are unpacked and consistent
+        $result->response_data = $this->normalizeNinSlipPayload($result->response_data, (string) $result->identifier);
+
         $autoPrint = $request->boolean('print');
         $isPdf = $request->boolean('download');
 
         if ($isPdf) {
-            $pdf = Pdf::loadView('reports.personalization_report', compact('result', 'isPdf', 'autoPrint'));
-            return $pdf->download('Personalization_' . $result->reference_id . '.pdf');
+            // 1. If provider returned the ready-to-print NIN slip PDF (base64) as documented, serve it directly!
+            $pdfBase64 = $result->response_data['pdf_base64']
+                ?? $result->response_data['data']['pdf_base64']
+                ?? $result->response_data['user_data']['pdf_base64']
+                ?? null;
+
+            if (!empty($pdfBase64) && is_string($pdfBase64)) {
+                $bin = base64_decode($pdfBase64);
+                if ($bin !== false && strlen($bin) > 100) {
+                    return $this->buildPdfResponse($bin, 'regular_slip', (string) $result->reference_id);
+                }
+            }
+
+            // 2. Otherwise render using our DomPDF-safe regular slip template (matching provider layout)
+            $viewName = $result->status === 'successful' ? 'pdf.nin_regular_slip' : 'pdf.verification_report';
+            $pdf = Pdf::loadView($viewName, compact('result'));
+            $bin = $pdf->output();
+
+            return $this->buildPdfResponse($bin, 'regular_slip', (string) $result->reference_id);
         }
 
         return response()->view('reports.personalization_report', compact('result', 'isPdf', 'autoPrint'));
@@ -98,6 +121,10 @@ class PdfReportController extends Controller
             abort(404);
         }
 
+        if ($result->service_type === 'personalization') {
+            $result = $this->syncPersonalizationStatus($result);
+        }
+
         $providerName = strtolower((string) ($result->provider_name ?? ''));
         $fallbackReason = 'unknown';
 
@@ -110,7 +137,7 @@ class PdfReportController extends Controller
                 ?? $result->response_data['_provider']
                 ?? '')
         );
-        $isRobost = str_contains($rawProvider, 'robosttech') || str_contains($rawProvider, 'robost');
+        $isRobost = str_contains($rawProvider, 'robosttech') || str_contains($rawProvider, 'robost') || $result->service_type === 'personalization';
 
         if ($isRobost) {
             $viewName = match ($type) {
@@ -644,5 +671,115 @@ class PdfReportController extends Controller
         }
 
         return false;
+    }
+
+    /**
+     * Poll provider status endpoint live for Personalization to retrieve real outcome, NIN, user_data, and pdf_base64
+     */
+    public function syncPersonalizationStatus(VerificationResult $result): VerificationResult
+    {
+        if ($result->service_type !== 'personalization') {
+            return $result;
+        }
+
+        $responseData = is_array($result->response_data) ? $result->response_data : [];
+
+        $hasNin = !empty($responseData['nin']) || !empty($responseData['user_data']['nin']) || !empty($responseData['data']['nin']);
+        $hasPdf = !empty($responseData['pdf_base64']) || !empty($responseData['data']['pdf_base64']) || !empty($responseData['user_data']['pdf_base64']);
+        $isAlreadyComplete = $result->status === 'successful' && ($hasNin || $hasPdf);
+
+        if ($isAlreadyComplete) {
+            return $result;
+        }
+
+        $apiCenter = ApiCenter::first();
+        if (!$apiCenter || empty($apiCenter->robosttech_api_key)) {
+            return $result;
+        }
+
+        $trackingId = trim((string) ($result->identifier ?: ($responseData['tracking_id'] ?? '')));
+        if ($trackingId === '') {
+            return $result;
+        }
+
+        $verificationCtrl = app(VerificationController::class);
+        $endpoint = $verificationCtrl->resolveRobostEndpoint(
+            (string) ($apiCenter->robosttech_endpoint_personalization ?: 'https://robosttech.com/api'),
+            'personalization_status'
+        );
+
+        try {
+            $response = Http::timeout(25)->withHeaders([
+                'api-key' => $apiCenter->robosttech_api_key,
+                'Content-Type' => 'application/json',
+            ])->post($endpoint, [
+                'tracking_id' => $trackingId,
+                'number' => $trackingId,
+            ]);
+
+            if ($response->successful()) {
+                $apiData = $response->json();
+                if (is_array($apiData)) {
+                    $rawReqStatus = $apiData['request_status'] ?? $apiData['data']['request_status'] ?? null;
+                    if (!$rawReqStatus && is_string($apiData['status'] ?? null)) {
+                        $rawReqStatus = $apiData['status'];
+                    }
+                    if (!$rawReqStatus && is_string($apiData['data']['status'] ?? null)) {
+                        $rawReqStatus = $apiData['data']['status'];
+                    }
+                    $resStatus = strtolower(trim((string) $rawReqStatus));
+
+                    $hasCompletedPayload = !empty($apiData['nin'])
+                        || !empty($apiData['data']['nin'])
+                        || !empty($apiData['user_data']['nin'])
+                        || !empty($apiData['pdf_base64'])
+                        || !empty($apiData['data']['pdf_base64'])
+                        || (!empty($apiData['user_data']) && is_array($apiData['user_data']) && (!empty($apiData['user_data']['firstname']) || !empty($apiData['user_data']['nin'])));
+
+                    $isCompleted = in_array($resStatus, ['completed', 'complete', 'successful', 'success', 'done', 'approved', 'active'], true) || $hasCompletedPayload;
+                    $isFailed = in_array($resStatus, ['failed', 'fail', 'rejected', 'error', 'record_not_found', 'not_found'], true);
+
+                    $mergedData = array_merge($responseData, $apiData);
+                    $userData = $apiData['user_data'] ?? $apiData['data']['user_data'] ?? $apiData['data'] ?? [];
+                    if (is_array($userData)) {
+                        $mergedData['user_data'] = $userData;
+                        foreach (['firstname', 'first_name', 'lastname', 'last_name', 'middlename', 'middle_name', 'dob', 'birthdate', 'gender', 'sex', 'photo', 'image', 'photo_base64', 'photoBase64', 'nin', 'phone', 'telephoneno'] as $f) {
+                            if (isset($userData[$f]) && (!isset($mergedData[$f]) || $mergedData[$f] === '')) {
+                                $mergedData[$f] = $userData[$f];
+                            }
+                        }
+                    }
+
+                    $nin = $apiData['nin'] ?? $apiData['data']['nin'] ?? ($userData['nin'] ?? null);
+                    if ($nin) {
+                        $mergedData['nin'] = $nin;
+                    }
+
+                    $pdfBase64 = $apiData['pdf_base64'] ?? $apiData['data']['pdf_base64'] ?? ($userData['pdf_base64'] ?? null);
+                    if (!empty($pdfBase64)) {
+                        $mergedData['pdf_base64'] = $pdfBase64;
+                    }
+
+                    if ($isCompleted) {
+                        $result->status = 'successful';
+                        $result->admin_note = $apiData['message'] ?? 'Personalization completed. NIN and profile active on NIMC.';
+                    } elseif ($isFailed) {
+                        $result->status = 'failed';
+                        $result->admin_note = $apiData['message'] ?? 'Personalization request failed or record not found.';
+                    }
+
+                    $result->response_data = $mergedData;
+                    $result->save();
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Personalization sync failed on report access', [
+                'result_id' => $result->id,
+                'identifier' => $trackingId,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return $result;
     }
 }

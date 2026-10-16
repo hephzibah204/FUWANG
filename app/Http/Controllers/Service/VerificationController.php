@@ -1833,28 +1833,50 @@ class VerificationController extends Controller
 
                 if ($response->successful()) {
                     $apiData = $response->json();
-                    $resStatus = strtolower((string) ($apiData['request_status'] ?? $apiData['status'] ?? $apiData['data']['request_status'] ?? $apiData['data']['status'] ?? ''));
+                    $rawReqStatus = $apiData['request_status'] ?? $apiData['data']['request_status'] ?? null;
+                    if (!$rawReqStatus && is_string($apiData['status'] ?? null)) {
+                        $rawReqStatus = $apiData['status'];
+                    }
+                    if (!$rawReqStatus && is_string($apiData['data']['status'] ?? null)) {
+                        $rawReqStatus = $apiData['data']['status'];
+                    }
+                    $resStatus = strtolower(trim((string) $rawReqStatus));
 
-                    $isCompleted = in_array($resStatus, ['completed', 'complete', 'successful', 'success', 'done', 'approved', 'active'], true);
+                    $hasCompletedPayload = !empty($apiData['nin'])
+                        || !empty($apiData['data']['nin'])
+                        || !empty($apiData['user_data']['nin'])
+                        || !empty($apiData['pdf_base64'])
+                        || !empty($apiData['data']['pdf_base64'])
+                        || (!empty($apiData['user_data']) && is_array($apiData['user_data']) && (!empty($apiData['user_data']['firstname']) || !empty($apiData['user_data']['nin'])));
+
+                    $isCompleted = in_array($resStatus, ['completed', 'complete', 'successful', 'success', 'done', 'approved', 'active'], true) || $hasCompletedPayload;
                     $isFailed = in_array($resStatus, ['failed', 'fail', 'rejected', 'error', 'record_not_found', 'not_found'], true);
 
                     $currentData = is_array($result->response_data) ? $result->response_data : [];
                     $mergedData = array_merge($currentData, is_array($apiData) ? $apiData : []);
 
+                    $userData = $apiData['user_data'] ?? $apiData['data']['user_data'] ?? $apiData['data'] ?? [];
+                    if (is_array($userData)) {
+                        $mergedData['user_data'] = $userData;
+                        foreach (['firstname', 'first_name', 'lastname', 'last_name', 'middlename', 'middle_name', 'dob', 'birthdate', 'gender', 'sex', 'photo', 'image', 'photo_base64', 'photoBase64', 'nin', 'phone', 'telephoneno'] as $f) {
+                            if (isset($userData[$f]) && (!isset($mergedData[$f]) || $mergedData[$f] === '')) {
+                                $mergedData[$f] = $userData[$f];
+                            }
+                        }
+                    }
+
+                    $nin = $apiData['nin'] ?? $apiData['data']['nin'] ?? ($userData['nin'] ?? null);
+                    if ($nin) {
+                        $mergedData['nin'] = $nin;
+                    }
+
+                    $pdfBase64 = $apiData['pdf_base64'] ?? $apiData['data']['pdf_base64'] ?? ($userData['pdf_base64'] ?? null);
+                    if (!empty($pdfBase64)) {
+                        $mergedData['pdf_base64'] = $pdfBase64;
+                    }
+
                     if ($isCompleted) {
                         $result->status = 'successful';
-                        $userData = $apiData['user_data'] ?? $apiData['data']['user_data'] ?? $apiData['data'] ?? [];
-                        $nin = $apiData['nin'] ?? $apiData['data']['nin'] ?? ($userData['nin'] ?? null);
-                        if ($nin) {
-                            $mergedData['nin'] = $nin;
-                        }
-                        if (!empty($userData) && is_array($userData)) {
-                            $mergedData['user_data'] = $userData;
-                        }
-                        $pdfBase64 = $apiData['pdf_base64'] ?? $apiData['data']['pdf_base64'] ?? ($userData['pdf_base64'] ?? null);
-                        if (!empty($pdfBase64)) {
-                            $mergedData['pdf_base64'] = $pdfBase64;
-                        }
                         $result->admin_note = $apiData['message'] ?? 'Personalization completed. NIN and profile active on NIMC.';
                     } elseif ($isFailed) {
                         $result->status = 'failed';
@@ -1942,10 +1964,45 @@ class VerificationController extends Controller
                     $data['_transaction_id'] = $debit['txId'];
                 }
 
-                $resStatus = strtolower((string) ($data['request_status'] ?? $data['status'] ?? $data['data']['request_status'] ?? $data['data']['status'] ?? ''));
-                $isCompleted = in_array($resStatus, ['completed', 'complete', 'successful', 'success', 'done', 'approved', 'active'], true);
+                $rawReqStatus = $data['request_status'] ?? $data['data']['request_status'] ?? null;
+                if (!$rawReqStatus && is_string($data['status'] ?? null)) {
+                    $rawReqStatus = $data['status'];
+                }
+                if (!$rawReqStatus && is_string($data['data']['status'] ?? null)) {
+                    $rawReqStatus = $data['data']['status'];
+                }
+                $resStatus = strtolower(trim((string) $rawReqStatus));
+
+                $hasCompletedPayload = !empty($data['nin']) 
+                    || !empty($data['data']['nin']) 
+                    || !empty($data['user_data']['nin']) 
+                    || !empty($data['pdf_base64']) 
+                    || !empty($data['data']['pdf_base64'])
+                    || (!empty($data['user_data']) && is_array($data['user_data']) && (!empty($data['user_data']['firstname']) || !empty($data['user_data']['nin'])));
+
+                $isCompleted = in_array($resStatus, ['completed', 'complete', 'successful', 'success', 'done', 'approved', 'active'], true) || $hasCompletedPayload;
                 $isFailed = in_array($resStatus, ['failed', 'fail', 'rejected', 'error'], true);
                 $initialStatus = $isCompleted ? 'successful' : ($isFailed ? 'failed' : 'pending');
+
+                $userData = $data['user_data'] ?? $data['data']['user_data'] ?? $data['data'] ?? [];
+                if (is_array($userData)) {
+                    $data['user_data'] = $userData;
+                    foreach (['firstname', 'first_name', 'lastname', 'last_name', 'middlename', 'middle_name', 'dob', 'birthdate', 'gender', 'sex', 'photo', 'image', 'photo_base64', 'photoBase64', 'nin', 'phone', 'telephoneno'] as $f) {
+                        if (isset($userData[$f]) && (!isset($data[$f]) || $data[$f] === '')) {
+                            $data[$f] = $userData[$f];
+                        }
+                    }
+                }
+
+                $nin = $data['nin'] ?? $data['data']['nin'] ?? ($userData['nin'] ?? null);
+                if ($nin) {
+                    $data['nin'] = $nin;
+                }
+
+                $pdfBase64 = $data['pdf_base64'] ?? $data['data']['pdf_base64'] ?? ($userData['pdf_base64'] ?? null);
+                if (!empty($pdfBase64)) {
+                    $data['pdf_base64'] = $pdfBase64;
+                }
 
                 $result = $this->storeResult($user, 'personalization', $trackingId, 'Robosttech', $data);
                 $result->status = $initialStatus;

@@ -1,3 +1,35 @@
+@php
+    $d = $result->response_data ?? [];
+    if (!is_array($d)) $d = [];
+    $status = strtolower((string)($result->status ?? 'pending'));
+    $isSuccess = in_array($status, ['successful', 'success', 'cleared', 'active', 'completed']);
+    $isPending = in_array($status, ['pending', 'waiting_for_review', 'processing', 'in_progress', 'queued']);
+    $isFailed = in_array($status, ['failed', 'rejected', 'error']);
+
+    $userData = $d['user_data'] ?? $d['data']['user_data'] ?? $d['data'] ?? [];
+    if (!is_array($userData)) $userData = [];
+
+    $nin = $d['nin'] ?? $userData['nin'] ?? $d['data']['nin'] ?? null;
+    $firstname = $userData['firstname'] ?? $userData['first_name'] ?? $d['firstname'] ?? $d['first_name'] ?? null;
+    $lastname = $userData['lastname'] ?? $userData['last_name'] ?? $userData['surname'] ?? $d['lastname'] ?? $d['surname'] ?? null;
+    $middlename = $userData['middlename'] ?? $userData['middle_name'] ?? $d['middlename'] ?? null;
+    $dob = $userData['birthdate'] ?? $userData['dob'] ?? $d['birthdate'] ?? $d['dob'] ?? null;
+    $gender = $userData['gender'] ?? $userData['sex'] ?? $d['gender'] ?? null;
+    $photo = $userData['photo'] ?? $userData['image'] ?? $userData['photo_base64'] ?? $userData['photoBase64'] ?? $d['photo'] ?? $d['image'] ?? null;
+    $pdfBase64 = $d['pdf_base64'] ?? $userData['pdf_base64'] ?? $d['data']['pdf_base64'] ?? null;
+
+    $applicantName = ($firstname || $lastname) ? trim("$lastname $firstname $middlename") : ($result->user?->fullname ?? 'Applicant');
+    $apiMessage = $d['message'] ?? ($isSuccess ? 'Identity record successfully personalized and activated.' : ($isPending ? 'Personalization ticket accepted for processing.' : 'Personalization processing could not be completed.'));
+
+    // Clean vendor names
+    $cleanApiMessage = preg_replace('/robosttech|dataverify|vuvaa/i', 'Gateway', (string) $apiMessage);
+
+    // Format NIN with spaces
+    $rawNin = preg_replace('/\D+/', '', (string)($nin ?? ''));
+    $formattedNin = (strlen($rawNin) === 11)
+        ? (substr($rawNin, 0, 4) . ' ' . substr($rawNin, 4, 3) . ' ' . substr($rawNin, 7))
+        : ($nin ?: 'Pending Verification');
+@endphp
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -195,39 +227,6 @@
             color: #8b5cf6;
             display: block;
         }
-
-        @php
-            $d = $result->response_data ?? [];
-            if (!is_array($d)) $d = [];
-            $status = strtolower((string)($result->status ?? 'pending'));
-            $isSuccess = in_array($status, ['successful', 'success', 'cleared', 'active', 'completed']);
-            $isPending = in_array($status, ['pending', 'waiting_for_review', 'processing', 'in_progress', 'queued']);
-            $isFailed = in_array($status, ['failed', 'rejected', 'error']);
-
-            $userData = $d['user_data'] ?? $d['data']['user_data'] ?? $d['data'] ?? [];
-            if (!is_array($userData)) $userData = [];
-
-            $nin = $d['nin'] ?? $userData['nin'] ?? $d['data']['nin'] ?? null;
-            $firstname = $userData['firstname'] ?? $userData['first_name'] ?? $d['firstname'] ?? $d['first_name'] ?? null;
-            $lastname = $userData['lastname'] ?? $userData['last_name'] ?? $userData['surname'] ?? $d['lastname'] ?? $d['surname'] ?? null;
-            $middlename = $userData['middlename'] ?? $userData['middle_name'] ?? $d['middlename'] ?? null;
-            $dob = $userData['birthdate'] ?? $userData['dob'] ?? $d['birthdate'] ?? $d['dob'] ?? null;
-            $gender = $userData['gender'] ?? $userData['sex'] ?? $d['gender'] ?? null;
-            $photo = $userData['photo'] ?? $userData['image'] ?? $d['photo'] ?? $d['image'] ?? null;
-            $pdfBase64 = $d['pdf_base64'] ?? $userData['pdf_base64'] ?? $d['data']['pdf_base64'] ?? null;
-
-            $applicantName = ($firstname || $lastname) ? trim("$lastname $firstname $middlename") : ($result->user?->fullname ?? 'Applicant');
-            $apiMessage = $d['message'] ?? ($isSuccess ? 'Identity record successfully personalized and activated.' : ($isPending ? 'Personalization ticket accepted for processing.' : 'Personalization processing could not be completed.'));
-
-            // Clean vendor names
-            $cleanApiMessage = preg_replace('/robosttech|dataverify|vuvaa/i', 'Gateway', (string) $apiMessage);
-
-            // Format NIN with spaces
-            $rawNin = preg_replace('/\D+/', '', (string)($nin ?? ''));
-            $formattedNin = (strlen($rawNin) === 11)
-                ? (substr($rawNin, 0, 4) . ' ' . substr($rawNin, 4, 3) . ' ' . substr($rawNin, 7))
-                : ($nin ?: 'Pending Verification');
-        @endphp
 
         /* Status Hero */
         .status-hero {
