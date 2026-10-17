@@ -16,8 +16,8 @@
                 <form method="POST" action="{{ route('admin.verifications.nin_validation.mode') }}" class="d-inline-flex align-items-center m-0">
                     @csrf
                     <div class="btn-group btn-group-sm" role="group">
-                        <button type="submit" name="mode" value="auto" class="btn btn-sm py-1 px-3 {{ ($currentMode ?? 'auto') === 'auto' ? 'btn-info font-weight-bold shadow-sm' : 'btn-outline-secondary text-white-50 border-0' }}" title="Automatically selects configured provider and fails over if needed">
-                            <i class="fa-solid fa-arrows-split-up-and-left me-1"></i> Auto (Smart)
+                        <button type="submit" name="mode" value="auto" class="btn btn-sm py-1 px-3 {{ in_array(($currentMode ?? 'auto'), ['auto', 'api'], true) ? 'btn-info font-weight-bold shadow-sm' : 'btn-outline-secondary text-white-50 border-0' }}" title="Automatically selects configured provider and fails over if needed">
+                            <i class="fa-solid fa-arrows-split-up-and-left me-1"></i> Auto (Smart API)
                         </button>
                         <button type="submit" name="mode" value="dataverify" class="btn btn-sm py-1 px-3 {{ ($currentMode ?? 'auto') === 'dataverify' ? 'btn-success font-weight-bold shadow-sm' : 'btn-outline-secondary text-white-50 border-0' }}">
                             <i class="fa-solid fa-shield-halved me-1"></i> DataVerify API
@@ -96,16 +96,29 @@
                     </thead>
                     <tbody>
                         @forelse($requests as $req)
-                            @php $d = $req->response_data ?? []; @endphp
+                            @php 
+                                $d = $req->response_data ?? []; 
+                                $prov = (string) ($req->provider_name ?? '');
+                                $provLower = strtolower($prov);
+                                $isManual = in_array($provLower, ['admin_manual', 'manual', 'manual reporting', 'manual vetting', 'manual admin review'], true) || empty($prov);
+                            @endphp
                             <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
                                 <td><code>{{ $req->reference_id ?? ('REF-' . $req->id) }}</code></td>
                                 <td>
-                                    @if(($req->provider_name ?? '') === 'Robosttech')
-                                        <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-50 py-1 px-2">
+                                    @if(str_contains($provLower, 'robost'))
+                                        <span class="badge bg-warning bg-opacity-25 text-warning border border-warning border-opacity-50 py-1 px-2">
                                             <i class="fa-solid fa-robot me-1"></i> Robosttech
                                         </span>
+                                    @elseif(str_contains($provLower, 'dataverify'))
+                                        <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-50 py-1 px-2">
+                                            <i class="fa-solid fa-shield-halved me-1"></i> DataVerify
+                                        </span>
+                                    @elseif(!$isManual)
+                                        <span class="badge bg-info bg-opacity-25 text-info border border-info border-opacity-50 py-1 px-2">
+                                            <i class="fa-solid fa-bolt me-1"></i> {{ $prov }}
+                                        </span>
                                     @else
-                                        <span class="badge bg-primary bg-opacity-25 text-info border border-info border-opacity-50 py-1 px-2">
+                                        <span class="badge bg-primary bg-opacity-25 text-light border border-secondary border-opacity-50 py-1 px-2">
                                             <i class="fa-solid fa-user-check me-1"></i> Manual
                                         </span>
                                     @endif

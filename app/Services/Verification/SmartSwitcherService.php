@@ -665,17 +665,15 @@ class SmartSwitcherService
             return in_array($mode, ['nin', 'selfie', 'share_code', 'requery'], true);
         }
 
+        $ident = strtolower((string) ($provider->provider_identifier ?: ''));
+
+        if ($ident === 'robosttech' || $ident === 'dataverify') {
+            return in_array($mode, ['nin', 'phone', 'demographic', 'tracking', 'validation', 'validation_status', 'clearance', 'clearance_status', 'ipe', 'ipe_clearance'], true);
+        }
+
         $modes = is_array($provider->supported_modes) ? $provider->supported_modes : [];
         if (!empty($modes)) {
             return in_array($mode, $modes, true);
-        }
-
-        if (strtolower((string) $provider->provider_identifier) === 'robosttech') {
-            return in_array($mode, ['nin', 'phone', 'demographic', 'tracking', 'validation', 'validation_status', 'clearance', 'clearance_status', 'ipe', 'ipe_clearance'], true);
-        }
-
-        if (strtolower((string) $provider->provider_identifier) === 'dataverify') {
-            return in_array($mode, ['nin', 'phone', 'demographic', 'tracking', 'validation', 'validation_status', 'clearance', 'clearance_status', 'ipe', 'ipe_clearance'], true);
         }
 
         return $provider->service_type === 'nin_face_verification'

@@ -980,10 +980,10 @@ class VerificationController extends Controller
         $activeProvider = $this->preferredValidationProvider();
         if ($validationMode === 'manual') {
             $providerLabel = 'Manual Reporting';
-        } elseif ($validationMode === 'auto') {
+        } elseif (in_array($validationMode, ['auto', 'api'], true)) {
             $providerLabel = 'Auto (' . ($activeProvider?->name ?: 'Smart API Failover') . ')';
         } else {
-            $providerLabel = $activeProvider?->name ?: ucfirst($validationMode);
+            $providerLabel = $activeProvider?->name ?: (ucfirst($validationMode) . ' API');
         }
 
         return view('services.identity.validation', compact('history', 'price', 'providerLabel', 'validationMode'));
@@ -1026,7 +1026,18 @@ class VerificationController extends Controller
 
             $providerIdent = strtolower((string) ($existing?->provider_name ?? ''));
             $exData = $existing?->response_data ?? [];
-            $isManualRecord = ($validationMode === 'manual') || ($existing && in_array($existing->provider_name, ['ADMIN_MANUAL', 'Manual Reporting', 'Manual Vetting', 'Manual Admin Review'], true));
+
+            $dvProvider = CustomApi::where('provider_identifier', 'dataverify')->where('status', true)->first();
+            $robostProvider = CustomApi::where('provider_identifier', 'robosttech')->where('status', true)->first();
+            $hasDv = $this->hasDataVerifyCredentials($dvProvider);
+            $hasRobost = $this->hasRobosttechCredentials($robostProvider);
+
+            $isManualMode = ($validationMode === 'manual');
+            $hasApiEngine = ($hasDv || $hasRobost);
+            $recordIsExplicitlyManual = $existing && in_array($existing->provider_name, ['ADMIN_MANUAL', 'Manual Reporting', 'Manual Vetting', 'Manual Admin Review'], true);
+
+            // If system is explicitly in manual mode, OR if no API credentials exist and record was created for manual vetting
+            $isManualRecord = $isManualMode || (!$hasApiEngine && $recordIsExplicitlyManual);
 
             if ($isManualRecord) {
                 if (!$existing) {
@@ -1044,7 +1055,7 @@ class VerificationController extends Controller
 
                 return response()->json([
                     'status' => true,
-                    'message' => 'Validation status retrieved (Manual Review).',
+                    'message' => 'Validation status retrieved.',
                     'data' => [
                         'nin' => $existing->identifier,
                         'reference_id' => $existing->reference_id,
@@ -2368,13 +2379,14 @@ class VerificationController extends Controller
     public function preferredValidationProvider(): ?CustomApi
     {
         $mode = \App\Models\SystemSetting::get('nin_validation_mode', 'auto');
+        if ($mode === 'api') {
+            $mode = 'auto';
+        }
+
+        $valTypes = ['validation', 'nin_validation', 'nin_verification', 'nin', 'identity'];
 
         $dvProvider = CustomApi::query()
-            ->where(function ($q) {
-                $q->where('service_type', 'validation')
-                  ->orWhere('service_type', 'nin_validation')
-                  ->orWhere('service_type', 'nin_verification');
-            })
+            ->whereIn('service_type', $valTypes)
             ->where('status', true)
             ->where(function ($q) {
                 $q->where('provider_identifier', 'dataverify')
@@ -2384,11 +2396,7 @@ class VerificationController extends Controller
             ->first();
 
         $robostProvider = CustomApi::query()
-            ->where(function ($q) {
-                $q->where('service_type', 'validation')
-                  ->orWhere('service_type', 'nin_validation')
-                  ->orWhere('service_type', 'nin_verification');
-            })
+            ->whereIn('service_type', $valTypes)
             ->where('status', true)
             ->where(function ($q) {
                 $q->where('provider_identifier', 'robosttech')
@@ -2420,7 +2428,7 @@ class VerificationController extends Controller
             return $robostProvider ?: $dvProvider;
         }
 
-        // Auto mode: prioritize whichever provider actually has active credentials configured
+        // Auto / API mode: prioritize whichever provider actually has active credentials configured
         if ($hasDv && !$hasRobost) {
             return $dvProvider ?: $robostProvider;
         }
@@ -2435,7 +2443,7 @@ class VerificationController extends Controller
         }
 
         return $dvProvider ?: $robostProvider ?: CustomApi::query()
-            ->whereIn('service_type', ['validation', 'nin_validation'])
+            ->whereIn('service_type', $valTypes)
             ->where('status', true)
             ->orderBy('priority', 'asc')
             ->first();

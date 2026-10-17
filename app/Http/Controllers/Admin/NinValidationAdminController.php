@@ -51,12 +51,14 @@ class NinValidationAdminController extends Controller
     public function updateMode(Request $request)
     {
         $request->validate([
-            'mode' => 'required|string|in:manual,robosttech,dataverify,auto',
+            'mode' => 'required|string|in:manual,robosttech,dataverify,auto,api',
         ]);
 
-        SystemSetting::set('nin_validation_mode', $request->mode, 'services');
+        $mode = $request->mode === 'api' ? 'auto' : $request->mode;
 
-        $label = match($request->mode) {
+        SystemSetting::set('nin_validation_mode', $mode, 'services');
+
+        $label = match($mode) {
             'dataverify' => 'DataVerify API',
             'robosttech' => 'Robosttech API',
             'auto' => 'Auto (Smart Failover: DataVerify & Robosttech)',

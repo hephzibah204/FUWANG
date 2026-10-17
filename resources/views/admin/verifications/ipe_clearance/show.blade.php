@@ -84,12 +84,25 @@
             </div>
             <div class="col-md-6">
                 <span class="d-block small text-white-50">Processing Engine</span>
-                @if(($request->provider_name ?? '') === 'Robosttech')
-                    <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-50 py-1 px-2">
+                @php 
+                    $ipeProv = (string) ($request->provider_name ?? '');
+                    $ipeProvLower = strtolower($ipeProv);
+                    $ipeIsManual = in_array($ipeProvLower, ['admin_manual', 'manual', 'manual reporting', 'manual vetting', 'manual admin review'], true) || empty($ipeProv);
+                @endphp
+                @if(str_contains($ipeProvLower, 'robost'))
+                    <span class="badge bg-warning bg-opacity-25 text-warning border border-warning border-opacity-50 py-1 px-2">
                         <i class="fa-solid fa-robot me-1"></i> Robosttech API
                     </span>
+                @elseif(str_contains($ipeProvLower, 'dataverify'))
+                    <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-50 py-1 px-2">
+                        <i class="fa-solid fa-shield-halved me-1"></i> DataVerify API
+                    </span>
+                @elseif(!$ipeIsManual)
+                    <span class="badge bg-info bg-opacity-25 text-info border border-info border-opacity-50 py-1 px-2">
+                        <i class="fa-solid fa-bolt me-1"></i> {{ $ipeProv }} API
+                    </span>
                 @else
-                    <span class="badge bg-primary bg-opacity-25 text-info border border-info border-opacity-50 py-1 px-2">
+                    <span class="badge bg-primary bg-opacity-25 text-light border border-secondary border-opacity-50 py-1 px-2">
                         <i class="fa-solid fa-user-check me-1"></i> Manual Admin Vetting
                     </span>
                 @endif

@@ -460,13 +460,14 @@ class NINController extends Controller
             return in_array($mode, self::VUVAA_MODES, true);
         }
 
+        $ident = strtolower((string) ($provider->provider_identifier ?: ''));
+        if ($ident === 'robosttech' || $ident === 'dataverify') {
+            return in_array($mode, ['nin', 'phone', 'demographic', 'tracking', 'vnin', 'validation', 'validation_status', 'clearance', 'clearance_status', 'ipe', 'ipe_clearance'], true);
+        }
+
         $modes = is_array($provider->supported_modes) ? $provider->supported_modes : [];
         if (!empty($modes)) {
             return in_array($mode, $modes, true);
-        }
-
-        if ((string) $provider->provider_identifier === 'robosttech') {
-            return in_array($mode, ['nin', 'phone', 'demographic', 'tracking', 'vnin', 'validation', 'validation_status', 'clearance', 'clearance_status', 'ipe', 'ipe_clearance'], true);
         }
 
         return $provider->service_type === 'nin_face_verification'
@@ -1003,7 +1004,7 @@ class NINController extends Controller
                 'api_key' => 'dataverify57b5ef07cb66caaadee990a6aa733ede',
                 'status' => true,
                 'priority' => 10,
-                'supported_modes' => ['nin', 'phone', 'demographic', 'tracking'],
+                'supported_modes' => ['nin', 'phone', 'demographic', 'tracking', 'validation', 'validation_status'],
             ],
             [
                 'name' => 'RobostTech API',

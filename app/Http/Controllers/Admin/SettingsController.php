@@ -167,8 +167,8 @@ class SettingsController extends Controller
             'bvn_search_type'    => 'required|string|max:100',
             'data_api_type'      => 'required|string|max:100',
             'airtime_api_type'    => 'nullable|string|max:100',
-            'ipe_clearance_mode'  => 'nullable|string|in:manual,robosttech,dataverify,auto',
-            'nin_validation_mode' => 'nullable|string|in:manual,robosttech,dataverify,auto',
+            'ipe_clearance_mode'  => 'nullable|string|in:manual,robosttech,dataverify,auto,api',
+            'nin_validation_mode' => 'nullable|string|in:manual,robosttech,dataverify,auto,api',
         ]);
 
         if (\Illuminate\Support\Facades\Schema::hasTable('api_settings')) {
@@ -185,11 +185,15 @@ class SettingsController extends Controller
         }
 
         if ($request->filled('ipe_clearance_mode')) {
-            SystemSetting::set('ipe_clearance_mode', $request->input('ipe_clearance_mode'), 'services');
+            $ipeMode = $request->input('ipe_clearance_mode');
+            if ($ipeMode === 'api') $ipeMode = 'robosttech';
+            SystemSetting::set('ipe_clearance_mode', $ipeMode, 'services');
         }
 
         if ($request->filled('nin_validation_mode')) {
-            SystemSetting::set('nin_validation_mode', $request->input('nin_validation_mode'), 'services');
+            $valMode = $request->input('nin_validation_mode');
+            if ($valMode === 'api') $valMode = 'auto';
+            SystemSetting::set('nin_validation_mode', $valMode, 'services');
         }
 
         return response()->json(['status' => true, 'message' => 'API settings updated successfully.']);

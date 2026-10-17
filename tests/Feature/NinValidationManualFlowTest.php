@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\AccountBalance;
+use App\Models\Admin;
 use App\Models\ApiCenter;
 use App\Models\SystemSetting;
 use App\Models\User;
@@ -44,6 +45,17 @@ class NinValidationManualFlowTest extends TestCase
         ]);
 
         return $user;
+    }
+
+    private function createAdmin(): Admin
+    {
+        return Admin::create([
+            'name' => 'Super Admin',
+            'username' => 'admin_' . uniqid(),
+            'email' => 'admin_' . uniqid() . '@fuwa.ng',
+            'password' => Hash::make('Secret123!'),
+            'is_super_admin' => true,
+        ]);
     }
 
     public function test_user_can_submit_nin_validation_in_manual_mode(): void
@@ -246,5 +258,89 @@ class NinValidationManualFlowTest extends TestCase
         $record->refresh();
         $this->assertEquals('successful', $record->status);
         $this->assertEquals('Validated via bulk NIMC upload', $record->admin_note);
+    }
+
+    public function test_admin_mode_switcher_accepts_api_alias(): void
+    {
+        $admin = $this->createAdmin();
+
+        // Switch to 'api' (alias for auto/smart)
+        $res = $this->actingAs($admin, 'admin')->post(route('admin.verifications.nin_validation.mode'), [
+            'mode' => 'api',
+        ]);
+        $res->assertRedirect();
+        $this->assertEquals('auto', SystemSetting::get('nin_validation_mode'));
+
+        $indexRes = $this->actingAs($admin, 'admin')->get(route('admin.verifications.nin_validation.index'));
+        $indexRes->assertOk();
+        $indexRes->assertSee('Auto (Smart API)');
+    }
+
+    public function test_desk_and_detail_views_display_correct_api_badges(): void
+    {
+        $admin = $this->createAdmin();
+        $user = $this->makeUser(500.00);
+
+        $dvRecord = VerificationResult::create([
+            'user_id' => $user->id,
+            'service_type' => 'validation',
+            'identifier' => '11112222333',
+            'provider_name' => 'DataVerify API',
+            'status' => 'waiting_for_review',
+            'reference_id' => 'VAL-DV-001',
+            'response_data' => ['nin' => '11112222333'],
+        ]);
+
+        $robostRecord = VerificationResult::create([
+            'user_id' => $user->id,
+            'service_type' => 'validation',
+            'identifier' => '44445555666',
+            'provider_name' => 'Robosttech API',
+            'status' => 'waiting_for_review',
+            'reference_id' => 'VAL-ROBO-001',
+            'response_data' => ['nin' => '44445555666'],
+        ]);
+
+        // Check index view
+        $indexRes = $this->actingAs($admin, 'admin')->get(route('admin.verifications.nin_validation.index'));
+        $indexRes->assertOk();
+        $indexRes->assertSee('DataVerify');
+        $indexRes->assertSee('Robosttech');
+
+        // Check show views
+        $dvShow = $this->actingAs($admin, 'admin')->get(route('admin.verifications.nin_validation.show', $dvRecord->id));
+        $dvShow->assertOk();
+        $dvShow->assertSee('DataVerify API');
+        $dvShow->assertDontSee('Manual Admin Vetting');
+
+        $robostShow = $this->actingAs($admin, 'admin')->get(route('admin.verifications.nin_validation.show', $robostRecord->id));
+        $robostShow->assertOk();
+        $robostShow->assertSee('Robosttech API');
+        $robostShow->assertDontSee('Manual Admin Vetting');
+    }
+
+    public function test_validation_status_check_in_api_mode_does_not_say_manual_review(): void
+    {
+        SystemSetting::set('nin_validation_mode', 'auto');
+        $user = $this->makeUser(1000.00);
+
+        VerificationResult::create([
+            'user_id' => $user->id,
+            'service_type' => 'validation',
+            'identifier' => '77889900112',
+            'provider_name' => 'DataVerify API',
+            'status' => 'waiting_for_review',
+            'reference_id' => 'VAL-CHECK-001',
+            'response_data' => ['nin' => '77889900112'],
+        ]);
+
+        $response = $this->actingAs($user)->postJson(route('services.validation.verify'), [
+            'mode' => 'status',
+            'number' => '77889900112',
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('status', true);
+        $response->assertJsonPath('message', 'Validation status retrieved.');
     }
 }
