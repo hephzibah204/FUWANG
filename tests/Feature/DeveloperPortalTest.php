@@ -24,12 +24,19 @@ class DeveloperPortalTest extends TestCase
             'username' => 'dev_user_01',
             'email' => 'dev@example.com',
             'password' => Hash::make('Password@123'),
+            'api_access_status' => 'approved',
         ]);
         $user->forceFill(['email_verified_at' => now()])->save();
 
         $this->actingAs($user)
             ->get('/developer')
-            ->assertOk();
+            ->assertOk()
+            ->assertSee('₦100.00');
+
+        $this->actingAs($user)
+            ->get(route('developer.docs'))
+            ->assertOk()
+            ->assertSee('₦100.00');
 
         $res = $this->actingAs($user)
             ->postJson(route('developer.tokens.create'), [

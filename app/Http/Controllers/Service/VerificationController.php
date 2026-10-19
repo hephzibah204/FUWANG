@@ -1214,7 +1214,8 @@ class VerificationController extends Controller
         }
 
         // Mode: Submit new validation request
-        $price = VerificationPrice::first()->validation_price ?? 700;
+        $defaultValPrice = (float) (VerificationPrice::first()->validation_price ?? 500);
+        $price = $user ? (float) $user->getDeveloperApiPrice('developer_api_nin_validation_price', $defaultValPrice) : $defaultValPrice;
         $wallet = app(WalletService::class);
         $debit = $wallet->debit($user, (float) $price, 'Document Validation (' . $ninNumber . ')', 'VAL');
         if (!$debit['ok']) {
@@ -1704,7 +1705,8 @@ class VerificationController extends Controller
         }
 
         // Mode: Submit new clearance request
-        $price = VerificationPrice::first()->ipe_clearance_price ?? 700;
+        $defaultClearPrice = (float) (VerificationPrice::first()->ipe_clearance_price ?? 700);
+        $price = $user ? (float) $user->getDeveloperApiPrice('developer_api_ipe_clearance_price', $defaultClearPrice) : $defaultClearPrice;
         $wallet = app(WalletService::class);
         $debit = $wallet->debit($user, (float) $price, 'IPE Clearance Submission (' . $trackingId . ')', 'CLEAR');
         if (!$debit['ok']) {

@@ -263,9 +263,34 @@ class VtuHubService
             }
         }
 
+        $discount = 0.0;
+        $isDeveloper = ($params['is_developer_api'] ?? false)
+            || ($user?->api_access_status === 'approved')
+            || ($user?->hasCustomApiPricing() ?? false);
+
+        if ($isDeveloper && $user) {
+            if ($serviceType === 'vtu_airtime') {
+                $discRate = (float) $user->getDeveloperApiPrice('developer_api_vtu_airtime_discount', (float) \App\Models\SystemSetting::get('developer_api_vtu_airtime_discount', 2.0));
+                if ($discRate > 0) {
+                    $discount = round(($requestedAmount * $discRate) / 100, 2);
+                }
+            } elseif ($serviceType === 'vtu_data') {
+                $discRate = (float) $user->getDeveloperApiPrice('developer_api_vtu_data_discount', (float) \App\Models\SystemSetting::get('developer_api_vtu_data_discount', 3.0));
+                if ($discRate > 0) {
+                    $discount = round(($requestedAmount * $discRate) / 100, 2);
+                }
+            } elseif ($serviceType === 'vtu_cable_tv') {
+                $customFee = $user->getDeveloperApiPrice('developer_api_vtu_cable_fee', (float) \App\Models\SystemSetting::get('developer_api_vtu_cable_fee', $fee));
+                $fee = (float) $customFee;
+            } elseif ($serviceType === 'vtu_electricity') {
+                $customFee = $user->getDeveloperApiPrice('developer_api_vtu_electricity_fee', (float) \App\Models\SystemSetting::get('developer_api_vtu_electricity_fee', $fee));
+                $fee = (float) $customFee;
+            }
+        }
+
         $total = $direction === 'credit'
             ? max(0, $requestedAmount - $fee)
-            : ($requestedAmount + $fee);
+            : max(0, ($requestedAmount - $discount) + $fee);
 
         $txId = (string) ($params['request_id'] ?? '');
         if ($txId !== '') {
@@ -398,6 +423,7 @@ class VtuHubService
                     'breakdown' => [
                         'direction' => $direction,
                         'amount' => $requestedAmount,
+                        'discount' => $discount,
                         'fee' => $fee,
                         'total' => $total,
                     ],

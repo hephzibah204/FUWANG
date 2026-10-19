@@ -54,15 +54,42 @@
                 </section>
 
                 <section id="pricing" class="mb-5">
-                    <h4 class="fw-bold border-bottom border-white-10 pb-2 mb-4">2. Developer Pricing</h4>
-                    <div class="table-responsive">
-                        <table class="table table-borderless table-sm small text-white-50 mb-0">
-                            <tbody>
-                                <tr><td width="220" class="text-white">NIN Verification</td><td>₦{{ number_format($developerPricing['developer_api_nin_price'], 2) }}</td></tr>
-                                <tr><td class="text-white">BVN Basic</td><td>₦{{ number_format($developerPricing['developer_api_bvn_basic_price'], 2) }}</td></tr>
-                                <tr><td class="text-white">BVN Premium</td><td>₦{{ number_format($developerPricing['developer_api_bvn_premium_price'], 2) }}</td></tr>
-                            </tbody>
-                        </table>
+                    <div class="d-flex align-items-center justify-content-between border-bottom border-white-10 pb-2 mb-4">
+                        <h4 class="fw-bold mb-0">2. Developer Pricing & Rates</h4>
+                        @if($user && $user->hasCustomApiPricing())
+                            <span class="badge badge-warning text-dark font-weight-bold px-3 py-1 rounded-pill"><i class="fa fa-gem mr-1"></i>Custom VIP Rates</span>
+                        @endif
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3 mb-md-0">
+                            <h6 class="text-info text-uppercase small fw-bold mb-2">Identity & Verification</h6>
+                            <div class="table-responsive">
+                                <table class="table table-borderless table-sm small text-white-50 mb-0">
+                                    <tbody>
+                                        <tr><td width="200" class="text-white">NIN Verification</td><td class="text-right text-white font-weight-bold">₦{{ number_format($developerPricing['developer_api_nin_price'], 2) }}</td></tr>
+                                        <tr><td class="text-white">NIN Validation</td><td class="text-right text-white font-weight-bold">₦{{ number_format($developerPricing['developer_api_nin_validation_price'], 2) }}</td></tr>
+                                        <tr><td class="text-white">IPE Clearance</td><td class="text-right text-white font-weight-bold">₦{{ number_format($developerPricing['developer_api_ipe_clearance_price'], 2) }}</td></tr>
+                                        <tr><td class="text-white">BVN Basic</td><td class="text-right text-white font-weight-bold">₦{{ number_format($developerPricing['developer_api_bvn_basic_price'], 2) }}</td></tr>
+                                        <tr><td class="text-white">BVN Premium</td><td class="text-right text-white font-weight-bold">₦{{ number_format($developerPricing['developer_api_bvn_premium_price'], 2) }}</td></tr>
+                                        <tr><td class="text-white">CAC Verification</td><td class="text-right text-white font-weight-bold">₦{{ number_format($developerPricing['developer_api_cac_price'], 2) }}</td></tr>
+                                        <tr><td class="text-white">Driver's License</td><td class="text-right text-white font-weight-bold">₦{{ number_format($developerPricing['developer_api_drivers_license_price'], 2) }}</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-warning text-uppercase small fw-bold mb-2">VTU Telecom & Bills</h6>
+                            <div class="table-responsive">
+                                <table class="table table-borderless table-sm small text-white-50 mb-0">
+                                    <tbody>
+                                        <tr><td width="200" class="text-white">Airtime Purchase</td><td class="text-right text-success font-weight-bold">{{ number_format($developerPricing['developer_api_vtu_airtime_discount'], 1) }}% Discount</td></tr>
+                                        <tr><td class="text-white">Data Bundles</td><td class="text-right text-success font-weight-bold">{{ number_format($developerPricing['developer_api_vtu_data_discount'], 1) }}% Discount</td></tr>
+                                        <tr><td class="text-white">Cable TV</td><td class="text-right text-white font-weight-bold">₦{{ number_format($developerPricing['developer_api_vtu_cable_fee'], 2) }} fee</td></tr>
+                                        <tr><td class="text-white">Electricity Bill</td><td class="text-right text-white font-weight-bold">₦{{ number_format($developerPricing['developer_api_vtu_electricity_fee'], 2) }} fee</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </section>
 

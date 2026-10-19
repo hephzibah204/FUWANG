@@ -248,6 +248,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/developer/sandbox', [App\Http\Controllers\DeveloperPortalController::class, 'sandbox'])->name('developer.sandbox');
     Route::post('/developer/sandbox/validate-key', [App\Http\Controllers\DeveloperPortalController::class, 'validateKey'])->name('developer.sandbox.validate_key');
     Route::post('/developer/sandbox/execute', [App\Http\Controllers\DeveloperPortalController::class, 'executeSandbox'])->name('developer.sandbox.execute');
+    Route::post('/developer/apply', [App\Http\Controllers\DeveloperPortalController::class, 'apply'])->name('developer.apply');
     Route::post('/developer/tokens', [App\Http\Controllers\DeveloperPortalController::class, 'createToken'])->name('developer.tokens.create');
     Route::post('/developer/tokens/{id}/revoke', [App\Http\Controllers\DeveloperPortalController::class, 'revokeToken'])->name('developer.tokens.revoke');
     Route::get('/developer/openapi/v1', [App\Http\Controllers\DeveloperPortalController::class, 'openapiV1'])->name('developer.openapi.v1');
@@ -672,6 +673,7 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
             Route::middleware('admin.security')->group(function () {
                 Route::get('/developer-api', [App\Http\Controllers\Admin\DeveloperApiAdminController::class, 'index'])->name('developer_api.index');
                 Route::post('/developer-api/pricing', [App\Http\Controllers\Admin\DeveloperApiAdminController::class, 'updatePricing'])->name('developer_api.pricing');
+                Route::post('/developer-api/users/{user}/pricing', [App\Http\Controllers\Admin\DeveloperApiAdminController::class, 'updateUserPricing'])->name('developer_api.user_pricing');
                 Route::post('/developer-api/settings', [App\Http\Controllers\Admin\DeveloperApiAdminController::class, 'updateSettings'])->name('developer_api.settings');
                 Route::post('/developer-api/docs', [App\Http\Controllers\Admin\DeveloperApiAdminController::class, 'updateDocs'])->name('developer_api.docs');
                 Route::post('/developer-api/endpoints', [App\Http\Controllers\Admin\DeveloperApiAdminController::class, 'updateEndpoints'])->name('developer_api.endpoints');

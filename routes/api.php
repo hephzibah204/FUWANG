@@ -52,6 +52,9 @@ Route::prefix('v1')->group(function () {
 
         Route::post('/verifications/nin', [\App\Http\Controllers\Api\VerificationController::class, 'verifyNin'])->middleware('kyc.enforce');
         Route::post('/verifications/bvn', [\App\Http\Controllers\Api\VerificationController::class, 'verifyBvn'])->middleware('kyc.enforce');
+        Route::post('/verifications/clearance', [\App\Http\Controllers\Api\VerificationController::class, 'verifyClearance'])->middleware('kyc.enforce');
+        Route::post('/verifications/ipe', [\App\Http\Controllers\Api\VerificationController::class, 'verifyClearance'])->middleware('kyc.enforce');
+        Route::post('/verifications/validation', [\App\Http\Controllers\Api\VerificationController::class, 'verifyValidation'])->middleware('kyc.enforce');
         Route::get('/verifications/{id}', [\App\Http\Controllers\Api\VerificationController::class, 'getResult']);
         Route::get('/verifications/nin/slip/{id}/{type}', [\App\Http\Controllers\Service\PdfReportController::class, 'ninSlip']);
         Route::get('/verifications/report/{id}', [\App\Http\Controllers\Service\PdfReportController::class, 'verificationReport']);

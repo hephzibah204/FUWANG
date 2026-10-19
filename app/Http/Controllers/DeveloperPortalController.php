@@ -21,14 +21,63 @@ class DeveloperPortalController extends Controller
 
         $baseUrl = $request->getSchemeAndHttpHost() . '/api/v1';
         $endpoints = $catalog->enabled();
-        $developerPricing = [
-            'developer_api_nin_price' => (float) SystemSetting::get('developer_api_nin_price', 100),
-            'developer_api_bvn_basic_price' => (float) SystemSetting::get('developer_api_bvn_basic_price', 100),
-            'developer_api_bvn_premium_price' => (float) SystemSetting::get('developer_api_bvn_premium_price', 500),
-        ];
+        $developerPricing = $this->resolveDeveloperPricing($user);
 
-        return view('developer.portal', compact('tokens', 'baseUrl', 'endpoints', 'developerPricing'));
+        return view('developer.portal', compact('tokens', 'baseUrl', 'endpoints', 'developerPricing', 'user'));
     }
+
+    public function apply(Request $request)
+    {
+        $user = $request->user();
+
+        if ($user->api_access_status === 'approved') {
+            if ($request->expectsJson()) {
+                return response()->json(['status' => false, 'message' => 'Your API access is already approved.'], 400);
+            }
+            return back()->with('info', 'Your API access is already approved.');
+        }
+
+        $data = $request->validate([
+            'website' => ['required', 'string', 'max:255'],
+            'intended_use' => ['required', 'string', 'max:1500'],
+            'company_name' => ['nullable', 'string', 'max:150'],
+            'estimated_monthly_volume' => ['nullable', 'string', 'max:100'],
+        ]);
+
+        $website = trim($data['website']);
+        if (!preg_match('~^https?://~i', $website)) {
+            $website = 'https://' . $website;
+        }
+
+        $approveByDefault = filter_var(SystemSetting::get('api_approve_by_default', false), FILTER_VALIDATE_BOOL);
+        $status = $approveByDefault ? 'approved' : 'pending';
+
+        $details = $user->api_application_details ?? [];
+        $details['website'] = $website;
+        $details['intended_use'] = $data['intended_use'];
+        $details['company_name'] = $data['company_name'] ?? null;
+        $details['estimated_monthly_volume'] = $data['estimated_monthly_volume'] ?? null;
+        $details['applied_at'] = now()->toIso8601String();
+
+        $user->api_application_details = $details;
+        $user->api_access_status = $status;
+        $user->save();
+
+        $message = $approveByDefault
+            ? 'Your developer API application has been approved. You can now generate API keys.'
+            : 'Your developer API application has been submitted and is currently pending review.';
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'status' => true,
+                'message' => $message,
+                'access_status' => $status,
+            ]);
+        }
+
+        return back()->with('success', $message);
+    }
+
     public function createToken(Request $request)
     {
         $request->validate([
@@ -36,6 +85,16 @@ class DeveloperPortalController extends Controller
         ]);
 
         $user = $request->user();
+
+        if ($user->api_access_status !== 'approved') {
+            return response()->json([
+                'status' => false,
+                'message' => 'API key generation requires an approved developer account. Please submit your developer API application for review.',
+                'error' => 'api_access_not_approved',
+                'access_status' => $user->api_access_status ?: 'none',
+            ], 403);
+        }
+
         $plain = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
         $hash = hash('sha256', $plain);
         $lastFour = substr($plain, -4);
@@ -220,13 +279,10 @@ class DeveloperPortalController extends Controller
         ];
         $endpoints = $catalog->enabled()->groupBy(fn ($endpoint) => $endpoint->group_name ?: 'Other');
         $baseUrl = url('/api/v1');
-        $developerPricing = [
-            'developer_api_nin_price' => (float) SystemSetting::get('developer_api_nin_price', 100),
-            'developer_api_bvn_basic_price' => (float) SystemSetting::get('developer_api_bvn_basic_price', 100),
-            'developer_api_bvn_premium_price' => (float) SystemSetting::get('developer_api_bvn_premium_price', 500),
-        ];
+        $user = Auth::user();
+        $developerPricing = $this->resolveDeveloperPricing($user);
 
-        return view('developer.docs', compact('docs', 'endpoints', 'baseUrl', 'developerPricing'));
+        return view('developer.docs', compact('docs', 'endpoints', 'baseUrl', 'developerPricing', 'user'));
     }
 
     public function sandbox(Request $request, DeveloperApiCatalog $catalog)
@@ -239,12 +295,7 @@ class DeveloperPortalController extends Controller
 
         $baseUrl = url('/api/v1');
         $endpoints = $catalog->enabled();
-
-        $developerPricing = [
-            'developer_api_nin_price' => (float) SystemSetting::get('developer_api_nin_price', 100),
-            'developer_api_bvn_basic_price' => (float) SystemSetting::get('developer_api_bvn_basic_price', 100),
-            'developer_api_bvn_premium_price' => (float) SystemSetting::get('developer_api_bvn_premium_price', 500),
-        ];
+        $developerPricing = $this->resolveDeveloperPricing($user);
 
         $minBalance = (float) SystemSetting::get('api_min_wallet_balance', 100.0);
         $userBalance = (float) ($user->balance->user_balance ?? 0.0);
@@ -262,6 +313,28 @@ class DeveloperPortalController extends Controller
             'preselectedKey',
             'user'
         ));
+    }
+
+    /**
+     * Resolve effective developer pricing dictionary for a given user or system defaults.
+     */
+    protected function resolveDeveloperPricing(?User $user): array
+    {
+        return [
+            'developer_api_nin_price' => $user ? (float) $user->getDeveloperApiPrice('developer_api_nin_price', 100.0) : (float) SystemSetting::get('developer_api_nin_price', 100.0),
+            'developer_api_nin_validation_price' => $user ? (float) $user->getDeveloperApiPrice('developer_api_nin_validation_price', 500.0) : (float) SystemSetting::get('developer_api_nin_validation_price', 500.0),
+            'developer_api_ipe_clearance_price' => $user ? (float) $user->getDeveloperApiPrice('developer_api_ipe_clearance_price', 700.0) : (float) SystemSetting::get('developer_api_ipe_clearance_price', 700.0),
+            'developer_api_bvn_basic_price' => $user ? (float) $user->getDeveloperApiPrice('developer_api_bvn_basic_price', 100.0) : (float) SystemSetting::get('developer_api_bvn_basic_price', 100.0),
+            'developer_api_bvn_premium_price' => $user ? (float) $user->getDeveloperApiPrice('developer_api_bvn_premium_price', 500.0) : (float) SystemSetting::get('developer_api_bvn_premium_price', 500.0),
+            'developer_api_cac_price' => $user ? (float) $user->getDeveloperApiPrice('developer_api_cac_price', 300.0) : (float) SystemSetting::get('developer_api_cac_price', 300.0),
+            'developer_api_drivers_license_price' => $user ? (float) $user->getDeveloperApiPrice('developer_api_drivers_license_price', 200.0) : (float) SystemSetting::get('developer_api_drivers_license_price', 200.0),
+            'developer_api_tin_price' => $user ? (float) $user->getDeveloperApiPrice('developer_api_tin_price', 200.0) : (float) SystemSetting::get('developer_api_tin_price', 200.0),
+            'developer_api_voters_card_price' => $user ? (float) $user->getDeveloperApiPrice('developer_api_voters_card_price', 150.0) : (float) SystemSetting::get('developer_api_voters_card_price', 150.0),
+            'developer_api_vtu_airtime_discount' => $user ? (float) $user->getDeveloperApiPrice('developer_api_vtu_airtime_discount', 2.0) : (float) SystemSetting::get('developer_api_vtu_airtime_discount', 2.0),
+            'developer_api_vtu_data_discount' => $user ? (float) $user->getDeveloperApiPrice('developer_api_vtu_data_discount', 3.0) : (float) SystemSetting::get('developer_api_vtu_data_discount', 3.0),
+            'developer_api_vtu_cable_fee' => $user ? (float) $user->getDeveloperApiPrice('developer_api_vtu_cable_fee', 0.0) : (float) SystemSetting::get('developer_api_vtu_cable_fee', 0.0),
+            'developer_api_vtu_electricity_fee' => $user ? (float) $user->getDeveloperApiPrice('developer_api_vtu_electricity_fee', 0.0) : (float) SystemSetting::get('developer_api_vtu_electricity_fee', 0.0),
+        ];
     }
 
     public function validateKey(Request $request)

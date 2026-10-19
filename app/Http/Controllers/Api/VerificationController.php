@@ -49,12 +49,9 @@ class VerificationController extends Controller
             return response()->json(['status' => false, 'message' => 'No active provider for NIN verification.'], 503);
         }
 
-        // We use the first provider's price as the baseline, or a system setting
+        // Use custom price for user if set, or global developer api nin price setting
         $firstProvider = $activeProviders[0];
-        $price = (float) \App\Models\SystemSetting::get(
-            'developer_api_nin_price',
-            100.0
-        );
+        $price = (float) $user->getDeveloperApiPrice('developer_api_nin_price', 100.0);
 
         // Concurrency lock: prevent duplicate debits from rapid API client retries
         $lockKey = "api_nin_lock_{$user->id}_{$request->mode}_" . md5((string) $request->number);
@@ -361,12 +358,11 @@ class VerificationController extends Controller
         Log::info('API BVN verification provider resolved', $providerContext);
 
         $mode = $request->type;
-        $price = (float) \App\Models\SystemSetting::get(
-            $mode === 'premium' ? 'developer_api_bvn_premium_price' : 'developer_api_bvn_basic_price',
-            (float) (($provider->price ?? null) ?: ($mode === 'premium'
-                ? \App\Models\SystemSetting::get('bvn_premium_price', 500)
-                : \App\Models\SystemSetting::get('bvn_basic_price', 100)))
-        );
+        $settingKey = $mode === 'premium' ? 'developer_api_bvn_premium_price' : 'developer_api_bvn_basic_price';
+        $fallback = (float) (($provider->price ?? null) ?: ($mode === 'premium'
+            ? \App\Models\SystemSetting::get('bvn_premium_price', 500.0)
+            : \App\Models\SystemSetting::get('bvn_basic_price', 100.0)));
+        $price = (float) $user->getDeveloperApiPrice($settingKey, $fallback);
 
         $endpoint = (string) $provider->endpoint;
         $url = rtrim($endpoint, '/') . '/' . $request->number . '?type=' . $request->type;
@@ -493,6 +489,309 @@ class VerificationController extends Controller
             'status' => true,
             'data' => $result,
         ]);
+    }
+
+    public function verifyClearance(Request $request)
+    {
+        $request->validate([
+            'tracking_id' => ['nullable', 'string', 'max:120'],
+            'number' => ['nullable', 'string', 'max:120'],
+            'category' => ['nullable', 'string', 'max:255'],
+            'mode' => ['nullable', 'in:submit,status'],
+        ]);
+
+        $trackingId = trim((string) ($request->tracking_id ?: $request->number));
+        if ($trackingId === '') {
+            return response()->json(['status' => false, 'message' => 'The tracking_id or number field is required.'], 422);
+        }
+
+        $user = $request->user();
+        $mode = $request->input('mode', 'submit');
+        $category = trim((string) $request->input('category', 'Improcessing Error'));
+        $ipeClearanceMode = \App\Models\SystemSetting::get('ipe_clearance_mode', 'dataverify');
+
+        if ($mode === 'status') {
+            $existing = VerificationResult::where(function ($query) use ($trackingId) {
+                $query->where('identifier', $trackingId)
+                      ->orWhere('reference_id', $trackingId)
+                      ->orWhere('response_data->tracking_id', $trackingId)
+                      ->orWhere('response_data->new_tracking_id', $trackingId);
+            })
+            ->where('service_type', 'ipe_clearance')
+            ->where(function ($q) use ($user) {
+                $q->where('user_id', $user->id)
+                  ->orWhereNull('user_id');
+            })
+            ->latest()
+            ->first();
+
+            if (!$existing) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'No clearance application found for this tracking ID.',
+                ], 404);
+            }
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Clearance record retrieved.',
+                'result_id' => $existing->id,
+                'reference_id' => $existing->reference_id,
+                'data' => [
+                    'tracking_id' => $existing->identifier,
+                    'reference_id' => $existing->reference_id,
+                    'status' => $existing->status,
+                    'category' => data_get($existing->response_data, 'category', 'Improcessing Error'),
+                    'admin_note' => $existing->admin_note,
+                    'details' => $existing->response_data,
+                ],
+            ]);
+        }
+
+        // Mode: submit
+        $price = (float) $user->getDeveloperApiPrice('developer_api_ipe_clearance_price', 700.0);
+
+        $lockKey = "api_ipe_lock_{$user->id}_" . md5($trackingId);
+        $lock = Cache::lock($lockKey, 20);
+        if (!$lock->get()) {
+            return response()->json(['status' => false, 'message' => 'A clearance request for this tracking ID is already in progress. Please wait.'], 429);
+        }
+
+        try {
+            $paid = app(PaidActionService::class)->run($user, $price, 'API: IPE Clearance (' . $trackingId . ')', 'CLEARAPI', function () use ($trackingId, $category, $user, $price, $ipeClearanceMode) {
+                $referenceId = 'CLR-' . strtoupper(bin2hex(random_bytes(4)));
+
+                if ($ipeClearanceMode === 'dataverify') {
+                    $dvProvider = CustomApi::query()->whereIn('service_type', ['ipe_clearance', 'clearance'])->where('status', true)->first();
+                    $dvClient = new DataVerifyClient($dvProvider);
+                    $dvRes = $dvClient->submitIpeClearance($trackingId);
+
+                    if ($dvRes['ok'] ?? false) {
+                        $apiData = $dvRes['data'] ?? [];
+                        $newTid = VerificationResult::extractNewTrackingId($apiData, $trackingId);
+                        $isSuccess = ($dvRes['status'] ?? '') === 'successful' || !empty($newTid);
+                        $initialStatus = $isSuccess ? 'successful' : 'waiting_for_review';
+
+                        $payload = [
+                            'tracking_id' => $trackingId,
+                            'category' => $category,
+                            'new_tracking_id' => $newTid,
+                            'amount_paid' => (float) $price,
+                            'api_response' => $apiData,
+                        ];
+
+                        $vr = VerificationResult::create([
+                            'user_id' => $user->id,
+                            'service_type' => 'ipe_clearance',
+                            'identifier' => $trackingId,
+                            'provider_name' => 'DataVerify',
+                            'status' => $initialStatus,
+                            'reference_id' => $referenceId,
+                            'admin_note' => $dvRes['message'] ?? 'Submitted to DataVerify.',
+                            'response_data' => $payload,
+                        ]);
+
+                        return [
+                            'status' => true,
+                            'message' => 'Clearance request submitted successfully.',
+                            'result_id' => $vr->id,
+                            'reference_id' => $referenceId,
+                            'data' => [
+                                'tracking_id' => $trackingId,
+                                'new_tracking_id' => $newTid,
+                                'status' => $initialStatus,
+                                'category' => $category,
+                            ],
+                        ];
+                    }
+
+                    throw new \RuntimeException($dvRes['message'] ?: 'DataVerify clearance submission failed.');
+                }
+
+                $payload = [
+                    'tracking_id' => $trackingId,
+                    'category' => $category,
+                    'amount_paid' => (float) $price,
+                ];
+
+                $vr = VerificationResult::create([
+                    'user_id' => $user->id,
+                    'service_type' => 'ipe_clearance',
+                    'identifier' => $trackingId,
+                    'provider_name' => 'ADMIN_MANUAL',
+                    'status' => 'waiting_for_review',
+                    'reference_id' => $referenceId,
+                    'admin_note' => 'Queued for review.',
+                    'response_data' => $payload,
+                ]);
+
+                return [
+                    'status' => true,
+                    'message' => 'Clearance request submitted and queued for review.',
+                    'result_id' => $vr->id,
+                    'reference_id' => $referenceId,
+                    'data' => [
+                        'tracking_id' => $trackingId,
+                        'status' => 'waiting_for_review',
+                        'category' => $category,
+                    ],
+                ];
+            });
+
+            if (!$paid['ok']) {
+                $code = isset($paid['txId']) ? 502 : 402;
+                return response()->json(['status' => false, 'message' => $paid['message']], $code);
+            }
+
+            return response()->json($paid['result']);
+        } finally {
+            optional($lock)->release();
+        }
+    }
+
+    public function verifyValidation(Request $request)
+    {
+        $request->validate([
+            'number' => ['nullable', 'string', 'max:120'],
+            'nin' => ['nullable', 'string', 'max:120'],
+            'validation_reason' => ['nullable', 'string', 'max:255'],
+            'mode' => ['nullable', 'in:submit,status'],
+        ]);
+
+        $ninNumber = trim((string) ($request->number ?: $request->nin));
+        if ($ninNumber === '') {
+            return response()->json(['status' => false, 'message' => 'The number or nin field is required.'], 422);
+        }
+
+        $user = $request->user();
+        $mode = $request->input('mode', 'submit');
+        $reason = trim((string) $request->input('validation_reason', 'NIN Validation'));
+        $validationMode = \App\Models\SystemSetting::get('nin_validation_mode', 'auto');
+
+        if ($mode === 'status') {
+            $existing = VerificationResult::where(function ($query) use ($ninNumber) {
+                $query->where('identifier', $ninNumber)
+                      ->orWhere('reference_id', $ninNumber)
+                      ->orWhere('response_data->nin', $ninNumber);
+            })
+            ->whereIn('service_type', ['validation', 'nin_validation'])
+            ->where(function ($q) use ($user) {
+                $q->where('user_id', $user->id)
+                  ->orWhereNull('user_id');
+            })
+            ->latest()
+            ->first();
+
+            if (!$existing) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'No validation application found for this NIN.',
+                ], 404);
+            }
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Validation record retrieved.',
+                'result_id' => $existing->id,
+                'reference_id' => $existing->reference_id,
+                'data' => [
+                    'nin' => $existing->identifier,
+                    'reference_id' => $existing->reference_id,
+                    'status' => $existing->status,
+                    'admin_note' => $existing->admin_note,
+                    'details' => $existing->response_data,
+                ],
+            ]);
+        }
+
+        // Mode: submit
+        $price = (float) $user->getDeveloperApiPrice('developer_api_nin_validation_price', 500.0);
+
+        $lockKey = "api_val_lock_{$user->id}_" . md5($ninNumber);
+        $lock = Cache::lock($lockKey, 20);
+        if (!$lock->get()) {
+            return response()->json(['status' => false, 'message' => 'A validation request for this NIN is already in progress. Please wait.'], 429);
+        }
+
+        try {
+            $paid = app(PaidActionService::class)->run($user, $price, 'API: NIN Validation (' . $ninNumber . ')', 'VALAPI', function () use ($ninNumber, $reason, $user, $price, $validationMode) {
+                $referenceId = 'VAL-' . strtoupper(bin2hex(random_bytes(4)));
+
+                $dvProvider = CustomApi::query()->whereIn('service_type', ['validation', 'nin_validation', 'nin_verification'])->where('status', true)->where(function ($q) {
+                    $q->where('provider_identifier', 'dataverify')->orWhere('endpoint', 'like', '%dataverify%');
+                })->first();
+
+                if ($dvProvider) {
+                    $client = new DataVerifyClient($dvProvider);
+                    $subRes = $client->submitNinValidation($ninNumber, 'no_record_found');
+                    if ($subRes['ok'] ?? false) {
+                        $vr = VerificationResult::create([
+                            'user_id' => $user->id,
+                            'service_type' => 'nin_validation',
+                            'identifier' => $ninNumber,
+                            'provider_name' => 'DataVerify',
+                            'status' => 'waiting_for_review',
+                            'reference_id' => $referenceId,
+                            'admin_note' => $subRes['message'] ?: 'Validation submitted to provider.',
+                            'response_data' => [
+                                'nin' => $ninNumber,
+                                'validation_reason' => $reason,
+                                'amount_paid' => (float) $price,
+                                'api_response' => $subRes['data'] ?? [],
+                            ],
+                        ]);
+
+                        return [
+                            'status' => true,
+                            'message' => 'Validation request submitted successfully.',
+                            'result_id' => $vr->id,
+                            'reference_id' => $referenceId,
+                            'data' => [
+                                'nin' => $ninNumber,
+                                'status' => 'waiting_for_review',
+                                'validation_reason' => $reason,
+                            ],
+                        ];
+                    }
+                }
+
+                $vr = VerificationResult::create([
+                    'user_id' => $user->id,
+                    'service_type' => 'nin_validation',
+                    'identifier' => $ninNumber,
+                    'provider_name' => 'ADMIN_MANUAL',
+                    'status' => 'waiting_for_review',
+                    'reference_id' => $referenceId,
+                    'admin_note' => 'Validation request received and queued for review.',
+                    'response_data' => [
+                        'nin' => $ninNumber,
+                        'validation_reason' => $reason,
+                        'amount_paid' => (float) $price,
+                    ],
+                ]);
+
+                return [
+                    'status' => true,
+                    'message' => 'Validation request queued for review.',
+                    'result_id' => $vr->id,
+                    'reference_id' => $referenceId,
+                    'data' => [
+                        'nin' => $ninNumber,
+                        'status' => 'waiting_for_review',
+                        'validation_reason' => $reason,
+                    ],
+                ];
+            });
+
+            if (!$paid['ok']) {
+                $code = isset($paid['txId']) ? 502 : 402;
+                return response()->json(['status' => false, 'message' => $paid['message']], $code);
+            }
+
+            return response()->json($paid['result']);
+        } finally {
+            optional($lock)->release();
+        }
     }
 
     private function isTerminalIdentityError(string $message): bool

@@ -24,6 +24,8 @@ class VtuApiController extends Controller
         ]);
 
         $result = $this->vtuHub->processRequest([
+            'user' => $request->user(),
+            'is_developer_api' => true,
             'service_type' => 'vtu_airtime',
             'amount' => (float) $request->amount,
             'order_type' => 'Airtime Top-up',
@@ -51,6 +53,8 @@ class VtuApiController extends Controller
         ]);
 
         $result = $this->vtuHub->processRequest([
+            'user' => $request->user(),
+            'is_developer_api' => true,
             'service_type' => 'vtu_data',
             'amount' => (float) $request->amount,
             'order_type' => 'Data Top-up',
@@ -79,6 +83,8 @@ class VtuApiController extends Controller
         ]);
 
         $result = $this->vtuHub->processRequest([
+            'user' => $request->user(),
+            'is_developer_api' => true,
             'service_type' => 'vtu_cable_tv',
             'amount' => (float) $request->amount,
             'order_type' => 'Cable TV Subscription',
@@ -107,6 +113,8 @@ class VtuApiController extends Controller
         ]);
 
         $result = $this->vtuHub->processRequest([
+            'user' => $request->user(),
+            'is_developer_api' => true,
             'service_type' => 'vtu_electricity',
             'amount' => (float) $request->amount,
             'order_type' => 'Electricity Payment',

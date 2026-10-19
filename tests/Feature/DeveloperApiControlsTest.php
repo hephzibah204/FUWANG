@@ -12,6 +12,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Services\DeveloperApi\DeveloperApiCatalog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -19,6 +20,13 @@ use Tests\TestCase;
 class DeveloperApiControlsTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        SystemSetting::clearLocalCache();
+        Cache::flush();
+    }
 
     private function makeApprovedUser(string $email = 'api@example.com'): array
     {
@@ -126,6 +134,51 @@ class DeveloperApiControlsTest extends TestCase
         $this->assertNotNull($transaction);
         $this->assertSame(5000.0, (float) $transaction->balance_before);
         $this->assertSame(4679.0, (float) $transaction->balance_after);
+    }
+
+    public function test_nin_api_costs_100_per_call_by_default(): void
+    {
+        [$user, $token, $plain] = $this->makeApprovedUser('nin100@example.com');
+
+        app(DeveloperApiCatalog::class)->ensureDefaults();
+
+        CustomApi::create([
+            'name' => 'Provider NIN API',
+            'service_type' => 'nin_verification',
+            'endpoint' => 'https://example.com/nin',
+            'headers' => [],
+            'status' => true,
+            'price' => 500, // Provider raw cost is higher, but developer price must stay 100
+        ]);
+
+        Http::fake([
+            'https://example.com/*' => Http::response([
+                'status' => 'success',
+                'data' => ['nin' => '11223344556', 'fullname' => 'Default Price Person'],
+            ], 200),
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer nx_' . $plain)
+            ->postJson('/api/v1/verifications/nin', [
+                'number' => '11223344556',
+                'firstname' => 'Jane',
+                'lastname' => 'Doe',
+                'dob' => '1995-05-15',
+                'mode' => 'nin',
+            ])
+            ->assertOk()
+            ->assertJsonPath('status', true);
+
+        $transaction = Transaction::query()
+            ->where('user_email', $user->email)
+            ->where('order_type', 'API: NIN Verification')
+            ->latest()
+            ->first();
+
+        $this->assertNotNull($transaction);
+        $this->assertSame(5000.0, (float) $transaction->balance_before);
+        $this->assertSame(4900.0, (float) $transaction->balance_after);
+        $this->assertSame(100.0, (float) ($transaction->balance_before - $transaction->balance_after));
     }
 }
 

@@ -19,6 +19,8 @@ class DeveloperApiCatalog
             ['slug' => 'auth.me', 'group_name' => 'Auth', 'name' => 'Current API User', 'method' => 'GET', 'path_pattern' => 'api/v1/me', 'sort_order' => 10, 'docs_summary' => 'Returns the authenticated developer account profile.'],
             ['slug' => 'auth.revoke_token', 'group_name' => 'Auth', 'name' => 'Revoke Current Token', 'method' => 'DELETE', 'path_pattern' => 'api/v1/auth/token', 'sort_order' => 20, 'docs_summary' => 'Revokes the currently authenticated API token.'],
             ['slug' => 'verifications.nin', 'group_name' => 'Identity', 'name' => 'NIN Verification', 'method' => 'POST', 'path_pattern' => 'api/v1/verifications/nin', 'sort_order' => 30, 'docs_summary' => 'Verifies a NIN or phone lookup through the active verification provider stack.'],
+            ['slug' => 'verifications.validation', 'group_name' => 'Identity', 'name' => 'NIN Validation', 'method' => 'POST', 'path_pattern' => 'api/v1/verifications/validation', 'sort_order' => 35, 'docs_summary' => 'Submits or checks an NIN validation request across validation engines.'],
+            ['slug' => 'verifications.clearance', 'group_name' => 'Identity', 'name' => 'IPE Clearance', 'method' => 'POST', 'path_pattern' => 'api/v1/verifications/clearance', 'sort_order' => 38, 'docs_summary' => 'Submits or checks an IPE clearance request for tracking IDs.'],
             ['slug' => 'verifications.bvn', 'group_name' => 'Identity', 'name' => 'BVN Verification', 'method' => 'POST', 'path_pattern' => 'api/v1/verifications/bvn', 'sort_order' => 40, 'docs_summary' => 'Verifies a BVN using the configured provider and requested service tier.'],
             ['slug' => 'verifications.result', 'group_name' => 'Identity', 'name' => 'Verification Result Fetch', 'method' => 'GET', 'path_pattern' => 'api/v1/verifications/*', 'sort_order' => 50, 'docs_summary' => 'Fetches a previously created verification result by internal result id.'],
             ['slug' => 'vuvaa.create_user', 'group_name' => 'VUVAA', 'name' => 'Create VUVAA User', 'method' => 'POST', 'path_pattern' => 'api/v1/vuvaa/create_user', 'sort_order' => 60, 'docs_summary' => 'Creates a VUVAA-linked user profile.'],
@@ -60,6 +62,30 @@ class DeveloperApiCatalog
                 $endpoint->docs_summary = $row['docs_summary'];
             }
             $endpoint->save();
+        }
+
+        if (Schema::hasTable('system_settings')) {
+            $defaultPricing = [
+                'developer_api_nin_price' => ['100', 'Developer Api Nin Price'],
+                'developer_api_nin_validation_price' => ['500', 'Developer Api Nin Validation Price'],
+                'developer_api_ipe_clearance_price' => ['700', 'Developer Api Ipe Clearance Price'],
+                'developer_api_bvn_basic_price' => ['100', 'Developer Api Bvn Basic Price'],
+                'developer_api_bvn_premium_price' => ['500', 'Developer Api Bvn Premium Price'],
+                'developer_api_cac_price' => ['300', 'Developer Api Cac Price'],
+                'developer_api_drivers_license_price' => ['200', 'Developer Api Drivers License Price'],
+                'developer_api_tin_price' => ['200', 'Developer Api Tin Price'],
+                'developer_api_voters_card_price' => ['150', 'Developer Api Voters Card Price'],
+                'developer_api_vtu_airtime_discount' => ['2.0', 'Developer Api VTU Airtime Discount Percent'],
+                'developer_api_vtu_data_discount' => ['3.0', 'Developer Api VTU Data Discount Percent'],
+                'developer_api_vtu_cable_fee' => ['0.0', 'Developer Api VTU Cable Fee'],
+                'developer_api_vtu_electricity_fee' => ['0.0', 'Developer Api VTU Electricity Fee'],
+            ];
+
+            foreach ($defaultPricing as $key => [$defaultValue, $label]) {
+                if (\App\Models\SystemSetting::get($key) === null) {
+                    \App\Models\SystemSetting::set($key, $defaultValue, 'developer_api', 'number', $label);
+                }
+            }
         }
     }
 

@@ -337,8 +337,7 @@ class AdminController extends Controller
             $query->where('api_access_status', $request->get('status'));
         }
 
-        $applications = $query->latest()->paginate(20);
-        return view('admin.api_applications.index', compact('applications'));
+        return redirect()->route('admin.developer_api.index');
     }
 
     public function updateApiStatus(Request $request, $id)

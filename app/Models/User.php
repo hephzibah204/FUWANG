@@ -133,6 +133,7 @@ class User extends Authenticatable implements CanResetPasswordContract, MustVeri
         'api_access_status',
         'email_verified_at',
         'api_application_details',
+        'api_custom_pricing',
         'nin_mod_consent',
         'nin_mod_consent_at',
     ];
@@ -163,7 +164,32 @@ class User extends Authenticatable implements CanResetPasswordContract, MustVeri
             'nin_mod_consent' => 'boolean',
             'nin_mod_consent_at' => 'datetime',
             'api_application_details' => 'array',
+            'api_custom_pricing' => 'array',
         ];
+    }
+
+    /**
+     * Resolve effective developer API pricing for this user, supporting custom pricing overrides.
+     */
+    public function getDeveloperApiPrice(string $key, float $default = 0.0): float
+    {
+        $custom = $this->api_custom_pricing;
+        if (is_array($custom)) {
+            if (isset($custom[$key]) && is_numeric($custom[$key])) {
+                return (float) $custom[$key];
+            }
+            $shortKey = str_replace(['developer_api_', '_price'], '', $key);
+            if (isset($custom[$shortKey]) && is_numeric($custom[$shortKey])) {
+                return (float) $custom[$shortKey];
+            }
+        }
+
+        return (float) \App\Models\SystemSetting::get($key, $default);
+    }
+
+    public function hasCustomApiPricing(): bool
+    {
+        return ! empty($this->api_custom_pricing) && is_array($this->api_custom_pricing);
     }
 
     /**
@@ -226,21 +252,18 @@ class User extends Authenticatable implements CanResetPasswordContract, MustVeri
     }
 
     /**
-     * Automatically approve all developers by default.
-     * Deny only if explicitly set to 'rejected', 'revoked', or 'suspended'.
+     * Get API access status, respecting explicit statuses ('approved', 'pending', 'rejected', 'revoked', 'suspended').
+     * If setting 'api_approve_by_default' is enabled, unassigned users are auto-approved; otherwise 'none' (requires application).
      */
     public function getApiAccessStatusAttribute($value)
     {
-        $deniedStatuses = ['rejected', 'revoked', 'suspended'];
-        if (in_array(strtolower((string) $value), $deniedStatuses, true)) {
+        $explicitStatuses = ['approved', 'pending', 'rejected', 'revoked', 'suspended'];
+        if (in_array(strtolower((string) $value), $explicitStatuses, true)) {
             return $value;
         }
-        if (strtolower((string) $value) === 'approved') {
-            return 'approved';
-        }
 
-        // Query the settings value dynamically (defaults to true)
-        $approveByDefault = filter_var(\App\Models\SystemSetting::get('api_approve_by_default', true), FILTER_VALIDATE_BOOL);
+        // Query the settings value dynamically (defaults to false so developers must apply first)
+        $approveByDefault = filter_var(\App\Models\SystemSetting::get('api_approve_by_default', false), FILTER_VALIDATE_BOOL);
         if ($approveByDefault) {
             return 'approved';
         }

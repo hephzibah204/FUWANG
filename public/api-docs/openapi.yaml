@@ -160,6 +160,66 @@ paths:
           description: BVN Details
         '402':
           $ref: '#/components/responses/InsufficientFunds'
+  /verifications/clearance:
+    post:
+      summary: IPE Clearance Request & Status Check
+      description: Submit an IPE clearance request or check status for a tracking ID.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tracking_id
+              properties:
+                mode:
+                  type: string
+                  enum: [submit, status]
+                  default: submit
+                tracking_id:
+                  type: string
+                  description: Tracking ID to clear or poll.
+                reason:
+                  type: string
+                  description: Required when mode is submit.
+                api_provider_id:
+                  type: integer
+                  description: Optional provider ID override.
+      responses:
+        '200':
+          description: Clearance submission accepted or status report.
+        '402':
+          $ref: '#/components/responses/InsufficientFunds'
+  /verifications/validation:
+    post:
+      summary: NIN Validation Request & Status Check
+      description: Submit a NIN validation request or check status with tracking ID.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mode:
+                  type: string
+                  enum: [submit, status]
+                  default: submit
+                nin:
+                  type: string
+                  description: NIN to validate (required for submit mode).
+                tracking_id:
+                  type: string
+                  description: Tracking ID to poll (required for status mode).
+                api_provider_id:
+                  type: integer
+                  description: Optional provider ID override.
+      responses:
+        '200':
+          description: Validation submission accepted or completed report.
+        '402':
+          $ref: '#/components/responses/InsufficientFunds'
   /vtu/airtime:
     post:
       summary: Top up airtime

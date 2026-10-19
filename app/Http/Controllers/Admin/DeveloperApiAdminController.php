@@ -21,7 +21,11 @@ class DeveloperApiAdminController extends Controller
         $since = now()->subDays($days);
 
         $applications = User::query()
-            ->whereIn('api_access_status', ['pending', 'approved', 'rejected'])
+            ->where(function ($q) {
+                $q->whereIn('api_access_status', ['pending', 'approved', 'rejected', 'suspended', 'revoked'])
+                    ->orWhereNotNull('api_custom_pricing')
+                    ->orHas('apiTokens');
+            })
             ->withCount(['apiTokens as active_api_tokens_count' => function ($query) {
                 $query->whereNull('revoked_at');
             }])
@@ -73,10 +77,18 @@ class DeveloperApiAdminController extends Controller
 
         $pricing = [
             'developer_api_nin_price' => (float) SystemSetting::get('developer_api_nin_price', 100),
+            'developer_api_nin_validation_price' => (float) SystemSetting::get('developer_api_nin_validation_price', 500),
+            'developer_api_ipe_clearance_price' => (float) SystemSetting::get('developer_api_ipe_clearance_price', 700),
             'developer_api_bvn_basic_price' => (float) SystemSetting::get('developer_api_bvn_basic_price', 100),
             'developer_api_bvn_premium_price' => (float) SystemSetting::get('developer_api_bvn_premium_price', 500),
             'developer_api_cac_price' => (float) SystemSetting::get('developer_api_cac_price', 300),
             'developer_api_drivers_license_price' => (float) SystemSetting::get('developer_api_drivers_license_price', 200),
+            'developer_api_tin_price' => (float) SystemSetting::get('developer_api_tin_price', 200),
+            'developer_api_voters_card_price' => (float) SystemSetting::get('developer_api_voters_card_price', 150),
+            'developer_api_vtu_airtime_discount' => (float) SystemSetting::get('developer_api_vtu_airtime_discount', 2.0),
+            'developer_api_vtu_data_discount' => (float) SystemSetting::get('developer_api_vtu_data_discount', 3.0),
+            'developer_api_vtu_cable_fee' => (float) SystemSetting::get('developer_api_vtu_cable_fee', 0.0),
+            'developer_api_vtu_electricity_fee' => (float) SystemSetting::get('developer_api_vtu_electricity_fee', 0.0),
         ];
 
         $docs = [
@@ -119,10 +131,18 @@ class DeveloperApiAdminController extends Controller
     {
         $data = $request->validate([
             'developer_api_nin_price' => ['required', 'numeric', 'min:0'],
+            'developer_api_nin_validation_price' => ['required', 'numeric', 'min:0'],
+            'developer_api_ipe_clearance_price' => ['required', 'numeric', 'min:0'],
             'developer_api_bvn_basic_price' => ['required', 'numeric', 'min:0'],
             'developer_api_bvn_premium_price' => ['required', 'numeric', 'min:0'],
             'developer_api_cac_price' => ['nullable', 'numeric', 'min:0'],
             'developer_api_drivers_license_price' => ['nullable', 'numeric', 'min:0'],
+            'developer_api_tin_price' => ['nullable', 'numeric', 'min:0'],
+            'developer_api_voters_card_price' => ['nullable', 'numeric', 'min:0'],
+            'developer_api_vtu_airtime_discount' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'developer_api_vtu_data_discount' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'developer_api_vtu_cable_fee' => ['nullable', 'numeric', 'min:0'],
+            'developer_api_vtu_electricity_fee' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         foreach ($data as $key => $value) {
@@ -130,6 +150,65 @@ class DeveloperApiAdminController extends Controller
         }
 
         return back()->with('success', 'Developer API pricing updated successfully.');
+    }
+
+    public function updateUserPricing(Request $request, User $user)
+    {
+        $data = $request->validate([
+            'developer_api_nin_price' => ['nullable', 'numeric', 'min:0'],
+            'developer_api_nin_validation_price' => ['nullable', 'numeric', 'min:0'],
+            'developer_api_ipe_clearance_price' => ['nullable', 'numeric', 'min:0'],
+            'developer_api_bvn_basic_price' => ['nullable', 'numeric', 'min:0'],
+            'developer_api_bvn_premium_price' => ['nullable', 'numeric', 'min:0'],
+            'developer_api_cac_price' => ['nullable', 'numeric', 'min:0'],
+            'developer_api_drivers_license_price' => ['nullable', 'numeric', 'min:0'],
+            'developer_api_tin_price' => ['nullable', 'numeric', 'min:0'],
+            'developer_api_voters_card_price' => ['nullable', 'numeric', 'min:0'],
+            'developer_api_vtu_airtime_discount' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'developer_api_vtu_data_discount' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'developer_api_vtu_cable_fee' => ['nullable', 'numeric', 'min:0'],
+            'developer_api_vtu_electricity_fee' => ['nullable', 'numeric', 'min:0'],
+            'reset_to_default' => ['nullable'],
+        ]);
+
+        if ($request->filled('reset_to_default') && (string) $request->reset_to_default === '1') {
+            $user->api_custom_pricing = null;
+            $user->save();
+            return back()->with('success', "Custom API pricing for {$user->email} has been reset to system defaults.");
+        }
+
+        $custom = is_array($user->api_custom_pricing) ? $user->api_custom_pricing : [];
+        $fields = [
+            'developer_api_nin_price',
+            'developer_api_nin_validation_price',
+            'developer_api_ipe_clearance_price',
+            'developer_api_bvn_basic_price',
+            'developer_api_bvn_premium_price',
+            'developer_api_cac_price',
+            'developer_api_drivers_license_price',
+            'developer_api_tin_price',
+            'developer_api_voters_card_price',
+            'developer_api_vtu_airtime_discount',
+            'developer_api_vtu_data_discount',
+            'developer_api_vtu_cable_fee',
+            'developer_api_vtu_electricity_fee',
+        ];
+
+        foreach ($fields as $field) {
+            if ($request->has($field)) {
+                $val = $request->input($field);
+                if ($val !== null && $val !== '') {
+                    $custom[$field] = (float) $val;
+                } else {
+                    unset($custom[$field]);
+                }
+            }
+        }
+
+        $user->api_custom_pricing = empty($custom) ? null : $custom;
+        $user->save();
+
+        return back()->with('success', "Custom API pricing for {$user->email} updated successfully.");
     }
 
     public function updateDocs(Request $request)
