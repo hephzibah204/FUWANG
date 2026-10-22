@@ -3,6 +3,7 @@
 namespace App\Services\DeveloperApi;
 
 use App\Models\DeveloperApiEndpoint;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Schema;
@@ -44,6 +45,26 @@ class DeveloperApiCatalog
 
     public function ensureDefaults(): void
     {
+        if (Schema::hasTable('users')) {
+            try {
+                if (! Schema::hasColumn('users', 'api_access_status') || ! Schema::hasColumn('users', 'api_application_details') || ! Schema::hasColumn('users', 'api_custom_pricing')) {
+                    Schema::table('users', function (Blueprint $table) {
+                        if (! Schema::hasColumn('users', 'api_access_status')) {
+                            $table->string('api_access_status')->default('none')->index();
+                        }
+                        if (! Schema::hasColumn('users', 'api_application_details')) {
+                            $table->json('api_application_details')->nullable();
+                        }
+                        if (! Schema::hasColumn('users', 'api_custom_pricing')) {
+                            $table->json('api_custom_pricing')->nullable();
+                        }
+                    });
+                }
+            } catch (\Throwable $e) {
+                // Ignore if DB permissions or concurrent migration prevents table alteration
+            }
+        }
+
         if (! Schema::hasTable('developer_api_endpoints')) {
             return;
         }

@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\DeveloperApi\DeveloperApiCatalog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class DeveloperApiAdminController extends Controller
 {
@@ -20,11 +21,29 @@ class DeveloperApiAdminController extends Controller
         $days = 30;
         $since = now()->subDays($days);
 
+        $hasCustomPricing = Schema::hasColumn('users', 'api_custom_pricing');
+        $hasAccessStatus = Schema::hasColumn('users', 'api_access_status');
+
         $applications = User::query()
-            ->where(function ($q) {
-                $q->whereIn('api_access_status', ['pending', 'approved', 'rejected', 'suspended', 'revoked'])
-                    ->orWhereNotNull('api_custom_pricing')
-                    ->orHas('apiTokens');
+            ->where(function ($q) use ($hasCustomPricing, $hasAccessStatus) {
+                $hasClause = false;
+                if ($hasAccessStatus) {
+                    $q->whereIn('api_access_status', ['pending', 'approved', 'rejected', 'suspended', 'revoked']);
+                    $hasClause = true;
+                }
+                if ($hasCustomPricing) {
+                    if ($hasClause) {
+                        $q->orWhereNotNull('api_custom_pricing');
+                    } else {
+                        $q->whereNotNull('api_custom_pricing');
+                        $hasClause = true;
+                    }
+                }
+                if ($hasClause) {
+                    $q->orHas('apiTokens');
+                } else {
+                    $q->has('apiTokens');
+                }
             })
             ->withCount(['apiTokens as active_api_tokens_count' => function ($query) {
                 $query->whereNull('revoked_at');
