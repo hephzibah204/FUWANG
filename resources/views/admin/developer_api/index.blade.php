@@ -248,36 +248,91 @@
 <div class="row">
     <div class="col-lg-12 mb-4">
         <div class="card border-0 rounded-4 p-4 h-100" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.07) !important;">
-            <h5 class="text-white fw-bold mb-1">API Applications & Developer Accounts</h5>
-            <p class="text-white-50 small mb-4">Review applicant website domains, intended use case, manage access status, and set custom volume pricing per user.</p>
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+                <div>
+                    <h5 class="text-white fw-bold mb-1"><i class="fa fa-id-card text-primary mr-2"></i>API Applications & Developer Profiles</h5>
+                    <p class="text-white-50 small mb-0">Inspect full profiles of everyone using or applied for API keys, review integration use cases, manage access permissions, and configure custom pricing.</p>
+                </div>
+            </div>
+
+            <!-- Filter tabs & Search form -->
+            <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4 pb-3 border-bottom border-white-10" style="gap: 15px;">
+                <div class="d-flex flex-wrap gap-2" style="gap: 8px;">
+                    <a href="{{ route('admin.developer_api.index', array_merge(request()->query(), ['developer_filter' => 'all'])) }}" class="btn btn-sm rounded-pill px-3 {{ ($activeFilter ?? 'all') === 'all' ? 'btn-primary' : 'btn-dark text-white-50' }}" style="{{ ($activeFilter ?? 'all') !== 'all' ? 'background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);' : '' }}">
+                        All Developers <span class="badge badge-light text-dark ml-1">{{ $developerCounts['all'] ?? 0 }}</span>
+                    </a>
+                    <a href="{{ route('admin.developer_api.index', array_merge(request()->query(), ['developer_filter' => 'pending'])) }}" class="btn btn-sm rounded-pill px-3 {{ ($activeFilter ?? '') === 'pending' ? 'btn-warning text-dark font-weight-bold' : 'btn-dark text-white-50' }}" style="{{ ($activeFilter ?? '') !== 'pending' ? 'background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);' : '' }}">
+                        Pending <span class="badge badge-warning text-dark ml-1">{{ $developerCounts['pending'] ?? 0 }}</span>
+                    </a>
+                    <a href="{{ route('admin.developer_api.index', array_merge(request()->query(), ['developer_filter' => 'approved'])) }}" class="btn btn-sm rounded-pill px-3 {{ ($activeFilter ?? '') === 'approved' ? 'btn-success' : 'btn-dark text-white-50' }}" style="{{ ($activeFilter ?? '') !== 'approved' ? 'background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);' : '' }}">
+                        Approved <span class="badge badge-success ml-1">{{ $developerCounts['approved'] ?? 0 }}</span>
+                    </a>
+                    <a href="{{ route('admin.developer_api.index', array_merge(request()->query(), ['developer_filter' => 'with_tokens'])) }}" class="btn btn-sm rounded-pill px-3 {{ ($activeFilter ?? '') === 'with_tokens' ? 'btn-info' : 'btn-dark text-white-50' }}" style="{{ ($activeFilter ?? '') !== 'with_tokens' ? 'background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);' : '' }}">
+                        With Tokens <span class="badge badge-info ml-1">{{ $developerCounts['with_tokens'] ?? 0 }}</span>
+                    </a>
+                    <a href="{{ route('admin.developer_api.index', array_merge(request()->query(), ['developer_filter' => 'custom_pricing'])) }}" class="btn btn-sm rounded-pill px-3 {{ ($activeFilter ?? '') === 'custom_pricing' ? 'btn-secondary text-white font-weight-bold' : 'btn-dark text-white-50' }}" style="{{ ($activeFilter ?? '') !== 'custom_pricing' ? 'background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);' : '' }}">
+                        Custom Rates <span class="badge badge-secondary ml-1">{{ $developerCounts['custom_pricing'] ?? 0 }}</span>
+                    </a>
+                </div>
+
+                <form method="GET" action="{{ route('admin.developer_api.index') }}" class="d-flex align-items-center" style="gap: 8px;">
+                    @if(request('developer_filter'))
+                        <input type="hidden" name="developer_filter" value="{{ request('developer_filter') }}">
+                    @endif
+                    <div class="input-group input-group-sm" style="max-width: 280px;">
+                        <input type="text" name="developer_search" value="{{ $search ?? '' }}" class="form-control text-white rounded-left-pill border-0 px-3" placeholder="Search developer, website, email..." style="background: rgba(255,255,255,0.06);">
+                        <div class="input-group-append">
+                            <button type="submit" class="btn btn-primary rounded-right-pill px-3"><i class="fa fa-search"></i></button>
+                        </div>
+                    </div>
+                    @if(!empty($search))
+                        <a href="{{ route('admin.developer_api.index', ['developer_filter' => request('developer_filter', 'all')]) }}" class="btn btn-sm btn-outline-danger rounded-pill px-2.5" title="Clear Search"><i class="fa fa-times"></i></a>
+                    @endif
+                </form>
+            </div>
+
             <div class="table-responsive">
                 <table class="table table-borderless text-white small mb-0">
                     <thead>
                         <tr class="text-white-50 border-bottom border-white-10">
-                            <th>Developer</th>
+                            <th>Developer Profile</th>
                             <th>Website & Use Case</th>
                             <th>Status</th>
-                            <th>Custom Pricing</th>
-                            <th>Tokens</th>
-                            <th>Actions</th>
+                            <th>Pricing Tier</th>
+                            <th>Tokens & Calls</th>
+                            <th class="text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                     @forelse($applications as $app)
+                        @php
+                            $site = data_get($app->api_application_details, 'website');
+                            $purpose = data_get($app->api_application_details, 'intended_use');
+                            $company = data_get($app->api_application_details, 'company_name');
+                            $volume = data_get($app->api_application_details, 'estimated_monthly_volume');
+                            $appliedAt = data_get($app->api_application_details, 'applied_at');
+                        @endphp
                         <tr class="border-bottom border-white-10">
-                            <td class="py-3" style="min-width: 180px;">
-                                <div class="fw-bold text-white">{{ $app->fullname ?: $app->email }}</div>
-                                <div class="text-white-50">{{ $app->email }}</div>
-                                <div class="text-white-50 small mt-1">Bal: ₦{{ number_format($app->balance->user_balance ?? 0, 2) }}</div>
+                            <td class="py-3" style="min-width: 220px;">
+                                <div class="d-flex align-items-center">
+                                    <a href="javascript:void(0)" data-toggle="modal" data-target="#developerProfileModal{{ $app->id }}" class="text-decoration-none mr-2.5">
+                                        <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-sm" style="width: 38px; height: 38px; background: linear-gradient(135deg, rgba(99,102,241,0.5), rgba(79,70,229,0.3)); border: 1px solid rgba(255,255,255,0.15); font-size: 0.95rem;">
+                                            {{ strtoupper(substr($app->fullname ?: ($app->email ?: 'U'), 0, 1)) }}
+                                        </div>
+                                    </a>
+                                    <div>
+                                        <a href="javascript:void(0)" data-toggle="modal" data-target="#developerProfileModal{{ $app->id }}" class="text-white fw-bold text-decoration-none d-block">
+                                            {{ $app->fullname ?: ($app->username ?: 'Developer #' . $app->id) }}
+                                        </a>
+                                        <div class="text-white-50" style="font-size: 0.78rem;">{{ $app->email }}</div>
+                                        @if($app->number)
+                                            <div class="text-white-50" style="font-size: 0.72rem;"><i class="fa fa-phone mr-1"></i>{{ $app->number }}</div>
+                                        @endif
+                                        <div class="text-white-50 small mt-0.5" style="font-size: 0.72rem;">Bal: <span class="text-success font-weight-bold">₦{{ number_format($app->balance->user_balance ?? 0, 2) }}</span></div>
+                                    </div>
+                                </div>
                             </td>
                             <td class="py-3" style="max-width: 280px;">
-                                @php
-                                    $site = data_get($app->api_application_details, 'website');
-                                    $purpose = data_get($app->api_application_details, 'intended_use');
-                                    $company = data_get($app->api_application_details, 'company_name');
-                                    $volume = data_get($app->api_application_details, 'estimated_monthly_volume');
-                                    $appliedAt = data_get($app->api_application_details, 'applied_at');
-                                @endphp
                                 @if($site)
                                     <div><i class="fa fa-globe text-primary mr-1"></i> <a href="{{ str_starts_with($site, 'http') ? $site : 'https://' . $site }}" target="_blank" class="text-info font-weight-bold">{{ $site }}</a></div>
                                 @else
@@ -317,8 +372,14 @@
                                     <i class="fa fa-sliders mr-1"></i>Edit Rates
                                 </button>
                             </td>
-                            <td class="py-3">{{ $app->active_api_tokens_count }}</td>
-                            <td class="py-3" style="min-width: 150px;">
+                            <td class="py-3">
+                                <div><span class="badge badge-primary px-2 py-0.5">{{ $app->active_api_tokens_count }} active</span></div>
+                                <div class="text-white-50 small mt-1">{{ number_format($app->total_api_requests_count ?? 0) }} calls</div>
+                            </td>
+                            <td class="py-3 text-right" style="min-width: 220px;">
+                                <button type="button" class="btn btn-outline-light btn-xs rounded-pill px-2.5 py-1 mr-1.5" data-toggle="modal" data-target="#developerProfileModal{{ $app->id }}" title="View Complete Developer Profile">
+                                    <i class="fa fa-user-circle mr-1"></i>View Profile
+                                </button>
                                 <form method="POST" action="{{ route('admin.api_applications.update_status', $app->id) }}" class="form-inline d-inline-block">
                                     @csrf
                                     <div class="input-group input-group-sm">
@@ -336,6 +397,257 @@
                                 </form>
                             </td>
                         </tr>
+
+                        <!-- Developer Profile Modal -->
+                        <div class="modal fade" id="developerProfileModal{{ $app->id }}" tabindex="-1" role="dialog" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+                                <div class="modal-content rounded-4 border-0" style="background: #141826; border: 1px solid rgba(255,255,255,0.12) !important; box-shadow: 0 20px 40px rgba(0,0,0,0.5);">
+                                    <div class="modal-header border-0 pb-0 pt-4 px-4">
+                                        <div class="d-flex align-items-center">
+                                            <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold mr-3 shadow" style="width: 52px; height: 52px; background: linear-gradient(135deg, rgba(99,102,241,0.6), rgba(79,70,229,0.4)); border: 2px solid rgba(255,255,255,0.2); font-size: 1.4rem;">
+                                                {{ strtoupper(substr($app->fullname ?: ($app->email ?: 'U'), 0, 1)) }}
+                                            </div>
+                                            <div>
+                                                <h5 class="modal-title text-white fw-bold mb-0">{{ $app->fullname ?: 'Developer #' . $app->id }}</h5>
+                                                <div class="text-white-50 small">
+                                                    {{ $app->email }}
+                                                    @if($app->username) <span class="badge badge-dark border border-white-10 ml-1">@ {{ $app->username }}</span> @endif
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close" style="opacity: 0.7;">
+                                            <span aria-hidden="true">&times;</span>
+                                        </button>
+                                    </div>
+                                    <div class="modal-body p-4" style="max-height: 75vh; overflow-y: auto;">
+                                        <!-- Top Summary Metrics -->
+                                        <div class="row mb-4">
+                                            <div class="col-sm-3 col-6 mb-2">
+                                                <div class="p-3 rounded-3 h-100" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);">
+                                                    <div class="text-white-50 small text-uppercase" style="font-size: 0.7rem;">Wallet Balance</div>
+                                                    <div class="h5 mb-0 font-weight-bold text-success mt-1">₦{{ number_format($app->balance->user_balance ?? 0, 2) }}</div>
+                                                </div>
+                                            </div>
+                                            <div class="col-sm-3 col-6 mb-2">
+                                                <div class="p-3 rounded-3 h-100" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);">
+                                                    <div class="text-white-50 small text-uppercase" style="font-size: 0.7rem;">API Access</div>
+                                                    <div class="mt-1">
+                                                        <span class="badge badge-{{ $app->api_access_status === 'approved' ? 'success' : (in_array($app->api_access_status, ['rejected', 'revoked', 'suspended']) ? 'danger' : 'warning') }} px-2 py-1">
+                                                            {{ ucfirst($app->api_access_status ?: 'none') }}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-sm-3 col-6 mb-2">
+                                                <div class="p-3 rounded-3 h-100" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);">
+                                                    <div class="text-white-50 small text-uppercase" style="font-size: 0.7rem;">API Tokens</div>
+                                                    <div class="h5 mb-0 font-weight-bold text-info mt-1">{{ $app->active_api_tokens_count }} <span class="small text-white-50" style="font-size: 0.75rem;">/ {{ $app->total_api_tokens_count ?? $app->apiTokens->count() }}</span></div>
+                                                </div>
+                                            </div>
+                                            <div class="col-sm-3 col-6 mb-2">
+                                                <div class="p-3 rounded-3 h-100" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);">
+                                                    <div class="text-white-50 small text-uppercase" style="font-size: 0.7rem;">Recorded Calls</div>
+                                                    <div class="h5 mb-0 font-weight-bold text-white mt-1">{{ number_format($app->total_api_requests_count ?? 0) }}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Account & Contact Details -->
+                                        <div class="card border-0 rounded-3 mb-3 p-3" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06) !important;">
+                                            <h6 class="text-white font-weight-bold mb-3"><i class="fa fa-user-circle text-primary mr-2"></i>Account & Contact Details</h6>
+                                            <div class="row small">
+                                                <div class="col-md-6 mb-2">
+                                                    <span class="text-white-50">Email Address:</span>
+                                                    <span class="text-white font-weight-bold ml-1"><a href="mailto:{{ $app->email }}" class="text-info">{{ $app->email }}</a></span>
+                                                </div>
+                                                <div class="col-md-6 mb-2">
+                                                    <span class="text-white-50">Phone Number:</span>
+                                                    <span class="text-white font-weight-bold ml-1">{{ $app->number ?: 'Not provided' }}</span>
+                                                </div>
+                                                <div class="col-md-6 mb-2">
+                                                    <span class="text-white-50">Account Status:</span>
+                                                    <span class="badge badge-{{ ($app->user_status ?? 'active') === 'active' ? 'success' : 'danger' }} ml-1">{{ ucfirst($app->user_status ?? 'active') }}</span>
+                                                </div>
+                                                <div class="col-md-6 mb-2">
+                                                    <span class="text-white-50">KYC Tier:</span>
+                                                    <span class="badge badge-info ml-1">Tier {{ $app->kyc_tier ?? 0 }}</span>
+                                                </div>
+                                                <div class="col-md-6 mb-2">
+                                                    <span class="text-white-50">Member Since:</span>
+                                                    <span class="text-white ml-1">{{ $app->created_at?->format('M d, Y h:i A') }} ({{ $app->created_at?->diffForHumans() }})</span>
+                                                </div>
+                                                <div class="col-md-6 mb-2">
+                                                    <span class="text-white-50">Last Active:</span>
+                                                    <span class="text-white ml-1">{{ $app->updated_at?->diffForHumans() }}</span>
+                                                </div>
+                                            </div>
+                                            <div class="mt-2 pt-2 border-top border-white-10 d-flex gap-2" style="gap: 10px;">
+                                                <a href="{{ route('admin.users.show', $app->id) }}" target="_blank" class="btn btn-outline-primary btn-xs rounded-pill px-3">
+                                                    <i class="fa fa-external-link mr-1"></i>Open Full Admin User Profile
+                                                </a>
+                                                <a href="{{ route('admin.users.history', urlencode($app->email)) }}" target="_blank" class="btn btn-outline-light btn-xs rounded-pill px-3">
+                                                    <i class="fa fa-history mr-1"></i>View User Wallet History
+                                                </a>
+                                            </div>
+                                        </div>
+
+                                        <!-- API Application Information -->
+                                        <div class="card border-0 rounded-3 mb-3 p-3" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06) !important;">
+                                            <h6 class="text-white font-weight-bold mb-3"><i class="fa fa-file-text-o text-warning mr-2"></i>API Application & Business Info</h6>
+                                            <div class="row small mb-3">
+                                                <div class="col-md-6 mb-2">
+                                                    <span class="text-white-50">Registered Website / App:</span>
+                                                    @if($site)
+                                                        <div class="mt-1">
+                                                            <a href="{{ str_starts_with($site, 'http') ? $site : 'https://' . $site }}" target="_blank" class="text-info font-weight-bold">
+                                                                <i class="fa fa-globe mr-1"></i>{{ $site }} <i class="fa fa-external-link small ml-1"></i>
+                                                            </a>
+                                                        </div>
+                                                    @else
+                                                        <span class="text-white-50 ml-1">Not provided</span>
+                                                    @endif
+                                                </div>
+                                                <div class="col-md-6 mb-2">
+                                                    <span class="text-white-50">Company / Organization:</span>
+                                                    <div class="text-white font-weight-bold mt-1">{{ $company ?: 'Individual / Not specified' }}</div>
+                                                </div>
+                                                <div class="col-md-6 mb-2">
+                                                    <span class="text-white-50">Estimated Monthly Calls:</span>
+                                                    <div class="text-white font-weight-bold mt-1">{{ $volume ?: 'Standard' }}</div>
+                                                </div>
+                                                <div class="col-md-6 mb-2">
+                                                    <span class="text-white-50">Application Submitted:</span>
+                                                    <div class="text-white mt-1">{{ $appliedAt ? \Carbon\Carbon::parse($appliedAt)->format('M d, Y h:i A') . ' (' . \Carbon\Carbon::parse($appliedAt)->diffForHumans() . ')' : 'Direct Access' }}</div>
+                                                </div>
+                                            </div>
+
+                                            @if($purpose)
+                                                <div class="p-3 rounded-3 mb-3" style="background: rgba(245, 158, 11, 0.05); border: 1px solid rgba(245, 158, 11, 0.2);">
+                                                    <div class="text-warning small font-weight-bold mb-1"><i class="fa fa-bullseye mr-1"></i>Intended Integration Purpose & Use Case:</div>
+                                                    <div class="text-white small" style="white-space: pre-line; line-height: 1.5;">{{ $purpose }}</div>
+                                                </div>
+                                            @endif
+
+                                            @if(!empty(data_get($app->api_application_details, 'notes')))
+                                                <div class="p-3 rounded-3 mb-3" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);">
+                                                    <div class="text-white-50 small font-weight-bold mb-1">Additional Developer Notes:</div>
+                                                    <div class="text-white small">{{ data_get($app->api_application_details, 'notes') }}</div>
+                                                </div>
+                                            @endif
+
+                                            <!-- Status Update Form inside Modal -->
+                                            <div class="pt-2 border-top border-white-10">
+                                                <form method="POST" action="{{ route('admin.api_applications.update_status', $app->id) }}" class="d-flex align-items-center gap-2" style="gap: 10px;">
+                                                    @csrf
+                                                    <span class="text-white-50 small">Change Status:</span>
+                                                    <select name="status" class="custom-select custom-select-sm text-white" style="background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.15); width: auto;">
+                                                        <option value="approved" @selected($app->api_access_status === 'approved')>Approve Access</option>
+                                                        <option value="rejected" @selected($app->api_access_status === 'rejected')>Reject Application</option>
+                                                        <option value="revoked" @selected($app->api_access_status === 'revoked')>Revoke Access</option>
+                                                        <option value="suspended" @selected($app->api_access_status === 'suspended')>Suspend Access</option>
+                                                        <option value="none" @selected($app->api_access_status === 'none')>Reset to Default</option>
+                                                    </select>
+                                                    <button type="submit" class="btn btn-primary btn-sm rounded-pill px-3">Update Status</button>
+                                                </form>
+                                            </div>
+                                        </div>
+
+                                        <!-- API Tokens Section -->
+                                        <div class="card border-0 rounded-3 mb-3 p-3" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06) !important;">
+                                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                                <h6 class="text-white font-weight-bold mb-0"><i class="fa fa-key text-info mr-2"></i>Issued API Keys & Tokens ({{ $app->apiTokens->count() }})</h6>
+                                            </div>
+                                            @if($app->apiTokens->isNotEmpty())
+                                                <div class="table-responsive">
+                                                    <table class="table table-sm table-borderless text-white small mb-0">
+                                                        <thead>
+                                                            <tr class="text-white-50 border-bottom border-white-10">
+                                                                <th>Token Name</th>
+                                                                <th>Key Identifier</th>
+                                                                <th>Rate Limit</th>
+                                                                <th>Created</th>
+                                                                <th>Last Used</th>
+                                                                <th>Status</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            @foreach($app->apiTokens as $token)
+                                                                <tr class="border-bottom border-white-5">
+                                                                    <td class="py-2 text-white font-weight-bold">{{ $token->name }}</td>
+                                                                    <td class="py-2"><code class="text-info">nx_••••••••{{ $token->last_four }}</code></td>
+                                                                    <td class="py-2">{{ $token->rate_limit_per_minute }} req/min</td>
+                                                                    <td class="py-2 text-white-50">{{ $token->created_at?->format('M d, Y') }}</td>
+                                                                    <td class="py-2 text-white-50">{{ $token->last_used_at ? $token->last_used_at->diffForHumans() : 'Never' }}</td>
+                                                                    <td class="py-2">
+                                                                        @if($token->revoked_at)
+                                                                            <span class="badge badge-danger">Revoked</span>
+                                                                        @else
+                                                                            <span class="badge badge-success">Active</span>
+                                                                        @endif
+                                                                    </td>
+                                                                </tr>
+                                                            @endforeach
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            @else
+                                                <div class="text-white-50 small py-2">No API tokens issued yet.</div>
+                                            @endif
+                                        </div>
+
+                                        <!-- Current Custom Pricing Rates -->
+                                        <div class="card border-0 rounded-3 p-3" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06) !important;">
+                                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                                <div>
+                                                    <h6 class="text-white font-weight-bold mb-0"><i class="fa fa-tags text-success mr-2"></i>Active Developer API Rates</h6>
+                                                    <small class="text-white-50">{{ $app->hasCustomApiPricing() ? 'VIP Custom Price Overrides Configured' : 'Inheriting Global Default System Rates' }}</small>
+                                                </div>
+                                                <button type="button" class="btn btn-outline-info btn-xs rounded-pill px-3" data-toggle="modal" data-target="#userPricingModal{{ $app->id }}" data-dismiss="modal">
+                                                    <i class="fa fa-sliders mr-1"></i>Configure Custom Rates
+                                                </button>
+                                            </div>
+                                            <div class="row small">
+                                                <div class="col-md-3 col-6 mb-2">
+                                                    <span class="text-white-50">NIN Verify:</span>
+                                                    <div class="text-white font-weight-bold">₦{{ number_format($app->getDeveloperApiPrice('developer_api_nin_price', 100), 2) }}</div>
+                                                </div>
+                                                <div class="col-md-3 col-6 mb-2">
+                                                    <span class="text-white-50">NIN Validation:</span>
+                                                    <div class="text-white font-weight-bold">₦{{ number_format($app->getDeveloperApiPrice('developer_api_nin_validation_price', 500), 2) }}</div>
+                                                </div>
+                                                <div class="col-md-3 col-6 mb-2">
+                                                    <span class="text-white-50">IPE Clearance:</span>
+                                                    <div class="text-white font-weight-bold">₦{{ number_format($app->getDeveloperApiPrice('developer_api_ipe_clearance_price', 700), 2) }}</div>
+                                                </div>
+                                                <div class="col-md-3 col-6 mb-2">
+                                                    <span class="text-white-50">BVN Basic:</span>
+                                                    <div class="text-white font-weight-bold">₦{{ number_format($app->getDeveloperApiPrice('developer_api_bvn_basic_price', 100), 2) }}</div>
+                                                </div>
+                                                <div class="col-md-3 col-6 mb-2">
+                                                    <span class="text-white-50">BVN Premium:</span>
+                                                    <div class="text-white font-weight-bold">₦{{ number_format($app->getDeveloperApiPrice('developer_api_bvn_premium_price', 500), 2) }}</div>
+                                                </div>
+                                                <div class="col-md-3 col-6 mb-2">
+                                                    <span class="text-white-50">CAC Registry:</span>
+                                                    <div class="text-white font-weight-bold">₦{{ number_format($app->getDeveloperApiPrice('developer_api_cac_price', 300), 2) }}</div>
+                                                </div>
+                                                <div class="col-md-3 col-6 mb-2">
+                                                    <span class="text-white-50">Airtime Discount:</span>
+                                                    <div class="text-success font-weight-bold">{{ $app->getDeveloperApiPrice('developer_api_vtu_airtime_discount', 2.0) }}% off</div>
+                                                </div>
+                                                <div class="col-md-3 col-6 mb-2">
+                                                    <span class="text-white-50">Data Discount:</span>
+                                                    <div class="text-success font-weight-bold">{{ $app->getDeveloperApiPrice('developer_api_vtu_data_discount', 3.0) }}% off</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer border-0 pt-0 px-4 pb-4">
+                                        <button type="button" class="btn btn-secondary rounded-pill px-4" data-dismiss="modal">Close Profile</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
                         <!-- Custom Pricing Modal for this user -->
                         <div class="modal fade" id="userPricingModal{{ $app->id }}" tabindex="-1" role="dialog" aria-hidden="true">

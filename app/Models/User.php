@@ -205,6 +205,11 @@ class User extends Authenticatable implements CanResetPasswordContract, MustVeri
         return $this->hasMany(ApiToken::class, 'user_id', 'id');
     }
 
+    public function developerApiRequestLogs()
+    {
+        return $this->hasMany(DeveloperApiRequestLog::class, 'user_id', 'id');
+    }
+
     public function referrer()
     {
         return $this->belongsTo(User::class, 'referred_user_id', 'id');

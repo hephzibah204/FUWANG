@@ -146,7 +146,7 @@ class AdminController extends Controller
 
     public function showUser($id)
     {
-        $user = User::with(['balance', 'transactions' => function($q) {
+        $user = User::with(['balance', 'apiTokens', 'transactions' => function($q) {
             $q->latest()->take(10);
         }])->findOrFail($id);
 

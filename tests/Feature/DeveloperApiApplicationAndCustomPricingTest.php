@@ -438,4 +438,56 @@ class DeveloperApiApplicationAndCustomPricingTest extends TestCase
         // 3000 - 950 = 2050
         $this->assertSame(2050.0, (float) $developer->balance->user_balance);
     }
+
+    public function test_admin_can_view_profiles_of_developers_who_applied_or_use_api_keys(): void
+    {
+        $admin = Admin::factory()->create();
+
+        // 1. Applied user
+        $appliedUser = $this->makeUser('applicant@startup.com', 'pending');
+        $appliedUser->api_application_details = [
+            'website' => 'https://startup.com',
+            'company_name' => 'Acme Startup Ltd',
+            'intended_use' => 'Integrating automated NIN checks into our customer onboarding pipeline.',
+            'estimated_monthly_volume' => '5,000 - 10,000 calls',
+            'applied_at' => now()->toIso8601String(),
+        ];
+        $appliedUser->save();
+
+        // 2. Active API token user
+        $activeUser = $this->makeUser('active_dev@enterprise.ng', 'approved');
+        [$token, $bearer] = $this->makeToken($activeUser);
+
+        // 3. Regular non-api user
+        $regularUser = $this->makeUser('regular@consumer.com', 'none');
+
+        // Admin visits Developer API index
+        $response = $this->actingAs($admin, 'admin')->get(route('admin.developer_api.index'));
+        $response->assertOk();
+        $response->assertSee('applicant@startup.com');
+        $response->assertSee('active_dev@enterprise.ng');
+        $response->assertSee('Acme Startup Ltd');
+        $response->assertSee('https://startup.com');
+        $response->assertSee('Integrating automated NIN checks');
+        $response->assertSee('View Profile');
+
+        // Test filtering by pending
+        $pendingResp = $this->actingAs($admin, 'admin')->get(route('admin.developer_api.index', ['developer_filter' => 'pending']));
+        $pendingResp->assertOk();
+        $pendingResp->assertSee('applicant@startup.com');
+        $pendingResp->assertDontSee('active_dev@enterprise.ng');
+
+        // Test search
+        $searchResp = $this->actingAs($admin, 'admin')->get(route('admin.developer_api.index', ['developer_search' => 'startup.com']));
+        $searchResp->assertOk();
+        $searchResp->assertSee('applicant@startup.com');
+        $searchResp->assertDontSee('active_dev@enterprise.ng');
+
+        // Test viewing user's main profile in admin users show
+        $userShowResp = $this->actingAs($admin, 'admin')->get(route('admin.users.show', $appliedUser->id));
+        $userShowResp->assertOk();
+        $userShowResp->assertSee('Developer API Profile');
+        $userShowResp->assertSee('Acme Startup Ltd');
+        $userShowResp->assertSee('https://startup.com');
+    }
 }

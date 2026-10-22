@@ -218,6 +218,124 @@
                 <a href="{{ route('admin.users.history', urlencode($user->email)) }}" class="btn btn-sm text-white-50" style="text-decoration: underline;">View Full History</a>
             </div>
         </div>
+
+        <?php if (($user->api_access_status && $user->api_access_status !== 'none') || !empty($user->api_application_details) || $user->hasCustomApiPricing() || $user->apiTokens()->exists()): ?>
+        <!-- Developer API Profile Section -->
+        <div class="card glass-card border-0 mb-4" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05) !important;">
+            <div class="card-header bg-transparent border-0 pt-4 px-4 d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="text-white mb-0 font-weight-bold"><i class="fa fa-code text-primary mr-2"></i>Developer API Profile</h5>
+                    <p class="text-white-50 small mb-0">API access status, issued tokens, and integration details.</p>
+                </div>
+                <div>
+                    <a href="{{ route('admin.developer_api.index', ['developer_search' => $user->email]) }}" class="btn btn-outline-primary btn-sm rounded-pill px-3">
+                        <i class="fa fa-sliders mr-1"></i>Manage in API Console
+                    </a>
+                </div>
+            </div>
+            <div class="card-body px-4 pb-4">
+                <div class="row mb-3">
+                    <div class="col-sm-4 mb-2">
+                        <div class="p-3 rounded-3" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05);">
+                            <span class="text-white-50 small d-block mb-1">API Access Status</span>
+                            <span class="badge badge-{{ $user->api_access_status === 'approved' ? 'success' : (in_array($user->api_access_status, ['rejected', 'revoked', 'suspended']) ? 'danger' : 'warning') }} px-2 py-1">
+                                {{ ucfirst($user->api_access_status ?: 'None') }}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="col-sm-4 mb-2">
+                        <div class="p-3 rounded-3" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05);">
+                            <span class="text-white-50 small d-block mb-1">API Tokens</span>
+                            <span class="text-white font-weight-bold">{{ $user->apiTokens()->whereNull('revoked_at')->count() }} Active</span>
+                            <small class="text-white-50">/ {{ $user->apiTokens()->count() }} Total</small>
+                        </div>
+                    </div>
+                    <div class="col-sm-4 mb-2">
+                        <div class="p-3 rounded-3" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05);">
+                            <span class="text-white-50 small d-block mb-1">Pricing Model</span>
+                            @if($user->hasCustomApiPricing())
+                                <span class="badge badge-info px-2 py-1"><i class="fa fa-tag mr-1"></i>VIP Custom Rates</span>
+                            @else
+                                <span class="badge badge-secondary px-2 py-1">System Default</span>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+
+                <?php
+                    $appSite = data_get($user->api_application_details, 'website');
+                    $appPurpose = data_get($user->api_application_details, 'intended_use');
+                    $appCompany = data_get($user->api_application_details, 'company_name');
+                    $appVolume = data_get($user->api_application_details, 'estimated_monthly_volume');
+                ?>
+
+                @if($appSite || $appPurpose || $appCompany)
+                    <div class="p-3 rounded-3 mb-3" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);">
+                        <div class="row small">
+                            @if($appCompany)
+                                <div class="col-md-6 mb-2">
+                                    <span class="text-white-50">Organization:</span>
+                                    <span class="text-white font-weight-bold ml-1">{{ $appCompany }}</span>
+                                </div>
+                            @endif
+                            @if($appSite)
+                                <div class="col-md-6 mb-2">
+                                    <span class="text-white-50">Website:</span>
+                                    <a href="{{ str_starts_with($appSite, 'http') ? $appSite : 'https://' . $appSite }}" target="_blank" class="text-info font-weight-bold ml-1">
+                                        {{ $appSite }} <i class="fa fa-external-link small ml-1"></i>
+                                    </a>
+                                </div>
+                            @endif
+                            @if($appVolume)
+                                <div class="col-md-6 mb-2">
+                                    <span class="text-white-50">Estimated Volume:</span>
+                                    <span class="text-white ml-1">{{ $appVolume }}</span>
+                                </div>
+                            @endif
+                        </div>
+                        @if($appPurpose)
+                            <div class="mt-2 pt-2 border-top border-white-5">
+                                <span class="text-warning small font-weight-bold d-block mb-1"><i class="fa fa-bullseye mr-1"></i>Integration Purpose:</span>
+                                <div class="text-white-50 small" style="white-space: pre-line;">{{ $appPurpose }}</div>
+                            </div>
+                        @endif
+                    </div>
+                @endif
+
+                @if($user->apiTokens->isNotEmpty())
+                    <h6 class="text-white font-weight-bold mb-2 small"><i class="fa fa-key text-info mr-1"></i>Issued API Keys</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-borderless text-white small mb-0">
+                            <thead>
+                                <tr class="text-white-50 border-bottom border-white-5">
+                                    <th>Name</th>
+                                    <th>Token Mask</th>
+                                    <th>Rate Limit</th>
+                                    <th>Last Used</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($user->apiTokens as $token)
+                                    <tr class="border-bottom border-white-5">
+                                        <td class="text-white">{{ $token->name }}</td>
+                                        <td><code class="text-info">nx_••••••••{{ $token->last_four }}</code></td>
+                                        <td>{{ $token->rate_limit_per_minute }} req/min</td>
+                                        <td class="text-white-50">{{ $token->last_used_at ? $token->last_used_at->diffForHumans() : 'Never' }}</td>
+                                        <td>
+                                            <span class="badge badge-{{ $token->revoked_at ? 'danger' : 'success' }}">
+                                                {{ $token->revoked_at ? 'Revoked' : 'Active' }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @endif
+            </div>
+        </div>
+        <?php endif; ?>
     </div>
 </div>
 @endsection

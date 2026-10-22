@@ -23,33 +23,93 @@ class DeveloperApiAdminController extends Controller
 
         $hasCustomPricing = Schema::hasColumn('users', 'api_custom_pricing');
         $hasAccessStatus = Schema::hasColumn('users', 'api_access_status');
+        $hasAppDetails = Schema::hasColumn('users', 'api_application_details');
+        $hasRequestLogs = Schema::hasTable('developer_api_request_logs');
 
-        $applications = User::query()
-            ->where(function ($q) use ($hasCustomPricing, $hasAccessStatus) {
-                $hasClause = false;
-                if ($hasAccessStatus) {
-                    $q->whereIn('api_access_status', ['pending', 'approved', 'rejected', 'suspended', 'revoked']);
+        $baseFilter = function ($q) use ($hasCustomPricing, $hasAccessStatus, $hasAppDetails, $hasRequestLogs) {
+            $hasClause = false;
+            if ($hasAccessStatus) {
+                $q->whereIn('api_access_status', ['pending', 'approved', 'rejected', 'suspended', 'revoked']);
+                $hasClause = true;
+            }
+            if ($hasAppDetails) {
+                if ($hasClause) {
+                    $q->orWhereNotNull('api_application_details');
+                } else {
+                    $q->whereNotNull('api_application_details');
                     $hasClause = true;
                 }
-                if ($hasCustomPricing) {
-                    if ($hasClause) {
-                        $q->orWhereNotNull('api_custom_pricing');
-                    } else {
-                        $q->whereNotNull('api_custom_pricing');
-                        $hasClause = true;
-                    }
-                }
+            }
+            if ($hasCustomPricing) {
                 if ($hasClause) {
-                    $q->orHas('apiTokens');
+                    $q->orWhereNotNull('api_custom_pricing');
                 } else {
-                    $q->has('apiTokens');
+                    $q->whereNotNull('api_custom_pricing');
+                    $hasClause = true;
                 }
-            })
-            ->withCount(['apiTokens as active_api_tokens_count' => function ($query) {
-                $query->whereNull('revoked_at');
+            }
+            if ($hasClause) {
+                $q->orHas('apiTokens');
+            } else {
+                $q->has('apiTokens');
+                $hasClause = true;
+            }
+            if ($hasRequestLogs) {
+                $q->orWhereHas('developerApiRequestLogs');
+            }
+        };
+
+        $query = User::query()->where($baseFilter);
+
+        // Filter tabs: all, pending, approved, with_tokens, custom_pricing
+        $activeFilter = (string) $request->input('developer_filter', 'all');
+        if ($activeFilter === 'pending' && $hasAccessStatus) {
+            $query->where('api_access_status', 'pending');
+        } elseif ($activeFilter === 'approved' && $hasAccessStatus) {
+            $query->where('api_access_status', 'approved');
+        } elseif ($activeFilter === 'with_tokens') {
+            $query->whereHas('apiTokens');
+        } elseif ($activeFilter === 'custom_pricing' && $hasCustomPricing) {
+            $query->whereNotNull('api_custom_pricing');
+        }
+
+        // Search by developer name, email, phone, or website
+        $search = trim((string) $request->input('developer_search', ''));
+        if ($search !== '') {
+            $query->where(function ($q) use ($search, $hasAppDetails) {
+                $q->where('fullname', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('username', 'like', "%{$search}%")
+                    ->orWhere('number', 'like', "%{$search}%");
+                if ($hasAppDetails) {
+                    $q->orWhere('api_application_details->website', 'like', "%{$search}%")
+                      ->orWhere('api_application_details->company_name', 'like', "%{$search}%");
+                }
+            });
+        }
+
+        $applications = $query
+            ->with(['balance', 'apiTokens' => function ($q) {
+                $q->latest();
             }])
+            ->withCount([
+                'apiTokens as total_api_tokens_count',
+                'apiTokens as active_api_tokens_count' => function ($q) {
+                    $q->whereNull('revoked_at');
+                },
+                'developerApiRequestLogs as total_api_requests_count',
+            ])
             ->latest()
-            ->paginate(20, ['*'], 'applications');
+            ->paginate(20, ['*'], 'applications')
+            ->appends($request->only(['developer_filter', 'developer_search']));
+
+        $developerCounts = [
+            'all' => User::query()->where($baseFilter)->count(),
+            'pending' => $hasAccessStatus ? User::query()->where('api_access_status', 'pending')->count() : 0,
+            'approved' => $hasAccessStatus ? User::query()->where('api_access_status', 'approved')->count() : 0,
+            'with_tokens' => User::query()->whereHas('apiTokens')->count(),
+            'custom_pricing' => $hasCustomPricing ? User::query()->whereNotNull('api_custom_pricing')->count() : 0,
+        ];
 
         $recentUsage = DeveloperApiRequestLog::query()
             ->with(['user:id,fullname,email', 'token:id,name,last_four'])
@@ -130,7 +190,10 @@ class DeveloperApiAdminController extends Controller
             'docs',
             'endpoints',
             'days',
-            'approveByDefault'
+            'approveByDefault',
+            'developerCounts',
+            'activeFilter',
+            'search'
         ));
     }
 
