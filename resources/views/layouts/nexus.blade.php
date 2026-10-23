@@ -970,7 +970,7 @@
                     <i class="fa-solid fa-circle-half-stroke"></i>
                 </button>
                 @if($webUser)
-                <div class="wallet-balance d-none d-md-block">
+                <div class="wallet-balance">
                     <span class="text-muted small">Balance:</span>
                     <h5 class="m-0">₦{{ number_format($webUser->balance?->user_balance ?? 0, 2) }}</h5>
                 </div>

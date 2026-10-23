@@ -60,7 +60,7 @@ class AgentDashboardController extends Controller
         $isPromo = EnrollmentAgent::isPromoActive();
         $promoEndsAt = \App\Models\SystemSetting::get('agent_license_promo_ends_at', '2026-10-10 23:59:59');
         $manualFunding = \Illuminate\Support\Facades\DB::table('manual_funding')->first();
-        $walletBalance = (float) ($user->accountBalance->user_balance ?? 0.0);
+        $walletBalance = $user->wallet_balance;
         $paystackKey = \App\Support\PaymentProviderCredentials::paystack()['public_key'];
 
         return view('agent.dashboard', compact(

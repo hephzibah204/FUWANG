@@ -22,7 +22,7 @@ class NINModificationAdminController extends Controller
 
     public function show($id)
     {
-        $request = VerificationResult::with('user')->findOrFail($id);
+        $request = VerificationResult::with('user')->where('service_type', 'nin_modification')->findOrFail($id);
         return view('admin.verifications.nin_modifications.show', compact('request'));
     }
 
@@ -33,7 +33,7 @@ class NINModificationAdminController extends Controller
             'admin_note' => 'nullable|string|max:1000'
         ]);
 
-        $verification = VerificationResult::findOrFail($id);
+        $verification = VerificationResult::where('service_type', 'nin_modification')->findOrFail($id);
         $user = User::findOrFail($verification->user_id);
         $oldStatus = $verification->status;
         
@@ -44,9 +44,9 @@ class NINModificationAdminController extends Controller
 
         // Handle failure and refund if necessary
         if ($request->status === 'failed' && $oldStatus !== 'failed') {
-            $price = \App\Models\SystemSetting::get('nin_modification_price', 2500);
+            $price = data_get($verification->response_data, 'amount_paid', \App\Models\SystemSetting::get('nin_modification_price', 2500));
             $wallet = app(WalletService::class);
-            $wallet->failAndRefund($user, (float)$price, 'NIN Modification Rejected', $verification->reference_id);
+            $wallet->failAndRefund($user, (float)$price, 'NIN Modification Rejected', data_get($verification->response_data, 'transaction_id', $verification->reference_id));
         }
 
         return back()->with('success', 'NIN Modification status updated to ' . ucfirst($request->status));

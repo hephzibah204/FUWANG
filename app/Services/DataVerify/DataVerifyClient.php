@@ -834,7 +834,7 @@ class DataVerifyClient
     {
         $configured = trim((string) (
             \App\Models\SystemSetting::get('dataverify_endpoint_validation')
-            ?? ApiCenter::query()->value('dataverify_endpoint_validation')
+            ?? ApiCenter::query()->first()?->getAttribute('dataverify_endpoint_validation')
             ?? ''
         ));
 
@@ -849,7 +849,7 @@ class DataVerifyClient
     {
         $configured = trim((string) (
             \App\Models\SystemSetting::get('dataverify_endpoint_validation_status')
-            ?? ApiCenter::query()->value('dataverify_endpoint_validation_status')
+            ?? ApiCenter::query()->first()?->getAttribute('dataverify_endpoint_validation_status')
             ?? ''
         ));
 

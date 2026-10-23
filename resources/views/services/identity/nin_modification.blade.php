@@ -266,9 +266,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const formContent = document.getElementById('formContent');
     const consentModal = document.getElementById('consentModal');
     const agreeBtn = document.getElementById('agreeBtn');
+    let hasConsent = @json($hasConsent);
 
     // Consent check
-    @if(!$user->nin_mod_consent)
+    @if(!$hasConsent)
         if (consentModal) {
             consentModal.style.display = 'block';
             consentModal.classList.add('show');
@@ -290,9 +291,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 body: JSON.stringify({ _token: '{{ csrf_token() }}' })
             })
-            .then(res => res.json())
+            .then(async response => {
+                const res = await response.json();
+                if (!response.ok) {
+                    throw new Error(response.status === 419
+                        ? 'Your session has expired. Refresh this page and try again.'
+                        : (res.message || res.error?.message || 'Unable to save consent. Please try again.'));
+                }
+                return res;
+            })
             .then(res => {
                 if (res.status) {
+                    hasConsent = true;
                     if (consentModal) {
                         consentModal.style.display = 'none';
                         consentModal.classList.remove('show');
@@ -302,15 +312,15 @@ document.addEventListener('DOMContentLoaded', function() {
                         showNexusToast('Terms accepted successfully!', 'success');
                     }
                 } else {
-                    alert(res.message || 'Failed to save consent.');
+                    alert(res.message || res.error?.message || 'Failed to save consent.');
                     agreeBtn.disabled = false;
                     agreeBtn.textContent = 'I Agree & Proceed';
                 }
             })
-            .catch(() => {
+            .catch(error => {
                 agreeBtn.disabled = false;
                 agreeBtn.textContent = 'I Agree & Proceed';
-                alert('Connection error. Please try again.');
+                alert(error.message || 'Connection error. Please try again.');
             });
         });
     }
@@ -404,6 +414,11 @@ document.addEventListener('DOMContentLoaded', function() {
         form.addEventListener('submit', function(e) {
             e.preventDefault();
 
+            if (!hasConsent) {
+                alert('Please accept the modification terms before submitting.');
+                return;
+            }
+
             if (!modTypeSelect || !modTypeSelect.value) {
                 alert('Please select a Modification Type from the dropdown.');
                 if (modTypeSelect) modTypeSelect.focus();
@@ -443,7 +458,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     alert(res.message || 'Modification request submitted successfully. Our agents will process it shortly.');
                     window.location.href = res.redirect_url || "{{ route('history') }}";
                 } else {
-                    alert(res.message || 'Submission could not be completed.');
+                    alert(res.message || res.error?.message || 'Submission could not be completed.');
                 }
             })
             .catch(err => {

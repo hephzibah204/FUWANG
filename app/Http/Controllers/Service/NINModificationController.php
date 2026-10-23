@@ -6,24 +6,22 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\SystemSetting;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
 
 class NINModificationController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $user = Auth::user();
         $price = SystemSetting::get('nin_modification_price', 2500);
         
-        return view('services.identity.nin_modification', compact('user', 'price'));
+        $hasConsent = $this->hasConsent($request);
+        return view('services.identity.nin_modification', compact('user', 'price', 'hasConsent'));
     }
 
     public function acceptConsent(Request $request)
     {
-        $user = Auth::user();
-        $user->forceFill([
-            'nin_mod_consent' => true,
-            'nin_mod_consent_at' => now()
-        ])->save();
+        $this->recordConsent($request);
 
         return response()->json(['status' => true, 'message' => 'Terms accepted successfully.']);
     }
@@ -46,12 +44,9 @@ class NINModificationController extends Controller
             return response()->json(['status' => false, 'message' => 'Users with existing Delinked Self-Service accounts cannot continue.']);
         }
 
-        if (!$user->nin_mod_consent) {
+        if (!$this->hasConsent($request)) {
             if ($request->boolean('consent') || $request->input('consent') === 'yes' || $request->input('consent') === '1') {
-                $user->forceFill([
-                    'nin_mod_consent' => true,
-                    'nin_mod_consent_at' => now()
-                ])->save();
+                $this->recordConsent($request);
             } else {
                 return response()->json(['status' => false, 'message' => 'You must accept the terms and conditions first.']);
             }
@@ -90,6 +85,10 @@ class NINModificationController extends Controller
                     'document_name' => $file->getClientOriginalName(),
                     'document_mime' => $file->getMimeType(),
                     'submitted_at' => now()->toIso8601String(),
+                    'consent_accepted' => true,
+                    'consent_recorded_at' => now()->toIso8601String(),
+                    'transaction_id' => $debit['txId'],
+                    'amount_paid' => (float) $price,
                 ]
             ]);
 
@@ -104,8 +103,26 @@ class NINModificationController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            report($e);
             $wallet->failAndRefund($user, (float)$price, 'NIN Modification Failure', $debit['txId']);
             return response()->json(['status' => false, 'message' => 'An error occurred during submission. Your balance has been refunded.']);
         }
+    }
+
+    private function hasConsent(Request $request): bool
+    {
+        return (bool) ($request->user()->nin_mod_consent
+            || $request->session()->get('nin_mod_consent.' . $request->user()->id));
+    }
+
+    private function recordConsent(Request $request): void
+    {
+        $user = $request->user();
+        // Older installations may not yet have the optional profile consent columns.
+        // Keep acceptance in the authenticated session and in each submitted request.
+        if (Schema::hasColumn('users', 'nin_mod_consent') && Schema::hasColumn('users', 'nin_mod_consent_at')) {
+            $user->forceFill(['nin_mod_consent' => true, 'nin_mod_consent_at' => now()])->save();
+        }
+        $request->session()->put('nin_mod_consent.' . $user->id, now()->toIso8601String());
     }
 }

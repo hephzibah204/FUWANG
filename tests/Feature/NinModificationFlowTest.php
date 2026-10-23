@@ -57,6 +57,51 @@ class NinModificationFlowTest extends TestCase
         ]);
     }
 
+    public function test_user_can_accept_modification_consent_without_being_charged(): void
+    {
+        $user = $this->createUser();
+        $user->forceFill(['nin_mod_consent' => false, 'nin_mod_consent_at' => null])->save();
+
+        $this->actingAs($user)->postJson(route('services.nin.modification.consent'))
+            ->assertOk()->assertJson(['status' => true]);
+
+        $user->refresh();
+        $this->assertTrue($user->nin_mod_consent);
+        $this->assertNotNull($user->nin_mod_consent_at);
+        $this->assertSame(5000.0, $user->wallet_balance);
+    }
+
+    public function test_submission_reaches_admin_queue_without_profile_consent_columns(): void
+    {
+        $user = $this->createUser();
+        \Illuminate\Support\Facades\Schema::table('users', function ($table) {
+            $table->dropColumn(['nin_mod_consent', 'nin_mod_consent_at']);
+        });
+        $user = User::findOrFail($user->id);
+
+        $this->actingAs($user)->postJson(route('services.nin.modification.consent'))
+            ->assertOk()->assertJson(['status' => true]);
+
+        $response = $this->postJson(route('services.nin.modification.submit'), [
+            'self_service' => 'no',
+            'nin' => '12345678901',
+            'full_name' => 'John Applicant',
+            'modification_type' => 'name',
+            'old_value' => 'Old Name',
+            'new_value' => 'New Name',
+            'photo' => UploadedFile::fake()->create('affidavit.pdf', 10, 'application/pdf'),
+        ])->assertOk()->assertJson(['status' => true]);
+
+        $record = VerificationResult::findOrFail($response->json('result_id'));
+        $this->assertSame('waiting_for_review', $record->status);
+        $this->assertTrue($record->response_data['consent_accepted']);
+        $this->assertNotEmpty($record->response_data['transaction_id']);
+        $this->assertSame(2500.0, $user->fresh()->wallet_balance);
+        $this->actingAs($this->createAdmin(), 'admin')
+            ->get(route('admin.verifications.nin_modifications.index'))
+            ->assertOk()->assertSee('12345678901');
+    }
+
     public function test_user_can_submit_nin_modification_request(): void
     {
         $user = $this->createUser(5000.00);
