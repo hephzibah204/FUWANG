@@ -1513,13 +1513,13 @@ class VerificationController extends Controller
                         ->get();
 
         $price = VerificationPrice::first()->ipe_clearance_price ?? 700;
-        $ipeMode = \App\Models\SystemSetting::get('ipe_clearance_mode', 'robosttech');
+        $ipeMode = \App\Models\SystemSetting::get('ipe_clearance_mode', 'auto');
 
         return view('services.identity.clearance', compact('history', 'price', 'ipeMode'));
     }
 
     /**
-     * Handle IPE Clearance Submission & Status Query (Manual Admin Processing or Robosttech API)
+     * Handle IPE Clearance Submission & Status Query (Manual Admin Processing, DataVerify API, or Robosttech API)
      */
     public function verifyClearance(Request $request)
     {
@@ -1534,8 +1534,22 @@ class VerificationController extends Controller
         $user = Auth::user();
         $trackingId = trim((string) ($request->input('tracking_id') ?: $request->input('number')));
         $category = trim((string) $request->input('category', 'Improcessing Error'));
-        $ipeClearanceMode = \App\Models\SystemSetting::get('ipe_clearance_mode', 'robosttech');
+        $ipeClearanceMode = \App\Models\SystemSetting::get('ipe_clearance_mode', 'auto');
+        if ($ipeClearanceMode === 'api') {
+            $ipeClearanceMode = 'auto';
+        }
         $wantsJson = $request->expectsJson() || $request->ajax() || $request->wantsJson();
+
+        $dvProvider = CustomApi::query()->whereIn('service_type', ['ipe_clearance', 'clearance', 'clearance_request'])->where('status', true)->where(function ($q) {
+            $q->where('provider_identifier', 'dataverify')->orWhere('endpoint', 'like', '%dataverify%');
+        })->first();
+
+        $robostProvider = CustomApi::query()->whereIn('service_type', ['ipe_clearance', 'clearance', 'clearance_request'])->where('status', true)->where(function ($q) {
+            $q->where('provider_identifier', 'robosttech')->orWhere('endpoint', 'like', '%robosttech%');
+        })->first();
+
+        $hasDv = $this->hasDataVerifyCredentials($dvProvider);
+        $hasRobost = $this->hasRobosttechCredentials($robostProvider);
 
         // Status check mode: retrieve existing review record and optionally sync from API
         if ($mode === 'status') {
@@ -1551,14 +1565,11 @@ class VerificationController extends Controller
                 ->latest()
                 ->first();
 
-            $providerNameLower = strtolower((string) ($existing?->provider_name ?? ''));
-            $isDataVerify = ($ipeClearanceMode === 'dataverify' || str_contains($providerNameLower, 'dataverify'));
-            $isRobost = ($ipeClearanceMode === 'robosttech' || str_contains($providerNameLower, 'robosttech'));
+            $rawProvider = strtolower((string) ($existing ? ($existing->getRawOriginal('provider_name') ?? $existing->provider_name) : ''));
 
-            // If DataVerify mode or existing request was submitted via DataVerify, check DataVerify status API
-            if ($isDataVerify && ($existing ? in_array($existing->status, ['pending', 'waiting_for_review']) : true)) {
+            $checkDv = function () use (&$existing, $dvProvider, $trackingId, $user): bool {
                 try {
-                    $dvClient = new \App\Services\DataVerify\DataVerifyClient();
+                    $dvClient = new \App\Services\DataVerify\DataVerifyClient($dvProvider);
                     $exData = $existing ? ($existing->response_data ?? []) : [];
                     $txId = $exData['transaction_id'] ?? null;
                     $dvRes = $dvClient->checkIpeClearanceStatus($trackingId, $txId);
@@ -1595,66 +1606,87 @@ class VerificationController extends Controller
                             }
                             $existing->response_data = $exData;
                             $existing->save();
+                            return in_array($existing->status, ['successful', 'failed'], true);
                         }
                     }
                 } catch (\Throwable $e) {
                     Log::warning('DataVerify clearance status check error: ' . $e->getMessage());
                 }
-            }
-            // If Robosttech mode or existing request was submitted via Robosttech, check provider status API
-            elseif ($isRobost && ($existing ? in_array($existing->status, ['pending', 'waiting_for_review']) : true)) {
+                return false;
+            };
+
+            $checkRobost = function () use (&$existing, $trackingId, $user): bool {
                 $apiCenter = ApiCenter::first();
                 $customRobost = CustomApi::where('provider_identifier', 'robosttech')->where('status', true)->first();
                 $apiKey = $customRobost?->api_key ?: $apiCenter?->robosttech_api_key ?: env('ROBOSTTECH_API_KEY') ?: \App\Models\SystemSetting::get('robosttech_api_key');
 
-                if ($apiKey) {
-                    try {
-                        $endpoint = $this->resolveRobostEndpoint(
-                            (string) ($apiCenter?->robosttech_endpoint_clearance_status ?: $customRobost?->endpoint ?: 'https://robosttech.com/api'),
-                            'clearance_status'
-                        );
-                        $apiRes = Http::timeout(25)->withHeaders([
-                            'api-key' => $apiKey,
-                            'Content-Type' => 'application/json'
-                        ])->post($endpoint, [
-                            'tracking_id' => $trackingId,
-                            'number' => $trackingId,
-                        ]);
+                if (!$apiKey) {
+                    return false;
+                }
 
-                        if ($apiRes->successful()) {
-                            $apiData = $apiRes->json();
-                            $apiStatus = strtolower((string) ($apiData['status'] ?? $apiData['data']['status'] ?? ''));
-                            $newTid = \App\Models\VerificationResult::extractNewTrackingId($apiData, $trackingId);
+                try {
+                    $endpoint = $this->resolveRobostEndpoint(
+                        (string) ($apiCenter?->robosttech_endpoint_clearance_status ?: $customRobost?->endpoint ?: 'https://robosttech.com/api'),
+                        'clearance_status'
+                    );
+                    $apiRes = Http::timeout(25)->withHeaders([
+                        'api-key' => $apiKey,
+                        'Content-Type' => 'application/json'
+                    ])->post($endpoint, [
+                        'tracking_id' => $trackingId,
+                        'number' => $trackingId,
+                    ]);
 
-                            if ($existing) {
-                                $exData = $existing->response_data ?? [];
-                                $exData['provider_last_status'] = $apiData;
-                                if (in_array($apiStatus, ['successful', 'success', 'cleared', 'completed', 'true', '1'])) {
-                                    $existing->status = 'successful';
-                                    if ($newTid) {
-                                        $exData['new_tracking_id'] = $newTid;
-                                    }
-                                    $existing->admin_note = $apiData['message'] ?? 'Cleared successfully via verification desk.';
-                                } elseif (in_array($apiStatus, ['failed', 'rejected', 'error', 'false', '0'])) {
-                                    $existing->status = 'failed';
-                                    $existing->admin_note = $apiData['message'] ?? 'Clearance rejected during verification.';
-                                    if (empty($exData['refunded'])) {
-                                        $refundAmount = (float) ($exData['amount_paid'] ?? VerificationPrice::first()->ipe_clearance_price ?? 700);
-                                        $wallet = app(WalletService::class);
-                                        $ref = $wallet->refund($user, $refundAmount, 'IPE Clearance Rejected: ' . $existing->admin_note, 'IPE-REFUND');
-                                        if ($ref['ok'] ?? false) {
-                                            $exData['refunded'] = true;
-                                            $exData['refunded_amount'] = $refundAmount;
-                                            $exData['refunded_at'] = now()->toDateTimeString();
-                                        }
+                    if ($apiRes->successful()) {
+                        $apiData = $apiRes->json();
+                        $apiStatus = strtolower((string) ($apiData['status'] ?? $apiData['data']['status'] ?? ''));
+                        $newTid = \App\Models\VerificationResult::extractNewTrackingId($apiData, $trackingId);
+
+                        if ($existing) {
+                            $exData = $existing->response_data ?? [];
+                            $exData['provider_last_status'] = $apiData;
+                            if (in_array($apiStatus, ['successful', 'success', 'cleared', 'completed', 'true', '1'])) {
+                                $existing->status = 'successful';
+                                if ($newTid) {
+                                    $exData['new_tracking_id'] = $newTid;
+                                }
+                                $existing->admin_note = $apiData['message'] ?? 'Cleared successfully via verification desk.';
+                            } elseif (in_array($apiStatus, ['failed', 'rejected', 'error', 'false', '0'])) {
+                                $existing->status = 'failed';
+                                $existing->admin_note = $apiData['message'] ?? 'Clearance rejected during verification.';
+                                if (empty($exData['refunded'])) {
+                                    $refundAmount = (float) ($exData['amount_paid'] ?? VerificationPrice::first()->ipe_clearance_price ?? 700);
+                                    $wallet = app(WalletService::class);
+                                    $ref = $wallet->refund($user, $refundAmount, 'IPE Clearance Rejected: ' . $existing->admin_note, 'IPE-REFUND');
+                                    if ($ref['ok'] ?? false) {
+                                        $exData['refunded'] = true;
+                                        $exData['refunded_amount'] = $refundAmount;
+                                        $exData['refunded_at'] = now()->toDateTimeString();
                                     }
                                 }
-                                $existing->response_data = $exData;
-                                $existing->save();
                             }
+                            $existing->response_data = $exData;
+                            $existing->save();
+                            return in_array($existing->status, ['successful', 'failed'], true);
                         }
-                    } catch (\Throwable $e) {
-                        Log::warning('Clearance status check error: ' . $e->getMessage());
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('Clearance status check error: ' . $e->getMessage());
+                }
+                return false;
+            };
+
+            $isPendingOrReview = $existing ? in_array($existing->status, ['pending', 'waiting_for_review'], true) : true;
+            if ($isPendingOrReview) {
+                if (str_contains($rawProvider, 'robosttech') || ($ipeClearanceMode === 'robosttech' && !str_contains($rawProvider, 'dataverify'))) {
+                    $resolved = $hasRobost && $checkRobost();
+                    if (!$resolved && $hasDv) {
+                        $checkDv();
+                    }
+                } else {
+                    $resolved = $hasDv && $checkDv();
+                    if (!$resolved && $hasRobost) {
+                        $checkRobost();
                     }
                 }
             }
@@ -1719,20 +1751,33 @@ class VerificationController extends Controller
         try {
             $referenceId = 'CLR-' . strtoupper(bin2hex(random_bytes(4)));
 
-            if ($ipeClearanceMode === 'dataverify') {
-                $dvClient = new \App\Services\DataVerify\DataVerifyClient();
-                $dvRes = $dvClient->submitIpeClearance($trackingId);
+            $executeDataVerify = function () use ($dvProvider, $trackingId, $category, $user, $price, $request) {
+                $client = new \App\Services\DataVerify\DataVerifyClient($dvProvider);
+                $subRes = $client->submitIpeClearance($trackingId);
+                if (!($subRes['ok'] ?? false)) {
+                    return [
+                        'ok' => false,
+                        'message' => $subRes['message'] ?: 'DataVerify clearance submission failed.',
+                        'data' => $subRes['data'] ?? [],
+                    ];
+                }
+                $data = $subRes['data'] ?? [];
+                $newTid = \App\Models\VerificationResult::extractNewTrackingId($data, $trackingId);
+                $isSuccess = ($subRes['status'] ?? '') === 'successful' || !empty($newTid);
+                $initialStatus = $isSuccess ? 'successful' : 'waiting_for_review';
+                $providerName = $dvProvider?->name ?: 'DataVerify';
 
-                if ($dvRes['ok'] ?? false) {
-                    $apiData = $dvRes['data'] ?? [];
-                    $newTid = \App\Models\VerificationResult::extractNewTrackingId($apiData, $trackingId);
-                    $isSuccess = ($dvRes['status'] ?? '') === 'successful' || !empty($newTid);
-                    $initialStatus = $isSuccess ? 'successful' : 'waiting_for_review';
-
-                    $payload = [
+                return [
+                    'ok' => true,
+                    'provider_name' => $providerName,
+                    'status' => $initialStatus,
+                    'new_tracking_id' => $newTid,
+                    'admin_note' => $subRes['message'] ?? 'Submitted to DataVerify. Processing in progress.',
+                    'data' => $data,
+                    'response_data' => [
                         'tracking_id' => $trackingId,
                         'new_tracking_id' => $newTid,
-                        'transaction_id' => $dvRes['transaction_id'] ?? null,
+                        'transaction_id' => $subRes['transaction_id'] ?? null,
                         'category' => $category,
                         'user_name' => $user->fullname,
                         'user_email' => $user->email,
@@ -1740,131 +1785,167 @@ class VerificationController extends Controller
                         'remarks' => $request->input('remarks'),
                         'service_mode' => 'Automated Processing (DataVerify)',
                         'amount_paid' => (float) $price,
-                        'api_response' => $apiData,
-                    ];
+                        'api_response' => $data,
+                    ],
+                ];
+            };
 
-                    $result = VerificationResult::create([
-                        'user_id' => $user->id,
-                        'service_type' => 'ipe_clearance',
-                        'identifier' => $trackingId,
-                        'provider_name' => 'DataVerify',
-                        'status' => $initialStatus,
-                        'reference_id' => $referenceId,
-                        'admin_note' => $dvRes['message'] ?? 'Submitted to DataVerify. Processing in progress.',
-                        'response_data' => $payload,
-                    ]);
-
-                    $wallet->markTransactionSuccess($debit['txId']);
-
-                    if (!$wantsJson) {
-                        return redirect()->route('services.clearance.report', $result->id)
-                            ->with('status', 'Clearance request submitted successfully.');
-                    }
-
-                    return response()->json([
-                        'status' => true,
-                        'message' => 'Clearance request submitted successfully. Please check status under IPE Results in a few minutes.',
-                        'report_url' => route('services.clearance.report', $result->id),
-                        'data' => [
-                            'tracking_id' => $trackingId,
-                            'reference_id' => $referenceId,
-                            'category' => $category,
-                            'status' => $initialStatus,
-                            'status_label' => $isSuccess ? 'Cleared / Successful' : 'Processing Application',
-                            'admin_note' => $dvRes['message'] ?? 'Submitted for verification.',
-                            'new_tracking_id' => $newTid,
-                            'report_url' => route('services.clearance.report', $result->id),
-                        ],
-                        'result_id' => $result->id
-                    ]);
-                } else {
-                    $cleanErr = preg_replace('/robosttech|dataverify|vuvaa/i', 'Gateway', (string) ($dvRes['message'] ?? 'DataVerify submission failed.'));
-                    throw new \Exception($cleanErr);
-                }
-            } elseif ($ipeClearanceMode === 'robosttech') {
+            $executeRobosttech = function () use ($robostProvider, $trackingId, $category, $user, $price, $request) {
                 $apiCenter = ApiCenter::first();
-                $customRobost = CustomApi::where('provider_identifier', 'robosttech')->where('status', true)->first();
-                $apiKey = $customRobost?->api_key ?: $apiCenter?->robosttech_api_key ?: env('ROBOSTTECH_API_KEY') ?: \App\Models\SystemSetting::get('robosttech_api_key');
-
+                $apiKey = $robostProvider?->api_key ?: $apiCenter?->robosttech_api_key ?: env('ROBOSTTECH_API_KEY') ?: \App\Models\SystemSetting::get('robosttech_api_key');
                 if (!$apiKey) {
-                    throw new \App\Exceptions\ServiceNotConfiguredException('Clearance service is temporarily unavailable. Please try again later.');
+                    return [
+                        'ok' => false,
+                        'message' => 'Robosttech API credentials not configured in Admin Settings.',
+                        'data' => [],
+                    ];
                 }
-
                 $endpoint = $this->resolveRobostEndpoint(
-                    (string) ($apiCenter?->robosttech_endpoint_clearance ?: $customRobost?->endpoint ?: 'https://robosttech.com/api'),
+                    (string) ($apiCenter?->robosttech_endpoint_clearance ?: $robostProvider?->endpoint ?: 'https://robosttech.com/api'),
                     'clearance'
                 );
-
-                $response = Http::timeout(45)->withHeaders([
-                    'api-key' => $apiKey,
-                    'Content-Type' => 'application/json'
-                ])->post($endpoint, [
-                    'tracking_id' => $trackingId,
-                    'number' => $trackingId,
-                    'category' => $category,
-                ]);
-
-                if ($response->successful()) {
+                try {
+                    $response = Http::timeout(30)->withHeaders([
+                        'api-key' => $apiKey,
+                        'Content-Type' => 'application/json'
+                    ])->post($endpoint, [
+                        'tracking_id' => $trackingId,
+                        'number' => $trackingId,
+                        'category' => $category,
+                    ]);
+                    if (!$response->successful()) {
+                        $payload = $response->json();
+                        $rawErr = (is_array($payload) ? ($payload['message'] ?? $payload['detail'] ?? null) : null)
+                            ?: ('Robosttech clearance failed (HTTP ' . $response->status() . ')');
+                        return [
+                            'ok' => false,
+                            'message' => $rawErr,
+                            'data' => is_array($payload) ? $payload : [],
+                        ];
+                    }
                     $apiData = $response->json();
                     $apiStatus = strtolower((string) ($apiData['status'] ?? $apiData['data']['status'] ?? 'waiting_for_review'));
                     $newTid = \App\Models\VerificationResult::extractNewTrackingId($apiData, $trackingId);
                     $isSuccess = in_array($apiStatus, ['cleared', 'completed', 'resolved']) || !empty($newTid);
                     $initialStatus = $isSuccess ? 'successful' : 'waiting_for_review';
+                    $providerName = $robostProvider?->name ?: 'Robosttech';
 
-                    $payload = [
-                        'tracking_id' => $trackingId,
-                        'new_tracking_id' => $newTid,
-                        'category' => $category,
-                        'user_name' => $user->fullname,
-                        'user_email' => $user->email,
-                        'user_phone' => $user->phone,
-                        'remarks' => $request->input('remarks'),
-                        'service_mode' => 'Automated Processing',
-                        'amount_paid' => (float) $price,
-                        'api_response' => $apiData,
-                    ];
-
-                    $result = VerificationResult::create([
-                        'user_id' => $user->id,
-                        'service_type' => 'ipe_clearance',
-                        'identifier' => $trackingId,
-                        'provider_name' => 'Robosttech',
+                    return [
+                        'ok' => true,
+                        'provider_name' => $providerName,
                         'status' => $initialStatus,
-                        'reference_id' => $referenceId,
+                        'new_tracking_id' => $newTid,
                         'admin_note' => $apiData['message'] ?? 'Submitted successfully. Verification is in progress.',
-                        'response_data' => $payload,
-                    ]);
-
-                    $wallet->markTransactionSuccess($debit['txId']);
-
-                    if (!$wantsJson) {
-                        return redirect()->route('services.clearance.report', $result->id)
-                            ->with('status', 'Clearance request submitted successfully.');
-                    }
-
-                    return response()->json([
-                        'status' => true,
-                        'message' => 'Clearance request submitted successfully. Please check status under IPE Results in a few minutes.',
-                        'report_url' => route('services.clearance.report', $result->id),
-                        'data' => [
+                        'data' => $apiData,
+                        'response_data' => [
                             'tracking_id' => $trackingId,
-                            'reference_id' => $referenceId,
-                            'category' => $category,
-                            'status' => $initialStatus,
-                            'status_label' => $isSuccess ? 'Cleared / Successful' : 'Processing Application',
-                            'admin_note' => $apiData['message'] ?? 'Submitted for verification.',
                             'new_tracking_id' => $newTid,
-                            'report_url' => route('services.clearance.report', $result->id),
+                            'category' => $category,
+                            'user_name' => $user->fullname,
+                            'user_email' => $user->email,
+                            'user_phone' => $user->phone,
+                            'remarks' => $request->input('remarks'),
+                            'service_mode' => 'Automated Processing (Robosttech)',
+                            'amount_paid' => (float) $price,
+                            'api_response' => $apiData,
                         ],
-                        'result_id' => $result->id
-                    ]);
-                } else {
-                    $payload = $response->json();
-                    $rawErr = (is_array($payload) ? ($payload['message'] ?? $payload['detail'] ?? null) : null)
-                        ?: ('Verification gateway connection failed (HTTP ' . $response->status() . ')');
-                    $cleanErr = preg_replace('/robosttech|dataverify|vuvaa/i', 'Gateway', (string) $rawErr);
+                    ];
+                } catch (\Throwable $e) {
+                    return [
+                        'ok' => false,
+                        'message' => 'Robosttech connection error: ' . $e->getMessage(),
+                        'data' => [],
+                    ];
+                }
+            };
+
+            if (in_array($ipeClearanceMode, ['robosttech', 'api', 'dataverify', 'auto'], true)) {
+                $primary = 'dataverify';
+                if ($ipeClearanceMode === 'robosttech') {
+                    $primary = $hasRobost ? 'robosttech' : ($hasDv ? 'dataverify' : 'robosttech');
+                } elseif ($ipeClearanceMode === 'dataverify') {
+                    $primary = $hasDv ? 'dataverify' : ($hasRobost ? 'robosttech' : 'dataverify');
+                } else { // auto or api
+                    if ($hasDv && !$hasRobost) {
+                        $primary = 'dataverify';
+                    } elseif ($hasRobost && !$hasDv) {
+                        $primary = 'robosttech';
+                    } else {
+                        $primary = 'dataverify';
+                    }
+                }
+
+                $attempt = null;
+                if ($primary === 'dataverify') {
+                    if ($hasDv) {
+                        $attempt = $executeDataVerify();
+                    }
+                    if ((!$attempt || !$attempt['ok']) && $hasRobost) {
+                        Log::warning('DataVerify clearance submission unsuccessful or missing key; failing over to Robosttech', [
+                            'error' => $attempt['message'] ?? 'No credentials',
+                            'tracking_id' => $trackingId,
+                        ]);
+                        $attempt = $executeRobosttech();
+                    }
+                } else { // primary === 'robosttech'
+                    if ($hasRobost) {
+                        $attempt = $executeRobosttech();
+                    }
+                    if ((!$attempt || !$attempt['ok']) && $hasDv) {
+                        Log::warning('Robosttech clearance submission unsuccessful or missing key; failing over to DataVerify', [
+                            'error' => $attempt['message'] ?? 'No credentials',
+                            'tracking_id' => $trackingId,
+                        ]);
+                        $attempt = $executeDataVerify();
+                    }
+                }
+
+                if (!$attempt || !$attempt['ok']) {
+                    $errorMsg = $attempt['message'] ?? 'Clearance service is temporarily unavailable. Please try again later.';
+                    $cleanErr = preg_replace('/robosttech|dataverify|vuvaa/i', 'Gateway', (string) $errorMsg);
                     throw new \Exception($cleanErr);
                 }
+
+                $providerName = $attempt['provider_name'];
+                $initialStatus = $attempt['status'];
+                $newTid = $attempt['new_tracking_id'];
+                $resPayload = $attempt['response_data'];
+
+                $result = VerificationResult::create([
+                    'user_id' => $user->id,
+                    'service_type' => 'ipe_clearance',
+                    'identifier' => $trackingId,
+                    'provider_name' => $providerName,
+                    'status' => $initialStatus,
+                    'reference_id' => $referenceId,
+                    'admin_note' => $attempt['admin_note'],
+                    'response_data' => $resPayload,
+                ]);
+
+                $wallet->markTransactionSuccess($debit['txId']);
+
+                if (!$wantsJson) {
+                    return redirect()->route('services.clearance.report', $result->id)
+                        ->with('status', 'Clearance request submitted successfully.');
+                }
+
+                return response()->json([
+                    'status' => true,
+                    'provider' => $providerName,
+                    'message' => 'Clearance request submitted successfully. Please check status under IPE Results in a few minutes.',
+                    'report_url' => route('services.clearance.report', $result->id),
+                    'data' => [
+                        'tracking_id' => $trackingId,
+                        'reference_id' => $referenceId,
+                        'category' => $category,
+                        'status' => $initialStatus,
+                        'status_label' => ($initialStatus === 'successful') ? 'Cleared / Successful' : 'Processing Application',
+                        'admin_note' => $attempt['admin_note'],
+                        'new_tracking_id' => $newTid,
+                        'report_url' => route('services.clearance.report', $result->id),
+                    ],
+                    'result_id' => $result->id
+                ]);
             } else {
                 // Manual Review Mode
                 $payload = [
@@ -1908,7 +1989,6 @@ class VerificationController extends Controller
                         'status' => 'waiting_for_review',
                         'status_label' => 'Under Review',
                         'admin_note' => 'Awaiting vetting and clearance. Results typically available in less than 24 hours.',
-                        'report_url' => route('services.clearance.report', $result->id),
                     ],
                     'result_id' => $result->id
                 ]);
@@ -2360,6 +2440,11 @@ class VerificationController extends Controller
     {
         $key = trim((string) ($provider?->api_key ?? ''));
         if ($key !== '') {
+            return true;
+        }
+
+        $customKey = trim((string) (CustomApi::where('provider_identifier', 'dataverify')->where('status', true)->value('api_key') ?? ''));
+        if ($customKey !== '') {
             return true;
         }
 

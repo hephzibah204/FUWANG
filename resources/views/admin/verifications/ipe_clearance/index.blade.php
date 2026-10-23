@@ -16,11 +16,17 @@
                 <form method="POST" action="{{ route('admin.verifications.ipe_clearance.mode') }}" class="d-inline-flex align-items-center m-0">
                     @csrf
                     <div class="btn-group btn-group-sm" role="group">
-                        <button type="submit" name="mode" value="manual" class="btn btn-sm py-1 px-3 {{ ($currentMode ?? 'manual') === 'manual' ? 'btn-primary font-weight-bold shadow-sm' : 'btn-outline-secondary text-white-50 border-0' }}">
-                            <i class="fa-solid fa-user-check me-1"></i> Manual Reporting
+                        <button type="submit" name="mode" value="auto" class="btn btn-sm py-1 px-3 {{ in_array(($currentMode ?? 'auto'), ['auto', 'api'], true) ? 'btn-info font-weight-bold shadow-sm' : 'btn-outline-secondary text-white-50 border-0' }}" title="Automatically selects configured provider and fails over if needed">
+                            <i class="fa-solid fa-arrows-split-up-and-left me-1"></i> Auto (Smart API)
                         </button>
-                        <button type="submit" name="mode" value="robosttech" class="btn btn-sm py-1 px-3 {{ ($currentMode ?? 'manual') === 'robosttech' ? 'btn-success font-weight-bold shadow-sm' : 'btn-outline-secondary text-white-50 border-0' }}">
+                        <button type="submit" name="mode" value="dataverify" class="btn btn-sm py-1 px-3 {{ ($currentMode ?? 'auto') === 'dataverify' ? 'btn-success font-weight-bold shadow-sm' : 'btn-outline-secondary text-white-50 border-0' }}">
+                            <i class="fa-solid fa-shield-halved me-1"></i> DataVerify API
+                        </button>
+                        <button type="submit" name="mode" value="robosttech" class="btn btn-sm py-1 px-3 {{ ($currentMode ?? 'auto') === 'robosttech' ? 'btn-warning font-weight-bold shadow-sm' : 'btn-outline-secondary text-white-50 border-0' }}">
                             <i class="fa-solid fa-robot me-1"></i> Robosttech API
+                        </button>
+                        <button type="submit" name="mode" value="manual" class="btn btn-sm py-1 px-3 {{ ($currentMode ?? 'auto') === 'manual' ? 'btn-primary font-weight-bold shadow-sm' : 'btn-outline-secondary text-white-50 border-0' }}">
+                            <i class="fa-solid fa-user-check me-1"></i> Manual Reporting
                         </button>
                     </div>
                 </form>

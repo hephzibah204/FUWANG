@@ -335,11 +335,20 @@ class NinValidationAdminController extends Controller
         $verification = VerificationResult::findOrFail($id);
         $providerName = strtolower((string) ($verification->provider_name ?? ''));
         $responseData = $verification->response_data ?? [];
+        $currentMode = SystemSetting::get('nin_validation_mode', 'auto');
 
-        // If provider is DataVerify
-        if (str_contains($providerName, 'dataverify')) {
+        $controller = new VerificationController();
+        $dvProvider = \App\Models\CustomApi::where('provider_identifier', 'dataverify')->where('status', true)->first();
+        $hasDv = $controller->hasDataVerifyCredentials($dvProvider);
+        $hasRobost = $controller->hasRobosttechCredentials();
+
+        $isDv = str_contains($providerName, 'dataverify') 
+            || !empty($responseData['transaction_id']) 
+            || in_array($currentMode, ['dataverify', 'auto', 'api'], true);
+
+        // If provider is DataVerify or system is in Auto/DataVerify mode
+        if (($isDv && $hasDv) || (!$hasRobost && $hasDv)) {
             try {
-                $dvProvider = \App\Models\CustomApi::where('provider_identifier', 'dataverify')->where('status', true)->first();
                 $dvClient = new \App\Services\DataVerify\DataVerifyClient($dvProvider);
                 $nin = $verification->identifier ?: ($responseData['nin'] ?? null);
                 $txId = $responseData['transaction_id'] ?? $responseData['api_response']['transaction_id'] ?? null;
@@ -378,12 +387,13 @@ class NinValidationAdminController extends Controller
 
                 return back()->with('success', 'DataVerify API sync completed. Current Status: ' . ucfirst($verification->status));
             } catch (\Throwable $e) {
-                return back()->with('error', 'DataVerify sync failed: ' . $e->getMessage());
+                if (!$hasRobost) {
+                    return back()->with('error', 'DataVerify sync failed: ' . $e->getMessage());
+                }
             }
         }
 
         // Otherwise sync with Robosttech
-        $controller = new VerificationController();
         $robostProvider = \App\Models\CustomApi::where('provider_identifier', 'robosttech')->where('status', true)->first();
         $apiCenter = ApiCenter::first();
         $robostKey = trim((string) (
@@ -453,8 +463,43 @@ class NinValidationAdminController extends Controller
                 return back()->with('success', 'Robosttech API sync completed. Current Status: ' . ucfirst($verification->status));
             }
 
+            // Fallback to DataVerify if Robosttech returned error
+            if ($hasDv) {
+                try {
+                    $dvClient = new \App\Services\DataVerify\DataVerifyClient($dvProvider);
+                    $nin = $verification->identifier ?: ($responseData['nin'] ?? null);
+                    $txId = $responseData['transaction_id'] ?? $responseData['api_response']['transaction_id'] ?? null;
+                    $statusRes = $dvClient->checkNinValidationStatus((string) $nin, $txId);
+                    if ($statusRes['status'] === 'successful') {
+                        $verification->status = 'successful';
+                        $verification->admin_note = $statusRes['message'] ?: 'Validated via DataVerify API sync fallback.';
+                        $responseData['dataverify_sync'] = $statusRes['data'] ?? [];
+                        $verification->response_data = $responseData;
+                        $verification->save();
+                        return back()->with('success', 'DataVerify API fallback sync completed. Current Status: ' . ucfirst($verification->status));
+                    }
+                } catch (\Throwable $ignore) {}
+            }
+
             return back()->with('error', 'Robosttech API returned error (HTTP ' . $response->status() . '): ' . ($response->json()['message'] ?? 'Unknown response'));
         } catch (\Throwable $e) {
+            // Fallback to DataVerify if connection to Robosttech failed
+            if ($hasDv) {
+                try {
+                    $dvClient = new \App\Services\DataVerify\DataVerifyClient($dvProvider);
+                    $nin = $verification->identifier ?: ($responseData['nin'] ?? null);
+                    $txId = $responseData['transaction_id'] ?? $responseData['api_response']['transaction_id'] ?? null;
+                    $statusRes = $dvClient->checkNinValidationStatus((string) $nin, $txId);
+                    if ($statusRes['status'] === 'successful') {
+                        $verification->status = 'successful';
+                        $verification->admin_note = $statusRes['message'] ?: 'Validated via DataVerify API sync fallback.';
+                        $responseData['dataverify_sync'] = $statusRes['data'] ?? [];
+                        $verification->response_data = $responseData;
+                        $verification->save();
+                        return back()->with('success', 'DataVerify API fallback sync completed. Current Status: ' . ucfirst($verification->status));
+                    }
+                } catch (\Throwable $ignore) {}
+            }
             return back()->with('error', 'Sync failed: ' . $e->getMessage());
         }
     }

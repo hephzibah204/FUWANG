@@ -248,6 +248,23 @@ class SettingsController extends Controller
             'vuvaa_encryption_iv',
         ];
 
+        $systemSettingEndpoints = [
+            'dataverify_endpoint_validation',
+            'dataverify_endpoint_validation_status',
+            'dataverify_endpoint_ipe',
+            'dataverify_endpoint_ipe_status',
+        ];
+
+        foreach ($systemSettingEndpoints as $ssKey) {
+            if ($request->has($ssKey)) {
+                $val = trim((string) $request->input($ssKey));
+                if ($val !== '') {
+                    $val = DataVerifyClient::normalizeDomain($val);
+                    SystemSetting::set($ssKey, $val, 'integrations');
+                }
+            }
+        }
+
         $data = array_filter(
             $request->only($allowed),
             fn ($value) => $value !== null && $value !== ''

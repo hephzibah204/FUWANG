@@ -244,9 +244,10 @@
                 <div class="col-md-6 mb-4">
                     <label class="text-white-50 small mb-2">IPE Clearance Provider / Mode</label>
                     <select name="ipe_clearance_mode" class="form-control text-white rounded-3" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
-                        <option value="robosttech" {{ ($ipeClearanceMode ?? 'robosttech') === 'robosttech' ? 'selected' : '' }}>Robosttech API (Default)</option>
-                        <option value="dataverify" {{ ($ipeClearanceMode ?? 'robosttech') === 'dataverify' ? 'selected' : '' }}>DataVerify API</option>
-                        <option value="manual" {{ ($ipeClearanceMode ?? 'robosttech') === 'manual' ? 'selected' : '' }}>Manual Admin Reporting &amp; Review</option>
+                        <option value="auto" {{ in_array(($ipeClearanceMode ?? 'auto'), ['auto', 'api'], true) ? 'selected' : '' }}>Auto (Smart API Failover: DataVerify &amp; Robosttech) - Default</option>
+                        <option value="dataverify" {{ ($ipeClearanceMode ?? 'auto') === 'dataverify' ? 'selected' : '' }}>DataVerify API</option>
+                        <option value="robosttech" {{ ($ipeClearanceMode ?? 'auto') === 'robosttech' ? 'selected' : '' }}>Robosttech API</option>
+                        <option value="manual" {{ ($ipeClearanceMode ?? 'auto') === 'manual' ? 'selected' : '' }}>Manual Admin Reporting &amp; Review</option>
                     </select>
                 </div>
                 <div class="col-md-6 mb-4">
@@ -369,6 +370,22 @@
                 <div class="col-md-4 mb-4">
                     <label class="text-white-50 small mb-2">BVN Retrieval Status Endpoint (Check)</label>
                     <input type="text" name="dataverify_endpoint_bvn_retrieval_status" class="form-control text-white rounded-3 font-monospace" value="{{ $ac->dataverify_endpoint_bvn_retrieval_status ?? 'https://dataverify.org/api/developers/bvn_retrieval_status.php' }}" placeholder="https://dataverify.org/api/developers/bvn_retrieval_status.php" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                </div>
+                <div class="col-md-4 mb-4">
+                    <label class="text-white-50 small mb-2">NIN Validation Endpoint (Submit)</label>
+                    <input type="text" name="dataverify_endpoint_validation" class="form-control text-white rounded-3 font-monospace" value="{{ \App\Models\SystemSetting::get('dataverify_endpoint_validation', 'https://dataverify.org/api/developers/validation.php') }}" placeholder="https://dataverify.org/api/developers/validation.php" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                </div>
+                <div class="col-md-4 mb-4">
+                    <label class="text-white-50 small mb-2">NIN Validation Status Endpoint (Check)</label>
+                    <input type="text" name="dataverify_endpoint_validation_status" class="form-control text-white rounded-3 font-monospace" value="{{ \App\Models\SystemSetting::get('dataverify_endpoint_validation_status', 'https://dataverify.org/api/developers/validation_status.php') }}" placeholder="https://dataverify.org/api/developers/validation_status.php" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                </div>
+                <div class="col-md-4 mb-4">
+                    <label class="text-white-50 small mb-2">IPE Clearance Endpoint (Submit)</label>
+                    <input type="text" name="dataverify_endpoint_ipe" class="form-control text-white rounded-3 font-monospace" value="{{ \App\Models\SystemSetting::get('dataverify_endpoint_ipe', 'https://dataverify.org/api/developers/ipe.php') }}" placeholder="https://dataverify.org/api/developers/ipe.php" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                </div>
+                <div class="col-md-4 mb-4">
+                    <label class="text-white-50 small mb-2">IPE Clearance Status Endpoint (Check)</label>
+                    <input type="text" name="dataverify_endpoint_ipe_status" class="form-control text-white rounded-3 font-monospace" value="{{ \App\Models\SystemSetting::get('dataverify_endpoint_ipe_status', 'https://dataverify.org/api/developers/ipe_status.php') }}" placeholder="https://dataverify.org/api/developers/ipe_status.php" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
                 </div>
                 <div class="col-12 mb-4">
                     <div class="custom-control custom-switch">

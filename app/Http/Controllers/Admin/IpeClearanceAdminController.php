@@ -46,19 +46,22 @@ class IpeClearanceAdminController extends Controller
     }
 
     /**
-     * Switch Operating Mode between Manual Reporting and Robosttech API
+     * Switch Operating Mode between Manual Reporting, DataVerify API, and Robosttech API
      */
     public function updateMode(Request $request)
     {
         $request->validate([
-            'mode' => 'required|string|in:manual,robosttech,dataverify',
+            'mode' => 'required|string|in:manual,robosttech,dataverify,auto,api',
         ]);
 
-        SystemSetting::set('ipe_clearance_mode', $request->mode, 'services');
+        $mode = $request->mode === 'api' ? 'auto' : $request->mode;
 
-        $label = match($request->mode) {
+        SystemSetting::set('ipe_clearance_mode', $mode, 'services');
+
+        $label = match($mode) {
             'robosttech' => 'Robosttech API',
             'dataverify' => 'DataVerify API',
+            'auto' => 'Auto (Smart Failover: DataVerify & Robosttech)',
             default => 'Manual Reporting'
         };
 
@@ -72,72 +75,81 @@ class IpeClearanceAdminController extends Controller
     {
         $verification = VerificationResult::findOrFail($id);
         $providerLower = strtolower((string) ($verification->provider_name ?? ''));
+        $exData = $verification->response_data ?? [];
+        $currentMode = SystemSetting::get('ipe_clearance_mode', 'auto');
 
-        // Handle DataVerify Provider
-        if (str_contains($providerLower, 'dataverify')) {
+        $controller = new VerificationController();
+        $dvProvider = \App\Models\CustomApi::where('provider_identifier', 'dataverify')->where('status', true)->first();
+        $hasDv = $controller->hasDataVerifyCredentials($dvProvider);
+        $hasRobost = $controller->hasRobosttechCredentials();
+
+        $isDv = str_contains($providerLower, 'dataverify') 
+            || !empty($exData['transaction_id']) 
+            || in_array($currentMode, ['dataverify', 'auto', 'api'], true);
+
+        // Handle DataVerify Provider first if indicated or if Robosttech is unavailable
+        if (($isDv && $hasDv) || (!$hasRobost && $hasDv)) {
             try {
-                $dvClient = new \App\Services\DataVerify\DataVerifyClient();
-                $exData = $verification->response_data ?? [];
+                $dvClient = new \App\Services\DataVerify\DataVerifyClient($dvProvider);
                 $txId = $exData['transaction_id'] ?? null;
                 $dvRes = $dvClient->checkIpeClearanceStatus($verification->identifier, $txId);
 
-                if (!($dvRes['ok'] ?? false)) {
-                    return back()->with('error', 'DataVerify sync failed: ' . ($dvRes['message'] ?? 'Unknown error'));
-                }
+                if ($dvRes['ok'] ?? false) {
+                    $responseData = $exData;
+                    $responseData['dataverify_sync'] = $dvRes['data'] ?? [];
+                    $newTid = \App\Models\VerificationResult::extractNewTrackingId($dvRes['data'] ?? [], $verification->identifier)
+                        ?: ($dvRes['new_tracking_id'] ?? null);
 
-                $responseData = $exData;
-                $responseData['dataverify_sync'] = $dvRes['data'] ?? [];
-                $newTid = \App\Models\VerificationResult::extractNewTrackingId($dvRes['data'] ?? [], $verification->identifier)
-                    ?: ($dvRes['new_tracking_id'] ?? null);
-
-                if ($dvRes['status'] === 'successful') {
-                    $verification->status = 'successful';
-                    if ($newTid) {
-                        $responseData['new_tracking_id'] = $newTid;
-                    }
-                    if (!empty($dvRes['new_nin'])) {
-                        $responseData['new_nin'] = $dvRes['new_nin'];
-                    }
-                    $verification->admin_note = $dvRes['message'] ?? 'Cleared via DataVerify sync.';
-                } elseif ($dvRes['status'] === 'failed') {
-                    $verification->status = 'failed';
-                    $verification->admin_note = $dvRes['message'] ?? 'Rejected via DataVerify sync.';
-                    if (empty($responseData['refunded'])) {
-                        $user = User::find($verification->user_id);
-                        if ($user) {
-                            $refundAmount = (float) ($responseData['amount_paid'] ?? \App\Models\VerificationPrice::first()->ipe_clearance_price ?? 700);
-                            $wallet = app(WalletService::class);
-                            $ref = $wallet->failAndRefund(
-                                $user,
-                                $refundAmount,
-                                'IPE Clearance Rejected (DataVerify Sync): ' . $verification->admin_note,
-                                $verification->reference_id
-                            );
-                            if ($ref['ok'] ?? false) {
-                                $responseData['refunded'] = true;
-                                $responseData['refunded_amount'] = $refundAmount;
-                                $responseData['refunded_at'] = now()->toDateTimeString();
+                    if ($dvRes['status'] === 'successful') {
+                        $verification->status = 'successful';
+                        if ($newTid) {
+                            $responseData['new_tracking_id'] = $newTid;
+                        }
+                        if (!empty($dvRes['new_nin'])) {
+                            $responseData['new_nin'] = $dvRes['new_nin'];
+                        }
+                        $verification->admin_note = $dvRes['message'] ?? 'Cleared via DataVerify sync.';
+                    } elseif ($dvRes['status'] === 'failed') {
+                        $verification->status = 'failed';
+                        $verification->admin_note = $dvRes['message'] ?? 'Rejected via DataVerify sync.';
+                        if (empty($responseData['refunded'])) {
+                            $user = User::find($verification->user_id);
+                            if ($user) {
+                                $refundAmount = (float) ($responseData['amount_paid'] ?? \App\Models\VerificationPrice::first()->ipe_clearance_price ?? 700);
+                                $wallet = app(WalletService::class);
+                                $ref = $wallet->failAndRefund(
+                                    $user,
+                                    $refundAmount,
+                                    'IPE Clearance Rejected (DataVerify Sync): ' . $verification->admin_note,
+                                    $verification->reference_id
+                                );
+                                if ($ref['ok'] ?? false) {
+                                    $responseData['refunded'] = true;
+                                    $responseData['refunded_amount'] = $refundAmount;
+                                    $responseData['refunded_at'] = now()->toDateTimeString();
+                                }
                             }
                         }
                     }
+
+                    $verification->response_data = $responseData;
+                    $verification->save();
+
+                    return back()->with('success', 'DataVerify API sync completed. Current Status: ' . ucfirst($verification->status));
                 }
-
-                $verification->response_data = $responseData;
-                $verification->save();
-
-                return back()->with('success', 'DataVerify API sync completed. Current Status: ' . ucfirst($verification->status));
             } catch (\Throwable $e) {
-                return back()->with('error', 'DataVerify sync failed: ' . $e->getMessage());
+                if (!$hasRobost) {
+                    return back()->with('error', 'DataVerify sync failed: ' . $e->getMessage());
+                }
             }
         }
 
-        // Handle Robosttech Provider (default)
+        // Handle Robosttech Provider
         $apiCenter = ApiCenter::first();
         if (!$apiCenter || !$apiCenter->robosttech_api_key) {
             return back()->with('error', 'Robosttech API credentials are not configured in Admin Settings.');
         }
 
-        $controller = new VerificationController();
         $endpoint = $controller->resolveRobostEndpoint(
             (string) ($apiCenter->robosttech_endpoint_clearance_status ?: 'https://robosttech.com/api'),
             'clearance_status'
@@ -195,8 +207,50 @@ class IpeClearanceAdminController extends Controller
                 return back()->with('success', 'Robosttech API sync completed. Current Status: ' . ucfirst($verification->status));
             }
 
+            // If Robosttech fails and DataVerify hasn't been tried yet, try DataVerify as fallback
+            if ($hasDv) {
+                try {
+                    $dvClient = new \App\Services\DataVerify\DataVerifyClient($dvProvider);
+                    $txId = $exData['transaction_id'] ?? null;
+                    $dvRes = $dvClient->checkIpeClearanceStatus($verification->identifier, $txId);
+                    if ($dvRes['ok'] ?? false) {
+                        $responseData = $exData;
+                        $responseData['dataverify_sync'] = $dvRes['data'] ?? [];
+                        if ($dvRes['status'] === 'successful') {
+                            $verification->status = 'successful';
+                            $newTid = \App\Models\VerificationResult::extractNewTrackingId($dvRes['data'] ?? [], $verification->identifier) ?: ($dvRes['new_tracking_id'] ?? null);
+                            if ($newTid) $responseData['new_tracking_id'] = $newTid;
+                            $verification->admin_note = $dvRes['message'] ?? 'Cleared via DataVerify sync fallback.';
+                            $verification->response_data = $responseData;
+                            $verification->save();
+                            return back()->with('success', 'DataVerify API fallback sync completed. Current Status: ' . ucfirst($verification->status));
+                        }
+                    }
+                } catch (\Throwable $ignore) {}
+            }
+
             return back()->with('error', 'Robosttech API returned error (HTTP ' . $response->status() . '): ' . ($response->json()['message'] ?? 'Unknown response'));
         } catch (\Throwable $e) {
+            if ($hasDv) {
+                try {
+                    $dvClient = new \App\Services\DataVerify\DataVerifyClient($dvProvider);
+                    $txId = $exData['transaction_id'] ?? null;
+                    $dvRes = $dvClient->checkIpeClearanceStatus($verification->identifier, $txId);
+                    if ($dvRes['ok'] ?? false) {
+                        $responseData = $exData;
+                        $responseData['dataverify_sync'] = $dvRes['data'] ?? [];
+                        if ($dvRes['status'] === 'successful') {
+                            $verification->status = 'successful';
+                            $newTid = \App\Models\VerificationResult::extractNewTrackingId($dvRes['data'] ?? [], $verification->identifier) ?: ($dvRes['new_tracking_id'] ?? null);
+                            if ($newTid) $responseData['new_tracking_id'] = $newTid;
+                            $verification->admin_note = $dvRes['message'] ?? 'Cleared via DataVerify sync fallback.';
+                            $verification->response_data = $responseData;
+                            $verification->save();
+                            return back()->with('success', 'DataVerify API fallback sync completed. Current Status: ' . ucfirst($verification->status));
+                        }
+                    }
+                } catch (\Throwable $ignore) {}
+            }
             return back()->with('error', 'Sync failed: ' . $e->getMessage());
         }
     }

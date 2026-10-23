@@ -561,8 +561,10 @@ class VerificationController extends Controller
             $paid = app(PaidActionService::class)->run($user, $price, 'API: IPE Clearance (' . $trackingId . ')', 'CLEARAPI', function () use ($trackingId, $category, $user, $price, $ipeClearanceMode) {
                 $referenceId = 'CLR-' . strtoupper(bin2hex(random_bytes(4)));
 
-                if ($ipeClearanceMode === 'dataverify') {
-                    $dvProvider = CustomApi::query()->whereIn('service_type', ['ipe_clearance', 'clearance'])->where('status', true)->first();
+                if ($ipeClearanceMode !== 'manual') {
+                    $dvProvider = CustomApi::query()->whereIn('service_type', ['ipe_clearance', 'clearance', 'clearance_request'])->where('status', true)->where(function ($q) {
+                        $q->where('provider_identifier', 'dataverify')->orWhere('endpoint', 'like', '%dataverify%');
+                    })->first();
                     $dvClient = new DataVerifyClient($dvProvider);
                     $dvRes = $dvClient->submitIpeClearance($trackingId);
 
@@ -576,6 +578,7 @@ class VerificationController extends Controller
                             'tracking_id' => $trackingId,
                             'category' => $category,
                             'new_tracking_id' => $newTid,
+                            'transaction_id' => $dvRes['transaction_id'] ?? null,
                             'amount_paid' => (float) $price,
                             'api_response' => $apiData,
                         ];
@@ -604,8 +607,6 @@ class VerificationController extends Controller
                             ],
                         ];
                     }
-
-                    throw new \RuntimeException($dvRes['message'] ?: 'DataVerify clearance submission failed.');
                 }
 
                 $payload = [
@@ -717,11 +718,11 @@ class VerificationController extends Controller
             $paid = app(PaidActionService::class)->run($user, $price, 'API: NIN Validation (' . $ninNumber . ')', 'VALAPI', function () use ($ninNumber, $reason, $user, $price, $validationMode) {
                 $referenceId = 'VAL-' . strtoupper(bin2hex(random_bytes(4)));
 
-                $dvProvider = CustomApi::query()->whereIn('service_type', ['validation', 'nin_validation', 'nin_verification'])->where('status', true)->where(function ($q) {
-                    $q->where('provider_identifier', 'dataverify')->orWhere('endpoint', 'like', '%dataverify%');
-                })->first();
+                if ($validationMode !== 'manual') {
+                    $dvProvider = CustomApi::query()->whereIn('service_type', ['validation', 'nin_validation', 'nin_verification'])->where('status', true)->where(function ($q) {
+                        $q->where('provider_identifier', 'dataverify')->orWhere('endpoint', 'like', '%dataverify%');
+                    })->first();
 
-                if ($dvProvider) {
                     $client = new DataVerifyClient($dvProvider);
                     $subRes = $client->submitNinValidation($ninNumber, 'no_record_found');
                     if ($subRes['ok'] ?? false) {
@@ -736,6 +737,7 @@ class VerificationController extends Controller
                             'response_data' => [
                                 'nin' => $ninNumber,
                                 'validation_reason' => $reason,
+                                'transaction_id' => $subRes['transaction_id'] ?? null,
                                 'amount_paid' => (float) $price,
                                 'api_response' => $subRes['data'] ?? [],
                             ],

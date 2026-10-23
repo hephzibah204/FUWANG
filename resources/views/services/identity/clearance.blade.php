@@ -14,7 +14,7 @@
                 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-1">
                     <h1 class="h4 font-weight-bold mb-0 text-white">IPE Clearance (Internal Processing Error)</h1>
                     <span class="badge py-2 px-3 font-weight-bold text-dark" style="background: #f59e0b; font-size: 0.85rem; border-radius: 999px;">
-                        <i class="fa-solid fa-bolt mr-1"></i> Result: {{ ($ipeMode ?? 'manual') === 'robosttech' ? 'Automated in a few minutes' : 'In less than 24 hours' }}
+                        <i class="fa-solid fa-bolt mr-1"></i> Result: {{ in_array(($ipeMode ?? 'manual'), ['robosttech', 'dataverify', 'auto', 'api'], true) ? 'Automated in a few minutes' : 'In less than 24 hours' }}
                     </span>
                 </div>
                 <p class="text-white-50 small mb-0">

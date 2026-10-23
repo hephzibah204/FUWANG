@@ -511,5 +511,96 @@ class IpeClearanceManualFlowTest extends TestCase
         $this->assertEquals('successful', $existing->status);
         $this->assertEquals('BTX-NEW-FROM-DATAVERIFY', $existing->resolved_new_tracking_id);
     }
+
+    public function test_ipe_clearance_submits_via_dataverify_api(): void
+    {
+        SystemSetting::set('ipe_clearance_mode', 'dataverify');
+        SystemSetting::set('dataverify_api_key', 'dv-test-key-777');
+
+        Http::fake([
+            'https://dataverify.org/api/developers/ipe.php' => Http::response([
+                'status' => true,
+                'message' => 'IPE clearance request submitted successfully to DataVerify.',
+                'transaction_id' => 'DV-TX-888',
+                'trackingID' => 'BTX-DV-NEW-01',
+            ], 200),
+        ]);
+
+        $user = $this->makeUser(1000.00);
+
+        $response = $this->actingAs($user)->postJson(route('services.clearance.verify'), [
+            'mode' => 'submit',
+            'number' => 'BTX-DV-NEW-01',
+            'category' => 'Biometric Exception',
+        ]);
+
+        $response->assertOk();
+        $response->assertJson([
+            'status' => true,
+            'provider' => 'DataVerify',
+            'data' => [
+                'tracking_id' => 'BTX-DV-NEW-01',
+                'status' => 'waiting_for_review',
+            ],
+        ]);
+
+        $this->assertDatabaseHas('verification_results', [
+            'identifier' => 'BTX-DV-NEW-01',
+            'provider_name' => 'DataVerify',
+            'status' => 'waiting_for_review',
+        ]);
+
+        $balance = AccountBalance::where('user_id', $user->id)->value('user_balance');
+        $this->assertEquals(300.00, (float) $balance);
+    }
+
+    public function test_ipe_clearance_auto_mode_fails_over_from_robosttech_to_dataverify(): void
+    {
+        SystemSetting::set('ipe_clearance_mode', 'auto');
+        SystemSetting::set('dataverify_api_key', 'dv-key-active');
+
+        ApiCenter::create([
+            'robosttech_api_key' => 'robost-key-123',
+            'robosttech_endpoint_clearance' => 'https://robosttech.com/api/clearance',
+            'dataverify_api_key' => 'dv-key-active',
+        ]);
+
+        Http::fake([
+            'https://robosttech.com/api/clearance' => Http::response([
+                'status' => 'failed',
+                'message' => 'Provider gateway timeout or maintenance',
+            ], 500),
+            'https://dataverify.org/api/developers/ipe.php' => Http::response([
+                'status' => true,
+                'message' => 'Processed via DataVerify fallback',
+                'transaction_id' => 'DV-TX-FALLBACK-01',
+            ], 200),
+        ]);
+
+        $user = $this->makeUser(1000.00);
+
+        $response = $this->actingAs($user)->postJson(route('services.clearance.verify'), [
+            'mode' => 'submit',
+            'number' => 'BTX-FAILOVER-01',
+            'category' => 'Improcessing Error',
+        ]);
+
+        $response->assertOk();
+        $response->assertJson([
+            'status' => true,
+            'provider' => 'DataVerify',
+            'data' => [
+                'tracking_id' => 'BTX-FAILOVER-01',
+                'status' => 'waiting_for_review',
+            ],
+        ]);
+
+        $this->assertDatabaseHas('verification_results', [
+            'identifier' => 'BTX-FAILOVER-01',
+            'provider_name' => 'DataVerify',
+            'status' => 'waiting_for_review',
+        ]);
+    }
 }
+
 

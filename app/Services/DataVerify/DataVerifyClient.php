@@ -514,7 +514,7 @@ class DataVerifyClient
      */
     public function submitIpeClearance(string $trackingId): array
     {
-        $url = 'https://dataverify.org/api/developers/ipe.php';
+        $url = $this->resolveIpeEndpoint();
         $apiKey = $this->apiKey();
         if ($apiKey === '') {
             return [
@@ -528,11 +528,16 @@ class DataVerifyClient
         }
 
         $headers = is_array($this->provider?->headers) ? $this->provider->headers : [];
+        $headers['Authorization'] = 'Bearer ' . $apiKey;
+        $headers['X-API-Key'] = $apiKey;
+        $headers['api-key'] = $apiKey;
+        $headers['Accept'] = 'application/json';
         $headers['Content-Type'] = $headers['Content-Type'] ?? 'application/json';
 
         $payload = [
             'api_key' => $apiKey,
             'trackingID' => trim($trackingId),
+            'tracking_id' => trim($trackingId),
         ];
 
         try {
@@ -553,7 +558,7 @@ class DataVerifyClient
         }
 
         $json = $res->json();
-        if (!$res->successful() || !is_array($json) || empty($json['status'])) {
+        if (!$res->successful() || !is_array($json)) {
             $msg = is_array($json) ? ($json['message'] ?? $json['detail'] ?? 'DataVerify IPE submission failed.') : ('HTTP ' . $res->status());
             return [
                 'ok' => false,
@@ -565,11 +570,47 @@ class DataVerifyClient
             ];
         }
 
+        $statusVal = strtolower((string) ($json['status'] ?? $json['data']['status'] ?? ''));
+        $responseCode = (string) ($json['response_code'] ?? $json['data']['response_code'] ?? '');
+        $isExplicitFailure = in_array($statusVal, ['failed', 'error', 'false', 'rejected'], true)
+            || ($json['status'] ?? null) === false
+            || ($json['success'] ?? null) === false;
+
+        $looksSuccessful = !$isExplicitFailure && (
+            in_array($statusVal, ['success', 'true', 'pending', 'processing', 'ok', 'queued', 'completed', 'waiting_for_review'], true)
+            || ($json['status'] ?? null) === true
+            || ($json['success'] ?? null) === true
+            || in_array($responseCode, ['00', '0', '01'], true)
+            || !empty($json['transaction_id'])
+            || !empty($json['data']['transaction_id'])
+            || !empty($json['reference'])
+        );
+
+        if (!$looksSuccessful) {
+            $msg = (string) ($json['message'] ?? $json['detail'] ?? 'DataVerify IPE submission failed.');
+            return [
+                'ok' => false,
+                'tracking_id' => $trackingId,
+                'transaction_id' => null,
+                'price' => null,
+                'message' => $msg,
+                'data' => $json,
+            ];
+        }
+
+        $txId = $json['transaction_id'] 
+            ?? $json['data']['transaction_id'] 
+            ?? $json['reference'] 
+            ?? $json['data']['reference'] 
+            ?? $json['id'] 
+            ?? $json['data']['id'] 
+            ?? null;
+
         return [
             'ok' => true,
-            'tracking_id' => (string) ($json['trackingID'] ?? $trackingId),
-            'transaction_id' => (string) ($json['transaction_id'] ?? ''),
-            'price' => isset($json['price']) ? (float) $json['price'] : null,
+            'tracking_id' => (string) ($json['trackingID'] ?? $json['tracking_id'] ?? $trackingId),
+            'transaction_id' => $txId ? (string) $txId : null,
+            'price' => isset($json['price']) ? (float) $json['price'] : (isset($json['data']['price']) ? (float) $json['data']['price'] : null),
             'message' => (string) ($json['message'] ?? 'IPE Clearance request submitted successfully.'),
             'data' => $json,
         ];
@@ -584,7 +625,7 @@ class DataVerifyClient
      */
     public function checkIpeClearanceStatus(string $trackingId, ?string $transactionId = null): array
     {
-        $url = 'https://dataverify.org/api/developers/ipe_status.php';
+        $url = $this->resolveIpeStatusEndpoint();
         $apiKey = $this->apiKey();
         if ($apiKey === '') {
             return [
@@ -600,14 +641,20 @@ class DataVerifyClient
         }
 
         $headers = is_array($this->provider?->headers) ? $this->provider->headers : [];
+        $headers['Authorization'] = 'Bearer ' . $apiKey;
+        $headers['X-API-Key'] = $apiKey;
+        $headers['api-key'] = $apiKey;
+        $headers['Accept'] = 'application/json';
         $headers['Content-Type'] = $headers['Content-Type'] ?? 'application/json';
 
         $payload = [
             'api_key' => $apiKey,
             'trackingID' => trim($trackingId),
+            'tracking_id' => trim($trackingId),
         ];
         if (!empty($transactionId)) {
             $payload['transaction_id'] = trim($transactionId);
+            $payload['reference'] = trim($transactionId);
         }
 
         try {
@@ -644,14 +691,20 @@ class DataVerifyClient
             ];
         }
 
-        $rawReqStatus = strtolower((string) ($json['request_status'] ?? $json['status'] ?? ''));
+        $rawReqStatus = strtolower((string) (
+            $json['request_status'] 
+            ?? $json['status'] 
+            ?? $json['data']['request_status'] 
+            ?? $json['data']['status'] 
+            ?? ''
+        ));
         $newTid = \App\Models\VerificationResult::extractNewTrackingId($json, $trackingId);
         $newNin = $json['newNIN'] ?? $json['new_nin'] ?? $json['data']['newNIN'] ?? $json['data']['new_nin'] ?? null;
 
         $normalizedStatus = 'waiting_for_review';
-        if (in_array($rawReqStatus, ['completed', 'successful', 'success', 'cleared', 'resolved', '1', 'true']) || !empty($newTid) || !empty($newNin)) {
+        if (in_array($rawReqStatus, ['completed', 'successful', 'success', 'cleared', 'resolved', '1', 'true'], true) || ($json['status'] ?? null) === true || !empty($newTid) || !empty($newNin)) {
             $normalizedStatus = 'successful';
-        } elseif (in_array($rawReqStatus, ['failed', 'rejected', 'error', '0', 'false'])) {
+        } elseif (in_array($rawReqStatus, ['failed', 'rejected', 'error', '0', 'false'], true) || ($json['status'] ?? null) === false) {
             $normalizedStatus = 'failed';
         }
 
@@ -659,7 +712,7 @@ class DataVerifyClient
             'ok' => true,
             'request_status' => $rawReqStatus,
             'status' => $normalizedStatus,
-            'tracking_id' => (string) ($json['trackingID'] ?? $trackingId),
+            'tracking_id' => (string) ($json['trackingID'] ?? $json['tracking_id'] ?? $trackingId),
             'new_tracking_id' => $newTid ? (string) $newTid : null,
             'new_nin' => $newNin ? (string) $newNin : null,
             'message' => (string) ($json['message'] ?? ($normalizedStatus === 'successful' ? 'Clearance completed successfully.' : 'Status retrieved')),
@@ -691,11 +744,16 @@ class DataVerifyClient
         }
 
         $headers = is_array($this->provider?->headers) ? $this->provider->headers : [];
+        $headers['Authorization'] = 'Bearer ' . $apiKey;
+        $headers['X-API-Key'] = $apiKey;
+        $headers['api-key'] = $apiKey;
+        $headers['Accept'] = 'application/json';
         $headers['Content-Type'] = $headers['Content-Type'] ?? 'application/json';
 
         $payload = [
             'api_key' => $apiKey,
             'nin' => trim($nin),
+            'number' => trim($nin),
             'validation_type' => $validationType,
         ];
 
@@ -718,7 +776,7 @@ class DataVerifyClient
         }
 
         $json = $res->json();
-        if (!$res->successful() || !is_array($json) || empty($json['status'])) {
+        if (!$res->successful() || !is_array($json)) {
             $msg = is_array($json) ? ($json['message'] ?? $json['detail'] ?? 'DataVerify validation submission failed.') : ('HTTP ' . $res->status());
             return [
                 'ok' => false,
@@ -731,12 +789,49 @@ class DataVerifyClient
             ];
         }
 
+        $statusVal = strtolower((string) ($json['status'] ?? $json['data']['status'] ?? ''));
+        $responseCode = (string) ($json['response_code'] ?? $json['data']['response_code'] ?? '');
+        $isExplicitFailure = in_array($statusVal, ['failed', 'error', 'false', 'rejected'], true)
+            || ($json['status'] ?? null) === false
+            || ($json['success'] ?? null) === false;
+
+        $looksSuccessful = !$isExplicitFailure && (
+            in_array($statusVal, ['success', 'true', 'pending', 'processing', 'ok', 'queued', 'validated', 'completed'], true)
+            || ($json['status'] ?? null) === true
+            || ($json['success'] ?? null) === true
+            || in_array($responseCode, ['00', '0', '01'], true)
+            || !empty($json['transaction_id'])
+            || !empty($json['data']['transaction_id'])
+            || !empty($json['reference'])
+        );
+
+        if (!$looksSuccessful) {
+            $msg = (string) ($json['message'] ?? $json['detail'] ?? 'DataVerify validation submission failed.');
+            return [
+                'ok' => false,
+                'nin' => $nin,
+                'transaction_id' => null,
+                'request_status' => 'error',
+                'price' => null,
+                'message' => $msg,
+                'data' => $json,
+            ];
+        }
+
+        $txId = $json['transaction_id'] 
+            ?? $json['data']['transaction_id'] 
+            ?? $json['reference'] 
+            ?? $json['data']['reference'] 
+            ?? $json['id'] 
+            ?? $json['data']['id'] 
+            ?? null;
+
         return [
             'ok' => true,
             'nin' => (string) ($json['nin'] ?? $nin),
-            'transaction_id' => (string) ($json['transaction_id'] ?? ''),
-            'request_status' => (string) ($json['request_status'] ?? 'pending'),
-            'price' => isset($json['price']) ? (float) $json['price'] : null,
+            'transaction_id' => $txId ? (string) $txId : null,
+            'request_status' => (string) ($json['request_status'] ?? $statusVal ?: 'pending'),
+            'price' => isset($json['price']) ? (float) $json['price'] : (isset($json['data']['price']) ? (float) $json['data']['price'] : null),
             'message' => (string) ($json['message'] ?? 'NIN submitted for validation successfully.'),
             'data' => $json,
         ];
@@ -767,13 +862,20 @@ class DataVerifyClient
         }
 
         $headers = is_array($this->provider?->headers) ? $this->provider->headers : [];
+        $headers['Authorization'] = 'Bearer ' . $apiKey;
+        $headers['X-API-Key'] = $apiKey;
+        $headers['api-key'] = $apiKey;
+        $headers['Accept'] = 'application/json';
         $headers['Content-Type'] = $headers['Content-Type'] ?? 'application/json';
 
-        $payload = ['api_key' => $apiKey];
+        $payload = [
+            'api_key' => $apiKey,
+            'nin' => trim($nin),
+            'number' => trim($nin),
+        ];
         if (!empty($transactionId)) {
             $payload['transaction_id'] = trim($transactionId);
-        } else {
-            $payload['nin'] = trim($nin);
+            $payload['reference'] = trim($transactionId);
         }
 
         try {
@@ -810,17 +912,23 @@ class DataVerifyClient
             ];
         }
 
-        $reqStatus = strtolower((string) ($json['request_status'] ?? ''));
+        $rawReqStatus = strtolower((string) (
+            $json['request_status'] 
+            ?? $json['status'] 
+            ?? $json['data']['request_status'] 
+            ?? $json['data']['status'] 
+            ?? ''
+        ));
         $normalizedStatus = 'waiting_for_review';
-        if ($reqStatus === 'validated' || $reqStatus === 'successful' || $reqStatus === 'completed') {
+        if (in_array($rawReqStatus, ['validated', 'successful', 'success', 'completed', 'cleared', 'valid', '1', 'true'], true) || ($json['status'] ?? null) === true) {
             $normalizedStatus = 'successful';
-        } elseif ($reqStatus === 'failed' || $reqStatus === 'rejected') {
+        } elseif (in_array($rawReqStatus, ['failed', 'rejected', 'error', 'invalid', '0', 'false'], true) || ($json['status'] ?? null) === false) {
             $normalizedStatus = 'failed';
         }
 
         return [
             'ok' => ($json['status'] ?? false) === true || $normalizedStatus === 'successful',
-            'request_status' => $reqStatus ?: 'pending',
+            'request_status' => $rawReqStatus ?: 'pending',
             'status' => $normalizedStatus,
             'nin' => (string) ($json['nin'] ?? $nin),
             'response' => $json['response'] ?? null,
@@ -828,6 +936,36 @@ class DataVerifyClient
             'message' => (string) ($json['response'] ?? $json['error_detail'] ?? $json['message'] ?? 'Status retrieved'),
             'data' => $json,
         ];
+    }
+
+    public function resolveIpeEndpoint(): string
+    {
+        $configured = trim((string) (
+            \App\Models\SystemSetting::get('dataverify_endpoint_ipe')
+            ?? ApiCenter::query()->first()?->getAttribute('dataverify_endpoint_ipe')
+            ?? ''
+        ));
+
+        if ($configured !== '') {
+            return self::normalizeDomain($configured);
+        }
+
+        return 'https://dataverify.org/api/developers/ipe.php';
+    }
+
+    public function resolveIpeStatusEndpoint(): string
+    {
+        $configured = trim((string) (
+            \App\Models\SystemSetting::get('dataverify_endpoint_ipe_status')
+            ?? ApiCenter::query()->first()?->getAttribute('dataverify_endpoint_ipe_status')
+            ?? ''
+        ));
+
+        if ($configured !== '') {
+            return self::normalizeDomain($configured);
+        }
+
+        return 'https://dataverify.org/api/developers/ipe_status.php';
     }
 
     public function resolveNinValidationEndpoint(): string
@@ -1008,6 +1146,11 @@ class DataVerifyClient
         $apiKey = trim((string) ($this->provider?->api_key ?? ''));
         if ($apiKey !== '') {
             return $apiKey;
+        }
+
+        $customKey = trim((string) (CustomApi::where('provider_identifier', 'dataverify')->where('status', true)->value('api_key') ?? ''));
+        if ($customKey !== '') {
+            return $customKey;
         }
 
         $apiCenterKey = trim((string) (ApiCenter::query()->value('dataverify_api_key') ?? ''));
