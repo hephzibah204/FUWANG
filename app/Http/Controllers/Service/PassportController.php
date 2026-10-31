@@ -30,21 +30,6 @@ class PassportController extends Controller
 
     public function verify(Request $request)
     {
-        $request->validate([
-            'passport_number' => 'required|string',
-            'dob' => 'required|date',
-            'lastname' => 'required|string',
-        ]);
-
-        $user = Auth::user();
-        $price = SystemSetting::get('passport_price', 1500);
-
-        if ($user->wallet_balance < $price) {
-            return response()->json(['status' => false, 'message' => 'Insufficient wallet balance.']);
-        }
-
-        // Logic for calling Nigerian Passport (NIS) verification API...
-        
-        return response()->json(['status' => false, 'message' => 'Passport verification currently in sandbox mode.']);
+        return app(VerificationController::class)->verifyPassport($request);
     }
 }

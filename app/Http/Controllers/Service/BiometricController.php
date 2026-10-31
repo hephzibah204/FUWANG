@@ -30,21 +30,11 @@ class BiometricController extends Controller
 
     public function verify(Request $request)
     {
-        $request->validate([
-            'image' => 'required|string', // base64 image string
-            'identifier' => 'required|string', // NIN or BVN
-            'type' => 'required|in:nin,bvn',
-        ]);
+        return app(VerificationController::class)->verifyBiometric($request);
+    }
 
-        $user = Auth::user();
-        $price = SystemSetting::get('biometric_price', 500);
-
-        if ($user->wallet_balance < $price) {
-            return response()->json(['status' => false, 'message' => 'Insufficient wallet balance.']);
-        }
-
-        // Logic for calling biometric matching API...
-        
-        return response()->json(['status' => false, 'message' => 'Biometric matching currently in sandbox mode.']);
+    public function verifyNinFace(Request $request)
+    {
+        return app(VerificationController::class)->verifyNinFace($request);
     }
 }

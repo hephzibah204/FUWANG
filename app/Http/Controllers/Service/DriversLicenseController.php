@@ -32,23 +32,6 @@ class DriversLicenseController extends Controller
 
     public function verify(Request $request)
     {
-        $request->validate([
-            'number' => 'required|string|min:6',
-            'dob' => 'nullable|date',
-            'firstname' => 'nullable|string',
-            'lastname' => 'nullable|string',
-        ]);
-
-        $user = Auth::user();
-        $price = SystemSetting::get('drivers_license_price', 250);
-
-        if ($user->wallet_balance < $price) {
-            return response()->json(['status' => false, 'message' => 'Insufficient wallet balance.']);
-        }
-
-        // Logic for calling API...
-        // This is where we'd implement the actual FRSC verification logic.
-        
-        return response()->json(['status' => false, 'message' => 'Service currently in sandbox mode.']);
+        return app(VerificationController::class)->verifyDriversLicense($request);
     }
 }

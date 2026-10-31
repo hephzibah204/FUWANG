@@ -74,6 +74,7 @@ Route::get('/auth/google/redirect', [GoogleAuthController::class, 'redirect'])->
 Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])->name('auth.google.callback');
 Route::get('/2fa/challenge', [TwoFactorChallengeController::class, 'show'])->name('2fa.challenge');
 Route::post('/2fa/challenge', [TwoFactorChallengeController::class, 'verify'])->middleware('throttle:6,1')->name('2fa.verify');
+Route::post('/2fa/authenticate', [TwoFactorChallengeController::class, 'verify'])->middleware('throttle:6,1')->name('2fa.authenticate');
 Route::post('/2fa/cancel', [TwoFactorChallengeController::class, 'cancel'])->name('2fa.cancel');
 Route::post('/logout',  [LoginController::class, 'logout'])->name('logout');
 
@@ -285,6 +286,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('feature:nin_verification')->group(function () {
         Route::get('/services/nin-suite', [App\Http\Controllers\Service\NINController::class, 'suiteIndex'])->name('services.nin.suite');
         Route::get('/services/nin',    [App\Http\Controllers\Service\NINController::class, 'index'])->name('services.nin');
+        Route::get('/services/nin-verify', [App\Http\Controllers\Service\NINController::class, 'index'])->name('services.nin_verify');
         Route::post('/services/nin/verify', [App\Http\Controllers\Service\NINController::class, 'verify'])->middleware('kyc.enforce')->name('services.nin.verify');
         Route::post('/services/nin-verify/verify', [App\Http\Controllers\Service\NINController::class, 'verify'])->middleware('kyc.enforce')->name('services.nin_verify.verify');
         Route::post('/services/nin/validation/status', [App\Http\Controllers\Service\NINController::class, 'validationStatus'])->middleware('kyc.enforce')->name('services.nin.validation.status');
@@ -316,7 +318,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/services/tin-verify/verify', [App\Http\Controllers\Service\TinController::class, 'verify'])->middleware('kyc.enforce')->name('services.tin_verify.verify');
 
         Route::get('/services/nin-face', [App\Http\Controllers\Service\BiometricController::class, 'index'])->name('services.nin_face');
-        Route::post('/services/nin-face/verify', [App\Http\Controllers\Service\BiometricController::class, 'verifyNinFace'])->middleware('kyc.enforce')->name('services.nin_face.verify');
+        Route::post('/services/nin-face/verify', [App\Http\Controllers\Service\VerificationController::class, 'verifyNinFace'])->middleware('kyc.enforce')->name('services.nin_face.verify');
 
         Route::get('/services/credit-bureau', [App\Http\Controllers\Service\VerificationController::class, 'creditBureauIndex'])->name('services.credit_bureau');
         Route::post('/services/credit-bureau/verify', [App\Http\Controllers\Service\VerificationController::class, 'verifyCreditBureau'])->middleware('kyc.enforce')->name('services.credit_bureau.verify');
@@ -355,6 +357,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // â”€â”€ BVN Verification â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     Route::middleware('feature:bvn_verification')->group(function () {
         Route::get('/services/bvn',    [App\Http\Controllers\Service\BVNController::class, 'index'])->name('services.bvn');
+        Route::get('/services/bvn-verify', [App\Http\Controllers\Service\BVNController::class, 'index'])->name('services.bvn_verify');
         Route::post('/services/bvn/verify', [App\Http\Controllers\Service\BVNController::class, 'verify'])->middleware('kyc.enforce')->name('services.bvn.verify');
         Route::post('/services/bvn/retrieve', [App\Http\Controllers\Service\BVNController::class, 'submitRetrieval'])->middleware('kyc.enforce')->name('services.bvn.retrieve');
         Route::post('/services/bvn/retrieve/{id}/check', [App\Http\Controllers\Service\BVNController::class, 'checkRetrievalStatus'])->name('services.bvn.retrieve.check');
@@ -432,6 +435,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // Auctions
         Route::middleware('feature:auctions')->group(function () {
+            Route::get('/auctions', [App\Http\Controllers\UserAuctionController::class, 'dashboard'])->name('auctions');
             Route::get('/auctions/dashboard', [App\Http\Controllers\UserAuctionController::class, 'dashboard'])->name('auctions.dashboard');
             Route::post('/auctions/bid', [App\Http\Controllers\UserAuctionController::class, 'placeBid'])->middleware('kyc.enforce')->name('auctions.bid');
             Route::post('/auctions/watchlist/add', [App\Http\Controllers\UserAuctionController::class, 'addToWatchlist'])->name('auctions.watchlist.add');
@@ -447,6 +451,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // Post Office & Logistics
         Route::middleware('feature:post_office')->group(function () {
+            Route::get('/postoffice',          [App\Http\Controllers\UserLogisticsController::class, 'dashboard'])->name('postoffice');
             Route::get('/logistics/dashboard', [App\Http\Controllers\UserLogisticsController::class, 'dashboard'])->name('user.logistics.dashboard');
             Route::get('/logistics/book',      [App\Http\Controllers\UserLogisticsController::class, 'book'])->name('user.logistics.book');
             Route::post('/logistics/book',     [App\Http\Controllers\UserLogisticsController::class, 'store'])->middleware('kyc.enforce')->name('user.logistics.store');
@@ -508,6 +513,8 @@ Route::get('/services/verification/report/{id}', [App\Http\Controllers\Service\P
 Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function () {
     Route::get('/login',  [App\Http\Controllers\Admin\Auth\LoginController::class, 'showLoginForm'])->name('login');
     Route::post('/login', [App\Http\Controllers\Admin\Auth\LoginController::class, 'login'])->middleware('throttle:5,1');
+    Route::get('/2fa',    [App\Http\Controllers\Admin\Auth\LoginController::class, 'show2faForm'])->name('2fa.index');
+    Route::post('/2fa',   [App\Http\Controllers\Admin\Auth\LoginController::class, 'verify2fa'])->name('2fa.verify');
     Route::post('/logout',[App\Http\Controllers\Admin\Auth\LoginController::class, 'logout'])->name('logout');
 
         Route::middleware(['auth:admin', 'admin.audit'])->group(function () {
@@ -552,6 +559,10 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
                     ->name('logistics-staff.impersonate');
                 Route::resource('referral-tiers', \App\Http\Controllers\Admin\ReferralTierController::class)->except(['show']);
             });
+
+            // Shipping Providers
+            Route::resource('shipping-providers', \App\Http\Controllers\Admin\ShippingProviderController::class)->only(['index', 'store', 'update']);
+            Route::post('shipping-providers/{provider}/toggle', [\App\Http\Controllers\Admin\ShippingProviderController::class, 'toggle'])->name('shipping-providers.toggle');
 
             Route::get('/services',                    [App\Http\Controllers\Admin\ServiceManagementController::class, 'index'])->name('services.index');
             Route::post('/services/toggles/{feature}', [App\Http\Controllers\Admin\ServiceManagementController::class, 'setToggle'])->name('services.toggles.set');
@@ -826,18 +837,19 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
     });
 // ── End of admin group ───────────────────────────────────
 
-// ── Webhooks (no auth guard) ─────────────────────────────
-Route::post('/webhooks/verifyme/address', [App\Http\Controllers\Service\VerificationController::class, 'handleAddressWebhook'])->name('webhooks.verifyme.address');
-
-// ── Payment Webhooks (no auth guard) ─────────────────────
-Route::post('/webhooks/payvessel', [App\Http\Controllers\WebhookController::class, 'handlePayvessel'])->name('webhooks.payvessel');
-Route::post('/webhooks/palmpay',   [App\Http\Controllers\WebhookController::class, 'handlePalmpay'])->name('webhooks.palmpay');
-Route::post('/webhooks/paymentpoint',   [App\Http\Controllers\WebhookController::class, 'handlePaymentpoint'])->name('webhooks.paymentpoint');
-Route::post('/webhooks/monnify',  [App\Http\Controllers\WebhookController::class, 'handleMonnify'])->name('webhooks.monnify');
-Route::post('/webhooks/paystack',  [App\Http\Controllers\WebhookController::class, 'handlePaystack'])->name('webhooks.paystack');
-Route::post('/webhooks/flutterwave',  [App\Http\Controllers\WebhookController::class, 'handleFlutterwave'])->name('webhooks.flutterwave');
-Route::post('/payvessel_webhook.php', [App\Http\Controllers\WebhookController::class, 'handlePayvessel']);
-Route::post('/palmpay_webhook.php',   [App\Http\Controllers\WebhookController::class, 'handlePalmpay']);
+// ── Payment & Integration Webhooks (no auth guard, CSRF exempt) ─────────
+Route::withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class])->group(function () {
+    Route::post('/webhooks/payvessel', [App\Http\Controllers\WebhookController::class, 'handlePayvessel'])->name('webhooks.payvessel');
+    Route::post('/webhooks/palmpay',   [App\Http\Controllers\WebhookController::class, 'handlePalmpay'])->name('webhooks.palmpay');
+    Route::post('/webhooks/paymentpoint', [App\Http\Controllers\WebhookController::class, 'handlePaymentpoint'])->name('webhooks.paymentpoint');
+    Route::post('/webhooks/monnify',  [App\Http\Controllers\WebhookController::class, 'handleMonnify'])->name('webhooks.monnify');
+    Route::post('/webhooks/paystack',  [App\Http\Controllers\WebhookController::class, 'handlePaystack'])->name('webhooks.paystack');
+    Route::post('/webhooks/flutterwave',  [App\Http\Controllers\WebhookController::class, 'handleFlutterwave'])->name('webhooks.flutterwave');
+    Route::post('/webhooks/flutterwave/card', [App\Http\Controllers\WebhookController::class, 'handleFlutterwaveCard'])->name('webhooks.flutterwave.card');
+    Route::post('/webhook/flutterwave/card',  [App\Http\Controllers\WebhookController::class, 'handleFlutterwaveCard'])->name('webhook.flutterwave.card');
+    Route::post('/payvessel_webhook.php', [App\Http\Controllers\WebhookController::class, 'handlePayvessel']);
+    Route::post('/palmpay_webhook.php',   [App\Http\Controllers\WebhookController::class, 'handlePalmpay']);
+});
 
 
 

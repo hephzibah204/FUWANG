@@ -121,34 +121,14 @@ class NexusServiceController extends Controller
 
     public function placeBid(Request $request)
     {
-        $request->validate([
-            'item_id'   => 'required|string',
-            'item_name' => 'required|string|max:150',
-            'bid_amount' => 'required|numeric|min:' . \App\Models\SystemSetting::get('auction_min_bid', 500),
-        ]);
-
-        $result = $this->deductAndLog('Auction Bid – ' . $request->item_name, (float) $request->bid_amount);
-
-        if (!$result['ok']) {
-            return response()->json(['status' => false, 'message' => $result['message']]);
+        if ($request->has('item_id') && !$request->has('lot_code')) {
+            $request->merge(['lot_code' => $request->item_id]);
+        }
+        if ($request->has('bid_amount') && !$request->has('amount')) {
+            $request->merge(['amount' => $request->bid_amount]);
         }
 
-        // Persist the bid
-        AuctionBid::create([
-            'user_id' => Auth::id(),
-            'lot_id' => $request->item_id,
-            'item_name' => $request->item_name,
-            'bid_amount' => $request->bid_amount,
-            'status' => 'winning',
-            'reference' => $result['txId'],
-        ]);
-
-        return response()->json([
-            'status'  => true,
-            'message' => 'Bid placed successfully! You are currently the leading bidder.',
-            'bid_ref' => $result['txId'],
-            'balance' => number_format($result['balance'], 2),
-        ]);
+        return app(UserAuctionController::class)->placeBid($request);
     }
 
     public function notary()
@@ -550,17 +530,23 @@ class NexusServiceController extends Controller
     public function exchangeCurrency(Request $request)
     {
         $request->validate([
-            'from_currency' => 'required|string|in:USD,GBP,EUR,CAD,AUD,CNY',
-            'to_currency'   => 'required|string|in:NGN',
-            'amount'        => 'required|numeric|min:10',
+            'from_currency' => 'required|string|in:NGN,USD,GBP,EUR,CAD,AUD,CNY',
+            'to_currency'   => 'required|string|in:NGN,USD,GBP,EUR,CAD,AUD,CNY|different:from_currency',
+            'amount'        => 'required|numeric|min:1',
         ]);
 
         $from = strtoupper($request->from_currency);
-        $rate = 0;
+        $to   = strtoupper($request->to_currency);
+        $amount = (float) $request->amount;
+        $user = Auth::user();
+        $wallet = app(WalletService::class);
 
-        // Try fetching real-time rate
+        // Determine rate
+        $rate = 0;
+        $foreignCur = ($from === 'NGN') ? $to : $from;
+        
         try {
-            $res = Http::timeout(5)->get("https://open.er-api.com/v6/latest/{$from}");
+            $res = Http::timeout(5)->get("https://open.er-api.com/v6/latest/{$foreignCur}");
             if ($res->successful()) {
                 $rates = $res->json('rates');
                 if (isset($rates['NGN'])) {
@@ -571,10 +557,9 @@ class NexusServiceController extends Controller
             Log::warning('Exchange rate API failed, falling back to system settings', ['error' => $e->getMessage()]);
         }
 
-        // Fallback to SystemSetting
         if ($rate <= 0) {
-            $rateName = 'fx_rate_' . strtolower($from);
-            $rate  = \App\Models\SystemSetting::get($rateName, match($from) {
+            $rateName = 'fx_rate_' . strtolower($foreignCur);
+            $rate = (float) \App\Models\SystemSetting::get($rateName, match($foreignCur) {
                 'GBP' => 1950,
                 'EUR' => 1700,
                 'CAD' => 1120,
@@ -584,53 +569,64 @@ class NexusServiceController extends Controller
             });
         }
 
-        // For now: user sells foreign currency for NGN (credit wallet)
-        $ngnAmount = $request->amount * $rate;
-        $fxFeePercent = \App\Models\SystemSetting::get('fx_fee_percent', 1.5) / 100;
-        $fee       = $ngnAmount * $fxFeePercent; 
-        $net       = $ngnAmount - $fee;
+        $fxFeePercent = (float) \App\Models\SystemSetting::get('fx_fee_percent', 1.5) / 100;
 
-        $user   = Auth::user();
-        $balRec = AccountBalance::where('email', $user->email)->firstOrCreate(
-            ['email' => $user->email],
-            ['user_balance' => 0, 'api_key' => 'user']
-        );
+        // Case 1: User converts NGN -> Foreign Currency (debit user's NGN wallet)
+        if ($from === 'NGN') {
+            $ngnToDebit = $amount;
+            $feeNgn = $ngnToDebit * $fxFeePercent;
+            $totalNgnDebit = $ngnToDebit + $feeNgn;
+            $foreignReceived = $rate > 0 ? ($ngnToDebit / $rate) : 0;
 
-        $oldBalance = (float) $balRec->user_balance;
-        $newBalance = $oldBalance + $net;
-        
-        // Use DB transaction for thread safety and to prevent race conditions
-        DB::transaction(function () use ($balRec, $newBalance, $user, $request, $oldBalance, $net, $fee, $rate) {
-            // Lock the row to prevent race conditions
-            $lockedBal = AccountBalance::where('id', $balRec->id)->lockForUpdate()->first();
-            
-            $lockedOldBalance = (float) $lockedBal->user_balance;
-            $lockedNewBalance = $lockedOldBalance + $net;
-            
-            $lockedBal->update(['user_balance' => $lockedNewBalance]);
+            $debit = $wallet->debit($user, $totalNgnDebit, 'FX Exchange – NGN → ' . $to);
+            if (!$debit['ok']) {
+                return response()->json(['status' => false, 'message' => $debit['message']]);
+            }
 
-            $txId = 'FX-' . strtoupper(bin2hex(random_bytes(4)));
-            Transaction::create([
-                'user_email'     => $user->email,
-                'order_type'     => 'FX Exchange – ' . $request->from_currency . ' → NGN',
-                'balance_before' => $lockedOldBalance,
-                'balance_after'  => $lockedNewBalance,
-                'transaction_id' => $txId,
-                'status'         => 'success',
+            $tx = $debit['transaction'];
+            $tx->status = 'success';
+            $tx->save();
+
+            return response()->json([
+                'status'         => true,
+                'message'        => 'Exchange successful. Converted ₦' . number_format($ngnToDebit, 2) . ' to ' . number_format($foreignReceived, 2) . ' ' . $to,
+                'received_foreign' => number_format($foreignReceived, 2),
+                'received_ngn'   => number_format($ngnToDebit, 2),
+                'fee'            => number_format($feeNgn, 2),
+                'rate'           => $rate,
+                'balance'        => number_format($debit['newBalance'], 2),
+                'ref'            => $tx->transaction_id,
             ]);
-            
-            // Pass txId out
-            request()->merge(['txId' => $txId, 'final_balance' => $lockedNewBalance]);
-        });
+        }
+
+        // Case 2: User converts Foreign Currency -> NGN (selling foreign currency)
+        // CRITICAL SECURITY FIX: Do NOT instantly credit NGN out of thin air.
+        // Create an FX settlement request requiring verified deposit proof before credit.
+        $ngnValue = $amount * $rate;
+        $feeNgn = $ngnValue * $fxFeePercent;
+        $netNgn = $ngnValue - $feeNgn;
+
+        $txId = 'FX-REQ-' . strtoupper(bin2hex(random_bytes(4)));
+        $currentBalance = (float) ($user->balance?->user_balance ?? 0);
+
+        Transaction::create([
+            'user_email'     => $user->email,
+            'order_type'     => 'FX Exchange Request – ' . $from . ' → NGN',
+            'balance_before' => $currentBalance,
+            'balance_after'  => $currentBalance,
+            'transaction_id' => $txId,
+            'status'         => 'pending',
+        ]);
 
         return response()->json([
-            'status'      => true,
-            'message'     => 'Exchange completed. Wallet credited.',
-            'received_ngn'=> number_format($net, 2),
-            'fee'         => number_format($fee, 2),
-            'rate'        => $rate,
-            'balance'     => number_format(request('final_balance'), 2),
-            'ref'         => request('txId'),
+            'status'       => true,
+            'is_pending'   => true,
+            'message'      => 'Exchange request submitted. NGN ' . number_format($netNgn, 2) . ' will be credited once your ' . $from . ' deposit is verified by the exchange desk.',
+            'received_ngn' => number_format($netNgn, 2),
+            'fee'          => number_format($feeNgn, 2),
+            'rate'         => $rate,
+            'balance'      => number_format($currentBalance, 2),
+            'ref'          => $txId,
         ]);
     }
 

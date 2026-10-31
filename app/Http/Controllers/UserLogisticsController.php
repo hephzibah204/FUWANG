@@ -224,15 +224,7 @@ class UserLogisticsController extends Controller
      */
     private function generateWaybillPdf(LogisticsRequest $shipment)
     {
-        $options = new \chillerlan\QRCode\QROptions([
-            'version'      => \chillerlan\QRCode\Common\Version::AUTO,
-            'outputType'   => \chillerlan\QRCode\Output\QROutputInterface::GDIMAGE_PNG,
-            'imageBase64'  => true,
-            'eccLevel'     => \chillerlan\QRCode\Common\EccLevel::L,
-            'addQuietzone' => false,
-        ]);
-        
-        $qrcode = (new \chillerlan\QRCode\QRCode($options))->render($shipment->tracking_id);
+        $qrcode = \App\Support\QrCodeDataUri::make($shipment->tracking_id) ?? '';
 
         $data = [
             'reference' => $shipment->tracking_id,

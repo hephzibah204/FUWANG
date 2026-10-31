@@ -260,17 +260,18 @@
             $.post('{{ route("services.fx.exchange") }}', {
                 _token: '{{ csrf_token() }}',
                 from_currency: from,
-                to_currency: 'NGN',
+                to_currency: to,
                 amount: amt
             }).done((res) => {
                 if (!res.status) {
                     Swal.fire('Error', res.message || 'Exchange failed', 'error');
                     return;
                 }
+                const title = res.is_pending ? '⏳ Request Submitted' : '✅ Exchange Successful!';
                 Swal.fire({
-                    title: '✅ Exchange Successful!',
-                    html: `Received ₦${res.received_ngn}<br><small>Ref: ${res.ref}</small>`,
-                    icon: 'success',
+                    title: title,
+                    html: `${res.message}<br><small class="text-muted">Ref: ${res.ref}</small>`,
+                    icon: res.is_pending ? 'info' : 'success',
                     background: '#0a0a0f',
                     color: '#fff'
                 }).then(() => window.location.reload());

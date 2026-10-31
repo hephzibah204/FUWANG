@@ -94,9 +94,7 @@ class ProfileController extends Controller
 
     public function security()
     {
-        return view('profile.security', [
-            'user' => Auth::user(),
-        ]);
+        return redirect()->route('profile');
     }
 
     public function update(Request $request)

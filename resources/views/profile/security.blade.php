@@ -20,7 +20,7 @@
                 @if ($user->two_factor_secret)
                     <div class="alert alert-success">2FA is currently <strong>enabled</strong> on your account.</div>
                     <p>To disable 2FA, please enter your password below.</p>
-                    <form method="POST" action="{{ route('user.2fa.disable') }}">
+                    <form method="POST" action="{{ Route::has('profile.2fa.disable') ? route('profile.2fa.disable') : url('/profile/2fa/disable') }}">
                         @csrf
                         <div class="form-group">
                             <label for="password">Current Password</label>
@@ -31,7 +31,7 @@
                 @else
                     <div class="alert alert-info">2FA is currently <strong>disabled</strong> on your account.</div>
                     <p>To enable 2FA, click the button below. You will be shown a QR code to scan with your authenticator app.</p>
-                    <form method="POST" action="{{ route('user.2fa.enable') }}">
+                    <form method="POST" action="{{ Route::has('profile.2fa.enable') ? route('profile.2fa.enable') : url('/profile/2fa/enable') }}">
                         @csrf
                         <button type="submit" class="btn btn-primary">Enable 2FA</button>
                     </form>
@@ -58,7 +58,7 @@
                 <p><strong>{{ session('2fa_secret') }}</strong></p>
                 <hr>
                 <p>After scanning, enter the 6-digit code from your app to verify the setup.</p>
-                <form method="POST" action="{{ route('user.2fa.verify') }}">
+                <form method="POST" action="{{ Route::has('profile.2fa.enable') ? route('profile.2fa.enable') : url('/profile/2fa/enable') }}">
                     @csrf
                     <div class="form-group">
                         <input type="text" name="2fa_code" class="form-control" required placeholder="6-digit code">

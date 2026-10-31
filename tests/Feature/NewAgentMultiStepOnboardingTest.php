@@ -20,6 +20,8 @@ class NewAgentMultiStepOnboardingTest extends TestCase
             'full_name' => 'Original User Name',
             'email' => 'newagent@example.com',
             'phone_number' => '08012345678',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
             'bvn' => '12345678901',
             'nin' => '10987654321',
             'state' => 'Lagos',
@@ -29,7 +31,7 @@ class NewAgentMultiStepOnboardingTest extends TestCase
             'machine_imei' => '864201041112223',
         ]);
 
-        $response->assertRedirect(route('agent.onboarding.index'));
+        $response->assertRedirect(route('agent.dashboard'));
         $this->assertAuthenticated();
 
         $user = User::where('email', 'newagent@example.com')->first();
@@ -52,6 +54,8 @@ class NewAgentMultiStepOnboardingTest extends TestCase
             'full_name' => 'Agent Fallback Test',
             'email' => 'fallbackagent@example.com',
             'phone_number' => '08099887766',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
             'bvn' => '11111111111',
             'nin' => '22222222222',
             'state' => 'Abuja',
@@ -60,7 +64,7 @@ class NewAgentMultiStepOnboardingTest extends TestCase
             'has_machine' => '0',
         ]);
 
-        $response->assertRedirect(route('agent.onboarding.index'));
+        $response->assertRedirect(route('agent.dashboard'));
         $this->assertAuthenticated();
 
         $user = User::where('email', 'fallbackagent@example.com')->first();
@@ -140,6 +144,8 @@ class NewAgentMultiStepOnboardingTest extends TestCase
             'full_name' => 'Attacker Trying Takeover',
             'email' => 'victim@example.com',
             'phone_number' => '08099881122',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
             'bvn' => '11111111111',
             'nin' => '22222222222',
             'state' => 'Abuja',

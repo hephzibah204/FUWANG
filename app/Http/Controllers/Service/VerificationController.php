@@ -2035,8 +2035,10 @@ class VerificationController extends Controller
 
         $user = Auth::user();
         $apiCenter = ApiCenter::first();
+        $customProvider = CustomApi::where('service_type', 'personalization')->where('status', true)->first();
+        $hasRobost = ($apiCenter && !empty($apiCenter->robosttech_api_key)) || $this->hasRobosttechCredentials();
 
-        if (!$apiCenter || !$apiCenter->robosttech_api_key) {
+        if (!$hasRobost && !$customProvider) {
             throw new \App\Exceptions\ServiceNotConfiguredException('Personalization service is currently unavailable. Please contact support.');
         }
 

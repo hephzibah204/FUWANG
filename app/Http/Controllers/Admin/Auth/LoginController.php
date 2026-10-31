@@ -101,4 +101,58 @@ class LoginController extends Controller
 
         return redirect()->route('admin.login');
     }
+
+    public function show2faForm(Request $request)
+    {
+        if (Auth::guard('admin')->check()) {
+            return redirect()->route('admin.dashboard');
+        }
+
+        if (!$request->session()->get('admin_2fa_pending') || !$request->session()->get('admin_2fa_id')) {
+            return redirect()->route('admin.login');
+        }
+
+        return view('admin.auth.2fa');
+    }
+
+    public function verify2fa(Request $request)
+    {
+        if (Auth::guard('admin')->check()) {
+            return redirect()->route('admin.dashboard');
+        }
+
+        if (!$request->session()->get('admin_2fa_pending') || !$request->session()->get('admin_2fa_id')) {
+            return redirect()->route('admin.login');
+        }
+
+        $request->validate([
+            'code' => ['required', 'string', 'size:6'],
+        ]);
+
+        $admin = Admin::find($request->session()->get('admin_2fa_id'));
+
+        if (!$admin || !$admin->two_factor_enabled || empty($admin->two_factor_secret)) {
+            $request->session()->forget(['admin_2fa_pending', 'admin_2fa_id']);
+            return redirect()->route('admin.login')->withErrors(['email' => 'Session expired or 2FA not configured.']);
+        }
+
+        if (!\App\Utils\TOTP::verify($admin->two_factor_secret, $request->code)) {
+            return back()->withErrors(['code' => 'The provided authentication code is invalid.'])->withInput();
+        }
+
+        $request->session()->forget(['admin_2fa_pending', 'admin_2fa_id']);
+        $request->session()->regenerate();
+
+        Auth::guard('admin')->login($admin);
+
+        AdminAuditLog::create([
+            'admin_id' => $admin->id,
+            'action' => 'admin.login.2fa_success',
+            'meta' => ['email' => $admin->email],
+            'ip' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]);
+
+        return redirect()->route('admin.dashboard');
+    }
 }

@@ -30,20 +30,6 @@ class TinController extends Controller
 
     public function verify(Request $request)
     {
-        $request->validate([
-            'tin_number' => 'required|string',
-            'tax_office' => 'nullable|string',
-        ]);
-
-        $user = Auth::user();
-        $price = SystemSetting::get('tin_price', 500);
-
-        if ($user->wallet_balance < $price) {
-            return response()->json(['status' => false, 'message' => 'Insufficient wallet balance.']);
-        }
-
-        // Logic for calling TIN verification API...
-        
-        return response()->json(['status' => false, 'message' => 'TIN verification currently in sandbox mode.']);
+        return app(VerificationController::class)->verifyTin($request);
     }
 }

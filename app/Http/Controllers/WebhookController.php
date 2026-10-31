@@ -421,6 +421,52 @@ class WebhookController extends Controller
         return response()->json(['message' => 'Accepted'], 200);
     }
 
+    public function handleFlutterwaveCard(Request $request)
+    {
+        $payload = $request->getContent();
+        $data = json_decode($payload, true) ?: [];
+
+        $secretHash = (string) (config('services.flutterwave.webhook_hash') ?: '');
+        $incomingHash = (string) ($request->header('verif-hash', '') ?: $request->header('verifi-hash', ''));
+
+        if ($secretHash !== '' && !hash_equals($secretHash, $incomingHash)) {
+            $this->storeEvent('flutterwave_card', (string) ($data['event'] ?? 'card.event'), null, null, null, null, null, false, $incomingHash ?: null, (array) $data);
+            return response()->json(['message' => 'Invalid signature'], 403);
+        }
+
+        $evt = (string) ($data['event'] ?? 'card.event');
+        $cardData = $data['data'] ?? [];
+        $providerCardId = (string) ($cardData['id'] ?? $cardData['card_id'] ?? '');
+
+        $this->storeEvent(
+            'flutterwave_card',
+            $evt,
+            $providerCardId !== '' ? $providerCardId : null,
+            null,
+            null,
+            null,
+            null,
+            true,
+            $incomingHash ?: null,
+            (array) $data
+        );
+
+        if (!empty($providerCardId)) {
+            $card = \App\Models\VirtualCard::where('provider_card_id', $providerCardId)->first();
+            if ($card) {
+                if (isset($cardData['amount'])) {
+                    $card->balance = (float) $cardData['amount'];
+                }
+                if (isset($cardData['is_active'])) {
+                    $card->status = $cardData['is_active'] ? 'active' : 'inactive';
+                }
+                $card->save();
+            }
+        }
+
+        return response()->json(['message' => 'Accepted'], 200);
+    }
+
     public function handleMonnify(Request $request)
     {
         $payload = $request->getContent();

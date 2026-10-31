@@ -35,10 +35,15 @@ Route::prefix('auction')->middleware('feature:auctions')->group(function () {
             return redirect()->route('admin.login');
         })->name('login');
 
+        Route::post('/logout', [\App\Http\Controllers\Admin\Auth\LoginController::class, 'logout'])->name('logout');
+
         Route::middleware(['auth:admin', 'admin.audit'])->group(function () {
             Route::get('/', function () {
                 return redirect()->route('admin.auctions.index');
             })->name('dashboard');
+
+            Route::get('/auctions', [\App\Http\Controllers\Admin\AuctionController::class, 'index'])->name('auctions.index');
+            Route::get('/sellers', [\App\Http\Controllers\Admin\AuctionController::class, 'sellers'])->name('sellers.index');
         });
     });
 });

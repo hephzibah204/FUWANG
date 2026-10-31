@@ -390,6 +390,10 @@ class VtuHubService
 
             if ($response->successful()) {
                 $json = $response->json();
+                if (!$this->isPayloadSuccessful($json)) {
+                    $msg = is_array($json) ? ($json['message'] ?? $json['msg'] ?? $json['error'] ?? 'Upstream provider returned transaction failure') : 'Upstream provider error';
+                    throw new \Exception($msg);
+                }
                 $providerRef = is_array($json) ? (string) ($json['reference'] ?? $json['transaction_id'] ?? $json['data']['reference'] ?? '') : '';
 
                 if ($direction === 'credit') {
@@ -519,5 +523,44 @@ class VtuHubService
             $cursor = $cursor[$seg];
         }
         return is_scalar($cursor) ? (string) $cursor : '';
+    }
+
+    protected function isPayloadSuccessful(mixed $json): bool
+    {
+        if (!is_array($json)) {
+            return false;
+        }
+
+        if (array_key_exists('status', $json)) {
+            $val = $json['status'];
+            if ($val === false || $val === 0 || $val === '0') {
+                return false;
+            }
+            if (is_string($val)) {
+                $lower = strtolower(trim($val));
+                if (in_array($lower, ['failed', 'failure', 'error', 'declined', 'cancelled', 'rejected'])) {
+                    return false;
+                }
+            }
+        }
+
+        if (array_key_exists('Status', $json)) {
+            $val = $json['Status'];
+            if ($val === false || $val === 0 || $val === '0') {
+                return false;
+            }
+            if (is_string($val)) {
+                $lower = strtolower(trim($val));
+                if (in_array($lower, ['failed', 'failure', 'error', 'declined', 'cancelled', 'rejected'])) {
+                    return false;
+                }
+            }
+        }
+
+        if (array_key_exists('success', $json) && $json['success'] === false) {
+            return false;
+        }
+
+        return true;
     }
 }

@@ -72,6 +72,7 @@ class LogisticsE2EWorkflowTest extends TestCase
             'sender_state' => 'Lagos',
             'sender_address' => 'Ikeja',
             'recipient_name' => 'Recipient',
+            'recipient_phone' => '08012345678',
             'recipient_state' => 'Oyo',
             'recipient_address' => 'Ibadan',
             'pickup_method' => 'home_pickup',

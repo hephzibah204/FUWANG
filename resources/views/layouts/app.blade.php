@@ -204,14 +204,14 @@
             <div class="nav-item {{ Request::routeIs('services.notary') ? 'active' : '' }}">
                 <a href="{{ route('services.notary') }}"><i class="fa-solid fa-file-signature text-secondary"></i> Notary Services</a>
             </div>
-            <div class="nav-item {{ Request::routeIs('services.postoffice') ? 'active' : '' }}">
-                <a href="{{ route('services.postoffice') }}"><i class="fa-solid fa-mail-bulk text-danger"></i> Post Office</a>
+            <div class="nav-item {{ Request::routeIs('services.user.logistics.*') || Request::routeIs('logistics.*') || Request::routeIs('services.postoffice') ? 'active' : '' }}">
+                <a href="{{ Route::has('services.user.logistics.dashboard') ? route('services.user.logistics.dashboard') : (Route::has('logistics.home') ? route('logistics.home') : url('/logistics')) }}"><i class="fa-solid fa-mail-bulk text-danger"></i> Post Office</a>
             </div>
             <div class="nav-item {{ Request::routeIs('services.ticketing') ? 'active' : '' }}">
                 <a href="{{ route('services.ticketing') }}"><i class="fa-solid fa-ticket text-accent"></i> Ticketing</a>
             </div>
-            <div class="nav-item {{ Request::routeIs('services.auctions') ? 'active' : '' }}">
-                <a href="{{ route('services.auctions') }}"><i class="fa-solid fa-gavel text-white-50"></i> Auctions</a>
+            <div class="nav-item {{ Request::routeIs('services.auctions.*') || Request::routeIs('auction.*') || Request::routeIs('public.auctions.*') ? 'active' : '' }}">
+                <a href="{{ Route::has('services.auctions.dashboard') ? route('services.auctions.dashboard') : (Route::has('public.auctions.index') ? route('public.auctions.index') : url('/auction')) }}"><i class="fa-solid fa-gavel text-white-50"></i> Auctions</a>
             </div>
 
             <div class="nav-section">Settings & Support</div>

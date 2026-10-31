@@ -73,15 +73,31 @@ class PublicWebinarController extends Controller
                 ->with('info', "You are already registered for this webinar! Your Pass Code is: {$existing->access_code}");
         }
 
+        $amountToPay = (float) ($webinar->is_free ? 0 : ($webinar->price ?? 0));
+        $user = Auth::user();
+
+        if ($amountToPay > 0) {
+            if (!$user) {
+                return redirect()->route('login')
+                    ->with('info', 'Please sign in to register for paid webinars.');
+            }
+
+            $wallet = app(\App\Services\WalletService::class);
+            $debit = $wallet->debit($user, $amountToPay, 'Webinar: ' . $webinar->title);
+            if (!$debit['ok']) {
+                return back()->with('error', 'Insufficient wallet balance. This webinar requires ₦' . number_format($amountToPay, 2) . '. Please top up your wallet.');
+            }
+        }
+
         $registration = WebinarRegistration::create([
             'webinar_id' => $webinar->id,
-            'user_id' => Auth::id(),
+            'user_id' => $user?->id,
             'full_name' => $validated['full_name'],
             'email' => $validated['email'],
             'phone_number' => $validated['phone_number'] ?? null,
             'organization' => $validated['organization'] ?? null,
             'status' => 'confirmed',
-            'amount_paid' => $webinar->price,
+            'amount_paid' => $amountToPay,
         ]);
 
         try {

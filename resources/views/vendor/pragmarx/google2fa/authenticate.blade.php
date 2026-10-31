@@ -19,7 +19,7 @@
             </div>
         @endif
 
-        <form action="{{ route('2fa.authenticate') }}" method="POST">
+        <form action="{{ Route::has('2fa.verify') ? route('2fa.verify') : url('/2fa/challenge') }}" method="POST">
             @csrf
             <div class="mb-4">
                 <input type="text" name="one_time_password" class="form-control form-control-lg text-center font-monospace tracking-widest bg-dark text-white border-secondary rounded-3" placeholder="000000" maxlength="6" autofocus required inputmode="numeric">

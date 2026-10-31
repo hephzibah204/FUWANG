@@ -23,7 +23,7 @@
                     </div>
                 </div>
                 <p class="text-white-50 small mb-4">Verify NIN numbers and download official NIMC slips instantly.</p>
-                <a href="{{ route('services.nin_verify') }}" class="btn btn-primary w-100 mt-auto font-weight-bold">
+                <a href="{{ route('services.nin') }}" class="btn btn-primary w-100 mt-auto font-weight-bold">
                     Verify NIN <i class="fa-solid fa-arrow-right ms-1"></i>
                 </a>
             </div>
@@ -42,7 +42,7 @@
                     </div>
                 </div>
                 <p class="text-white-50 small mb-4">Validate BVN details and account ownership in real-time.</p>
-                <a href="{{ route('services.bvn_verify') }}" class="btn btn-outline-light w-100 mt-auto font-weight-bold">
+                <a href="{{ route('services.bvn') }}" class="btn btn-outline-light w-100 mt-auto font-weight-bold">
                     Verify BVN <i class="fa-solid fa-arrow-right ms-1"></i>
                 </a>
             </div>
