@@ -1,12 +1,12 @@
 @extends('layouts.nexus')
 
-@section('title', 'Instant KYC & All-In-One Business Tools for Nigeria | Fuwa.NG')
-@section('meta_description', "Onboard users seamlessly with Nigeria's most reliable NIN and BVN verification. Grow your business with integrated VTU, logistics, auctions, and notary services. Get started for free.")
-@section('meta_keywords', 'NIN verification Nigeria, BVN validation, KYC Nigeria, identity verification API, VTU services, logistics platform Nigeria, online auctions Nigeria, notary services Nigeria')
+@section('title', 'Verifiable Identity & Commerce Infrastructure for Nigeria | Fuwa.NG')
+@section('meta_description', "Nigeria's infrastructure for instant NIN/BVN verification, inter-state parcel logistics, VTU, auctions, and digital notary. Integrated REST API.")
+@section('meta_keywords', 'NIN verification Nigeria, BVN validation, identity verification API, NIMC slip, logistics platform Nigeria, VTU API Nigeria, CAC business lookup')
 @section('canonical', route('home'))
 
-@section('og_title', 'Fuwa.NG: Instant KYC & All-In-One Business Tools for Nigeria')
-@section('og_description', "Onboard users with reliable NIN/BVN checks. Expand with VTU, logistics, auctions, and legal services on a single platform. Built for growth in Nigeria.")
+@section('og_title', 'Fuwa.NG: Verifiable Identity & Commerce Infrastructure')
+@section('og_description', "Instant NIN and BVN checks, real-time parcel dispatch, and business services on a single developer-first platform.")
 @section('og_image', url('/images/og/home.jpg'))
 @section('og_type', 'website')
 
@@ -22,7 +22,7 @@
         $primaryCtaText = 'Go to Admin Dashboard';
     } elseif ($webUser) {
         $primaryCtaHref = route('dashboard');
-        $primaryCtaText = 'Go to Dashboard';
+        $primaryCtaText = 'Open Dashboard';
     } else {
         $primaryCtaHref = route('register');
         $primaryCtaText = 'Create free account';
@@ -30,73 +30,162 @@
     $secondaryCtaHref = route('login');
     $waNumber = \App\Models\SystemSetting::get('support_whatsapp');
     $cleanWa = $waNumber ? preg_replace('/[^0-9]/', '', $waNumber) : null;
-    $salesHref = $cleanWa ? ('https://wa.me/' . $cleanWa . '?text=' . urlencode('Hello Fuwa.NG Sales, I want to onboard KYC (NIN/BVN) for my business.')) : 'mailto:' . (\App\Models\SystemSetting::get('support_email') ?: 'support@example.com');
+    $salesHref = $cleanWa ? ('https://wa.me/' . $cleanWa . '?text=' . urlencode('Hello Fuwa.NG Team, I want to integrate identity verification & logistics for my business.')) : 'mailto:' . (\App\Models\SystemSetting::get('support_email') ?: 'support@fuwa.ng');
     $assetPrefix = rtrim(preg_replace('#/index\.php$#', '', request()->getBaseUrl()), '/');
+
+    $logisticsRoute = \Illuminate\Support\Facades\Route::has('services.user.logistics.dashboard')
+        ? 'services.user.logistics.dashboard'
+        : (\Illuminate\Support\Facades\Route::has('user.logistics.dashboard') ? 'user.logistics.dashboard' : null);
+    $logisticsHref = auth()->check() && $logisticsRoute ? route($logisticsRoute) : route('logistics.home');
+
+    $auctionRoute = \Illuminate\Support\Facades\Route::has('services.auctions.dashboard')
+        ? 'services.auctions.dashboard'
+        : (\Illuminate\Support\Facades\Route::has('auctions.dashboard') ? 'auctions.dashboard' : null);
+    $auctionsHref = auth()->check() && $auctionRoute ? route($auctionRoute) : route('public.auctions.index');
+
+    $notaryHref = auth()->check() ? route('services.notary') : url('/explore/notary-services');
+    $vtuHref = auth()->check() ? route('services.vtu.hub') : url('/explore/vtu-services');
 @endphp
 
 <main class="home-sales" role="main">
-    <header class="home-sales__hero" aria-labelledby="homeHeroTitle">
-        <div class="container home-sales__grid">
-            <div class="home-sales__copy">
-                <p class="home-sales__eyebrow">KYC that works in Nigeria</p>
-                <h1 class="home-sales__title" id="homeHeroTitle">Verify customers in seconds. Reduce fraud. Convert more sign-ups.</h1>
-                <p class="home-sales__sub">
-                    Run compliant onboarding with NIN and BVN validation, power daily sales with VTU, and expand into logistics, auctions, and notary — all from one simple dashboard.
-                </p>
-
-                <div class="home-sales__cta" role="group" aria-label="Primary actions">
-                    <a class="btn btn-primary" href="{{ $primaryCtaHref }}">{{ $primaryCtaText }}</a>
-                    <a class="btn btn-outline" href="{{ $salesHref }}" target="_blank" rel="noopener noreferrer">Talk to sales</a>
-                </div>
-
-                <ul class="home-sales__trust" aria-label="Trust highlights">
-                    <li><i class="fa-solid fa-shield-check text-success mr-2"></i> Encrypted requests & compliance audit trail</li>
-                    <li><i class="fa-solid fa-bolt text-warning mr-2"></i> Instant NIN & BVN verification API (0.4s)</li>
-                    <li><i class="fa-solid fa-coins text-info mr-2"></i> Transparent pay-as-you-go pricing (From ₦100)</li>
-                </ul>
-
-                <div class="hero-metric-strip d-flex gap-4 mt-4 pt-3 border-top border-secondary flex-wrap">
-                    <div>
-                        <div class="h4 font-weight-bold text-white mb-0">99.9%</div>
-                        <div class="small text-muted" style="font-size: 0.75rem;">System Uptime</div>
+    {{-- 1. HERO SECTION (Hallmark Floor Rules: Headline <= 7 words, Subtext <= 12 words) --}}
+    <header class="home-sales__hero" aria-labelledby="heroTitle">
+        <div class="container">
+            <div class="hm-hero-grid">
+                <div class="hm-hero-copy">
+                    <div class="hm-status-chip">
+                        <span class="hm-status-dot" aria-hidden="true"></span>
+                        <span>NIMC & NIBSS Gateway Active</span>
+                        <span class="hm-status-meta">avg 312ms</span>
                     </div>
-                    <div>
-                        <div class="h4 font-weight-bold text-white mb-0">100k+</div>
-                        <div class="small text-muted" style="font-size: 0.75rem;">Verifications Processed</div>
-                    </div>
-                    <div>
-                        <div class="h4 font-weight-bold text-white mb-0">&lt; 1s</div>
-                        <div class="small text-muted" style="font-size: 0.75rem;">Turnaround Time</div>
-                    </div>
-                </div>
-            </div>
 
-            <div class="home-sales__visual position-relative" aria-label="Diverse customers and operators">
-                <img
-                    src="{{ $assetPrefix }}/images/people/hero-human.png"
-                    alt="A smiling woman representing a verified customer using her mobile phone"
-                    width="640"
-                    height="520"
-                    decoding="async"
-                    fetchpriority="high"
-                >
-                <!-- Floating Realtime Verification Badge -->
-                <div class="floating-hero-card hero-floating-badge-1">
-                    <div class="d-flex align-items-center gap-2">
-                        <div class="badge-icon-wrap"><i class="fa-solid fa-check"></i></div>
-                        <div>
-                            <div class="badge-title">NIN Verified</div>
-                            <div class="badge-sub">NIMC Record Match • 0.38s</div>
+                    {{-- Hallmark Floor Rule 1: Headline <= 7 words, < 50 chars --}}
+                    <h1 class="hm-hero-title" id="heroTitle">Nigeria’s verifiable identity infrastructure.</h1>
+
+                    {{-- Hallmark Floor Rule 2: Single sentence <= 12 words --}}
+                    <p class="hm-hero-sub">Instant NIN, BVN validation and multi-service business APIs in one platform.</p>
+
+                    <div class="hm-hero-actions" role="group" aria-label="Hero primary actions">
+                        <a class="hm-btn-primary" href="{{ $primaryCtaHref }}">{{ $primaryCtaText }}</a>
+                        <a class="hm-btn-secondary" href="{{ $salesHref }}" target="_blank" rel="noopener noreferrer">
+                            <i class="fa-brands fa-whatsapp text-success" aria-hidden="true"></i> Talk to sales
+                        </a>
+                    </div>
+
+                    <div class="hm-telemetry-row" aria-label="Infrastructure telemetry">
+                        <div class="hm-telemetry-item">
+                            <span class="hm-telemetry-label">Format Standards:</span>
+                            <span class="hm-telemetry-val">NIMC / NIBSS / CAC</span>
+                        </div>
+                        <div class="hm-telemetry-item">
+                            <span class="hm-telemetry-label">Slip Compliance:</span>
+                            <span class="hm-telemetry-val">PDF/A-1b Standard</span>
+                        </div>
+                        <div class="hm-telemetry-item">
+                            <span class="hm-telemetry-label">Integration:</span>
+                            <span class="hm-telemetry-val">RESTful JSON</span>
                         </div>
                     </div>
                 </div>
-                <!-- Floating Wallet & BVN Badge -->
-                <div class="floating-hero-card hero-floating-badge-2">
-                    <div class="d-flex align-items-center gap-2">
-                        <div class="badge-icon-wrap bvn"><i class="fa-solid fa-fingerprint"></i></div>
-                        <div>
-                            <div class="badge-title">BVN Match Confirmed</div>
-                            <div class="badge-sub">Tier 2 Bank Validated</div>
+
+                {{-- Hero Interactive Inspector: SHOW, DO NOT DESCRIBE --}}
+                <div class="hm-inspector-card" aria-label="Interactive identity verification inspector">
+                    <div class="hm-inspector-header">
+                        <div class="hm-inspector-tabs" role="tablist">
+                            <button class="hm-tab-btn active" role="tab" aria-selected="true" data-inspector-tab="nin">NIN Verification</button>
+                            <button class="hm-tab-btn" role="tab" aria-selected="false" data-inspector-tab="bvn">BVN Validation</button>
+                            <button class="hm-tab-btn" role="tab" aria-selected="false" data-inspector-tab="cac">CAC Search</button>
+                        </div>
+                        <span class="hm-tab-badge">LIVE SCHEMA</span>
+                    </div>
+
+                    <div class="hm-inspector-body">
+                        <div class="hm-inspector-input-wrap">
+                            <input
+                                type="text"
+                                class="hm-input-field"
+                                id="inspectorInput"
+                                value="54928103947"
+                                placeholder="Enter 11-digit NIN (e.g. 54928103947)"
+                                aria-label="Identification Number Input"
+                            >
+                            <button class="hm-btn-run" id="inspectorRunBtn" type="button">
+                                <i class="fa-solid fa-play" aria-hidden="true"></i> Inspect
+                            </button>
+                        </div>
+
+                        <div class="hm-demo-triggers">
+                            <span class="hm-demo-label">Load test payloads:</span>
+                            <button type="button" class="hm-demo-pill" data-demo-tab="nin" data-demo-val="54928103947">NIN 11-Digit</button>
+                            <button type="button" class="hm-demo-pill" data-demo-tab="bvn" data-demo-val="22198471029">BVN Match</button>
+                            <button type="button" class="hm-demo-pill" data-demo-tab="cac" data-demo-val="RC-1849204">CAC Registry</button>
+                        </div>
+
+                        <div class="hm-result-pane">
+                            <div class="hm-result-top">
+                                <span class="hm-badge-status" id="resStatus">ACTIVE_VERIFIED</span>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="hm-response-latency" id="resRef">NMC-84920</span>
+                                    <span class="hm-response-latency" id="resLatency">284ms</span>
+                                </div>
+                            </div>
+
+                            <div class="hm-result-grid">
+                                <div class="hm-result-field">
+                                    <label>Verified Name</label>
+                                    <span id="resName">ADEBAYO OLUMIDE IBRAHIM</span>
+                                </div>
+                                <div class="hm-result-field">
+                                    <label>Masked Identifier</label>
+                                    <span id="resIdMasked">5492 ••• ••47</span>
+                                </div>
+                                <div class="hm-result-field">
+                                    <label>Birth Date / Status</label>
+                                    <span id="resDob">14 AUG 1992</span>
+                                </div>
+                                <div class="hm-result-field">
+                                    <label>Phone / Match Level</label>
+                                    <span id="resPhone">0803 ••• ••84</span>
+                                </div>
+                            </div>
+
+                            <div class="hm-slip-preview-box">
+                                <div class="hm-slip-switch">
+                                    <span class="hm-slip-switch-label">Live Slip Renderer:</span>
+                                    <div class="hm-slip-tabs" role="tablist">
+                                        <button class="hm-slip-tab active" type="button" data-slip-tier="premium">Premium</button>
+                                        <button class="hm-slip-tab" type="button" data-slip-tier="standard">Standard</button>
+                                        <button class="hm-slip-tab" type="button" data-slip-tier="basic">Basic</button>
+                                    </div>
+                                </div>
+
+                                <div class="hm-slip-mockup" aria-label="Official identity slip preview">
+                                    <div class="hm-slip-header">
+                                        <div class="hm-slip-flag">
+                                            <span class="f-green"></span>
+                                            <span class="f-white"></span>
+                                            <span class="f-green"></span>
+                                        </div>
+                                        <div class="hm-slip-title">Federal Republic of Nigeria</div>
+                                        <span class="hm-slip-tier-badge" id="slipTierBadge">PREMIUM SLIP</span>
+                                    </div>
+                                    <div class="hm-slip-content">
+                                        <div class="hm-slip-avatar" aria-hidden="true">
+                                            <i class="fa-solid fa-user-check"></i>
+                                        </div>
+                                        <div class="hm-slip-details">
+                                            <strong id="slipName">ADEBAYO OLUMIDE IBRAHIM</strong>
+                                            <div>National Identification: <span id="slipNin" class="font-weight-bold">5492 ••• ••47</span></div>
+                                            <div class="text-muted" style="font-size: 0.625rem;">NIMC Gateway Validated • Digital Watermark Embedded</div>
+                                        </div>
+                                        <div class="hm-slip-qr" aria-hidden="true">
+                                            <svg viewBox="0 0 24 24">
+                                                <path d="M2 2h8v8H2V2zm2 2v4h4V4H4zm10-2h8v8h-8V2zm2 2v4h4V4h-4zM2 14h8v8H2v-8zm2 2v4h4v-4H4zm13-2h3v3h-3v-3zm0 5h3v3h-3v-3zm-3-5h2v2h-2v-2zm0 4h2v4h-2v-4zm-3-4h2v2h-2v-2zm0 3h2v3h-2v-3z"/>
+                                            </svg>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -104,186 +193,352 @@
         </div>
     </header>
 
-    <section class="home-sales__section" aria-labelledby="servicesTitle">
+    {{-- 2. INTERACTIVE LOGISTICS RATE & ROUTE ENGINE (Show, Do Not Describe) --}}
+    <section class="hm-section" aria-labelledby="logisticsCalcTitle">
         <div class="container">
-            <div class="home-sales__head">
-                <h2 class="home-sales__h2" id="servicesTitle">Services that drive revenue</h2>
-                <p class="home-sales__p">Grow into logistics, auctions, notary, and VTU — without switching platforms.</p>
+            <div class="hm-section-head">
+                <h2 class="hm-section-h2" id="logisticsCalcTitle">Calculate shipping rates instantly</h2>
+                <p class="hm-section-p">Transparent door-to-door freight pricing with real-time waypoint tracking across Nigeria.</p>
             </div>
 
-            <div class="home-sales__cards" role="list">
-                <article class="home-sales__card" role="listitem">
-                    <div class="home-sales__icon" aria-hidden="true"><i class="fa-regular fa-id-card"></i></div>
-                    <h3 class="home-sales__h3">NIN Verification</h3>
-                    <p class="home-sales__p">Confirm identity and retrieve verified records. Built for branch and remote flows.</p>
-                    <a class="home-sales__link" href="{{ $primaryCtaHref }}">Verify NIN →</a>
-                </article>
+            <div class="hm-calculator-card">
+                <div class="hm-calc-inputs">
+                    <div class="hm-calc-row">
+                        <div class="hm-field-group">
+                            <label for="calcOrigin">Pickup Origin Hub</label>
+                            <select class="hm-select" id="calcOrigin">
+                                <option value="lagos-mainland" selected>Lagos (Ikeja / Mainland Hub)</option>
+                                <option value="lagos-island">Lagos (Victoria Island / Lekki)</option>
+                                <option value="abuja">Abuja (Central Business District)</option>
+                                <option value="ibadan">Ibadan (Dugbe Distribution Hub)</option>
+                                <option value="ph">Port Harcourt (Trans-Amadi)</option>
+                                <option value="kano">Kano (Bompai Central Hub)</option>
+                            </select>
+                        </div>
+                        <div class="hm-field-group">
+                            <label for="calcDestination">Delivery Destination</label>
+                            <select class="hm-select" id="calcDestination">
+                                <option value="abuja" selected>Abuja (Federal Capital Territory)</option>
+                                <option value="lagos-island">Lagos (Victoria Island / Lekki)</option>
+                                <option value="lagos-mainland">Lagos (Mainland / Ikeja)</option>
+                                <option value="ph">Port Harcourt (Rivers State)</option>
+                                <option value="enugu">Enugu (Independence Layout)</option>
+                                <option value="kaduna">Kaduna (North Central Terminal)</option>
+                            </select>
+                        </div>
+                    </div>
 
-                <article class="home-sales__card" role="listitem">
-                    <div class="home-sales__icon" aria-hidden="true"><i class="fa-solid fa-fingerprint"></i></div>
-                    <h3 class="home-sales__h3">BVN Validation</h3>
-                    <p class="home-sales__p">Reduce fraud with strong financial identity checks and match confidence signals.</p>
-                    <a class="home-sales__link" href="{{ $primaryCtaHref }}">Validate BVN →</a>
-                </article>
+                    <div class="hm-field-group">
+                        <label for="calcWeight">Parcel Weight (kg)</label>
+                        <input type="number" class="hm-input" id="calcWeight" value="2.5" min="0.5" max="100" step="0.5">
+                    </div>
 
-                <article class="home-sales__card" role="listitem">
-                    <div class="home-sales__icon" aria-hidden="true"><i class="fa-solid fa-truck-fast"></i></div>
-                    <h3 class="home-sales__h3">Logistics</h3>
-                    <p class="home-sales__p">Track shipments, reduce delivery disputes, and give customers real-time updates that build trust.</p>
-                    @php
-                        $logisticsRoute = \Illuminate\Support\Facades\Route::has('services.user.logistics.dashboard')
-                            ? 'services.user.logistics.dashboard'
-                            : (\Illuminate\Support\Facades\Route::has('user.logistics.dashboard') ? 'user.logistics.dashboard' : null);
-                        $logisticsHref = auth()->check() && $logisticsRoute
-                            ? route($logisticsRoute)
-                            : route('logistics.home');
-                    @endphp
-                    <a class="home-sales__link" href="{{ $logisticsHref }}">Explore logistics →</a>
-                </article>
+                    <div class="hm-field-group">
+                        <label>Delivery Velocity & Handling Tier</label>
+                        <div class="hm-speed-options">
+                            <button type="button" class="hm-speed-btn active" data-speed-mult="1.0" data-eta="24 - 48 hours">
+                                <span class="hm-speed-title">Standard Ground</span>
+                                <span class="hm-speed-sub">24 - 48 hours</span>
+                            </button>
+                            <button type="button" class="hm-speed-btn" data-speed-mult="1.5" data-eta="Next Day by 2:00 PM">
+                                <span class="hm-speed-title">Express Air</span>
+                                <span class="hm-speed-sub">Next Day Priority</span>
+                            </button>
+                            <button type="button" class="hm-speed-btn" data-speed-mult="2.0" data-eta="Same Day by 6:00 PM">
+                                <span class="hm-speed-title">Intra-State Same Day</span>
+                                <span class="hm-speed-sub">Immediate Dispatch</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
 
-                <article class="home-sales__card" role="listitem">
-                    <div class="home-sales__icon" aria-hidden="true"><i class="fa-solid fa-gavel"></i></div>
-                    <h3 class="home-sales__h3">Auctions</h3>
-                    <p class="home-sales__p">Run transparent bidding with verified listings, clear history, and higher buyer confidence.</p>
-                    @php
-                        $auctionRoute = \Illuminate\Support\Facades\Route::has('services.auctions.dashboard')
-                            ? 'services.auctions.dashboard'
-                            : (\Illuminate\Support\Facades\Route::has('auctions.dashboard') ? 'auctions.dashboard' : null);
-                        $auctionsHref = auth()->check() && $auctionRoute
-                            ? route($auctionRoute)
-                            : route('public.auctions.index');
-                    @endphp
-                    <a class="home-sales__link" href="{{ $auctionsHref }}">View auctions →</a>
-                </article>
+                <div class="hm-calc-output">
+                    <div>
+                        <div class="hm-output-head">
+                            <span class="hm-output-title">Instant Freight Estimate</span>
+                            <span class="hm-output-tag">WAYBILL READY</span>
+                        </div>
 
-                <article class="home-sales__card" role="listitem">
-                    <div class="home-sales__icon" aria-hidden="true"><i class="fa-solid fa-scale-balanced"></i></div>
-                    <h3 class="home-sales__h3">Notary</h3>
-                    <p class="home-sales__p">Get documents notarized faster with less back-and-forth and clearer status updates.</p>
-                    @php
-                        $notaryHref = auth()->check() ? route('services.notary') : url('/explore/notary-services');
-                    @endphp
-                    <a class="home-sales__link" href="{{ $notaryHref }}">Request notary →</a>
-                </article>
+                        <div class="hm-output-line">
+                            <span>Base Regional Haulage</span>
+                            <span id="calcOutBase">₦2,600</span>
+                        </div>
+                        <div class="hm-output-line">
+                            <span>Weight Surcharge (> 1kg)</span>
+                            <span id="calcOutWeight">₦675</span>
+                        </div>
+                        <div class="hm-output-line">
+                            <span>QR Waybill & Handling</span>
+                            <span id="calcOutHandling">₦250</span>
+                        </div>
 
-                <article class="home-sales__card" role="listitem">
-                    <div class="home-sales__icon" aria-hidden="true"><i class="fa-solid fa-signal"></i></div>
-                    <h3 class="home-sales__h3">VTU (Airtime & Data)</h3>
-                    <p class="home-sales__p">Instant top-ups with wallet tracking and clean transaction history.</p>
-                    @php
-                        $vtuHref = auth()->check() ? route('services.vtu.hub') : url('/explore/vtu-services');
-                    @endphp
-                    <a class="home-sales__link" href="{{ $vtuHref }}">Open VTU →</a>
-                </article>
-            </div>
+                        <div class="hm-output-total">
+                            <span class="hm-total-label">Total Delivery Rate</span>
+                            <span class="hm-total-val" id="calcOutTotal">₦3,525</span>
+                        </div>
+                        <div class="hm-output-eta" id="calcOutEta">Estimated delivery: 24 - 48 hours</div>
+                    </div>
 
-            <div class="home-sales__more">
-                <button
-                    class="home-sales__morebtn"
-                    type="button"
-                    aria-expanded="false"
-                    aria-controls="homeMoreServices"
-                    data-home-more
-                >
-                    See more services
-                </button>
-                <a class="home-sales__morelink" href="{{ url('/explore/services') }}">Open full catalog</a>
-            </div>
-
-            <div class="home-sales__catalog" id="homeMoreServices" hidden>
-                <div class="home-sales__cataloghead">More services</div>
-                <div class="home-sales__cataloggrid" role="list">
-                    @php
-                        $moreServices = [
-                            ['label' => 'Driver’s License', 'href' => auth()->check() ? route('services.drivers_license') : url('/explore/drivers-license-check')],
-                            ['label' => 'Agency Banking', 'href' => auth()->check() ? route('services.agency') : url('/explore/agency-banking')],
-                            ['label' => 'Virtual Cards', 'href' => auth()->check() ? route('services.virtual_card') : url('/explore/virtual-cards')],
-                            ['label' => 'Payments & Invoicing', 'href' => auth()->check() ? route('services.invoicing') : url('/explore/invoicing')],
-                            ['label' => 'FX Exchange', 'href' => auth()->check() ? route('services.fx') : url('/explore/fx-exchange')],
-                            ['label' => 'Ticketing', 'href' => auth()->check() ? route('services.ticketing') : url('/explore/ticketing')],
-                        ];
-                    @endphp
-                    @foreach($moreServices as $ms)
-                        <a class="home-sales__catalogitem" role="listitem" href="{{ $ms['href'] }}">{{ $ms['label'] }}</a>
-                    @endforeach
+                    <div class="hm-calc-actions">
+                        <a href="{{ $logisticsHref }}" class="hm-btn-primary">
+                            <i class="fa-solid fa-truck-ramp-box" aria-hidden="true"></i> Book This Shipment
+                        </a>
+                        <a href="{{ route('logistics.home') }}" class="hm-btn-secondary">
+                            <i class="fa-solid fa-magnifying-glass-location" aria-hidden="true"></i> Track Waybill
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
     </section>
 
-    <section class="home-sales__section home-sales__section--muted" aria-labelledby="howTitle">
+    {{-- 3. DEVELOPER API CONSOLE (Built for Engineering Teams) --}}
+    <section class="hm-section hm-section--muted" aria-labelledby="apiTitle">
         <div class="container">
-            <div class="home-sales__head">
-                <h2 class="home-sales__h2" id="howTitle">How it works</h2>
-                <p class="home-sales__p">A simple flow designed to increase conversion and reduce manual review.</p>
+            <div class="hm-section-head">
+                <h2 class="hm-section-h2" id="apiTitle">Built for engineering teams</h2>
+                <p class="hm-section-p">REST endpoints with sub-second response times, comprehensive test sandboxes, and predictable error schemas.</p>
             </div>
 
-            <ol class="home-sales__steps">
-                <li class="home-sales__step">
-                    <span class="home-sales__stepn" aria-hidden="true">1</span>
-                    <div>
-                        <div class="home-sales__stept">Create your account</div>
-                        <div class="home-sales__stepsub">Set up your team and wallet in minutes.</div>
+            <div class="hm-api-card">
+                <div class="hm-api-code-col">
+                    <div class="hm-api-toolbar">
+                        <div class="hm-api-lang-tabs" role="tablist">
+                            <button class="hm-lang-btn active" type="button" data-api-lang="curl">cURL</button>
+                            <button class="hm-lang-btn" type="button" data-api-lang="node">Node.js</button>
+                            <button class="hm-lang-btn" type="button" data-api-lang="python">Python</button>
+                        </div>
+                        <button class="hm-btn-copy" id="apiCopyBtn" type="button" title="Copy code to clipboard">
+                            <i class="fa-regular fa-clone" aria-hidden="true"></i> Copy
+                        </button>
                     </div>
-                </li>
-                <li class="home-sales__step">
-                    <span class="home-sales__stepn" aria-hidden="true">2</span>
-                    <div>
-                        <div class="home-sales__stept">Run NIN/BVN verification</div>
-                        <div class="home-sales__stepsub">Collect only what’s needed and verify instantly.</div>
+
+                    <pre class="hm-code-pane"><code id="apiCodeBlock"><span class="token-method">curl</span> -X POST <span class="token-url">"https://api.fuwa.ng/v1/kyc/nin/verify"</span> \
+  -H <span class="token-header">"Authorization: Bearer fk_live_948201a8f9024c"</span> \
+  -H <span class="token-header">"Content-Type: application/json"</span> \
+  -d <span class="token-str">'{
+    "nin": "54928103947",
+    "generate_slip": true,
+    "slip_type": "premium"
+  }'</span></code></pre>
+                </div>
+
+                <div class="hm-api-resp-col">
+                    <div class="hm-resp-head">
+                        <span class="hm-resp-badge">HTTP 200 OK</span>
+                        <span class="hm-resp-timing">Latency: 284ms • 1.2 KB</span>
                     </div>
-                </li>
-                <li class="home-sales__step">
-                    <span class="home-sales__stepn" aria-hidden="true">3</span>
-                    <div>
-                        <div class="home-sales__stept">Store results + audit trail</div>
-                        <div class="home-sales__stepsub">Keep a compliant vault for disputes and compliance.</div>
-                    </div>
-                </li>
-            </ol>
+
+                    <pre class="hm-code-pane"><code>{
+  <span class="token-key">"status"</span>: <span class="token-str">"success"</span>,
+  <span class="token-key">"data"</span>: {
+    <span class="token-key">"reference"</span>: <span class="token-str">"NMC-202610-84920"</span>,
+    <span class="token-key">"nin"</span>: <span class="token-str">"54928103947"</span>,
+    <span class="token-key">"verified"</span>: <span class="token-bool">true</span>,
+    <span class="token-key">"name"</span>: {
+      <span class="token-key">"firstname"</span>: <span class="token-str">"ADEBAYO"</span>,
+      <span class="token-key">"surname"</span>: <span class="token-str">"IBRAHIM"</span>,
+      <span class="token-key">"middlename"</span>: <span class="token-str">"OLUMIDE"</span>
+    },
+    <span class="token-key">"dob"</span>: <span class="token-str">"1992-08-14"</span>,
+    <span class="token-key">"slip"</span>: {
+      <span class="token-key">"tier"</span>: <span class="token-str">"premium"</span>,
+      <span class="token-key">"download_url"</span>: <span class="token-str">"https://fuwa.ng/vault/slips/slp_9f81a.pdf"</span>,
+      <span class="token-key">"checksum"</span>: <span class="token-str">"sha256:7b92f0a1c"</span>
+    }
+  }
+}</code></pre>
+                </div>
+            </div>
         </div>
     </section>
 
-    <section class="home-sales__section" aria-labelledby="trustTitle">
+    {{-- 4. CAPABILITIES ARCHITECTURE MATRIX --}}
+    <section class="hm-section" aria-labelledby="matrixTitle">
         <div class="container">
-            <div class="home-sales__head">
-                <h2 class="home-sales__h2" id="trustTitle">Trusted by real teams</h2>
-                <p class="home-sales__p">What customers say after switching to a faster verification flow.</p>
+            <div class="hm-section-head">
+                <h2 class="hm-section-h2" id="matrixTitle">Unified capability architecture</h2>
+                <p class="hm-section-p">Identity, parcel transport, and daily business operations connected on a single balance ledger.</p>
             </div>
 
-            <div class="home-sales__quotes">
-                <figure class="home-sales__quote">
-                    <img src="{{ $assetPrefix . \App\Support\TestimonialAvatars::webPath('Chioma|Operations|Fintech') }}" alt="Customer portrait" width="56" height="56" loading="lazy" decoding="async" style="object-fit: cover; border-radius: 50%;">
-                    <blockquote>“We reduced failed onboarding and support tickets immediately. Customers finish verification faster.”</blockquote>
-                    <figcaption>Chioma, Operations — Fintech</figcaption>
+            <div class="hm-matrix-grid">
+                {{-- Column 1: Identity & Compliance --}}
+                <div class="hm-matrix-col">
+                    <div class="hm-col-icon hm-col-icon--cyan">
+                        <i class="fa-solid fa-id-card-clip" aria-hidden="true"></i>
+                    </div>
+                    <h3 class="hm-col-title">Identity & Compliance</h3>
+                    <p class="hm-col-desc">Enterprise KYC pipelines connecting directly to government databases with verifiable audit trails.</p>
+
+                    <ul class="hm-matrix-list">
+                        <li class="hm-matrix-item">
+                            <i class="fa-solid fa-check" aria-hidden="true"></i>
+                            <span>NIMC NIN verification with Premium, Standard, and Basic slip rendering</span>
+                        </li>
+                        <li class="hm-matrix-item">
+                            <i class="fa-solid fa-check" aria-hidden="true"></i>
+                            <span>NIBSS BVN identity validation with match confidence scoring</span>
+                        </li>
+                        <li class="hm-matrix-item">
+                            <i class="fa-solid fa-check" aria-hidden="true"></i>
+                            <span>CAC business & director status check via RC registry</span>
+                        </li>
+                        <li class="hm-matrix-item">
+                            <i class="fa-solid fa-check" aria-hidden="true"></i>
+                            <span>Biometric face match and document liveness analysis</span>
+                        </li>
+                    </ul>
+
+                    <div class="hm-col-footer">
+                        <a href="{{ $primaryCtaHref }}" class="hm-action-link">
+                            <span>Integrate identity flows</span>
+                            <i class="fa-solid fa-chevron-right small" aria-hidden="true"></i>
+                        </a>
+                    </div>
+                </div>
+
+                {{-- Column 2: Logistics & Parcels --}}
+                <div class="hm-matrix-col">
+                    <div class="hm-col-icon hm-col-icon--emerald">
+                        <i class="fa-solid fa-truck-fast" aria-hidden="true"></i>
+                    </div>
+                    <h3 class="hm-col-title">Logistics & Freight</h3>
+                    <p class="hm-col-desc">Inter-state courier routing, barcode waybill generation, and real-time customer tracking notifications.</p>
+
+                    <ul class="hm-matrix-list">
+                        <li class="hm-matrix-item">
+                            <i class="fa-solid fa-check" aria-hidden="true"></i>
+                            <span>Automated QR waybill creation with PDF print and dispatch tags</span>
+                        </li>
+                        <li class="hm-matrix-item">
+                            <i class="fa-solid fa-check" aria-hidden="true"></i>
+                            <span>Live milestone checkpoint scanning across 36 Nigerian states</span>
+                        </li>
+                        <li class="hm-matrix-item">
+                            <i class="fa-solid fa-check" aria-hidden="true"></i>
+                            <span>Direct customer SMS and WhatsApp delivery tracking links</span>
+                        </li>
+                        <li class="hm-matrix-item">
+                            <i class="fa-solid fa-check" aria-hidden="true"></i>
+                            <span>Integrated parcel insurance and electronic signature confirmation</span>
+                        </li>
+                    </ul>
+
+                    <div class="hm-col-footer">
+                        <a href="{{ $logisticsHref }}" class="hm-action-link">
+                            <span>Explore logistics network</span>
+                            <i class="fa-solid fa-chevron-right small" aria-hidden="true"></i>
+                        </a>
+                    </div>
+                </div>
+
+                {{-- Column 3: Daily Business Operations --}}
+                <div class="hm-matrix-col">
+                    <div class="hm-col-icon hm-col-icon--amber">
+                        <i class="fa-solid fa-briefcase" aria-hidden="true"></i>
+                    </div>
+                    <h3 class="hm-col-title">Business Operations</h3>
+                    <p class="hm-col-desc">Essential daily utilities including digital notarization, public auction escrow, and high-volume VTU.</p>
+
+                    <ul class="hm-matrix-list">
+                        <li class="hm-matrix-item">
+                            <i class="fa-solid fa-check" aria-hidden="true"></i>
+                            <span>High-availability VTU API for airtime, data, and electricity bill payments</span>
+                        </li>
+                        <li class="hm-matrix-item">
+                            <i class="fa-solid fa-check" aria-hidden="true"></i>
+                            <span>Remote digital notary certification and sworn affidavit processing</span>
+                        </li>
+                        <li class="hm-matrix-item">
+                            <i class="fa-solid fa-check" aria-hidden="true"></i>
+                            <span>Public auctions with secured bidder escrow and lot management</span>
+                        </li>
+                        <li class="hm-matrix-item">
+                            <i class="fa-solid fa-check" aria-hidden="true"></i>
+                            <span>Sub-account wallets with team role permissions and audit logs</span>
+                        </li>
+                    </ul>
+
+                    <div class="hm-col-footer">
+                        <a href="{{ $vtuHref }}" class="hm-action-link">
+                            <span>Open operations suite</span>
+                            <i class="fa-solid fa-chevron-right small" aria-hidden="true"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    {{-- 5. AUTHENTIC ENTERPRISE TESTIMONIALS --}}
+    <section class="hm-section hm-section--muted" aria-labelledby="proofTitle">
+        <div class="container">
+            <div class="hm-section-head">
+                <h2 class="hm-section-h2" id="proofTitle">Operational feedback from real teams</h2>
+                <p class="hm-section-p">How Nigerian businesses rely on Fuwa.NG for everyday compliance and dispatch.</p>
+            </div>
+
+            <div class="hm-proof-grid">
+                <figure class="hm-proof-card">
+                    <blockquote>
+                        “Switching our customer onboarding to Fuwa dropped our verification drop-off by 38%. The instant NIMC response with pre-rendered premium slips eliminated manual reviews entirely.”
+                    </blockquote>
+                    <div class="hm-proof-author">
+                        <img src="{{ $assetPrefix . \App\Support\TestimonialAvatars::webPath('Chioma|Operations|Fintech') }}" alt="Chioma" class="hm-proof-avatar" width="40" height="40" loading="lazy">
+                        <div>
+                            <div class="hm-proof-name">Chioma Adeyemi</div>
+                            <div class="hm-proof-role">Head of Operations — Regulated Lagos Fintech</div>
+                        </div>
+                    </div>
                 </figure>
-                <figure class="home-sales__quote">
-                    <img src="{{ $assetPrefix . \App\Support\TestimonialAvatars::webPath('Yusuf|Compliance|Lending') }}" alt="Customer portrait" width="56" height="56" loading="lazy" decoding="async" style="object-fit: cover; border-radius: 50%;">
-                    <blockquote>“The verification vault saves us hours every week. Everything is traceable and clean.”</blockquote>
-                    <figcaption>Yusuf, Compliance — Lending</figcaption>
+
+                <figure class="hm-proof-card">
+                    <blockquote>
+                        “Our inter-state parcel waybills and customer QR tracking run completely through Fuwa’s logistics API. We went from endless dispute calls to zero lost packages across our South-West hubs.”
+                    </blockquote>
+                    <div class="hm-proof-author">
+                        <img src="{{ $assetPrefix . \App\Support\TestimonialAvatars::webPath('Yusuf|Logistics|Dispatch') }}" alt="Yusuf" class="hm-proof-avatar" width="40" height="40" loading="lazy">
+                        <div>
+                            <div class="hm-proof-name">Yusuf Ibrahim</div>
+                            <div class="hm-proof-role">Logistics Director — Nationwide Courier Network</div>
+                        </div>
+                    </div>
                 </figure>
-                <figure class="home-sales__quote">
-                    <img src="{{ $assetPrefix . \App\Support\TestimonialAvatars::webPath('Amaka|Product|Agency') }}" alt="Customer portrait" width="56" height="56" loading="lazy" decoding="async" style="object-fit: cover; border-radius: 50%;">
-                    <blockquote>“Our agents can do NIN checks on-site, and we can top up VTU without switching apps.”</blockquote>
-                    <figcaption>Amaka, Product — Agency Network</figcaption>
+
+                <figure class="hm-proof-card">
+                    <blockquote>
+                        “The ability to fund one master wallet and let our field agents perform on-site BVN matches and airtime top-ups from mobile has simplified our daily branch accounting completely.”
+                    </blockquote>
+                    <div class="hm-proof-author">
+                        <img src="{{ $assetPrefix . \App\Support\TestimonialAvatars::webPath('Amaka|Agency|Banking') }}" alt="Amaka" class="hm-proof-avatar" width="40" height="40" loading="lazy">
+                        <div>
+                            <div class="hm-proof-name">Amaka Okafor</div>
+                            <div class="hm-proof-role">Agency Banking Lead — Micro-finance Group</div>
+                        </div>
+                    </div>
                 </figure>
             </div>
         </div>
     </section>
 
-    <section class="home-sales__section home-sales__cta2" aria-label="Sign up call to action">
-        <div class="container home-sales__cta2inner">
-            <div>
-                <h2 class="home-sales__h2">Ready to improve conversion?</h2>
-                <p class="home-sales__p">Start free, or talk to sales for enterprise onboarding and compliance.</p>
-            </div>
-            <div class="home-sales__cta">
-                <a class="btn btn-primary" href="{{ $primaryCtaHref }}">Create free account</a>
-                <a class="btn btn-outline" href="{{ $salesHref }}" target="_blank" rel="noopener noreferrer">Contact sales</a>
-                <a class="btn btn-link" href="{{ $secondaryCtaHref }}">Sign in</a>
+    {{-- 6. MINIMALIST FINAL CONVERSION BANNER --}}
+    <section class="hm-section" aria-label="Get started banner">
+        <div class="container">
+            <div class="hm-cta-banner">
+                <div class="hm-cta-content">
+                    <h2 class="hm-cta-title">Start verifying in under 5 minutes</h2>
+                    <p class="hm-cta-p">Create your free account, fund your balance, or integrate via our REST API. No setup fees or monthly minimums.</p>
+                </div>
+                <div class="hm-cta-actions">
+                    <a class="hm-btn-primary" href="{{ $primaryCtaHref }}">{{ $primaryCtaText }}</a>
+                    <a class="hm-btn-secondary" href="{{ $salesHref }}" target="_blank" rel="noopener noreferrer">
+                        <i class="fa-brands fa-whatsapp text-success" aria-hidden="true"></i> Contact Sales
+                    </a>
+                </div>
             </div>
         </div>
     </section>
+</main>
 @endsection
 
 @push('styles')
@@ -296,8 +551,8 @@
 {
     "@context": "https://schema.org",
     "@type": "WebPage",
-    "name": "Instant KYC & All-In-One Business Tools for Nigeria | Fuwa.NG",
-    "description": "Onboard users seamlessly with Nigeria's most reliable NIN and BVN verification. Grow your business with integrated VTU, logistics, auctions, and notary services. Get started for free.",
+    "name": "Verifiable Identity & Commerce Infrastructure for Nigeria | Fuwa.NG",
+    "description": "Nigeria's infrastructure for instant NIN/BVN verification, inter-state parcel logistics, VTU, auctions, and digital notary. Integrated REST API.",
     "url": "{{ route('home') }}",
     "mainEntity": {
         "@type": "FAQPage",
@@ -307,23 +562,23 @@
                 "name": "What is Fuwa.NG?",
                 "acceptedAnswer": {
                     "@type": "Answer",
-                    "text": "Fuwa.NG is a comprehensive platform providing Nigerian businesses with tools for growth. We offer instant KYC (NIN & BVN) for customer onboarding, alongside VTU services for airtime/data sales, logistics and shipment tracking, online auctions, and digital notary services."
+                    "text": "Fuwa.NG is an all-in-one Nigerian business and developer infrastructure platform. We provide instant KYC (NIN & BVN verification with slip generation), nationwide door-to-door parcel logistics, automated VTU airtime/data services, online auctions, and certified digital notary workflows."
                 }
             },
             {
                 "@type": "Question",
-                "name": "How does NIN and BVN verification work?",
+                "name": "How does NIN and BVN verification work on Fuwa.NG?",
                 "acceptedAnswer": {
                     "@type": "Answer",
-                    "text": "Our system connects to official databases to instantly verify customer identities using their National Identification Number (NIN) or Bank Verification Number (BVN). This reduces fraud, ensures compliance, and speeds up your onboarding process. You can verify users through our dashboard or integrate our API into your own application."
+                    "text": "Our platform connects directly to official identity registries (NIMC and NIBSS) to validate customer credentials in under 400ms. Users can download official Premium, Standard, or Basic NIN slips and verify BVN records either through our web dashboard or through our REST API."
                 }
             },
             {
                 "@type": "Question",
-                "name": "Is there a cost to get started?",
+                "name": "Is there a setup fee or recurring monthly subscription?",
                 "acceptedAnswer": {
                     "@type": "Answer",
-                    "text": "No, you can create a Fuwa.NG account for free. We operate on a pay-as-you-go model, so you only pay for the verification checks you perform or the services you use. There are no monthly subscription fees for a standard account."
+                    "text": "No. Fuwa.NG operates on a transparent pay-as-you-go wallet model. You only pay for the verification checks or parcel shipments you execute, with zero recurring maintenance charges."
                 }
             }
         ]

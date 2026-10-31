@@ -140,13 +140,6 @@ class PdfReportController extends Controller
         $isRobost = str_contains($rawProvider, 'robosttech') || str_contains($rawProvider, 'robost') || $result->service_type === 'personalization';
 
         if ($isRobost) {
-            $viewName = match ($type) {
-                'regular_slip' => 'pdf.nin_regular_slip',
-                'standard_slip' => 'pdf.nin_standard_slip',
-                'vnin_slip' => 'pdf.nin_vnin_slip',
-                default => 'pdf.nin_premium_slip',
-            };
-
             $pdfBase64 = $result->response_data['pdf_base64']
                 ?? $result->response_data['data']['pdf_base64']
                 ?? $result->response_data['user_data']['pdf_base64']
@@ -159,19 +152,6 @@ class PdfReportController extends Controller
                 }
             }
 
-            if (request()->boolean('html') || request()->boolean('print')) {
-                $autoPrint = request()->boolean('print');
-                return response()->view($viewName, compact('result', 'autoPrint'));
-            }
-
-            $cachedResponse = $this->serveCachedNinSlip($result, $type);
-            if ($cachedResponse !== null) {
-                $cachedSource = data_get($result->response_data, '_cached_slips.' . $type . '.source');
-                if ($cachedSource === 'in_house_slip' || $cachedSource === 'provider_pdf_base64' || $cachedSource === 'internal_fallback') {
-                    return $cachedResponse;
-                }
-            }
-
             if (!empty($pdfBase64) && is_string($pdfBase64) && in_array($type, ['regular_slip', 'standard_slip'], true)) {
                 $bin = base64_decode($pdfBase64);
                 if ($bin !== false && strlen($bin) > 100) {
@@ -180,18 +160,44 @@ class PdfReportController extends Controller
                 }
             }
 
+            // For Robosttech verification (without provider pdf_base64), strictly use our in-house premium slip
+            $effectiveType = empty($pdfBase64) ? 'premium_slip' : $type;
+            $viewName = empty($pdfBase64) ? 'pdf.nin_premium_slip' : match ($type) {
+                'regular_slip' => 'pdf.nin_regular_slip',
+                'standard_slip' => 'pdf.nin_standard_slip',
+                'vnin_slip' => 'pdf.nin_vnin_slip',
+                default => 'pdf.nin_premium_slip',
+            };
+
+            if (request()->boolean('html') || request()->boolean('print')) {
+                $autoPrint = request()->boolean('print');
+                return response()->view($viewName, compact('result', 'autoPrint'));
+            }
+
+            $cachedResponse = $this->serveCachedNinSlip($result, $effectiveType);
+            if ($cachedResponse !== null) {
+                $cachedSource = data_get($result->response_data, '_cached_slips.' . $effectiveType . '.source');
+                if ($cachedSource === 'in_house_premium_slip' || $cachedSource === 'in_house_slip' || $cachedSource === 'provider_pdf_base64' || $cachedSource === 'internal_fallback') {
+                    return $cachedResponse;
+                }
+            }
+
             Log::info('NIN slip generating in-house slip for Robosttech', [
                 'result_id' => $result->id,
                 'reference_id' => $result->reference_id,
                 'provider_name' => $result->provider_name,
-                'type' => $type,
+                'type' => $effectiveType,
             ]);
 
             $pdf = Pdf::loadView($viewName, compact('result'));
             $bin = $pdf->output();
-            $this->cacheNinSlipBinary($result, $type, $bin, 'in_house_slip');
+            $cacheTag = empty($pdfBase64) ? 'in_house_premium_slip' : 'in_house_slip';
+            $this->cacheNinSlipBinary($result, $effectiveType, $bin, $cacheTag);
+            if ($type !== $effectiveType) {
+                $this->cacheNinSlipBinary($result, $type, $bin, $cacheTag);
+            }
 
-            return $this->buildPdfResponse($bin, $type, (string) $result->reference_id);
+            return $this->buildPdfResponse($bin, $effectiveType, (string) $result->reference_id);
         }
 
         if (request()->boolean('html') || request()->boolean('print')) {
