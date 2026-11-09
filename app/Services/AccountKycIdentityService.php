@@ -159,6 +159,9 @@ class AccountKycIdentityService
                 'getAllAvailableBanks' => true,
                 $identityType => $identityValue,
             ];
+            if (! empty($user->number)) {
+                $payload['customerPhoneNumber'] = (string) $user->number;
+            }
 
             $reserveRes = Http::timeout(60)
                 ->acceptJson()
@@ -217,13 +220,21 @@ class AccountKycIdentityService
             return ['ok' => false, 'provider' => 'flutterwave', 'message' => 'Flutterwave is not configured.'];
         }
 
+        if (empty($user->number)) {
+            return [
+                'ok' => false,
+                'provider' => 'flutterwave',
+                'message' => 'A valid phone number is required to register your Tier 2 virtual account with banking partners.',
+            ];
+        }
+
         [$firstName, $lastName] = $this->resolveNameParts($user);
         $payload = array_filter([
             'currency' => 'NGN',
             'email' => $user->email,
             'tx_ref' => 'KYC-'.Str::uuid()->toString(),
             'is_permanent' => true,
-            'phonenumber' => $user->number ?? null,
+            'phonenumber' => (string) $user->number,
             'firstname' => $firstName,
             'lastname' => $lastName,
             'narration' => 'KYC tier identity validation',
@@ -280,12 +291,20 @@ class AccountKycIdentityService
             return ['ok' => false, 'provider' => 'paystack', 'message' => 'Paystack is not configured.'];
         }
 
+        if (empty($user->number)) {
+            return [
+                'ok' => false,
+                'provider' => 'paystack',
+                'message' => 'A valid phone number is required to register your Tier 2 virtual account with banking partners.',
+            ];
+        }
+
         [$firstName, $lastName] = $this->resolveNameParts($user);
         $customerPayload = array_filter([
             'email' => $user->email,
             'first_name' => $firstName,
             'last_name' => $lastName,
-            'phone' => $user->number ?? null,
+            'phone' => (string) $user->number,
             $identityType => $identityValue,
         ], fn ($v) => $v !== null && $v !== '');
 

@@ -32,11 +32,28 @@
                     @csrf
                     <div class="form-group mb-4">
                         <label class="text-white-50 small">National Identification Number (NIN)</label>
-                        <input type="text" name="nin" value="{{ old('nin') }}" class="form-control bg-dark text-white border-secondary" required maxlength="11" inputmode="numeric" pattern="\d{11}" autocomplete="off">
+                        <input type="text" name="nin" value="{{ old('nin') }}" class="form-control bg-dark text-white border-secondary" required maxlength="11" inputmode="numeric" pattern="\d{11}" autocomplete="off" placeholder="11-digit NIN">
                         @error('nin')
-                            <span class="text-danger small">{{ $message }}</span>
+                            <span class="text-danger small d-block mt-1">{{ $message }}</span>
                         @enderror
                     </div>
+
+                    <div class="form-group mb-4">
+                        <label class="text-white-50 small d-flex justify-content-between align-items-center mb-1">
+                            <span>Phone Number</span>
+                            @if (!empty($user->number ?? auth()->user()->number))
+                                <span class="badge rounded-pill px-2 py-0.5 text-success" style="font-size: 0.72rem; background: rgba(34, 197, 94, 0.15); border: 1px solid rgba(34, 197, 94, 0.3);">Saved on profile</span>
+                            @else
+                                <span class="text-warning small" style="font-size: 0.72rem;">Required for Tier 2 bank verification</span>
+                            @endif
+                        </label>
+                        <input type="tel" name="phone_number" value="{{ old('phone_number', $user->number ?? auth()->user()->number) }}" class="form-control bg-dark text-white border-secondary" placeholder="e.g. 08012345678" maxlength="15" autocomplete="tel" {{ empty($user->number ?? auth()->user()->number) ? 'required' : '' }}>
+                        <small class="text-white-50 d-block mt-1" style="font-size: 0.72rem;">Banking partners require this to link and issue your Tier 2 virtual bank account.</small>
+                        @error('phone_number')
+                            <span class="text-danger small d-block mt-1">{{ $message }}</span>
+                        @enderror
+                    </div>
+
                     <button type="submit" class="btn btn-primary btn-block rounded-pill py-3 font-weight-bold">
                         Submit for account KYC
                     </button>

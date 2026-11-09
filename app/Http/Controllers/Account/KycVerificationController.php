@@ -37,6 +37,7 @@ class KycVerificationController extends Controller
         $hasTier2Identity = $this->hasAnyTier2Identity($user);
 
         return view('account.kyc.nin', [
+            'user' => $user,
             'price' => $svc->ninPrice(),
             'hasAccountNin' => $this->hasSuccessful($user->id, AccountKycIdentityService::SERVICE_NIN) || $hasTier2Identity,
             'hasTier2Identity' => $hasTier2Identity,
@@ -52,9 +53,27 @@ class KycVerificationController extends Controller
                 : back()->withErrors(['nin' => 'Tier 2 is already completed on your account. No further BVN/NIN verification is required.']);
         }
 
-        $request->validate([
+        $rules = [
             'nin' => ['required', 'string', 'regex:/^\d{11}$/'],
+        ];
+        if (empty($user->number)) {
+            $rules['phone_number'] = ['required', 'string', 'regex:/^[0-9]{10,15}$/'];
+        } else {
+            $rules['phone_number'] = ['nullable', 'string', 'regex:/^[0-9]{10,15}$/'];
+        }
+
+        $validated = $request->validate($rules, [
+            'phone_number.required' => 'A valid phone number is required by banking partners to issue your Tier 2 virtual account.',
+            'phone_number.regex' => 'Please enter a valid phone number (10 to 15 digits).',
         ]);
+
+        if (!empty($validated['phone_number'])) {
+            $cleaned = preg_replace('/\D+/', '', (string) $validated['phone_number']);
+            if ($user->number !== $cleaned) {
+                $user->number = $cleaned;
+                $user->save();
+            }
+        }
 
         $svc = app(AccountKycIdentityService::class);
 
@@ -84,6 +103,7 @@ class KycVerificationController extends Controller
         $hasTier2Identity = $this->hasAnyTier2Identity($user);
 
         return view('account.kyc.bvn', [
+            'user' => $user,
             'price' => $svc->bvnPrice(),
             'hasAccountBvn' => $this->hasSuccessful($user->id, AccountKycIdentityService::SERVICE_BVN) || $hasTier2Identity,
             'hasTier2Identity' => $hasTier2Identity,
@@ -99,9 +119,27 @@ class KycVerificationController extends Controller
                 : back()->withErrors(['bvn' => 'Tier 2 is already completed on your account. No further BVN/NIN verification is required.']);
         }
 
-        $request->validate([
+        $rules = [
             'bvn' => ['required', 'string', 'regex:/^\d{11}$/'],
+        ];
+        if (empty($user->number)) {
+            $rules['phone_number'] = ['required', 'string', 'regex:/^[0-9]{10,15}$/'];
+        } else {
+            $rules['phone_number'] = ['nullable', 'string', 'regex:/^[0-9]{10,15}$/'];
+        }
+
+        $validated = $request->validate($rules, [
+            'phone_number.required' => 'A valid phone number is required by banking partners to issue your Tier 2 virtual account.',
+            'phone_number.regex' => 'Please enter a valid phone number (10 to 15 digits).',
         ]);
+
+        if (!empty($validated['phone_number'])) {
+            $cleaned = preg_replace('/\D+/', '', (string) $validated['phone_number']);
+            if ($user->number !== $cleaned) {
+                $user->number = $cleaned;
+                $user->save();
+            }
+        }
 
         $svc = app(AccountKycIdentityService::class);
 
