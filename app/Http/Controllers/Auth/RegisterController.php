@@ -81,8 +81,17 @@ class RegisterController extends Controller
 
             Auth::login($user);
 
+            $emailDeliveryFailed = false;
             if ($user instanceof \Illuminate\Contracts\Auth\MustVerifyEmail && ! $user->hasVerifiedEmail()) {
-                $user->sendEmailVerificationNotification();
+                try {
+                    $user->sendEmailVerificationNotification();
+                } catch (\Throwable $mailException) {
+                    $emailDeliveryFailed = true;
+                    Log::warning('User registration completed, but verification email could not be delivered: ' . $mailException->getMessage(), [
+                        'user_id' => $user->id,
+                        'email' => $user->email,
+                    ]);
+                }
             }
 
             $redirect = ($user instanceof \Illuminate\Contracts\Auth\MustVerifyEmail && ! $user->hasVerifiedEmail())
@@ -91,11 +100,20 @@ class RegisterController extends Controller
                     ? route('logistics.dashboard')
                     : ($service === 'auctions' ? route('auction.dashboard') : route('dashboard')));
 
+            $friendlyMessage = $emailDeliveryFailed
+                ? 'Account created, but verification email could not be delivered immediately. Redirecting...'
+                : 'Registration successful! Redirecting...';
+
+            if ($emailDeliveryFailed) {
+                session()->flash('warning', 'Account created, but verification email could not be delivered immediately. Please click below to resend it.');
+            }
+
             if ($request->expectsJson()) {
                 return response()->json([
                     'status' => 'success',
-                    'message' => 'Registration successful! Redirecting...',
+                    'message' => $friendlyMessage,
                     'redirect' => $redirect,
+                    'email_delivery_failed' => $emailDeliveryFailed,
                 ]);
             }
 

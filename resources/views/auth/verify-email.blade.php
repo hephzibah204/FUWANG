@@ -27,6 +27,18 @@
                 <p class="text-success small text-center mb-3">{{ session('status') }}</p>
             @endif
 
+            @if (session('warning'))
+                <div class="alert alert-warning py-2.5 px-3 small rounded-3 mb-3" style="background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); color: #fde68a;">
+                    <i class="fa-solid fa-triangle-exclamation mr-2"></i>{{ session('warning') }}
+                </div>
+            @endif
+
+            @if (session('error'))
+                <div class="alert alert-danger py-2.5 px-3 small rounded-3 mb-3" style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #fca5a5;">
+                    <i class="fa-solid fa-circle-exclamation mr-2"></i>{{ session('error') }}
+                </div>
+            @endif
+
             <form method="POST" action="{{ route('verification.send') }}" class="auth-form">
                 @csrf
                 <button type="submit" class="btn btn-primary btn-block py-3 font-weight-bold">

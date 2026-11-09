@@ -124,10 +124,23 @@
                                     <label for="password" class="form-label-custom">Password</label>
                                     <div class="input-wrap-modern">
                                         <i class="fa-solid fa-lock input-icon"></i>
-                                        <input type="password" id="password" name="password" class="form-control-modern pr-5" placeholder="Min. 8 characters" required>
+                                        <input type="password" id="password" name="password" class="form-control-modern pr-5" placeholder="Min. 8 chars (e.g. Pass123@#)" required autocomplete="new-password">
                                         <button type="button" class="btn-input-action toggle-password" data-target="password" tabindex="-1" aria-label="Toggle password visibility">
                                             <i class="fa-regular fa-eye"></i>
                                         </button>
+                                    </div>
+                                    <!-- Visual Password Requirements Checklist -->
+                                    <div class="password-rules-box mt-2 p-2 rounded-3" id="passwordRulesBox" style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); font-size: 0.75rem; transition: border-color 0.2s ease, background 0.2s ease;">
+                                        <div class="d-flex align-items-center justify-content-between mb-1">
+                                            <span class="text-white-50" style="font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em;">Password Requirements:</span>
+                                            <span id="passwordStrengthLabel" class="small" style="font-size: 0.68rem; font-weight: 700;"></span>
+                                        </div>
+                                        <div class="d-flex flex-wrap gap-2 text-white-50" style="font-size: 0.72rem;">
+                                            <span class="pwd-req d-inline-flex align-items-center" id="req-length"><i class="fa-regular fa-circle mr-1" style="font-size: 0.65rem;"></i>8+ chars</span>
+                                            <span class="pwd-req d-inline-flex align-items-center" id="req-case"><i class="fa-regular fa-circle mr-1" style="font-size: 0.65rem;"></i>Upper &amp; lower</span>
+                                            <span class="pwd-req d-inline-flex align-items-center" id="req-num"><i class="fa-regular fa-circle mr-1" style="font-size: 0.65rem;"></i>1+ number</span>
+                                            <span class="pwd-req d-inline-flex align-items-center" id="req-sym"><i class="fa-regular fa-circle mr-1" style="font-size: 0.65rem;"></i>1+ symbol (@$!%*#?&)</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -223,6 +236,80 @@
                 }
             });
         });
+
+        // Live Password Requirements Checker
+        var pwdInput = document.getElementById('password');
+        var reqLength = document.getElementById('req-length');
+        var reqCase = document.getElementById('req-case');
+        var reqNum = document.getElementById('req-num');
+        var reqSym = document.getElementById('req-sym');
+        var rulesBox = document.getElementById('passwordRulesBox');
+        var strengthLabel = document.getElementById('passwordStrengthLabel');
+
+        function updateReqState(el, isValid) {
+            if (!el) return;
+            var icon = el.querySelector('i');
+            if (isValid) {
+                el.classList.remove('text-white-50');
+                el.classList.add('text-success');
+                if (icon) {
+                    icon.className = 'fa-solid fa-circle-check mr-1 text-success';
+                }
+            } else {
+                el.classList.remove('text-success');
+                el.classList.add('text-white-50');
+                if (icon) {
+                    icon.className = 'fa-regular fa-circle mr-1';
+                }
+            }
+        }
+
+        if (pwdInput) {
+            pwdInput.addEventListener('input', function () {
+                var val = pwdInput.value || '';
+                var hasLength = val.length >= 8;
+                var hasCase = /[a-z]/.test(val) && /[A-Z]/.test(val);
+                var hasNum = /[0-9]/.test(val);
+                var hasSym = /[^A-Za-z0-9]/.test(val);
+
+                updateReqState(reqLength, hasLength);
+                updateReqState(reqCase, hasCase);
+                updateReqState(reqNum, hasNum);
+                updateReqState(reqSym, hasSym);
+
+                var passCount = [hasLength, hasCase, hasNum, hasSym].filter(Boolean).length;
+                if (rulesBox) {
+                    if (passCount === 4) {
+                        rulesBox.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+                        rulesBox.style.background = 'rgba(16, 185, 129, 0.08)';
+                        if (strengthLabel) {
+                            strengthLabel.textContent = 'Strong';
+                            strengthLabel.className = 'small text-success font-weight-bold';
+                        }
+                    } else if (passCount >= 2) {
+                        rulesBox.style.borderColor = 'rgba(245, 158, 11, 0.35)';
+                        rulesBox.style.background = 'rgba(245, 158, 11, 0.05)';
+                        if (strengthLabel) {
+                            strengthLabel.textContent = 'Moderate';
+                            strengthLabel.className = 'small text-warning font-weight-bold';
+                        }
+                    } else if (val.length > 0) {
+                        rulesBox.style.borderColor = 'rgba(239, 68, 68, 0.35)';
+                        rulesBox.style.background = 'rgba(239, 68, 68, 0.05)';
+                        if (strengthLabel) {
+                            strengthLabel.textContent = 'Weak';
+                            strengthLabel.className = 'small text-danger font-weight-bold';
+                        }
+                    } else {
+                        rulesBox.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                        rulesBox.style.background = 'rgba(255, 255, 255, 0.04)';
+                        if (strengthLabel) {
+                            strengthLabel.textContent = '';
+                        }
+                    }
+                }
+            });
+        }
     });
 
     function registerFormWhenJQueryReady(fn) {
@@ -328,9 +415,9 @@
                             const target = normalizeRedirect(response.redirect) || (window.location.origin + '/dashboard');
                             if (window.Swal && typeof window.Swal.fire === 'function') {
                                 window.Swal.fire({
-                                    title: 'Account Created!',
+                                    title: response.email_delivery_failed ? 'Account Created' : 'Account Created!',
                                     text: response.message || 'Registration successful. Welcome to Fuwa.NG!',
-                                    icon: 'success',
+                                    icon: response.email_delivery_failed ? 'info' : 'success',
                                     background: '#0a0a0f',
                                     color: '#fff',
                                     confirmButtonColor: '#3b82f6'

@@ -41,8 +41,16 @@ class EmailVerificationController extends Controller
             return redirect()->route('dashboard');
         }
 
-        $request->user()->sendEmailVerificationNotification();
+        try {
+            $request->user()->sendEmailVerificationNotification();
+            return back()->with('status', __('A fresh verification link has been sent to your email address.'));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Resending verification email failed: ' . $e->getMessage(), [
+                'user_id' => $request->user()->id,
+                'email' => $request->user()->email,
+            ]);
 
-        return back()->with('status', __('A fresh verification link has been sent to your email address.'));
+            return back()->with('error', __('We could not deliver the verification email right now. Please check your connection and try again in a moment.'));
+        }
     }
 }
