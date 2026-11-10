@@ -413,6 +413,7 @@
         'blog.*',
         'pages.*',
         'public.*',
+        'webinars.*',
         'agent.landing',
         'agent.register',
         'agent.search_preapproved',
@@ -425,7 +426,13 @@
         'logistics.centers',
         'logistics.pricing.*',
         'email.unsubscribe'
-    ) || request()->is('/');
+    ) || request()->is('/')
+      || request()->is('explore*')
+      || request()->is('webinars*')
+      || request()->is('blog*')
+      || request()->is('pages*')
+      || request()->is('agents*')
+      || request()->is('logistics*');
 
     $isExplicitPublicPage = trim($__env->yieldContent('is_public_page')) === 'true';
     $isPublicPage = ($isPublicRoute || $isExplicitPublicPage) && ! $onAdminArea;
@@ -1368,7 +1375,7 @@
             });
         });
     </script>
-    @if($isAuthed)
+    @if($showDashboardChrome && trim($__env->yieldContent('hide_mobile_nav')) !== 'true')
         <x-nexus.mobile-nav />
     @endif
 

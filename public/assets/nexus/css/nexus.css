@@ -2925,9 +2925,15 @@ textarea:focus-visible {
     border: 3px solid #0b1120;
 }
 
+/* Only pad bottom on screens where mobile bottom nav is active */
 @media (max-width: 768px) {
-    body {
+    body.dashboard-body,
+    body:has(.nexus-mobile-bottom-nav) {
         padding-bottom: 70px !important;
+    }
+
+    body:not(.dashboard-body) .nexus-mobile-bottom-nav {
+        display: none !important;
     }
 }
 
