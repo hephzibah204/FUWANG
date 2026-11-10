@@ -108,12 +108,23 @@
                             </div>
 
                             <!-- Email Address -->
-                            <div class="col-12">
+                            <div class="col-12 col-sm-6">
                                 <div class="form-group mb-0">
                                     <label for="email" class="form-label-custom">Email Address</label>
                                     <div class="input-wrap-modern">
                                         <i class="fa-regular fa-envelope input-icon"></i>
                                         <input type="email" id="email" name="email" class="form-control-modern" placeholder="name@example.com" value="{{ old('email') }}" required>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Phone Number -->
+                            <div class="col-12 col-sm-6">
+                                <div class="form-group mb-0">
+                                    <label for="phone" class="form-label-custom">Phone Number</label>
+                                    <div class="input-wrap-modern">
+                                        <i class="fa-solid fa-phone input-icon"></i>
+                                        <input type="tel" id="phone" name="phone" class="form-control-modern" placeholder="e.g. 08012345678" value="{{ old('phone') }}" required autocomplete="tel">
                                     </div>
                                 </div>
                             </div>

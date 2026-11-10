@@ -24,6 +24,8 @@ class RegisterControllerTest extends TestCase
         $response->assertSee('Upper &amp; lower', false);
         $response->assertSee('1+ number');
         $response->assertSee('1+ symbol');
+        $response->assertSee('Phone Number');
+        $response->assertSee('id="phone"', false);
     }
 
     public function test_registration_succeeds_and_creates_user(): void
@@ -36,6 +38,7 @@ class RegisterControllerTest extends TestCase
                 'fullname' => 'John Doe',
                 'username' => 'johndoe',
                 'email' => 'john.doe@example.com',
+                'phone' => '08012345678',
                 'password' => 'SecurePass123@!',
                 'transaction_pin' => '1234',
             ], [
@@ -53,10 +56,13 @@ class RegisterControllerTest extends TestCase
         $this->assertDatabaseHas('users', [
             'email' => 'john.doe@example.com',
             'username' => 'johndoe',
+            'number' => '08012345678',
         ]);
 
         $user = User::where('email', 'john.doe@example.com')->first();
         $this->assertNotNull($user);
+        $this->assertEquals('08012345678', $user->phone);
+        $this->assertEquals('08012345678', $user->number);
         $this->assertAuthenticatedAs($user);
     }
 
@@ -72,6 +78,7 @@ class RegisterControllerTest extends TestCase
                 'fullname' => 'Jane Network',
                 'username' => 'janenet',
                 'email' => 'jane.net@example.com',
+                'phone' => '08098765432',
                 'password' => 'SecurePass123@!',
                 'transaction_pin' => '4321',
             ], [
@@ -93,6 +100,7 @@ class RegisterControllerTest extends TestCase
         $this->assertDatabaseHas('users', [
             'email' => 'jane.net@example.com',
             'username' => 'janenet',
+            'number' => '08098765432',
         ]);
 
         $user = User::where('email', 'jane.net@example.com')->first();
@@ -109,6 +117,7 @@ class RegisterControllerTest extends TestCase
                 'fullname' => 'Invalid User',
                 'username' => 'invalid_user',
                 'email' => 'invalid@example.com',
+                'phone' => '08012345678',
                 'password' => 'simplepass',
                 'transaction_pin' => '1234',
             ], [
@@ -117,5 +126,68 @@ class RegisterControllerTest extends TestCase
 
         $response->assertStatus(422);
         $this->assertArrayHasKey('password', $response->json('error.details'));
+    }
+
+    public function test_registration_requires_and_validates_phone_number(): void
+    {
+        // Missing phone
+        $response = $this
+            ->withoutMiddleware(ValidateCsrfToken::class)
+            ->post('/register', [
+                'fullname' => 'No Phone',
+                'username' => 'nophone',
+                'email' => 'nophone@example.com',
+                'password' => 'SecurePass123@!',
+                'transaction_pin' => '1234',
+            ], [
+                'Accept' => 'application/json',
+            ]);
+
+        $response->assertStatus(422);
+        $this->assertArrayHasKey('phone', $response->json('error.details'));
+
+        // Invalid phone characters/length
+        $responseInvalid = $this
+            ->withoutMiddleware(ValidateCsrfToken::class)
+            ->post('/register', [
+                'fullname' => 'Bad Phone',
+                'username' => 'badphone',
+                'email' => 'badphone@example.com',
+                'phone' => 'abc123',
+                'password' => 'SecurePass123@!',
+                'transaction_pin' => '1234',
+            ], [
+                'Accept' => 'application/json',
+            ]);
+
+        $responseInvalid->assertStatus(422);
+        $this->assertArrayHasKey('phone', $responseInvalid->json('error.details'));
+    }
+
+    public function test_registration_normalizes_international_and_nigerian_phone_formats(): void
+    {
+        Notification::fake();
+
+        // Testing +234 format normalization to 0...
+        $response = $this
+            ->withoutMiddleware(ValidateCsrfToken::class)
+            ->post('/register', [
+                'fullname' => 'Normalized User',
+                'username' => 'normuser',
+                'email' => 'norm@example.com',
+                'phone' => '+234 803 123 4567',
+                'password' => 'SecurePass123@!',
+                'transaction_pin' => '1234',
+            ], [
+                'Accept' => 'application/json',
+                'X-Requested-With' => 'XMLHttpRequest',
+            ]);
+
+        $response->assertOk();
+
+        $this->assertDatabaseHas('users', [
+            'email' => 'norm@example.com',
+            'number' => '08031234567',
+        ]);
     }
 }

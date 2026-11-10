@@ -344,11 +344,16 @@ class AgentRegistrationController extends Controller
             'state' => ['required', 'string', 'max:100'],
             'residential_address' => ['required', 'string', 'max:1000'],
             'office_address' => ['required', 'string', 'max:1000'],
-            'has_machine' => ['required', 'boolean'],
-            'machine_imei' => [$agentType === 'existing' ? 'required' : 'required_if:has_machine,1', 'nullable', 'string', 'max:100'],
+            'has_machine' => ['required', 'in:1,true'],
+            'machine_imei' => ['required', 'string', 'max:100'],
         ];
 
-        $validated = $request->validate($rules);
+        $messages = [
+            'has_machine.in' => 'An operational enrollment device is mandatory to proceed. Agents cannot register without physical hardware.',
+            'machine_imei.required' => 'Machine IMEI / Device Terminal ID is required to register as an enrollment agent.',
+        ];
+
+        $validated = $request->validate($rules, $messages);
 
         // All existing agents must have machine set to true
         if ($validated['agent_type'] === 'existing') {

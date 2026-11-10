@@ -1024,7 +1024,8 @@ class VerificationController extends Controller
                 ->latest()
                 ->first();
 
-            $providerIdent = strtolower((string) ($existing?->provider_name ?? ''));
+            $rawProvider = strtolower((string) ($existing ? ($existing->getRawOriginal('provider_name') ?? $existing->provider_name) : ''));
+            $providerIdent = $rawProvider;
             $exData = $existing?->response_data ?? [];
 
             $dvProvider = CustomApi::where('provider_identifier', 'dataverify')->where('status', true)->first();
@@ -1034,7 +1035,7 @@ class VerificationController extends Controller
 
             $isManualMode = ($validationMode === 'manual');
             $hasApiEngine = ($hasDv || $hasRobost);
-            $recordIsExplicitlyManual = $existing && in_array($existing->provider_name, ['ADMIN_MANUAL', 'Manual Reporting', 'Manual Vetting', 'Manual Admin Review'], true);
+            $recordIsExplicitlyManual = $existing && in_array($rawProvider, ['admin_manual', 'manual reporting', 'manual vetting', 'manual admin review'], true);
 
             // If system is explicitly in manual mode, OR if no API credentials exist and record was created for manual vetting
             $isManualRecord = $isManualMode || (!$hasApiEngine && $recordIsExplicitlyManual);
@@ -1078,13 +1079,11 @@ class VerificationController extends Controller
             $hasDv = $this->hasDataVerifyCredentials($dvProvider);
             $hasRobost = $this->hasRobosttechCredentials($robostProvider);
 
-            $shouldCheckDataVerify = str_contains($providerIdent, 'dataverify') 
-                || !empty($exData['transaction_id']) 
-                || !empty($exData['api_response']['transaction_id'])
-                || ($hasDv && !str_contains($providerIdent, 'robosttech'));
+            $isRobostRecord = str_contains($providerIdent, 'robosttech') 
+                || str_contains(strtolower((string)($exData['service_mode'] ?? '')), 'robosttech') 
+                || ($validationMode === 'robosttech' && !str_contains($providerIdent, 'dataverify'));
 
-            // 1. DataVerify Provider Status Check
-            if ($existing && $shouldCheckDataVerify && $hasDv) {
+            $checkDv = function () use (&$existing, $dvProvider, $ninNumber, $user, &$exData): bool {
                 try {
                     $dvClient = new \App\Services\DataVerify\DataVerifyClient($dvProvider);
                     $txId = $exData['transaction_id'] ?? $exData['api_response']['transaction_id'] ?? null;
@@ -1113,67 +1112,79 @@ class VerificationController extends Controller
                         }
                         $existing->response_data = $exData;
                         $existing->save();
+                        return in_array($existing->status, ['successful', 'failed'], true);
                     }
                 } catch (\Throwable $e) {
                     Log::warning('DataVerify validation status check error: ' . $e->getMessage());
                 }
-            }
-            // 2. Robosttech Provider Status Check
-            elseif ($existing && (str_contains($providerIdent, 'robosttech') || (!$shouldCheckDataVerify && $hasRobost)) && in_array($existing->status, ['pending', 'waiting_for_review'])) {
-                if ($hasRobost) {
-                    try {
-                        $apiCenter = ApiCenter::first();
-                        $robostKey = trim((string) (
-                            $robostProvider?->api_key 
-                            ?: $apiCenter?->robosttech_api_key 
-                            ?: env('ROBOSTTECH_API_KEY') 
-                            ?: \App\Models\SystemSetting::get('robosttech_api_key', '')
-                        ));
-                        $endpoint = $this->resolveRobostEndpoint(
-                            (string) ($robostProvider?->endpoint ?: $apiCenter?->robosttech_endpoint_validation ?: 'https://robosttech.com/api'),
-                            'validation_status'
-                        );
-                        $ninToQuery = $existing ? ($exData['nin'] ?? $existing->identifier) : $ninNumber;
-                        $apiRes = Http::timeout(25)->withHeaders([
-                            'api-key' => $robostKey,
-                            'Content-Type' => 'application/json'
-                        ])->post($endpoint, [
-                            'nin' => $ninToQuery,
-                            'number' => $ninToQuery,
-                        ]);
+                return false;
+            };
 
-                        if ($apiRes->successful()) {
-                            $apiData = $apiRes->json();
-                            $apiStatus = strtolower((string) ($apiData['status'] ?? $apiData['data']['status'] ?? ''));
-                            $isSuccess = ($apiData['success'] ?? false) === true || in_array($apiStatus, ['successful', 'success', 'cleared', 'completed', 'valid', 'true', '1']);
-                            $isInProgress = ($apiData['in-progress'] ?? $apiData['in_progress'] ?? false) === true || in_array($apiStatus, ['sent', 'uploaded', 'pending', 'processing']);
-                            $isFailed = ($apiData['success'] ?? true) === false && !$isInProgress && in_array($apiStatus, ['failed', 'rejected', 'error', 'invalid', 'false', '0']);
+            $checkRobost = function () use (&$existing, $robostProvider, $ninNumber, $user, &$exData): bool {
+                try {
+                    $robostKey = $this->getRobosttechApiKey($robostProvider);
+                    $apiCenter = ApiCenter::first();
+                    $endpoint = $this->resolveRobostEndpoint(
+                        (string) ($apiCenter?->robosttech_endpoint_validation ?: $robostProvider?->endpoint ?: 'https://robosttech.com/api'),
+                        'validation_status'
+                    );
+                    $ninToQuery = $existing ? ($exData['nin'] ?? $existing->identifier) : $ninNumber;
+                    $apiRes = Http::timeout(25)->withHeaders([
+                        'api-key' => $robostKey,
+                        'Accept' => 'application/json',
+                        'Content-Type' => 'application/json'
+                    ])->post($endpoint, [
+                        'nin' => $ninToQuery,
+                    ]);
 
-                            if ($existing) {
-                                $exData['robosttech_last_status'] = $apiData;
-                                if ($isSuccess) {
-                                    $existing->status = 'successful';
-                                    $existing->admin_note = $apiData['message'] ?? 'Validated via Robosttech API.';
-                                } elseif ($isFailed) {
-                                    $existing->status = 'failed';
-                                    $existing->admin_note = $apiData['message'] ?? 'Rejected via Robosttech API.';
-                                    if (empty($exData['refunded'])) {
-                                        $refundAmount = (float) ($exData['amount_paid'] ?? VerificationPrice::first()->validation_price ?? 700);
-                                        $wallet = app(WalletService::class);
-                                        $ref = $wallet->failAndRefund($user, $refundAmount, 'NIN Validation Rejected (API): ' . $existing->admin_note, $existing->reference_id);
-                                        if ($ref['ok'] ?? false) {
-                                            $exData['refunded'] = true;
-                                            $exData['refunded_amount'] = $refundAmount;
-                                            $exData['refunded_at'] = now()->toDateTimeString();
-                                        }
+                    if ($apiRes->successful()) {
+                        $apiData = $apiRes->json();
+                        $apiStatus = strtolower((string) ($apiData['status'] ?? $apiData['data']['status'] ?? ''));
+                        $isSuccess = ($apiData['success'] ?? false) === true || in_array($apiStatus, ['successful', 'success', 'cleared', 'completed', 'valid', 'true', '1']);
+                        $isInProgress = ($apiData['in-progress'] ?? $apiData['in_progress'] ?? false) === true || in_array($apiStatus, ['sent', 'uploaded', 'pending', 'processing']);
+                        $isFailed = ($apiData['success'] ?? true) === false && !$isInProgress && in_array($apiStatus, ['failed', 'rejected', 'error', 'invalid', 'false', '0']);
+
+                        if ($existing) {
+                            $exData['robosttech_last_status'] = $apiData;
+                            if ($isSuccess) {
+                                $existing->status = 'successful';
+                                $existing->admin_note = $apiData['message'] ?? 'Validated via Robosttech API.';
+                            } elseif ($isFailed) {
+                                $existing->status = 'failed';
+                                $existing->admin_note = $apiData['message'] ?? 'Rejected via Robosttech API.';
+                                if (empty($exData['refunded'])) {
+                                    $refundAmount = (float) ($exData['amount_paid'] ?? VerificationPrice::first()->validation_price ?? 700);
+                                    $wallet = app(WalletService::class);
+                                    $ref = $wallet->failAndRefund($user, $refundAmount, 'NIN Validation Rejected (API): ' . $existing->admin_note, $existing->reference_id);
+                                    if ($ref['ok'] ?? false) {
+                                        $exData['refunded'] = true;
+                                        $exData['refunded_amount'] = $refundAmount;
+                                        $exData['refunded_at'] = now()->toDateTimeString();
                                     }
                                 }
-                                $existing->response_data = $exData;
-                                $existing->save();
                             }
+                            $existing->response_data = $exData;
+                            $existing->save();
+                            return in_array($existing->status, ['successful', 'failed'], true);
                         }
-                    } catch (\Throwable $e) {
-                        Log::warning('Robosttech validation status check error: ' . $e->getMessage());
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('Robosttech validation status check error: ' . $e->getMessage());
+                }
+                return false;
+            };
+
+            $isPendingOrReview = $existing ? in_array($existing->status, ['pending', 'waiting_for_review'], true) : true;
+            if ($isPendingOrReview) {
+                if ($isRobostRecord) {
+                    $resolved = $hasRobost && $checkRobost();
+                    if (!$resolved && $hasDv) {
+                        $checkDv();
+                    }
+                } else {
+                    $resolved = $hasDv && $checkDv();
+                    if (!$resolved && $hasRobost) {
+                        $checkRobost();
                     }
                 }
             }
@@ -1284,13 +1295,7 @@ class VerificationController extends Controller
                 };
 
                 $executeRobosttech = function () use ($robostProvider, $ninNumber, $reason, $user, $price, $request) {
-                    $apiCenter = ApiCenter::first();
-                    $robostKey = trim((string) (
-                        $robostProvider?->api_key 
-                        ?: $apiCenter?->robosttech_api_key 
-                        ?: env('ROBOSTTECH_API_KEY') 
-                        ?: \App\Models\SystemSetting::get('robosttech_api_key', '')
-                    ));
+                    $robostKey = $this->getRobosttechApiKey($robostProvider);
                     if ($robostKey === '') {
                         return [
                             'ok' => false,
@@ -1299,27 +1304,62 @@ class VerificationController extends Controller
                         ];
                     }
 
+                    $apiCenter = ApiCenter::first();
                     $providerName = $robostProvider?->name ?: 'Robosttech';
                     $endpoint = $this->resolveRobostEndpoint(
-                        (string) ($robostProvider?->endpoint ?: $apiCenter?->robosttech_endpoint_validation ?: 'https://robosttech.com/api'),
+                        (string) ($apiCenter?->robosttech_endpoint_validation ?: $robostProvider?->endpoint ?: 'https://robosttech.com/api'),
                         'validation'
                     );
 
                     $headers = [
                         'api-key' => $robostKey,
+                        'Accept' => 'application/json',
                         'Content-Type' => 'application/json'
                     ];
+                    // Follow Robosttech documentation: strictly 'nin'
                     $payload = [
                         'nin' => $ninNumber,
-                        'number' => $ninNumber,
-                        'validation_reason' => $reason,
                     ];
+                    if (!empty($reason)) {
+                        $payload['validation_reason'] = $reason;
+                    }
 
                     $response = Http::timeout(45)->withHeaders($headers)->post($endpoint, $payload);
                     $data = $response->json();
                     if (!$response->successful() || (is_array($data) && isset($data['success']) && $data['success'] === false)) {
                         $msg = (is_array($data) ? ($data['message'] ?? $data['detail'] ?? null) : null)
                             ?: ('Robosttech validation failed (HTTP ' . $response->status() . ')');
+
+                        // Check duplicate / already exists
+                        $isAlreadyExists = is_array($data) && (
+                            stripos($msg, 'already exist') !== false ||
+                            stripos($msg, 'already submit') !== false ||
+                            stripos($msg, 'duplicate') !== false ||
+                            stripos($msg, 'in progress') !== false ||
+                            stripos($msg, 'pending') !== false
+                        );
+
+                        if ($isAlreadyExists) {
+                            return [
+                                'ok' => true,
+                                'provider_name' => $providerName,
+                                'status' => 'waiting_for_review',
+                                'admin_note' => $msg . ' (Validation registered with Robosttech, awaiting status update).',
+                                'data' => $data ?: [],
+                                'response_data' => [
+                                    'nin' => $ninNumber,
+                                    'validation_reason' => $reason,
+                                    'user_name' => $user->fullname,
+                                    'user_email' => $user->email,
+                                    'user_phone' => $user->phone,
+                                    'remarks' => $request->input('remarks'),
+                                    'service_mode' => 'Automated Processing (Robosttech)',
+                                    'amount_paid' => (float) $price,
+                                    'api_response' => $data ?: ['message' => $msg],
+                                ],
+                            ];
+                        }
+
                         return [
                             'ok' => false,
                             'message' => $msg,
@@ -1328,8 +1368,10 @@ class VerificationController extends Controller
                     }
 
                     $apiStatus = strtolower((string) ($data['status'] ?? $data['data']['status'] ?? 'waiting_for_review'));
-                    $isSuccess = in_array($apiStatus, ['validated', 'completed', 'valid']) || !empty($data['nin_data']);
-                    $initialStatus = $isSuccess ? 'successful' : 'waiting_for_review';
+                    $isCompleted = in_array($apiStatus, ['validated', 'completed', 'valid'])
+                        || !empty($data['nin_data'])
+                        || (!empty($data['data']['firstname']) && !empty($data['data']['nin']));
+                    $initialStatus = $isCompleted ? 'successful' : 'waiting_for_review';
 
                     return [
                         'ok' => true,
@@ -1616,36 +1658,40 @@ class VerificationController extends Controller
             };
 
             $checkRobost = function () use (&$existing, $trackingId, $user): bool {
-                $apiCenter = ApiCenter::first();
-                $customRobost = CustomApi::where('provider_identifier', 'robosttech')->where('status', true)->first();
-                $apiKey = $customRobost?->api_key ?: $apiCenter?->robosttech_api_key ?: env('ROBOSTTECH_API_KEY') ?: \App\Models\SystemSetting::get('robosttech_api_key');
-
+                $apiKey = $this->getRobosttechApiKey();
                 if (!$apiKey) {
                     return false;
                 }
+
+                $apiCenter = ApiCenter::first();
+                $customRobost = CustomApi::where('provider_identifier', 'robosttech')->where('status', true)->first();
 
                 try {
                     $endpoint = $this->resolveRobostEndpoint(
                         (string) ($apiCenter?->robosttech_endpoint_clearance_status ?: $customRobost?->endpoint ?: 'https://robosttech.com/api'),
                         'clearance_status'
                     );
+                    // Strictly follow Robosttech clearance_status API documentation: payload {"tracking_id": "..."}
                     $apiRes = Http::timeout(25)->withHeaders([
                         'api-key' => $apiKey,
+                        'Accept' => 'application/json',
                         'Content-Type' => 'application/json'
                     ])->post($endpoint, [
                         'tracking_id' => $trackingId,
-                        'number' => $trackingId,
                     ]);
 
                     if ($apiRes->successful()) {
                         $apiData = $apiRes->json();
+                        if (!is_array($apiData)) {
+                            return false;
+                        }
                         $apiStatus = strtolower((string) ($apiData['status'] ?? $apiData['data']['status'] ?? ''));
                         $newTid = \App\Models\VerificationResult::extractNewTrackingId($apiData, $trackingId);
 
                         if ($existing) {
                             $exData = $existing->response_data ?? [];
                             $exData['provider_last_status'] = $apiData;
-                            if (in_array($apiStatus, ['successful', 'success', 'cleared', 'completed', 'true', '1'])) {
+                            if (in_array($apiStatus, ['successful', 'success', 'cleared', 'completed', 'true', '1']) || !empty($newTid)) {
                                 $existing->status = 'successful';
                                 if ($newTid) {
                                     $exData['new_tracking_id'] = $newTid;
@@ -1791,8 +1837,7 @@ class VerificationController extends Controller
             };
 
             $executeRobosttech = function () use ($robostProvider, $trackingId, $category, $user, $price, $request) {
-                $apiCenter = ApiCenter::first();
-                $apiKey = $robostProvider?->api_key ?: $apiCenter?->robosttech_api_key ?: env('ROBOSTTECH_API_KEY') ?: \App\Models\SystemSetting::get('robosttech_api_key');
+                $apiKey = $this->getRobosttechApiKey($robostProvider);
                 if (!$apiKey) {
                     return [
                         'ok' => false,
@@ -1800,30 +1845,66 @@ class VerificationController extends Controller
                         'data' => [],
                     ];
                 }
+                $apiCenter = ApiCenter::first();
                 $endpoint = $this->resolveRobostEndpoint(
                     (string) ($apiCenter?->robosttech_endpoint_clearance ?: $robostProvider?->endpoint ?: 'https://robosttech.com/api'),
                     'clearance'
                 );
                 try {
-                    $response = Http::timeout(30)->withHeaders([
+                    $headers = [
                         'api-key' => $apiKey,
-                        'Content-Type' => 'application/json'
-                    ])->post($endpoint, [
+                        'Accept' => 'application/json',
+                        'Content-Type' => 'application/json',
+                    ];
+                    // Follow Robosttech IPE Clearance API documentation: strictly {"tracking_id": "..."}
+                    $payload = [
                         'tracking_id' => $trackingId,
-                        'number' => $trackingId,
-                        'category' => $category,
-                    ]);
+                    ];
+                    $response = Http::timeout(30)->withHeaders($headers)->post($endpoint, $payload);
+                    $apiData = $response->json();
+
                     if (!$response->successful()) {
-                        $payload = $response->json();
-                        $rawErr = (is_array($payload) ? ($payload['message'] ?? $payload['detail'] ?? null) : null)
+                        $rawErr = (is_array($apiData) ? ($apiData['message'] ?? $apiData['detail'] ?? $apiData['error'] ?? null) : null)
                             ?: ('Robosttech clearance failed (HTTP ' . $response->status() . ')');
+
+                        // Gracefully handle duplicate / already exists scenario per Robosttech Postman docs
+                        $isAlreadyExists = is_array($apiData) && (
+                            stripos($rawErr, 'already exist') !== false ||
+                            stripos($rawErr, 'already submit') !== false ||
+                            stripos($rawErr, 'duplicate') !== false ||
+                            stripos($rawErr, 'in progress') !== false ||
+                            stripos($rawErr, 'pending') !== false
+                        );
+
+                        if ($isAlreadyExists) {
+                            return [
+                                'ok' => true,
+                                'provider_name' => $robostProvider?->name ?: 'Robosttech',
+                                'status' => 'waiting_for_review',
+                                'new_tracking_id' => \App\Models\VerificationResult::extractNewTrackingId($apiData, $trackingId),
+                                'admin_note' => $rawErr . ' (Clearance registered with Robosttech, awaiting status update).',
+                                'data' => $apiData ?: [],
+                                'response_data' => [
+                                    'tracking_id' => $trackingId,
+                                    'category' => $category,
+                                    'user_name' => $user->fullname,
+                                    'user_email' => $user->email,
+                                    'user_phone' => $user->phone,
+                                    'remarks' => $request->input('remarks'),
+                                    'service_mode' => 'Automated Processing (Robosttech)',
+                                    'amount_paid' => (float) $price,
+                                    'api_response' => $apiData ?: ['message' => $rawErr],
+                                ],
+                            ];
+                        }
+
                         return [
                             'ok' => false,
                             'message' => $rawErr,
-                            'data' => is_array($payload) ? $payload : [],
+                            'data' => is_array($apiData) ? $apiData : [],
                         ];
                     }
-                    $apiData = $response->json();
+
                     $apiStatus = strtolower((string) ($apiData['status'] ?? $apiData['data']['status'] ?? 'waiting_for_review'));
                     $newTid = \App\Models\VerificationResult::extractNewTrackingId($apiData, $trackingId);
                     $isSuccess = in_array($apiStatus, ['cleared', 'completed', 'resolved']) || !empty($newTid);
@@ -2416,26 +2497,40 @@ class VerificationController extends Controller
         return rtrim($trimmed, '/') . '/' . $path;
     }
 
-    public function hasRobosttechCredentials(?CustomApi $provider = null): bool
+    public function getRobosttechApiKey(?CustomApi $provider = null): string
     {
         $key = trim((string) ($provider?->api_key ?? ''));
         if ($key !== '') {
-            return true;
+            return $key;
+        }
+
+        $customRobost = CustomApi::where('provider_identifier', 'robosttech')->where('status', true)->first();
+        if ($customRobost && !empty($customRobost->api_key)) {
+            return trim((string) $customRobost->api_key);
         }
 
         $apiCenter = ApiCenter::first();
         $acKey = trim((string) ($apiCenter?->robosttech_api_key ?? ''));
         if ($acKey !== '') {
-            return true;
+            return $acKey;
         }
 
-        $envKey = trim((string) (env('ROBOSTTECH_API_KEY') ?: ''));
+        $envKey = trim((string) (env('ROBOSTTECH_API_KEY') ?: config('services.robosttech.api_key') ?: ''));
         if ($envKey !== '') {
-            return true;
+            return $envKey;
         }
 
         $settingKey = trim((string) (\App\Models\SystemSetting::get('robosttech_api_key', '')));
-        return $settingKey !== '';
+        if ($settingKey !== '') {
+            return $settingKey;
+        }
+
+        return trim((string) (\App\Models\SystemSetting::get('robost_api_key', '')));
+    }
+
+    public function hasRobosttechCredentials(?CustomApi $provider = null): bool
+    {
+        return $this->getRobosttechApiKey($provider) !== '';
     }
 
     public function hasDataVerifyCredentials(?CustomApi $provider = null): bool

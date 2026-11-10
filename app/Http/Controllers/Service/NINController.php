@@ -614,8 +614,15 @@ class NINController extends Controller
 
         $headers = is_array($provider->headers) ? $provider->headers : [];
         $headers['Content-Type'] = $headers['Content-Type'] ?? 'application/json';
-        if (!empty($provider->api_key) && empty($headers['api-key'])) {
-            $headers['api-key'] = (string) $provider->api_key;
+        $headers['Accept'] = 'application/json';
+        if (empty($headers['api-key'])) {
+            $key = (string) ($provider->api_key 
+                ?: ApiCenter::first()?->robosttech_api_key 
+                ?: env('ROBOSTTECH_API_KEY') 
+                ?: \App\Models\SystemSetting::get('robosttech_api_key', ''));
+            if (!empty($key)) {
+                $headers['api-key'] = $key;
+            }
         }
 
         $payload = [];
@@ -681,8 +688,12 @@ class NINController extends Controller
         }
 
         $statusVal = strtolower((string) ($json['status'] ?? ''));
-        $looksSuccessful = $statusVal === 'success' || $statusVal === 'true' || $statusVal === 'ok';
-        if (! $looksSuccessful && isset($json['status']) && $json['status'] !== true) {
+        $looksSuccessful = ($json['success'] ?? false) === true
+            || ($json['approved'] ?? false) === true
+            || ($json['cleared'] ?? false) === true
+            || ($json['personalized'] ?? false) === true
+            || $statusVal === 'success' || $statusVal === 'true' || $statusVal === 'ok' || $statusVal === 'completed';
+        if (! $looksSuccessful && (isset($json['status']) || isset($json['success']))) {
             $failureMsg = is_string($json['message'] ?? null) ? (string) $json['message'] : 'RobostTech verification was not successful.';
             return [
                 'status' => false,

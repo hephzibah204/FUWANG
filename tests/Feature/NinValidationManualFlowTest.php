@@ -343,4 +343,90 @@ class NinValidationManualFlowTest extends TestCase
         $response->assertJsonPath('status', true);
         $response->assertJsonPath('message', 'Validation status retrieved.');
     }
+
+    public function test_robosttech_nin_validation_follows_strict_documentation_contract(): void
+    {
+        SystemSetting::set('nin_validation_mode', 'robosttech');
+        ApiCenter::create([
+            'robosttech_api_key' => 'YmJAeW9wbWFpbC5jb206NTY1NTc3ODc4ODg6MTc0NTM0MTU1MA==',
+            'robosttech_endpoint_validation' => 'https://robosttech.com/api/validation',
+        ]);
+
+        $subPayloadChecked = false;
+        $statusPayloadChecked = false;
+
+        Http::fake([
+            'https://robosttech.com/api/validation' => function (\Illuminate\Http\Client\Request $request) use (&$subPayloadChecked) {
+                $subPayloadChecked = true;
+                $this->assertEquals('YmJAeW9wbWFpbC5jb206NTY1NTc3ODc4ODg6MTc0NTM0MTU1MA==', $request->header('api-key')[0] ?? null);
+                $this->assertEquals('application/json', $request->header('Content-Type')[0] ?? null);
+                $data = $request->data();
+                $this->assertEquals('12345678901', $data['nin']);
+                $this->assertArrayNotHasKey('number', $data);
+                return Http::response([
+                    'status' => 'success',
+                    'message' => 'NIN validation queued with provider',
+                ], 200);
+            },
+            'https://robosttech.com/api/validation_status' => function (\Illuminate\Http\Client\Request $request) use (&$statusPayloadChecked) {
+                $statusPayloadChecked = true;
+                $this->assertEquals('YmJAeW9wbWFpbC5jb206NTY1NTc3ODc4ODg6MTc0NTM0MTU1MA==', $request->header('api-key')[0] ?? null);
+                $data = $request->data();
+                $this->assertEquals(['nin' => '12345678901'], $data);
+                return Http::response([
+                    'status' => 'successful',
+                    'message' => 'NIN record validated successfully on NIMC',
+                ], 200);
+            },
+        ]);
+
+        $user = $this->makeUser(1000.00);
+
+        // Submit validation
+        $response = $this->actingAs($user)->postJson(route('services.validation.verify'), [
+            'mode' => 'submit',
+            'number' => '12345678901',
+            'validation_reason' => 'Corporate KYC',
+        ]);
+
+        $response->assertOk();
+        $this->assertTrue($subPayloadChecked);
+
+        // Status check
+        $statusRes = $this->actingAs($user)->postJson(route('services.validation.verify'), [
+            'mode' => 'status',
+            'number' => '12345678901',
+        ]);
+
+        $statusRes->assertOk();
+        $this->assertTrue($statusPayloadChecked);
+        $this->assertEquals('successful', $statusRes->json('data.status'));
+    }
+
+    public function test_robosttech_nin_validation_handles_already_exists_gracefully(): void
+    {
+        SystemSetting::set('nin_validation_mode', 'robosttech');
+        ApiCenter::create([
+            'robosttech_api_key' => 'YmJAeW9wbWFpbC5jb206NTY1NTc3ODc4ODg6MTc0NTM0MTU1MA==',
+            'robosttech_endpoint_validation' => 'https://robosttech.com/api/validation',
+        ]);
+
+        Http::fake([
+            'https://robosttech.com/api/validation' => Http::response([
+                'status' => 'failed',
+                'message' => 'Validation request already submitted for this NIN',
+            ], 400),
+        ]);
+
+        $user = $this->makeUser(1000.00);
+
+        $response = $this->actingAs($user)->postJson(route('services.validation.verify'), [
+            'mode' => 'submit',
+            'number' => '12345678901',
+        ]);
+
+        $response->assertOk();
+        $this->assertTrue($response->json('status'));
+        $this->assertEquals('waiting_for_review', $response->json('data.status'));
+    }
 }

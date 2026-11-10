@@ -60,18 +60,28 @@
     </div>
 </div>
 
+<div class="row mb-4">
     <div class="col-lg-5 mb-4">
         <div class="card border-0 rounded-4 p-4 mb-4" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.07) !important;">
             <h5 class="text-white fw-bold mb-1">Developer API Settings</h5>
             <p class="text-white-50 small mb-4">Manage global rules for developer onboarding.</p>
             <form method="POST" action="{{ route('admin.developer_api.settings') }}">
                 @csrf
-                <div class="form-group mb-4">
+                <div class="form-group mb-3">
                     <div class="custom-control custom-switch">
+                        <input type="hidden" name="api_approve_by_default" value="0">
                         <input type="checkbox" class="custom-control-input" id="api_approve_by_default" name="api_approve_by_default" value="1" @checked($approveByDefault)>
                         <label class="custom-control-label text-white" for="api_approve_by_default">Approve Developers by Default</label>
                     </div>
                     <span class="text-white-50 small d-block mt-1">If enabled, new accounts can generate tokens and verify instantly without pending review.</span>
+                </div>
+                <div class="form-group mb-4">
+                    <div class="custom-control custom-checkbox">
+                        <input type="checkbox" class="custom-control-input" id="revert_existing_auto_approved" name="revert_existing_auto_approved" value="1">
+                        <label class="custom-control-label text-white-50 small" for="revert_existing_auto_approved">
+                            Also revert auto-approved accounts to <span class="text-warning font-weight-bold">Pending Review</span>
+                        </label>
+                    </div>
                 </div>
                 <button type="submit" class="btn btn-outline-light btn-sm rounded-pill px-4">Save Settings</button>
             </form>
@@ -385,10 +395,11 @@
                                     <div class="input-group input-group-sm">
                                         <select name="status" class="custom-select custom-select-sm text-white rounded-left-3" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); width: auto;">
                                             <option value="approved" @selected($app->api_access_status === 'approved')>Approve</option>
+                                            <option value="pending" @selected($app->api_access_status === 'pending')>Pending Review</option>
                                             <option value="rejected" @selected($app->api_access_status === 'rejected')>Reject</option>
                                             <option value="revoked" @selected($app->api_access_status === 'revoked')>Revoke</option>
                                             <option value="suspended" @selected($app->api_access_status === 'suspended')>Suspend</option>
-                                            <option value="none" @selected($app->api_access_status === 'none')>Reset</option>
+                                            <option value="none" @selected($app->api_access_status === 'none')>Reset (None)</option>
                                         </select>
                                         <div class="input-group-append">
                                             <button type="submit" class="btn btn-primary btn-sm px-2 rounded-right-3">Save</button>
@@ -542,10 +553,11 @@
                                                     <span class="text-white-50 small">Change Status:</span>
                                                     <select name="status" class="custom-select custom-select-sm text-white" style="background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.15); width: auto;">
                                                         <option value="approved" @selected($app->api_access_status === 'approved')>Approve Access</option>
+                                                        <option value="pending" @selected($app->api_access_status === 'pending')>Set to Pending Review</option>
                                                         <option value="rejected" @selected($app->api_access_status === 'rejected')>Reject Application</option>
                                                         <option value="revoked" @selected($app->api_access_status === 'revoked')>Revoke Access</option>
                                                         <option value="suspended" @selected($app->api_access_status === 'suspended')>Suspend Access</option>
-                                                        <option value="none" @selected($app->api_access_status === 'none')>Reset to Default</option>
+                                                        <option value="none" @selected($app->api_access_status === 'none')>Reset to Default (None)</option>
                                                     </select>
                                                     <button type="submit" class="btn btn-primary btn-sm rounded-pill px-3">Update Status</button>
                                                 </form>

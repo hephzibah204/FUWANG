@@ -490,4 +490,127 @@ class DeveloperApiApplicationAndCustomPricingTest extends TestCase
         $userShowResp->assertSee('Acme Startup Ltd');
         $userShowResp->assertSee('https://startup.com');
     }
+
+    public function test_admin_can_turn_off_approve_by_default_and_user_cannot_create_token(): void
+    {
+        $admin = Admin::factory()->create();
+
+        // Initially enable it
+        $this->actingAs($admin, 'admin')->post(route('admin.developer_api.settings'), [
+            'api_approve_by_default' => '1',
+        ])->assertSessionHas('success');
+
+        $this->assertTrue(filter_var(SystemSetting::get('api_approve_by_default'), FILTER_VALIDATE_BOOL));
+
+        // Now admin unchecks it (form submits without the checkbox)
+        $this->actingAs($admin, 'admin')->post(route('admin.developer_api.settings'), [
+        ])->assertSessionHas('success');
+
+        $this->assertFalse(filter_var(SystemSetting::get('api_approve_by_default'), FILTER_VALIDATE_BOOL));
+
+        // View index to see if it renders unchecked
+        $resp = $this->actingAs($admin, 'admin')->get(route('admin.developer_api.index'));
+        $resp->assertOk();
+        // Checkbox should NOT be checked
+        $this->assertStringNotContainsString('id="api_approve_by_default" name="api_approve_by_default" value="1" checked', $resp->getContent());
+
+        // Now create a new user without explicit status
+        $newUser = User::create([
+            'fullname' => 'New Guy',
+            'username' => 'newguy',
+            'email' => 'newguy@example.com',
+            'password' => Hash::make('Password@123'),
+        ]);
+
+        $this->assertSame('none', $newUser->api_access_status);
+
+        // Try creating token
+        $tokenResp = $this->actingAs($newUser)->postJson(route('developer.tokens.create'), [
+            'name' => 'Key Attempt',
+        ]);
+
+        $tokenResp->assertStatus(403);
+    }
+
+    public function test_admin_can_revert_auto_approved_accounts_to_pending_when_disabling_auto_approval(): void
+    {
+        $admin = Admin::factory()->create();
+
+        // Enable auto-approval
+        SystemSetting::set('api_approve_by_default', '1', 'developer_api', 'boolean', 'Approve API Access By Default');
+
+        // Create 2 accounts that became approved automatically (no admin review)
+        $user1 = User::create([
+            'fullname' => 'Auto Approved 1',
+            'username' => 'auto1',
+            'email' => 'auto1@example.com',
+            'password' => Hash::make('Password@123'),
+            'api_access_status' => 'approved',
+        ]);
+        $user2 = User::create([
+            'fullname' => 'Auto Approved 2',
+            'username' => 'auto2',
+            'email' => 'auto2@example.com',
+            'password' => Hash::make('Password@123'),
+            'api_access_status' => 'approved',
+        ]);
+
+        // Create 1 account that was manually reviewed and approved by an admin
+        $reviewedUser = User::create([
+            'fullname' => 'Reviewed Dev',
+            'username' => 'revieweddev',
+            'email' => 'reviewed@example.com',
+            'password' => Hash::make('Password@123'),
+            'api_access_status' => 'approved',
+            'api_application_details' => [
+                'reviewed_by' => $admin->id,
+                'reviewed_at' => now()->toIso8601String(),
+            ],
+        ]);
+
+        // Admin turns off auto-approval and checks revert_existing_auto_approved
+        $response = $this->actingAs($admin, 'admin')->post(route('admin.developer_api.settings'), [
+            'api_approve_by_default' => '0',
+            'revert_existing_auto_approved' => '1',
+        ]);
+
+        $response->assertSessionHas('success');
+        $this->assertFalse(filter_var(SystemSetting::get('api_approve_by_default'), FILTER_VALIDATE_BOOL));
+
+        // Unreviewed accounts are now pending
+        $this->assertSame('pending', $user1->fresh()->api_access_status);
+        $this->assertSame('pending', $user2->fresh()->api_access_status);
+
+        // Manually reviewed account remains approved
+        $this->assertSame('approved', $reviewedUser->fresh()->api_access_status);
+    }
+
+    public function test_admin_can_manually_set_developer_status_to_pending_or_none(): void
+    {
+        $admin = Admin::factory()->create();
+
+        $dev = User::create([
+            'fullname' => 'Dev Test',
+            'username' => 'devtest',
+            'email' => 'devtest@example.com',
+            'password' => Hash::make('Password@123'),
+            'api_access_status' => 'approved',
+        ]);
+
+        // Admin changes status to pending
+        $respPending = $this->actingAs($admin, 'admin')->post(route('admin.api_applications.update_status', $dev->id), [
+            'status' => 'pending',
+            'reason' => 'Need additional business verification',
+        ]);
+        $respPending->assertSessionHas('success');
+        $this->assertSame('pending', $dev->fresh()->api_access_status);
+
+        // Admin resets status to none
+        $respNone = $this->actingAs($admin, 'admin')->post(route('admin.api_applications.update_status', $dev->id), [
+            'status' => 'none',
+            'reason' => 'Reset to initial state',
+        ]);
+        $respNone->assertSessionHas('success');
+        $this->assertSame('none', $dev->fresh()->api_access_status);
+    }
 }

@@ -260,6 +260,7 @@ class VerificationController extends Controller
         $map = [
             'nin' => 'nin_verify',
             'phone' => 'nin_phone',
+            'demographic' => 'nin_demo',
         ];
         $path = $map[$mode] ?? 'nin_verify';
         $url = $this->resolveRobostEndpoint((string) $provider->endpoint, $path);
@@ -270,9 +271,19 @@ class VerificationController extends Controller
             $headers['api-key'] = (string) $provider->api_key;
         }
 
-        $payload = $mode === 'phone'
-            ? ['phone' => trim($number)]
-            : ['nin' => trim($number)];
+        if ($mode === 'demographic') {
+            $payload = [
+                'firstname' => strtoupper(trim((string) request()->input('firstname'))),
+                'lastname' => strtoupper(trim((string) request()->input('lastname'))),
+                'middlename' => strtoupper(trim((string) request()->input('middlename', ''))),
+                'gender' => strtolower(trim((string) request()->input('gender'))),
+                'dateOfBirth' => trim((string) (request()->input('dateOfBirth') ?: request()->input('dob'))),
+            ];
+        } elseif ($mode === 'phone') {
+            $payload = ['phone' => trim($number)];
+        } else {
+            $payload = ['nin' => trim($number)];
+        }
 
         $res = Http::timeout((int) ($provider->timeout_seconds ?: 60))
             ->acceptJson()
@@ -291,8 +302,10 @@ class VerificationController extends Controller
         }
 
         $statusVal = strtolower((string) ($json['status'] ?? ''));
-        $looksSuccessful = $statusVal === 'success' || $statusVal === 'true' || $statusVal === 'ok';
-        if (! $looksSuccessful && isset($json['status']) && $json['status'] !== true) {
+        $looksSuccessful = ($json['success'] ?? false) === true
+            || ($json['approved'] ?? false) === true
+            || $statusVal === 'success' || $statusVal === 'true' || $statusVal === 'ok';
+        if (! $looksSuccessful && (isset($json['status']) || isset($json['success']))) {
             return ['status' => false, 'message' => (string) ($json['message'] ?? 'RobostTech verification was not successful.')];
         }
 
@@ -565,6 +578,73 @@ class VerificationController extends Controller
                     $dvProvider = CustomApi::query()->whereIn('service_type', ['ipe_clearance', 'clearance', 'clearance_request'])->where('status', true)->where(function ($q) {
                         $q->where('provider_identifier', 'dataverify')->orWhere('endpoint', 'like', '%dataverify%');
                     })->first();
+
+                    $robostProvider = CustomApi::query()->whereIn('service_type', ['ipe_clearance', 'clearance', 'clearance_request'])->where('status', true)->where(function ($q) {
+                        $q->where('provider_identifier', 'robosttech')->orWhere('endpoint', 'like', '%robosttech%');
+                    })->first();
+
+                    $svcController = app(\App\Http\Controllers\Service\VerificationController::class);
+                    $robostKey = $svcController->getRobosttechApiKey($robostProvider);
+                    $hasRobost = !empty($robostKey);
+
+                    // If Robosttech is primary mode or preferred
+                    if ($ipeClearanceMode === 'robosttech' || ($hasRobost && empty($dvProvider?->api_key))) {
+                        $apiCenter = ApiCenter::first();
+                        $endpoint = $svcController->resolveRobostEndpoint(
+                            (string) ($apiCenter?->robosttech_endpoint_clearance ?: $robostProvider?->endpoint ?: 'https://robosttech.com/api'),
+                            'clearance'
+                        );
+                        try {
+                            $res = Http::timeout(30)->withHeaders([
+                                'api-key' => $robostKey,
+                                'Accept' => 'application/json',
+                                'Content-Type' => 'application/json'
+                            ])->post($endpoint, ['tracking_id' => $trackingId]);
+
+                            $apiData = $res->json();
+                            if ($res->successful() || (is_array($apiData) && stripos((string)($apiData['message'] ?? ''), 'already exist') !== false)) {
+                                $newTid = VerificationResult::extractNewTrackingId($apiData, $trackingId);
+                                $isSuccess = in_array(strtolower((string)($apiData['status'] ?? '')), ['successful', 'success', 'cleared', 'completed']) || !empty($newTid);
+                                $initialStatus = $isSuccess ? 'successful' : 'waiting_for_review';
+
+                                $payload = [
+                                    'tracking_id' => $trackingId,
+                                    'category' => $category,
+                                    'new_tracking_id' => $newTid,
+                                    'amount_paid' => (float) $price,
+                                    'api_response' => $apiData ?: [],
+                                ];
+
+                                $vr = VerificationResult::create([
+                                    'user_id' => $user->id,
+                                    'service_type' => 'ipe_clearance',
+                                    'identifier' => $trackingId,
+                                    'provider_name' => 'Robosttech',
+                                    'status' => $initialStatus,
+                                    'reference_id' => $referenceId,
+                                    'admin_note' => $apiData['message'] ?? 'Submitted to Robosttech clearance gateway.',
+                                    'response_data' => $payload,
+                                ]);
+
+                                return [
+                                    'status' => true,
+                                    'message' => 'Clearance request submitted successfully.',
+                                    'result_id' => $vr->id,
+                                    'reference_id' => $referenceId,
+                                    'data' => [
+                                        'tracking_id' => $trackingId,
+                                        'new_tracking_id' => $newTid,
+                                        'status' => $initialStatus,
+                                        'category' => $category,
+                                    ],
+                                ];
+                            }
+                        } catch (\Throwable $e) {
+                            Log::warning('Robosttech API IPE Clearance error: ' . $e->getMessage());
+                        }
+                    }
+
+                    // DataVerify client fallback
                     $dvClient = new DataVerifyClient($dvProvider);
                     $dvRes = $dvClient->submitIpeClearance($trackingId);
 

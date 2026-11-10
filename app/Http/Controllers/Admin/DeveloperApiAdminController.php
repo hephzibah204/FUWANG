@@ -9,6 +9,7 @@ use App\Models\SystemSetting;
 use App\Models\User;
 use App\Services\DeveloperApi\DeveloperApiCatalog;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -179,7 +180,7 @@ class DeveloperApiAdminController extends Controller
         ];
 
         $endpoints = $catalog->all()->groupBy(fn ($endpoint) => $endpoint->group_name ?: 'Other');
-        $approveByDefault = filter_var(SystemSetting::get('api_approve_by_default', true), FILTER_VALIDATE_BOOL);
+        $approveByDefault = filter_var(SystemSetting::get('api_approve_by_default', false), FILTER_VALIDATE_BOOL);
 
         return view('admin.developer_api.index', compact(
             'applications',
@@ -201,12 +202,30 @@ class DeveloperApiAdminController extends Controller
     {
         $request->validate([
             'api_approve_by_default' => ['nullable', 'boolean'],
+            'revert_existing_auto_approved' => ['nullable', 'boolean'],
         ]);
 
-        $val = $request->has('api_approve_by_default') ? '1' : '0';
+        $val = $request->boolean('api_approve_by_default') ? '1' : '0';
         SystemSetting::set('api_approve_by_default', $val, 'developer_api', 'boolean', 'Approve API Access By Default');
+        Cache::forget('system_setting:api_approve_by_default');
+        Cache::forget('system_settings_all');
+        SystemSetting::clearLocalCache();
 
-        return back()->with('success', 'Developer API settings updated successfully.');
+        $message = 'Developer API settings updated successfully.';
+
+        if ($val === '0' && $request->boolean('revert_existing_auto_approved')) {
+            $updated = User::query()
+                ->where('api_access_status', 'approved')
+                ->where(function ($q) {
+                    $q->whereNull('api_application_details->reviewed_by')
+                      ->orWhereNull('api_application_details');
+                })
+                ->update(['api_access_status' => 'pending']);
+
+            $message .= " Reverted {$updated} unreviewed auto-approved account(s) to Pending Review.";
+        }
+
+        return back()->with('success', $message);
     }
 
     public function updatePricing(Request $request)

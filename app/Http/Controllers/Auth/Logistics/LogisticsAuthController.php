@@ -45,11 +45,16 @@ class LogisticsAuthController extends Controller
             'fullname' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
             'password' => ['required', 'string', 'min:8'],
+            'phone' => ['nullable', 'string', 'max:25'],
+            'phone_number' => ['nullable', 'string', 'max:25'],
         ]);
+
+        $phone = $validated['phone'] ?? $validated['phone_number'] ?? $request->input('number');
 
         $user = User::create([
             'fullname' => $validated['fullname'],
             'email' => $validated['email'],
+            'number' => $phone,
             'username' => User::generateUniqueUsername($validated['email']),
             'password' => Hash::make($validated['password']),
             'user_status' => 'active',

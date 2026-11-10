@@ -126,7 +126,7 @@
                             <th style="min-width: 90px;">Status</th>
                             <th style="min-width: 85px;">License</th>
                             <th style="min-width: 95px;">Enrollments</th>
-                            <th class="pe-3 pe-md-4 text-end" style="min-width: 135px;">Actions</th>
+                            <th class="pe-3 pe-md-4 text-end sticky-action-col" style="min-width: 140px; width: 140px;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -217,7 +217,7 @@
                                     <span class="d-block text-success font-weight-bold text-xs">{{ number_format($agent->total_enrollments) }} total</span>
                                     <span class="d-block text-muted text-2xs">({{ number_format($agent->monthly_enrollments) }}/mo)</span>
                                 </td>
-                                <td class="pe-3 pe-md-4 py-2.5 text-end text-nowrap">
+                                <td class="pe-3 pe-md-4 py-2.5 text-end text-nowrap sticky-action-col">
                                     <div class="d-inline-flex align-items-center justify-content-end gap-1">
                                         <a href="{{ route('admin.agents.show', $agent->id) }}" class="btn btn-sm btn-outline-info text-info rounded-10 p-0" title="View Dossier" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;">
                                             <i class="fa-solid fa-eye"></i>
@@ -316,6 +316,7 @@ document.addEventListener('DOMContentLoaded', function () {
     .agent-table-responsive {
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
+        position: relative;
     }
     .agent-table-responsive::-webkit-scrollbar {
         height: 6px;
@@ -332,8 +333,22 @@ document.addEventListener('DOMContentLoaded', function () {
         background: rgba(59, 130, 246, 0.7);
     }
     .table-agents {
-        min-width: 960px;
+        min-width: 980px;
         width: 100%;
+    }
+    .sticky-action-col {
+        position: sticky;
+        right: 0;
+        background: #0d1527 !important;
+        box-shadow: -6px 0 12px -2px rgba(0, 0, 0, 0.5);
+        z-index: 2;
+    }
+    thead th.sticky-action-col {
+        background: #151e33 !important;
+        z-index: 4;
+    }
+    tbody tr:hover td.sticky-action-col {
+        background: #1a253e !important;
     }
     .text-3xs {
         font-size: 0.68rem;

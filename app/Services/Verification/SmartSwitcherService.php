@@ -435,6 +435,8 @@ class SmartSwitcherService
             'clearance_status' => 'clearance_status',
             'ipe' => 'clearance',
             'ipe_clearance' => 'clearance',
+            'personalization' => 'personalization',
+            'personalization_status' => 'personalization_status',
         ];
         $path = $modePath[$mode] ?? 'nin_verify';
         $endpoint = rtrim((string) $provider->endpoint, '/');
@@ -446,6 +448,7 @@ class SmartSwitcherService
             'validation',
             'clearance_status',
             'clearance',
+            'personalization_status',
             'personalization',
             'balance',
         ];
@@ -487,7 +490,7 @@ class SmartSwitcherService
                 'gender' => strtolower(trim((string) $request->input('gender'))),
                 'dateOfBirth' => trim((string) $request->input('dob')),
             ];
-        } elseif (in_array($mode, ['clearance', 'clearance_status', 'ipe', 'ipe_clearance'], true)) {
+        } elseif (in_array($mode, ['clearance', 'clearance_status', 'ipe', 'ipe_clearance', 'personalization', 'personalization_status'], true)) {
             $trackingId = trim((string) ($request->input('tracking_id') ?: $request->input('number') ?: $number));
             $payload = [
                 'tracking_id' => $trackingId,
@@ -511,7 +514,11 @@ class SmartSwitcherService
         }
 
         $st = strtolower((string) ($json['status'] ?? ''));
-        $ok = $st === 'success' || $st === 'true' || $st === 'ok' || ($json['status'] ?? null) === true;
+        $ok = ($json['success'] ?? false) === true
+            || ($json['approved'] ?? false) === true
+            || ($json['cleared'] ?? false) === true
+            || ($json['personalized'] ?? false) === true
+            || $st === 'success' || $st === 'true' || $st === 'ok' || $st === 'completed' || ($json['status'] ?? null) === true;
 
         if (!$ok) {
             return ['status' => false, 'message' => (string) ($json['message'] ?? 'RobostTech verification failed')];

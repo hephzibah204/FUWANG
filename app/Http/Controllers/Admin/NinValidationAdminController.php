@@ -396,30 +396,26 @@ class NinValidationAdminController extends Controller
         // Otherwise sync with Robosttech
         $robostProvider = \App\Models\CustomApi::where('provider_identifier', 'robosttech')->where('status', true)->first();
         $apiCenter = ApiCenter::first();
-        $robostKey = trim((string) (
-            $robostProvider?->api_key 
-            ?: $apiCenter?->robosttech_api_key 
-            ?: env('ROBOSTTECH_API_KEY') 
-            ?: \App\Models\SystemSetting::get('robosttech_api_key', '')
-        ));
+        $robostKey = $controller->getRobosttechApiKey($robostProvider);
 
         if ($robostKey === '') {
             return back()->with('error', 'Robosttech API credentials are not configured in Admin Settings.');
         }
 
         $endpoint = $controller->resolveRobostEndpoint(
-            (string) ($robostProvider?->endpoint ?: $apiCenter?->robosttech_endpoint_validation ?: 'https://robosttech.com/api'),
+            (string) ($apiCenter?->robosttech_endpoint_validation ?: $robostProvider?->endpoint ?: 'https://robosttech.com/api'),
             'validation_status'
         );
 
         try {
             $ninToQuery = $verification->identifier ?: ($responseData['nin'] ?? '');
+            // Strictly follow Robosttech validation_status documentation: payload {"nin": "..."}
             $response = Http::timeout(30)->withHeaders([
                 'api-key' => $robostKey,
+                'Accept' => 'application/json',
                 'Content-Type' => 'application/json'
             ])->post($endpoint, [
                 'nin' => $ninToQuery,
-                'number' => $ninToQuery,
             ]);
 
             if ($response->successful()) {

@@ -421,8 +421,8 @@ class EnrollmentAgentSystemTest extends TestCase
             'office_address' => 'Office Address',
             'bvn' => '12345678901',
             'nin' => '10987654321',
-            'has_machine' => '0',
-            'machine_imei' => '',
+            'has_machine' => '1',
+            'machine_imei' => '864201041234567',
         ]);
 
         $response->assertRedirect(route('agent.dashboard'));
@@ -430,6 +430,27 @@ class EnrollmentAgentSystemTest extends TestCase
             'email' => 'guestagent@example.com',
             'fullname' => 'Guest New Agent',
         ]);
+    }
+
+    public function test_registration_fails_if_agent_does_not_have_device(): void
+    {
+        $response = $this->post(route('agent.register.submit'), [
+            'agent_type' => 'new',
+            'full_name' => 'No Device Agent',
+            'email' => 'nodevice@example.com',
+            'password' => 'SecretPass123!',
+            'password_confirmation' => 'SecretPass123!',
+            'phone_number' => '08099112288',
+            'state' => 'Lagos',
+            'residential_address' => 'Home Address',
+            'office_address' => 'Office Address',
+            'bvn' => '12345678901',
+            'nin' => '10987654321',
+            'has_machine' => '0',
+            'machine_imei' => '',
+        ]);
+
+        $response->assertSessionHasErrors(['has_machine', 'machine_imei']);
     }
 
     public function test_existing_profile_claim_masks_credentials_and_hydrates_on_submit(): void

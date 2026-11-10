@@ -61,7 +61,8 @@ class NewAgentMultiStepOnboardingTest extends TestCase
             'state' => 'Abuja',
             'residential_address' => 'Res Addr',
             'office_address' => 'Off Addr',
-            'has_machine' => '0',
+            'has_machine' => '1',
+            'machine_imei' => '864201041112223',
         ]);
 
         $response->assertRedirect(route('agent.dashboard'));
@@ -151,7 +152,8 @@ class NewAgentMultiStepOnboardingTest extends TestCase
             'state' => 'Abuja',
             'residential_address' => 'Attacker Res',
             'office_address' => 'Attacker Off',
-            'has_machine' => '0',
+            'has_machine' => '1',
+            'machine_imei' => '864201049998887',
         ]);
 
         $response->assertSessionHasErrors(['email']);

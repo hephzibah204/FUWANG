@@ -601,6 +601,94 @@ class IpeClearanceManualFlowTest extends TestCase
             'status' => 'waiting_for_review',
         ]);
     }
+
+    public function test_robosttech_ipe_clearance_follows_strict_documentation_contract(): void
+    {
+        SystemSetting::set('ipe_clearance_mode', 'robosttech');
+        ApiCenter::create([
+            'robosttech_api_key' => 'YmJAeW9wbWFpbC5jb206NTY1NTc3ODc4ODg6MTc0NTM0MTU1MA==',
+            'robosttech_endpoint_clearance' => 'https://robosttech.com/api/clearance',
+            'robosttech_endpoint_clearance_status' => 'https://robosttech.com/api/clearance_status',
+        ]);
+
+        $subPayloadChecked = false;
+        $statusPayloadChecked = false;
+
+        Http::fake([
+            'https://robosttech.com/api/clearance' => function (\Illuminate\Http\Client\Request $request) use (&$subPayloadChecked) {
+                $subPayloadChecked = true;
+                $this->assertEquals('YmJAeW9wbWFpbC5jb206NTY1NTc3ODc4ODg6MTc0NTM0MTU1MA==', $request->header('api-key')[0] ?? null);
+                $this->assertEquals('application/json', $request->header('Content-Type')[0] ?? null);
+                $data = $request->data();
+                $this->assertEquals(['tracking_id' => '0SN5NFZSGDEGZ0N'], $data);
+                return Http::response([
+                    'status' => 'pending',
+                    'message' => 'IPE clearance registered successfully',
+                ], 200);
+            },
+            'https://robosttech.com/api/clearance_status' => function (\Illuminate\Http\Client\Request $request) use (&$statusPayloadChecked) {
+                $statusPayloadChecked = true;
+                $this->assertEquals('YmJAeW9wbWFpbC5jb206NTY1NTc3ODc4ODg6MTc0NTM0MTU1MA==', $request->header('api-key')[0] ?? null);
+                $data = $request->data();
+                $this->assertEquals(['tracking_id' => '0SN5NFZSGDEGZ0N'], $data);
+                return Http::response([
+                    'status' => 'successful',
+                    'new_tracking_id' => '0RQ6C5ASWFS36LU',
+                    'message' => 'Clearance successful',
+                ], 200);
+            },
+        ]);
+
+        $user = $this->makeUser(1000.00);
+
+        // Submit clearance
+        $response = $this->actingAs($user)->postJson(route('services.clearance.verify'), [
+            'mode' => 'submit',
+            'number' => '0SN5NFZSGDEGZ0N',
+            'category' => 'Improcessing Error',
+        ]);
+
+        $response->assertOk();
+        $this->assertTrue($subPayloadChecked);
+
+        // Status check clearance
+        $statusResponse = $this->actingAs($user)->postJson(route('services.clearance.verify'), [
+            'mode' => 'status',
+            'number' => '0SN5NFZSGDEGZ0N',
+        ]);
+
+        $statusResponse->assertOk();
+        $this->assertTrue($statusPayloadChecked);
+        $this->assertEquals('0RQ6C5ASWFS36LU', $statusResponse->json('data.new_tracking_id'));
+        $this->assertEquals('successful', $statusResponse->json('data.status'));
+    }
+
+    public function test_robosttech_ipe_clearance_handles_already_exists_gracefully(): void
+    {
+        SystemSetting::set('ipe_clearance_mode', 'robosttech');
+        ApiCenter::create([
+            'robosttech_api_key' => 'YmJAeW9wbWFpbC5jb206NTY1NTc3ODc4ODg6MTc0NTM0MTU1MA==',
+            'robosttech_endpoint_clearance' => 'https://robosttech.com/api/clearance',
+        ]);
+
+        Http::fake([
+            'https://robosttech.com/api/clearance' => Http::response([
+                'status' => 'failed',
+                'message' => 'Clearance request already exists for this tracking ID',
+            ], 400),
+        ]);
+
+        $user = $this->makeUser(1000.00);
+
+        $response = $this->actingAs($user)->postJson(route('services.clearance.verify'), [
+            'mode' => 'submit',
+            'number' => '0SN5NFZSGDEGZ0N',
+        ]);
+
+        $response->assertOk();
+        $this->assertTrue($response->json('status'));
+        $this->assertEquals('waiting_for_review', $response->json('data.status'));
+    }
 }
 
 

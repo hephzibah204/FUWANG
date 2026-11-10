@@ -31,13 +31,33 @@ class RegisterController extends Controller
             $service = $request->input('service');
             $service = is_string($service) ? $service : null;
 
+            if ($request->has('phone_number') && ! $request->has('phone')) {
+                $request->merge(['phone' => $request->input('phone_number')]);
+            }
+            if ($request->has('number') && ! $request->has('phone')) {
+                $request->merge(['phone' => $request->input('number')]);
+            }
+
             $request->validate([
                 'fullname' => ['required', 'string', 'max:255'],
                 'username' => ['required', 'string', 'max:20', 'unique:users'],
                 'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
+                'phone' => ['required', 'string', 'regex:/^[0-9+\s\-()]{10,20}$/'],
                 'password' => ['required', 'string', Password::min(8)->mixedCase()->numbers()->symbols()],
                 'transaction_pin' => ['required', 'string', 'min:4', 'max:4'],
+            ], [
+                'phone.required' => 'Please enter your phone number.',
+                'phone.regex' => 'Please enter a valid phone number (e.g. 08012345678).',
             ]);
+
+            $rawPhone = (string) $request->input('phone');
+            $cleanedPhone = preg_replace('/\D+/', '', $rawPhone);
+            if (str_starts_with($cleanedPhone, '234') && strlen($cleanedPhone) === 13) {
+                $cleanedPhone = '0' . substr($cleanedPhone, 3);
+            } elseif (strlen($cleanedPhone) === 10 && ! str_starts_with($cleanedPhone, '0')) {
+                $cleanedPhone = '0' . $cleanedPhone;
+            }
+            $finalPhone = ! empty($cleanedPhone) ? $cleanedPhone : $rawPhone;
 
             $referralService = app(ReferralService::class);
             $referralCode = $referralService->normalizeCode($request->input('referral_code'));
@@ -47,6 +67,7 @@ class RegisterController extends Controller
                 'fullname' => $request->fullname,
                 'username' => $request->username,
                 'email' => $request->email,
+                'number' => $finalPhone,
                 'password' => Hash::make($request->password),
                 'transaction_pin' => $request->transaction_pin,
                 'referral_id' => $referralService->generateReferralCode(),
@@ -64,6 +85,7 @@ class RegisterController extends Controller
                     ], [
                         'contact_person' => $user->fullname,
                         'email' => $user->email,
+                        'phone' => $finalPhone,
                         'is_active' => true,
                     ]);
                 } else {

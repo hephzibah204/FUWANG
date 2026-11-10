@@ -116,6 +116,8 @@ class User extends Authenticatable implements CanResetPasswordContract, MustVeri
     protected $fillable = [
         'fullname',
         'number',
+        'phone',
+        'phone_number',
         'username',
         'email',
         'google_id',
@@ -267,6 +269,11 @@ class User extends Authenticatable implements CanResetPasswordContract, MustVeri
             return $value;
         }
 
+        // If explicitly reviewed or set to none by admin, do not auto-approve
+        if (strtolower((string) $value) === 'none' && !empty($this->api_application_details['reviewed_by'])) {
+            return 'none';
+        }
+
         // Query the settings value dynamically (defaults to false so developers must apply first)
         $approveByDefault = filter_var(\App\Models\SystemSetting::get('api_approve_by_default', false), FILTER_VALIDATE_BOOL);
         if ($approveByDefault) {
@@ -314,7 +321,7 @@ class User extends Authenticatable implements CanResetPasswordContract, MustVeri
     }
 
     /**
-     * Alias 'phone' to 'number' column for backwards compatibility and view access.
+     * Alias 'phone' and 'phone_number' to 'number' column for backwards compatibility and view access.
      */
     public function getPhoneAttribute(): ?string
     {
@@ -322,6 +329,16 @@ class User extends Authenticatable implements CanResetPasswordContract, MustVeri
     }
 
     public function setPhoneAttribute($value): void
+    {
+        $this->attributes['number'] = $value;
+    }
+
+    public function getPhoneNumberAttribute(): ?string
+    {
+        return $this->number;
+    }
+
+    public function setPhoneNumberAttribute($value): void
     {
         $this->attributes['number'] = $value;
     }

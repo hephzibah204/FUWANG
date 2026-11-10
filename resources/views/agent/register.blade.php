@@ -365,12 +365,12 @@
 
                 <div class="row g-3 mb-4">
                     <div class="col-md-6" id="hasMachineSelectBox">
-                        <label class="form-label text-white small fw-bold">Do you have physical machine(s) to carry out enrollments?</label>
+                        <label class="form-label text-white small fw-bold">Do you have physical machine(s) to carry out enrollments? <span class="text-danger">*</span></label>
                         <div class="input-wrap">
                             <i class="fa-solid fa-laptop input-icon"></i>
                             <select name="has_machine" id="hasMachineSelect" class="form-input text-white" onchange="toggleMachineIMEI(this.value)" style="background: transparent;">
                                 <option value="1" {{ old('has_machine', '1') === '1' ? 'selected' : '' }} class="text-dark">Yes — I have physical enrollment hardware/terminal</option>
-                                <option value="0" {{ old('has_machine') === '0' ? 'selected' : '' }} class="text-dark">No — I need hardware provisioned by company</option>
+                                <option value="0" {{ old('has_machine') === '0' ? 'selected' : '' }} class="text-dark">No — I do not have an enrollment device</option>
                             </select>
                         </div>
                     </div>
@@ -381,8 +381,33 @@
                             <i class="fa-solid fa-barcode input-icon"></i>
                             <input type="text" id="machineImeiInput" name="machine_imei" class="form-input @error('machine_imei') is-invalid @enderror" value="{{ old('machine_imei') }}" required placeholder="Enter machine IMEI (e.g. 864201041234567)">
                         </div>
-                        <small class="text-muted" style="font-size: 0.75rem;">Existing agents are required to enter their assigned enrollment terminal IMEI.</small>
+                        <small class="text-muted" style="font-size: 0.75rem;">Accredited agents must enter their enrollment terminal IMEI / Serial.</small>
                         @error('machine_imei') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
+                    </div>
+
+                    <!-- Enrolment Device Required Error Notice -->
+                    <div class="col-12 mt-2 {{ old('has_machine') === '0' ? '' : 'd-none' }}" id="noDeviceErrorNotice">
+                        <div class="alert alert-danger border-0 rounded-3 p-3 text-white mb-0" style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.35) !important;">
+                            <div class="d-flex align-items-start gap-3">
+                                <div class="rounded-circle p-2 d-flex align-items-center justify-content-center bg-danger text-white flex-shrink-0" style="width: 38px; height: 38px;">
+                                    <i class="fa-solid fa-circle-exclamation fs-6"></i>
+                                </div>
+                                <div>
+                                    <strong class="d-block text-danger mb-1" style="font-size: 0.95rem;">Enrolment Device Mandatory to Proceed</strong>
+                                    <p class="text-white-50 small mb-2">
+                                        An accredited NIMC-compliant biometric scanner / device terminal is required to register as an agent. You cannot proceed with registration without an active enrollment device.
+                                    </p>
+                                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                                        <span class="badge bg-dark text-danger border border-danger border-opacity-25 rounded-pill px-3 py-1 text-2xs">
+                                            <i class="fa-solid fa-triangle-exclamation me-1"></i>Action Required
+                                        </span>
+                                        <span class="small text-white-50">
+                                            If you do not have an enrollment device yet, please acquire an approved terminal or contact <a href="mailto:support@fuwa.ng" class="text-warning text-decoration-underline fw-bold">support@fuwa.ng</a> before proceeding.
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -734,10 +759,33 @@ function toggleAgentType(type) {
 
 function toggleMachineIMEI(val) {
     const box = document.getElementById('imeiBox');
+    const input = document.getElementById('machineImeiInput');
+    const notice = document.getElementById('noDeviceErrorNotice');
+    const submitBtn = document.getElementById('submitBtn');
+
     if (val === '1') {
-        box.classList.remove('d-none');
+        if (box) box.classList.remove('d-none');
+        if (input) {
+            input.required = true;
+        }
+        if (notice) notice.classList.add('d-none');
+        if (submitBtn) {
+            submitBtn.classList.remove('btn-secondary');
+            submitBtn.classList.add('btn-primary');
+            submitBtn.innerHTML = '<span>Continue to Agency KYC Portal</span><i class="fa-solid fa-arrow-right ms-2"></i>';
+        }
     } else {
-        box.classList.add('d-none');
+        if (box) box.classList.add('d-none');
+        if (input) {
+            input.required = false;
+            input.value = '';
+        }
+        if (notice) notice.classList.remove('d-none');
+        if (submitBtn) {
+            submitBtn.classList.remove('btn-primary');
+            submitBtn.classList.add('btn-secondary');
+            submitBtn.innerHTML = '<i class="fa-solid fa-ban me-2 text-danger"></i><span>Device Required to Proceed</span>';
+        }
     }
 }
 
@@ -1125,9 +1173,30 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // Form submission spinner
+    // Initialize machine IMEI state on page load
+    const hasMachineSelect = document.getElementById('hasMachineSelect');
+    if (hasMachineSelect) {
+        toggleMachineIMEI(hasMachineSelect.value);
+    }
+
+    // Form submission validation & spinner
     if (form && submitBtn) {
-        form.addEventListener('submit', function() {
+        form.addEventListener('submit', function(e) {
+            const hasMachineEl = document.getElementById('hasMachineSelect');
+            if (hasMachineEl && hasMachineEl.value === '0') {
+                e.preventDefault();
+                const notice = document.getElementById('noDeviceErrorNotice');
+                if (notice) {
+                    notice.classList.remove('d-none');
+                    notice.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('btn-primary');
+                submitBtn.classList.add('btn-secondary');
+                submitBtn.innerHTML = '<i class="fa-solid fa-ban me-2 text-danger"></i><span>Device Required to Proceed</span>';
+                return false;
+            }
+
             submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Submitting Application...';
             submitBtn.disabled = true;
         });
