@@ -26,7 +26,7 @@
             <div class="alert border-0 rounded-3 mb-4" style="background: rgba(34, 197, 94, 0.15); color: #bbf7d0;">
                 <strong>Tier 2 already completed.</strong>
                 @if (!empty($tier2Source))
-                    Verified via <strong>Band 1</strong>.
+                    Verified via <strong>{{ \App\Support\NetworkBandResolver::resolve($tier2Source) }}</strong>.
                 @else
                     A successful BVN/NIN account KYC verification is already on file.
                 @endif
@@ -44,7 +44,7 @@
                                 <span class="text-success font-weight-bold">Completed</span> — on file for your account.
                                 @if(!empty($ninVerifiedProvider))
                                     <span class="badge badge-pill ml-2" style="background: rgba(59, 130, 246, 0.18); color: #bfdbfe; border: 1px solid rgba(59, 130, 246, 0.35);">
-                                        Verified (Band 1)
+                                        Verified ({{ \App\Support\NetworkBandResolver::resolve($ninVerifiedProvider) }})
                                     </span>
                                 @elseif(!empty($hasTier2Identity))
                                     <span class="badge badge-pill ml-2" style="background: rgba(34, 197, 94, 0.18); color: #bbf7d0; border: 1px solid rgba(34, 197, 94, 0.35);">
@@ -73,7 +73,7 @@
                                 <span class="text-success font-weight-bold">Completed</span> — on file for your account.
                                 @if(!empty($bvnVerifiedProvider))
                                     <span class="badge badge-pill ml-2" style="background: rgba(6, 182, 212, 0.18); color: #a5f3fc; border: 1px solid rgba(6, 182, 212, 0.35);">
-                                        Verified (Band 1)
+                                        Verified ({{ \App\Support\NetworkBandResolver::resolve($bvnVerifiedProvider) }})
                                     </span>
                                 @elseif(!empty($hasTier2Identity))
                                     <span class="badge badge-pill ml-2" style="background: rgba(34, 197, 94, 0.18); color: #bbf7d0; border: 1px solid rgba(34, 197, 94, 0.35);">

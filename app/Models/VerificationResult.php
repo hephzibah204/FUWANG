@@ -82,6 +82,14 @@ class VerificationResult extends Model
             }
         }
 
+        // Check 'reply' key (used by RobostTech IPE clearance status e.g. "reply": "2GVZ0SI8KO000VK")
+        if (!empty($payload['reply']) && is_string($payload['reply'])) {
+            $reply = trim($payload['reply']);
+            if (preg_match('/^[A-Z0-9]{7,35}$/i', $reply) && (!$orig || strtoupper($reply) !== $orig)) {
+                return strtoupper($reply);
+            }
+        }
+
         // 2. Check known sub-objects
         $nestedSections = ['data', 'response', 'api_response', 'provider_last_status', 'robosttech_sync', 'payload', 'result'];
         foreach ($nestedSections as $section) {
@@ -132,24 +140,7 @@ class VerificationResult extends Model
             return $value;
         }
 
-        if (stripos((string) $value, 'vuvaa') !== false) {
-            return 'Band 1';
-        }
-        if (stripos((string) $value, 'dataverify') !== false) {
-            return 'Band 2';
-        }
-        if (stripos((string) $value, 'robost') !== false) {
-            return 'Band 1';
-        }
-
-        // If it already says Band X, return it
-        if (preg_match('/^Band\s*\d+/i', (string) $value)) {
-            return $value;
-        }
-
-        // Deterministic masking for any other providers
-        $hash = abs(crc32((string) $value));
-        return 'Band ' . (($hash % 3) + 1);
+        return \App\Support\NetworkBandResolver::resolve($value);
     }
 
     public function getActivitylogOptions(): LogOptions

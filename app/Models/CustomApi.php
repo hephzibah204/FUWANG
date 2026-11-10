@@ -74,11 +74,6 @@ class CustomApi extends Model
             return (string) $this->name;
         }
 
-        if (! empty($this->priority) && $this->priority > 0) {
-            return 'Band ' . $this->priority;
-        }
-
-        $hash = abs(crc32((string) ($this->provider_identifier ?: $this->name ?: $this->id)));
-        return 'Band ' . (($hash % 3) + 1);
+        return \App\Support\NetworkBandResolver::resolve($this);
     }
 }

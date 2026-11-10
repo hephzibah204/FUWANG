@@ -27,12 +27,24 @@ class UserDashboardProviderMaskingTest extends TestCase
             'priority' => 1,
         ]);
 
+        CustomApi::create([
+            'name' => 'RobostTech Secondary Line',
+            'provider_identifier' => 'robosttech',
+            'service_type' => 'nin_verification',
+            'status' => true,
+            'price' => 280,
+            'endpoint' => 'https://api.robosttech.com',
+            'priority' => 2,
+        ]);
+
         $response = $this->get(route('services.price_list'));
 
         $response->assertOk();
         $response->assertSee('Network Band');
         $response->assertSee('Band 1');
+        $response->assertSee('Band 2');
         $response->assertDontSee('DataVerify Secret Gateway');
+        $response->assertDontSee('RobostTech Secondary Line');
     }
 
     #[Test]
@@ -65,11 +77,18 @@ class UserDashboardProviderMaskingTest extends TestCase
     }
 
     #[Test]
-    public function test_verification_result_masks_provider_name_on_user_facing_routes(): void
+    public function test_verification_result_masks_provider_names_across_distinct_bands(): void
     {
-        $res = new VerificationResult();
-        $res->provider_name = 'RobostTech Global';
+        $res1 = new VerificationResult(['provider_name' => 'Vuvaa Direct']);
+        $this->assertEquals('Band 1', $res1->provider_name);
 
-        $this->assertEquals('Band 1', $res->provider_name);
+        $res2 = new VerificationResult(['provider_name' => 'DataVerify Hub']);
+        $this->assertEquals('Band 2', $res2->provider_name);
+
+        $res3 = new VerificationResult(['provider_name' => 'RobostTech Global']);
+        $this->assertEquals('Band 3', $res3->provider_name);
+
+        $res4 = new VerificationResult(['provider_name' => 'VerifyMe ID Gateway']);
+        $this->assertEquals('Band 4', $res4->provider_name);
     }
 }
