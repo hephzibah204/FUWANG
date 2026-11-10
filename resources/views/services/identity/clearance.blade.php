@@ -98,10 +98,39 @@
                         </div>
                     </div>
 
+                    <!-- Select Network Band -->
+                    <div class="col-md-6 mb-3" id="bandSelectionGroup">
+                        <label for="network_band" class="font-weight-600 mb-2 small text-muted d-flex justify-content-between align-items-center">
+                            <span>Select Network Band</span>
+                            <span class="badge rounded-pill px-2 py-0.5 text-info" style="font-size: 0.72rem; background: rgba(14, 165, 233, 0.15); border: 1px solid rgba(14, 165, 233, 0.3);">
+                                <i class="fa-solid fa-shield-halved mr-1"></i> Smart Failover Protected
+                            </span>
+                        </label>
+                        <div class="input-wrap">
+                            <i class="fa-solid fa-server"></i>
+                            <select id="network_band" name="network_band" class="form-control form-control-lg custom-select-styled">
+                                <option value="" selected>✨ Smart Routing &amp; Automatic Failover (Recommended)</option>
+                                @if(isset($ipeProviders) && $ipeProviders->count() > 0)
+                                    @foreach($ipeProviders as $provider)
+                                        <option value="{{ $provider->id }}" data-provider="{{ $provider->provider_identifier }}">
+                                            Band {{ $loop->iteration }}
+                                        </option>
+                                    @endforeach
+                                @else
+                                    <option value="dataverify">Band 1</option>
+                                    <option value="robosttech">Band 2</option>
+                                @endif
+                            </select>
+                        </div>
+                        <small class="text-muted mt-1.5 d-block" id="bandHint">
+                            <i class="fa-solid fa-circle-info mr-1 text-warning"></i> Requests automatically fail over to an alternate band if any network gateway times out.
+                        </small>
+                    </div>
+
                     <!-- Optional Remarks -->
-                    <div class="col-12 mb-3">
+                    <div class="col-md-6 mb-3">
                         <label for="remarks" class="font-weight-600 mb-2 small text-muted">Additional Remarks / Notes (Optional)</label>
-                        <input type="text" id="remarks" name="remarks" class="form-control" placeholder="Any specific note regarding this clearance" style="background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.12); color: #fff;">
+                        <input type="text" id="remarks" name="remarks" class="form-control form-control-lg" placeholder="Any specific note regarding this clearance" style="background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.12); color: #fff;">
                     </div>
 
                     <!-- Action Buttons -->
@@ -175,11 +204,17 @@
                 <small class="text-muted d-block">IPE Category</small>
                 <span id="cardCategory" class="text-white font-weight-600"></span>
             </div>
-            <div class="col-md-3 mb-2">
+            <div class="col-md-2 mb-2">
+                <small class="text-muted d-block">Network Band</small>
+                <span class="badge badge-outline-primary px-2 py-1" style="border: 1px solid rgba(59, 130, 246, 0.4); color: #93c5fd; background: rgba(59, 130, 246, 0.1);">
+                    <i class="fa-solid fa-server mr-1"></i> <span id="cardBandText">Band 1</span>
+                </span>
+            </div>
+            <div class="col-md-2 mb-2">
                 <small class="text-muted d-block">System Reference</small>
                 <code id="cardRefId" class="text-primary font-weight-bold"></code>
             </div>
-            <div class="col-md-3 mb-2">
+            <div class="col-md-2 mb-2">
                 <small class="text-muted d-block">Submitted Date</small>
                 <span id="cardSubmittedAt" class="text-white-50"></span>
             </div>
@@ -269,6 +304,7 @@
                             <th>Original Tracking ID</th>
                             <th>New Tracking ID</th>
                             <th>IPE Category</th>
+                            <th>Network Band</th>
                             <th>Status</th>
                             <th>Admin Remarks / Note</th>
                             <th>Submitted At</th>
@@ -281,6 +317,17 @@
                                 $d = $res->response_data ?? []; 
                                 $rowStatus = $res->status ?? 'waiting_for_review';
                                 $newTid = $res->resolved_new_tracking_id ?? ($d['new_tracking_id'] ?? null);
+                                $rowBand = $d['network_band'] ?? null;
+                                if (!$rowBand) {
+                                    $rawP = strtolower((string)($res->getRawOriginal('provider_name') ?: $res->provider_name ?: ''));
+                                    if (str_contains($rawP, 'dataverify')) {
+                                        $rowBand = 'Band 1';
+                                    } elseif (str_contains($rawP, 'robost')) {
+                                        $rowBand = 'Band 2';
+                                    } else {
+                                        $rowBand = \App\Support\NetworkBandResolver::resolve($rawP) ?: 'Band 1';
+                                    }
+                                }
                             @endphp
                             <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);" class="result-row" data-status="{{ $rowStatus }}" id="row-{{ $res->id }}">
                                 <td><code>{{ $res->reference_id }}</code></td>
@@ -319,6 +366,11 @@
                                 <td>
                                     <span class="badge badge-secondary px-2 py-1">
                                         {{ $d['category'] ?? 'Improcessing Error' }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge badge-outline-primary" style="border: 1px solid rgba(59, 130, 246, 0.4); color: #93c5fd; background: rgba(59, 130, 246, 0.1);">
+                                        <i class="fa-solid fa-server mr-1"></i> {{ $rowBand }}
                                     </span>
                                 </td>
                                 <td class="status-cell">
@@ -425,6 +477,10 @@
                                 <td class="py-2 px-3"><code id="modalRefId" class="text-primary font-weight-bold"></code></td>
                             </tr>
                             <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                <td class="text-muted py-2 px-3">Network Band</td>
+                                <td class="py-2 px-3"><span id="modalNetworkBand" class="badge badge-outline-primary" style="border: 1px solid rgba(59, 130, 246, 0.4); color: #93c5fd; background: rgba(59, 130, 246, 0.1);"><i class="fa-solid fa-server mr-1"></i> Band 1</span></td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
                                 <td class="text-muted py-2 px-3">Processing Mode</td>
                                 <td class="py-2 px-3" id="modalServiceMode">Automated Processing</td>
                             </tr>
@@ -517,6 +573,50 @@
         background: rgba(255,255,255,0.2) !important;
         font-weight: 700;
     }
+
+    @media (max-width: 768px) {
+        .service-header-card {
+            padding: 16px !important;
+            border-radius: 14px !important;
+        }
+        .service-header-card > .d-flex {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 12px !important;
+        }
+        .sh-icon {
+            width: 46px !important;
+            height: 46px !important;
+            font-size: 20px !important;
+        }
+        .sh-text h1 {
+            font-size: 1.25rem !important;
+        }
+        .panel-card {
+            padding: 16px !important;
+            border-radius: 14px !important;
+        }
+        #clearanceTabs {
+            flex-direction: column !important;
+            gap: 6px !important;
+        }
+        #clearanceTabs .nav-item {
+            width: 100% !important;
+        }
+        #clearanceTabs .nav-link {
+            width: 100% !important;
+            text-align: center !important;
+            padding: 10px 12px !important;
+            font-size: 0.85rem !important;
+        }
+        .table-responsive {
+            -webkit-overflow-scrolling: touch;
+        }
+        .admin-table th, .admin-table td {
+            padding: 10px 8px !important;
+            font-size: 0.8rem !important;
+        }
+    }
 </style>
 @endpush
 
@@ -565,6 +665,7 @@
         let adminNote = data.admin_note || (status === 'successful' ? 'Cleared successfully.' : 'Under review by verification desk.');
         let submittedAt = data.created_at || data.submitted_at || 'Just now';
         let serviceMode = resp.service_mode || 'Automated Processing';
+        let band = resp.network_band || (data.provider_name ? (String(data.provider_name).toLowerCase().includes('dataverify') ? 'Band 1' : 'Band 2') : 'Band 1');
         let resultId = data.result_id || data.id;
         let reportUrl = data.report_url || (resultId ? `{{ url('/services/clearance/report') }}/${resultId}` : null);
 
@@ -574,6 +675,7 @@
         $('#cardTrackingId').text(trackingId);
         $('#cardRefId').text(refId);
         $('#cardCategory').text(category);
+        $('#cardBandText').text(band);
         $('#cardSubmittedAt').text(submittedAt);
         $('#cardAdminNote').text(adminNote);
 
@@ -617,6 +719,7 @@
         $('#modalTrackingId').text(trackingId);
         $('#modalRefId').text(refId);
         $('#modalCategory').text(category);
+        $('#modalNetworkBand').html(`<i class="fa-solid fa-server mr-1"></i> ${band}`);
         $('#modalSubmittedAt').text(submittedAt);
         $('#modalAdminNote').text(adminNote);
         $('#modalServiceMode').text(serviceMode);
@@ -803,7 +906,7 @@
 
         if (matched === 0 && rows.length > 0) {
             if ($('#noMatchRow').length === 0) {
-                $('#ipeResultsTable tbody').append('<tr id="noMatchRow"><td colspan="8" class="text-center py-4 text-muted">No matching records found.</td></tr>');
+                $('#ipeResultsTable tbody').append('<tr id="noMatchRow"><td colspan="9" class="text-center py-4 text-muted">No matching records found.</td></tr>');
             }
         } else {
             $('#noMatchRow').remove();
@@ -828,7 +931,7 @@
 
         if (matched === 0 && rows.length > 0) {
             if ($('#noMatchRow').length === 0) {
-                $('#ipeResultsTable tbody').append('<tr id="noMatchRow"><td colspan="8" class="text-center py-4 text-muted">No records matching the selected status filter.</td></tr>');
+                $('#ipeResultsTable tbody').append('<tr id="noMatchRow"><td colspan="9" class="text-center py-4 text-muted">No records matching the selected status filter.</td></tr>');
             }
         } else {
             $('#noMatchRow').remove();
@@ -846,6 +949,7 @@
             let originalHtml = btn.html();
             let category = $('#category').val();
             let trackingId = $('#number').val().trim();
+            let bandText = $('#network_band option:selected').text().trim() || '✨ Smart Routing & Automatic Failover';
 
             if (!category) {
                 Swal.fire({ title: 'Select Category', text: 'Please select an IPE category before submitting.', icon: 'warning', background: '#0f172a', color: '#fff' });
@@ -865,6 +969,7 @@
                         <div class="p-2.5 rounded bg-black bg-opacity-25 border border-white-10 small">
                             <div><strong>Category:</strong> ${category}</div>
                             <div><strong>Tracking ID:</strong> <span class="font-monospace text-warning">${trackingId}</span></div>
+                            <div><strong>Network Routing:</strong> <span class="text-info">${bandText}</span></div>
                             <div><strong>NIN Requirement:</strong> <span class="text-success">Not required</span></div>
                         </div>
                     </div>

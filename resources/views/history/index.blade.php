@@ -34,10 +34,11 @@
                     <tbody>
                         @foreach($transactions as $tx)
                             @php
-                                $isCredit = strpos(strtolower($tx->order_type), 'fund') !== false || ($tx->balance_after > $tx->balance_before);
                                 $amountRaw = abs($tx->balance_before - $tx->balance_after);
-                                $sign = $isCredit ? '+' : '-';
-                                $colorClass = $isCredit ? 'text-success' : 'text-danger';
+                                $isZero = $amountRaw < 0.01;
+                                $isCredit = strpos(strtolower($tx->order_type), 'fund') !== false || ($tx->balance_after > $tx->balance_before);
+                                $sign = $isZero ? '' : ($isCredit ? '+' : '-');
+                                $colorClass = $isZero ? 'text-white-50' : ($isCredit ? 'text-success' : 'text-danger');
                                 $bgClass = $isCredit ? 'rgba(40, 167, 69, 0.1)' : 'rgba(220, 53, 69, 0.1)';
                             @endphp
                             <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
@@ -49,6 +50,9 @@
                                 </td>
                                 <td class="py-3 px-4 align-middle">
                                     <span class="text-light">{{ $tx->order_type }}</span>
+                                    @if($isZero)
+                                        <span class="badge badge-dark border border-white-10 text-white-50 ml-1 font-weight-normal" style="font-size: 0.65rem;">Free / Status Check</span>
+                                    @endif
                                 </td>
                                 <td class="py-3 px-4 align-middle text-right">
                                     <h6 class="mb-0 {{ $colorClass }} font-weight-bold">

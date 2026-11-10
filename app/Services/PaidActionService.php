@@ -9,6 +9,27 @@ class PaidActionService
 {
     public function run(User $user, float $amount, string $orderType, string $txIdPrefix, callable $action): array
     {
+        $amount = (float) $amount;
+
+        // Free action (e.g., status check, requery): execute directly without generating a ₦0.00 wallet debit
+        if ($amount <= 0.0) {
+            $syntheticTxId = $txIdPrefix . '-' . strtoupper(bin2hex(random_bytes(4)));
+            try {
+                $result = $action($syntheticTxId);
+                return [
+                    'ok' => true,
+                    'txId' => $syntheticTxId,
+                    'result' => $result,
+                ];
+            } catch (\Throwable $e) {
+                return [
+                    'ok' => false,
+                    'txId' => $syntheticTxId,
+                    'message' => $e->getMessage(),
+                ];
+            }
+        }
+
         $wallet = app(WalletService::class);
         $debit = $wallet->debit($user, $amount, $orderType, $txIdPrefix);
         if (!$debit['ok']) {

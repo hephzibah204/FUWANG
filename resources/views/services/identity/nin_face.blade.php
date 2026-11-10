@@ -31,7 +31,7 @@
                     @csrf
                     
                     <div class="row">
-                        <div class="col-md-5 mb-4 border-right border-white-5">
+                        <div class="col-md-5 mb-4 border-md-right border-white-5">
                             <label for="number" class="font-weight-600 mb-2 small text-muted">NIN Number</label>
                             <div class="input-wrap mb-4">
                                 <i class="fa-solid fa-id-card-clip"></i>
@@ -189,6 +189,29 @@
     .bg-pink-soft { background: rgba(236, 72, 153, 0.1); }
     .icon-circle { border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .mx-auto { margin-left: auto; margin-right: auto; }
+
+    @media (max-width: 768px) {
+        .service-header-card {
+            padding: 1rem !important;
+            gap: 1rem !important;
+            border-radius: 1rem !important;
+        }
+        .sh-icon {
+            width: 3.25rem !important;
+            height: 3.25rem !important;
+            font-size: 1.5rem !important;
+            border-radius: 0.75rem !important;
+        }
+        .panel-card {
+            padding: 1rem !important;
+            border-radius: 1rem !important;
+        }
+        .border-md-right {
+            border-right: none !important;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+            padding-bottom: 1.25rem !important;
+        }
+    }
 </style>
 @endpush
 

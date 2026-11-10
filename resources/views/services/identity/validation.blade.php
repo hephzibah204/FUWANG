@@ -80,8 +80,8 @@
                                 <label for="remarks" class="font-weight-600 mb-2 small text-muted">Applicant Notes / Remarks (Optional)</label>
                                 <textarea name="remarks" id="remarks" rows="2" class="form-control" placeholder="Any additional notes or instructions for the administrator or provider..."></textarea>
                             </div>
-                            <div class="col-12 text-right mt-2 d-flex justify-content-end">
-                                <button type="submit" class="btn btn-primary btn-lg px-5" id="submit-btn" style="height: 50px;">
+                            <div class="col-12 mt-2 d-flex justify-content-end">
+                                <button type="submit" class="btn btn-primary btn-lg px-5 w-100 w-sm-auto" id="submit-btn" style="height: 50px;">
                                     <i class="fa-solid fa-bolt mr-2"></i> Submit for Validation (₦{{ number_format($price ?? 700, 2) }})
                                 </button>
                             </div>
@@ -290,6 +290,75 @@
     </div>
 </div>
 @endsection
+
+@push('styles')
+<style>
+    .tab-strip { display: flex; gap: 0; border-bottom: 2px solid rgba(255,255,255,0.05); margin-bottom: 20px; }
+    .s-tab { padding: 12px 25px; background: none; border: none; color: var(--clr-text-muted); font-weight: 600; font-size: 0.85rem; cursor: pointer; border-bottom: 2px solid transparent; transition: 0.3s; }
+    .s-tab.active { color: #10b981; border-bottom-color: #10b981; }
+    .main-panel { display: none; }
+    .main-panel.active { display: block; }
+    .panel-card { background: var(--clr-bg-card); backdrop-filter: blur(25px); border: var(--border-glass); border-radius: 20px; }
+    .input-wrap { position: relative; display: flex; align-items: center; }
+    .input-wrap i { position: absolute; left: 16px; color: var(--clr-text-muted); }
+    .input-wrap .form-control { padding-left: 45px !important; height: 50px; }
+
+    @media (max-width: 768px) {
+        .service-header-card {
+            padding: 16px;
+            gap: 14px;
+            border-radius: 16px;
+        }
+        .sh-icon {
+            width: 48px;
+            height: 48px;
+            font-size: 1.25rem;
+            border-radius: 12px;
+        }
+        .sh-text h1 {
+            font-size: 1.25rem;
+        }
+        .sh-text p {
+            font-size: 0.85rem;
+        }
+        .panel-card {
+            padding: 16px !important;
+            border-radius: 16px;
+        }
+        .tab-strip {
+            background: rgba(255,255,255,0.04);
+            border-radius: 12px;
+            padding: 4px;
+            border: 1px solid rgba(255,255,255,0.08);
+            gap: 4px;
+        }
+        .s-tab {
+            flex: 1;
+            padding: 10px 4px;
+            text-align: center;
+            border-radius: 8px;
+            border: none !important;
+            font-size: 0.78rem;
+        }
+        .s-tab.active {
+            background: #10b981;
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+        }
+        .table-responsive {
+            -webkit-overflow-scrolling: touch;
+        }
+        .admin-table th, .admin-table td {
+            padding: 10px 8px !important;
+            font-size: 0.8rem !important;
+        }
+        .admin-table .btn-xs {
+            padding: 4px 8px !important;
+            font-size: 0.75rem !important;
+        }
+    }
+</style>
+@endpush
 
 @push('scripts')
 <script>

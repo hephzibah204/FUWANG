@@ -1225,8 +1225,12 @@ class VerificationController extends Controller
         }
 
         // Mode: Submit new validation request
-        $defaultValPrice = (float) (VerificationPrice::first()->validation_price ?? 500);
-        $price = $user ? (float) $user->getDeveloperApiPrice('developer_api_nin_validation_price', $defaultValPrice) : $defaultValPrice;
+        $firstVPrice = VerificationPrice::first();
+        $defaultValPrice = ($firstVPrice && (float) $firstVPrice->validation_price > 0)
+            ? (float) $firstVPrice->validation_price
+            : 500.0;
+        $userPrice = $user ? (float) $user->getDeveloperApiPrice('developer_api_nin_validation_price', $defaultValPrice) : $defaultValPrice;
+        $price = $userPrice > 0 ? $userPrice : $defaultValPrice;
         $wallet = app(WalletService::class);
         $debit = $wallet->debit($user, (float) $price, 'Document Validation (' . $ninNumber . ')', 'VAL');
         if (!$debit['ok']) {
@@ -1558,7 +1562,32 @@ class VerificationController extends Controller
         $price = VerificationPrice::first()->ipe_clearance_price ?? 700;
         $ipeMode = \App\Models\SystemSetting::get('ipe_clearance_mode', 'auto');
 
-        return view('services.identity.clearance', compact('history', 'price', 'ipeMode'));
+        $dvProvider = CustomApi::query()
+            ->whereIn('service_type', ['ipe_clearance', 'clearance', 'clearance_request'])
+            ->where('status', true)
+            ->where(function ($q) {
+                $q->where('provider_identifier', 'dataverify')->orWhere('endpoint', 'like', '%dataverify%');
+            })
+            ->first();
+
+        $robostProvider = CustomApi::query()
+            ->whereIn('service_type', ['ipe_clearance', 'clearance', 'clearance_request'])
+            ->where('status', true)
+            ->where(function ($q) {
+                $q->where('provider_identifier', 'robosttech')->orWhere('endpoint', 'like', '%robosttech%');
+            })
+            ->first();
+
+        // Band 1: DataVerify, Band 2: RobostTech
+        $ipeProviders = collect();
+        if ($dvProvider) {
+            $ipeProviders->push($dvProvider);
+        }
+        if ($robostProvider) {
+            $ipeProviders->push($robostProvider);
+        }
+
+        return view('services.identity.clearance', compact('history', 'price', 'ipeMode', 'ipeProviders', 'dvProvider', 'robostProvider'));
     }
 
     /**
@@ -1571,6 +1600,9 @@ class VerificationController extends Controller
             'category' => ['nullable', 'string', 'max:150'],
             'mode' => ['nullable', 'string', 'in:submit,status'],
             'remarks' => ['nullable', 'string', 'max:1000'],
+            'network_band' => ['nullable', 'string', 'max:50'],
+            'api_provider_id' => ['nullable', 'string', 'max:50'],
+            'band' => ['nullable', 'string', 'max:50'],
         ]);
 
         $mode = $request->input('mode', 'submit');
@@ -1725,10 +1757,14 @@ class VerificationController extends Controller
 
             $isPendingOrReview = $existing ? in_array($existing->status, ['pending', 'waiting_for_review'], true) : true;
             if ($isPendingOrReview) {
-                if (str_contains($rawProvider, 'robosttech') || ($ipeClearanceMode === 'robosttech' && !str_contains($rawProvider, 'dataverify'))) {
-                    $resolved = $hasRobost && $checkRobost();
-                    if (!$resolved && $hasDv) {
-                        $checkDv();
+                $exData = $existing ? ($existing->response_data ?? []) : [];
+                $exBand = strtolower((string)($exData['network_band'] ?? ''));
+                $isDvRecord = str_contains($rawProvider, 'dataverify') || $exBand === 'band 1' || ($ipeClearanceMode === 'dataverify' && !str_contains($rawProvider, 'robosttech'));
+
+                if ($isDvRecord) {
+                    $resolved = $hasDv && $checkDv();
+                    if (!$resolved && $hasRobost) {
+                        $checkRobost();
                     }
                 } else {
                     $resolved = $hasRobost && $checkRobost();
@@ -1784,8 +1820,12 @@ class VerificationController extends Controller
         }
 
         // Mode: Submit new clearance request
-        $defaultClearPrice = (float) (VerificationPrice::first()->ipe_clearance_price ?? 700);
-        $price = $user ? (float) $user->getDeveloperApiPrice('developer_api_ipe_clearance_price', $defaultClearPrice) : $defaultClearPrice;
+        $firstVPrice = VerificationPrice::first();
+        $defaultClearPrice = ($firstVPrice && (float) $firstVPrice->ipe_clearance_price > 0)
+            ? (float) $firstVPrice->ipe_clearance_price
+            : 700.0;
+        $userPrice = $user ? (float) $user->getDeveloperApiPrice('developer_api_ipe_clearance_price', $defaultClearPrice) : $defaultClearPrice;
+        $price = $userPrice > 0 ? $userPrice : $defaultClearPrice;
         $wallet = app(WalletService::class);
         $debit = $wallet->debit($user, (float) $price, 'IPE Clearance Submission (' . $trackingId . ')', 'CLEAR');
         if (!$debit['ok']) {
@@ -1942,48 +1982,100 @@ class VerificationController extends Controller
             };
 
             if (in_array($ipeClearanceMode, ['robosttech', 'api', 'dataverify', 'auto'], true)) {
-                // Robosttech is the first choice for IPE clearance
-                $primary = 'robosttech';
-                if ($ipeClearanceMode === 'robosttech') {
-                    $primary = $hasRobost ? 'robosttech' : ($hasDv ? 'dataverify' : 'robosttech');
-                } elseif ($ipeClearanceMode === 'dataverify') {
-                    $primary = $hasDv ? 'dataverify' : ($hasRobost ? 'robosttech' : 'dataverify');
-                } else { // auto or api
-                    if ($hasRobost) {
-                        $primary = 'robosttech';
-                    } elseif ($hasDv) {
-                        $primary = 'dataverify';
-                    } else {
-                        $primary = 'robosttech';
+                $chosenBandInput = strtolower(trim((string) (
+                    $request->input('network_band') 
+                    ?: $request->input('api_provider_id') 
+                    ?: $request->input('band') 
+                    ?: ''
+                )));
+
+                // Resolve requested primary: Band 1 = DataVerify, Band 2 = RobostTech
+                $requestedPrimary = null;
+                if (in_array($chosenBandInput, ['dataverify', 'band_1', 'band 1', '1'], true)) {
+                    $requestedPrimary = 'dataverify';
+                } elseif (in_array($chosenBandInput, ['robosttech', 'robost', 'band_2', 'band 2', '2'], true)) {
+                    $requestedPrimary = 'robosttech';
+                } elseif ($dvProvider && (string) $dvProvider->id === $chosenBandInput) {
+                    $requestedPrimary = 'dataverify';
+                } elseif ($robostProvider && (string) $robostProvider->id === $chosenBandInput) {
+                    $requestedPrimary = 'robosttech';
+                }
+
+                if ($requestedPrimary === 'dataverify') {
+                    $primary = 'dataverify';
+                    $secondary = 'robosttech';
+                } elseif ($requestedPrimary === 'robosttech') {
+                    $primary = 'robosttech';
+                    $secondary = 'dataverify';
+                } else {
+                    // Smart Routing & Automatic Failover (default)
+                    if ($ipeClearanceMode === 'robosttech') {
+                        $primary = $hasRobost ? 'robosttech' : ($hasDv ? 'dataverify' : 'robosttech');
+                        $secondary = ($primary === 'robosttech') ? 'dataverify' : 'robosttech';
+                    } elseif ($ipeClearanceMode === 'dataverify') {
+                        $primary = $hasDv ? 'dataverify' : ($hasRobost ? 'robosttech' : 'dataverify');
+                        $secondary = ($primary === 'dataverify') ? 'robosttech' : 'dataverify';
+                    } else { // auto or api
+                        if ($hasRobost) {
+                            $primary = 'robosttech';
+                            $secondary = 'dataverify';
+                        } else {
+                            $primary = 'dataverify';
+                            $secondary = 'robosttech';
+                        }
                     }
                 }
 
                 $attempt = null;
-                if ($primary === 'dataverify') {
-                    if ($hasDv) {
-                        $attempt = $executeDataVerify();
+                $failedOver = false;
+                $failoverReason = null;
+
+                $executeAttempt = function (string $providerKey) use ($executeDataVerify, $executeRobosttech, $hasDv, $hasRobost) {
+                    if ($providerKey === 'dataverify') {
+                        if (!$hasDv) {
+                            return ['ok' => false, 'message' => 'Band 1 credentials not configured.'];
+                        }
+                        return $executeDataVerify();
+                    } else {
+                        if (!$hasRobost) {
+                            return ['ok' => false, 'message' => 'Band 2 credentials not configured.'];
+                        }
+                        return $executeRobosttech();
                     }
-                    if ((!$attempt || !$attempt['ok']) && $hasRobost) {
-                        Log::warning('DataVerify clearance submission unsuccessful or missing key; failing over to Robosttech', [
-                            'error' => $attempt['message'] ?? 'No credentials',
-                            'tracking_id' => $trackingId,
-                        ]);
-                        $attempt = $executeRobosttech();
-                    }
-                } else { // primary === 'robosttech'
-                    if ($hasRobost) {
-                        $attempt = $executeRobosttech();
-                    }
-                    if ((!$attempt || !$attempt['ok']) && $hasDv) {
-                        Log::warning('Robosttech clearance submission unsuccessful or missing key; failing over to DataVerify', [
-                            'error' => $attempt['message'] ?? 'No credentials',
-                            'tracking_id' => $trackingId,
-                        ]);
-                        $attempt = $executeDataVerify();
+                };
+
+                // 1. Primary Attempt
+                try {
+                    $attempt = $executeAttempt($primary);
+                } catch (\Throwable $e) {
+                    Log::warning("Primary IPE clearance provider ({$primary}) attempt threw exception: " . $e->getMessage());
+                    $attempt = ['ok' => false, 'message' => $e->getMessage()];
+                }
+
+                // 2. Smart Failover: If primary failed, seamlessly try secondary
+                if (!$attempt || !($attempt['ok'] ?? false)) {
+                    $failoverReason = $attempt['message'] ?? 'Primary gateway connection timeout or rejection';
+                    Log::warning("Primary IPE clearance gateway ({$primary}) failed; executing smart failover to ({$secondary})", [
+                        'primary' => $primary,
+                        'secondary' => $secondary,
+                        'tracking_id' => $trackingId,
+                        'reason' => $failoverReason,
+                    ]);
+
+                    try {
+                        $secondaryAttempt = $executeAttempt($secondary);
+                        if ($secondaryAttempt && ($secondaryAttempt['ok'] ?? false)) {
+                            $attempt = $secondaryAttempt;
+                            $failedOver = true;
+                        } elseif ($secondaryAttempt && !empty($secondaryAttempt['message'])) {
+                            $attempt = $secondaryAttempt;
+                        }
+                    } catch (\Throwable $e) {
+                        Log::warning("Secondary IPE failover provider ({$secondary}) threw exception: " . $e->getMessage());
                     }
                 }
 
-                if (!$attempt || !$attempt['ok']) {
+                if (!$attempt || !($attempt['ok'] ?? false)) {
                     $errorMsg = $attempt['message'] ?? 'Clearance service is temporarily unavailable. Please try again later.';
                     $cleanErr = preg_replace('/robosttech|dataverify|vuvaa/i', 'Gateway', (string) $errorMsg);
                     throw new \Exception($cleanErr);
@@ -1993,6 +2085,16 @@ class VerificationController extends Controller
                 $initialStatus = $attempt['status'];
                 $newTid = $attempt['new_tracking_id'];
                 $resPayload = $attempt['response_data'];
+
+                // Annotate user-facing Network Band
+                $isDv = str_contains(strtolower($providerName), 'dataverify');
+                $resPayload['network_band'] = $isDv ? 'Band 1' : 'Band 2';
+                if ($failedOver) {
+                    $resPayload['smart_failover'] = true;
+                    $resPayload['primary_attempted'] = ($primary === 'dataverify') ? 'Band 1' : 'Band 2';
+                    $resPayload['failover_reason'] = preg_replace('/robosttech|dataverify|vuvaa/i', 'Gateway', (string) $failoverReason);
+                    $attempt['admin_note'] .= ' (Auto-routed via Smart Failover to ' . $resPayload['network_band'] . ')';
+                }
 
                 $result = VerificationResult::create([
                     'user_id' => $user->id,

@@ -212,6 +212,83 @@
         letter-spacing: 2px;
         color: #047857;
     }
+
+    @media (max-width: 768px) {
+        .service-header-card {
+            padding: 16px;
+            gap: 14px;
+            border-radius: 16px;
+        }
+        .sh-icon {
+            width: 48px;
+            height: 48px;
+            font-size: 1.25rem;
+            border-radius: 12px;
+        }
+        .sh-text h1 {
+            font-size: 1.25rem;
+        }
+        .sh-text p {
+            font-size: 0.85rem;
+        }
+        .panel-card {
+            padding: 16px !important;
+            border-radius: 16px;
+        }
+        .tab-strip {
+            background: rgba(255,255,255,0.04);
+            border-radius: 12px;
+            padding: 4px;
+            border: 1px solid rgba(255,255,255,0.08);
+            gap: 4px;
+        }
+        .s-tab {
+            flex: 1;
+            padding: 10px 8px;
+            text-align: center;
+            border-radius: 8px;
+            border: none !important;
+            font-size: 0.82rem;
+        }
+        .s-tab.active {
+            background: #8b5cf6;
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.35);
+        }
+        .slip-box {
+            padding: 14px !important;
+            border-radius: 10px;
+        }
+        .slip-box-country {
+            font-size: 12px;
+        }
+        .slip-box-sub {
+            font-size: 9px;
+        }
+        .slip-photo-box {
+            width: 72px;
+            height: 86px;
+            margin: 0 auto 10px;
+        }
+        .slip-nin-digits {
+            font-size: clamp(14px, 4.5vw, 20px) !important;
+            letter-spacing: 1px !important;
+        }
+        .slip-nin-strip {
+            padding: 8px 10px !important;
+        }
+        .table-responsive {
+            -webkit-overflow-scrolling: touch;
+        }
+        .admin-table th, .admin-table td {
+            padding: 10px 8px !important;
+            font-size: 0.8rem !important;
+        }
+        .admin-table .btn {
+            padding: 4px 8px !important;
+            font-size: 0.75rem !important;
+        }
+    }
 </style>
 @endpush
 

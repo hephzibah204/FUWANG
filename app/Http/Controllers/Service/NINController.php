@@ -937,21 +937,26 @@ class NINController extends Controller
 
         switch ($mode) {
             case 'phone':
-                return (float) ($legacyPricing->nin_by_number_price ?? 200.0);
+                $price = (float) ($legacyPricing->nin_by_number_price ?? 200.0);
+                return $price > 0 ? $price : 200.0;
             case 'tracking':
-                return (float) ($legacyPricing->verify_by_tracking_id ?? 300.0);
+                $price = (float) ($legacyPricing->verify_by_tracking_id ?? 300.0);
+                return $price > 0 ? $price : 300.0;
             case 'validation':
-                return (float) \App\Models\SystemSetting::get('nin_validation_price', 200.0);
+                $valPrice = (float) \App\Models\SystemSetting::get('nin_validation_price', 200.0);
+                if ($valPrice <= 0 && $legacyPricing && (float) $legacyPricing->validation_price > 0) {
+                    $valPrice = (float) $legacyPricing->validation_price;
+                }
+                return $valPrice > 0 ? $valPrice : 200.0;
             case 'selfie':
-                return (float) \App\Models\SystemSetting::get('nin_face_verification_price', 500.0);
+                $selfiePrice = (float) \App\Models\SystemSetting::get('nin_face_verification_price', 500.0);
+                return $selfiePrice > 0 ? $selfiePrice : 500.0;
             case 'share_code':
             case 'nin':
             case 'demographic':
             default:
-                if ($legacyPricing && $legacyPricing->nin_by_nin_price !== null) {
-                    return (float) $legacyPricing->nin_by_nin_price;
-                }
-                return 200.0;
+                $ninPrice = (float) ($legacyPricing->nin_by_nin_price ?? 200.0);
+                return $ninPrice > 0 ? $ninPrice : 200.0;
         }
     }
 

@@ -348,6 +348,7 @@ class DeveloperApiApplicationAndCustomPricingTest extends TestCase
             'status' => true,
             'priority' => 1,
         ]);
+        SystemSetting::set('ipe_clearance_mode', 'dataverify');
 
         Http::fake([
             'https://dataverify.org/*' => Http::response([
@@ -381,6 +382,36 @@ class DeveloperApiApplicationAndCustomPricingTest extends TestCase
         $developer->save();
 
         [$token, $bearer] = $this->makeToken($developer);
+
+        CustomApi::create([
+            'name' => 'DataVerify Validation',
+            'service_type' => 'nin_validation',
+            'provider_identifier' => 'dataverify',
+            'endpoint' => 'https://dataverify.org/api/developers/validation.php',
+            'api_key' => 'mock-dv-key',
+            'status' => true,
+            'priority' => 1,
+        ]);
+        SystemSetting::set('nin_validation_mode', 'dataverify');
+
+        Http::fake([
+            'https://dataverify.org/*' => Http::response([
+                'status' => 'successful',
+                'message' => 'NIN validation submitted',
+                'data' => [
+                    'nin' => '12345678901',
+                    'transaction_id' => 'TX-VAL-12345',
+                ],
+            ], 200),
+            'https://robosttech.com/*' => Http::response([
+                'status' => 'success',
+                'message' => 'NIN validation submitted',
+                'data' => [
+                    'nin' => '12345678901',
+                    'transaction_id' => 'TX-VAL-12345',
+                ],
+            ], 200),
+        ]);
 
         $response = $this->withHeader('Authorization', 'Bearer ' . $bearer)
             ->postJson('/api/v1/verifications/validation', [

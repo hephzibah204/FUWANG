@@ -784,7 +784,7 @@ class DataVerifyClient
             || ($json['success'] ?? null) === false;
 
         $looksSuccessful = !$isExplicitFailure && (
-            in_array($statusVal, ['success', 'true', 'pending', 'processing', 'ok', 'queued', 'completed', 'waiting_for_review'], true)
+            in_array($statusVal, ['success', 'successful', 'true', 'pending', 'processing', 'ok', 'queued', 'completed', 'waiting_for_review'], true)
             || ($json['status'] ?? null) === true
             || ($json['success'] ?? null) === true
             || in_array($responseCode, ['00', '0', '01'], true)
@@ -1003,7 +1003,7 @@ class DataVerifyClient
             || ($json['success'] ?? null) === false;
 
         $looksSuccessful = !$isExplicitFailure && (
-            in_array($statusVal, ['success', 'true', 'pending', 'processing', 'ok', 'queued', 'validated', 'completed'], true)
+            in_array($statusVal, ['success', 'successful', 'true', 'pending', 'processing', 'ok', 'queued', 'validated', 'completed'], true)
             || ($json['status'] ?? null) === true
             || ($json['success'] ?? null) === true
             || in_array($responseCode, ['00', '0', '01'], true)

@@ -320,21 +320,32 @@ class DeveloperPortalController extends Controller
      */
     protected function resolveDeveloperPricing(?User $user): array
     {
-        return [
-            'developer_api_nin_price' => $user ? (float) $user->getDeveloperApiPrice('developer_api_nin_price', 100.0) : (float) SystemSetting::get('developer_api_nin_price', 100.0),
-            'developer_api_nin_validation_price' => $user ? (float) $user->getDeveloperApiPrice('developer_api_nin_validation_price', 500.0) : (float) SystemSetting::get('developer_api_nin_validation_price', 500.0),
-            'developer_api_ipe_clearance_price' => $user ? (float) $user->getDeveloperApiPrice('developer_api_ipe_clearance_price', 700.0) : (float) SystemSetting::get('developer_api_ipe_clearance_price', 700.0),
-            'developer_api_bvn_basic_price' => $user ? (float) $user->getDeveloperApiPrice('developer_api_bvn_basic_price', 100.0) : (float) SystemSetting::get('developer_api_bvn_basic_price', 100.0),
-            'developer_api_bvn_premium_price' => $user ? (float) $user->getDeveloperApiPrice('developer_api_bvn_premium_price', 500.0) : (float) SystemSetting::get('developer_api_bvn_premium_price', 500.0),
-            'developer_api_cac_price' => $user ? (float) $user->getDeveloperApiPrice('developer_api_cac_price', 300.0) : (float) SystemSetting::get('developer_api_cac_price', 300.0),
-            'developer_api_drivers_license_price' => $user ? (float) $user->getDeveloperApiPrice('developer_api_drivers_license_price', 200.0) : (float) SystemSetting::get('developer_api_drivers_license_price', 200.0),
-            'developer_api_tin_price' => $user ? (float) $user->getDeveloperApiPrice('developer_api_tin_price', 200.0) : (float) SystemSetting::get('developer_api_tin_price', 200.0),
-            'developer_api_voters_card_price' => $user ? (float) $user->getDeveloperApiPrice('developer_api_voters_card_price', 150.0) : (float) SystemSetting::get('developer_api_voters_card_price', 150.0),
-            'developer_api_vtu_airtime_discount' => $user ? (float) $user->getDeveloperApiPrice('developer_api_vtu_airtime_discount', 2.0) : (float) SystemSetting::get('developer_api_vtu_airtime_discount', 2.0),
-            'developer_api_vtu_data_discount' => $user ? (float) $user->getDeveloperApiPrice('developer_api_vtu_data_discount', 3.0) : (float) SystemSetting::get('developer_api_vtu_data_discount', 3.0),
-            'developer_api_vtu_cable_fee' => $user ? (float) $user->getDeveloperApiPrice('developer_api_vtu_cable_fee', 0.0) : (float) SystemSetting::get('developer_api_vtu_cable_fee', 0.0),
-            'developer_api_vtu_electricity_fee' => $user ? (float) $user->getDeveloperApiPrice('developer_api_vtu_electricity_fee', 0.0) : (float) SystemSetting::get('developer_api_vtu_electricity_fee', 0.0),
+        $defaults = [
+            'developer_api_nin_price' => 100.0,
+            'developer_api_nin_validation_price' => 500.0,
+            'developer_api_ipe_clearance_price' => 700.0,
+            'developer_api_bvn_basic_price' => 100.0,
+            'developer_api_bvn_premium_price' => 500.0,
+            'developer_api_cac_price' => 300.0,
+            'developer_api_drivers_license_price' => 200.0,
+            'developer_api_tin_price' => 200.0,
+            'developer_api_voters_card_price' => 150.0,
+            'developer_api_vtu_airtime_discount' => 2.0,
+            'developer_api_vtu_data_discount' => 3.0,
+            'developer_api_vtu_cable_fee' => 0.0,
+            'developer_api_vtu_electricity_fee' => 0.0,
         ];
+
+        $pricing = [];
+        foreach ($defaults as $key => $default) {
+            $price = $user ? (float) $user->getDeveloperApiPrice($key, $default) : (float) SystemSetting::get($key, $default);
+            if (!str_contains($key, 'fee') && $price <= 0 && $default > 0) {
+                $price = $default;
+            }
+            $pricing[$key] = $price;
+        }
+
+        return $pricing;
     }
 
     public function validateKey(Request $request)

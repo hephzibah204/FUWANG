@@ -177,16 +177,21 @@ class User extends Authenticatable implements CanResetPasswordContract, MustVeri
     {
         $custom = $this->api_custom_pricing;
         if (is_array($custom)) {
-            if (isset($custom[$key]) && is_numeric($custom[$key])) {
+            if (isset($custom[$key]) && is_numeric($custom[$key]) && (float)$custom[$key] > 0) {
                 return (float) $custom[$key];
             }
             $shortKey = str_replace(['developer_api_', '_price'], '', $key);
-            if (isset($custom[$shortKey]) && is_numeric($custom[$shortKey])) {
+            if (isset($custom[$shortKey]) && is_numeric($custom[$shortKey]) && (float)$custom[$shortKey] > 0) {
                 return (float) $custom[$shortKey];
             }
         }
 
-        return (float) \App\Models\SystemSetting::get($key, $default);
+        $systemVal = \App\Models\SystemSetting::get($key, $default);
+        if ($systemVal === null || $systemVal === '' || (!str_contains($key, 'fee') && is_numeric($systemVal) && (float)$systemVal <= 0 && $default > 0)) {
+            return (float) $default;
+        }
+
+        return (float) $systemVal;
     }
 
     public function hasCustomApiPricing(): bool

@@ -41,17 +41,39 @@
                                 </div>
                             @endif
 
+                            <!-- Mobile Mode Selector Dropdown (visible only on small screens < 768px) -->
+                            <div class="mobile-mode-picker d-md-none mb-3">
+                                <label for="mobileModeSelect" class="small text-muted font-weight-600 mb-1 d-flex align-items-center justify-content-between">
+                                    <span><i class="fa-solid fa-sliders mr-1 text-primary"></i> Verification Mode</span>
+                                    <span class="badge badge-accent py-1 px-2" id="mobilePriceBadge">₦{{ number_format($prices['nin'], 2) }}</span>
+                                </label>
+                                <div class="input-wrap">
+                                    <i class="fa-solid fa-layer-group"></i>
+                                    <select id="mobileModeSelect" class="form-control" onchange="switchModeFromMobile(this.value)">
+                                        <option value="nin" {{ ($initialMode ?? 'nin') === 'nin' ? 'selected' : '' }}>Standard NIN Lookup</option>
+                                        <option value="selfie" {{ ($initialMode ?? 'nin') === 'selfie' ? 'selected' : '' }}>Face (Selfie)</option>
+                                        <option value="phone" {{ ($initialMode ?? 'nin') === 'phone' ? 'selected' : '' }}>Phone Lookup</option>
+                                        <option value="tracking" {{ ($initialMode ?? 'nin') === 'tracking' ? 'selected' : '' }}>Tracking ID</option>
+                                        <option value="validation" {{ ($initialMode ?? 'nin') === 'validation' ? 'selected' : '' }}>NIN Validation</option>
+                                        <option value="validation_status" {{ ($initialMode ?? 'nin') === 'validation_status' ? 'selected' : '' }}>Validation Status</option>
+                                        <option value="demographic" {{ ($initialMode ?? 'nin') === 'demographic' ? 'selected' : '' }}>Demographic Search</option>
+                                        <option value="share_code" {{ ($initialMode ?? 'nin') === 'share_code' ? 'selected' : '' }}>Share Code</option>
+                                        <option value="requery" {{ ($initialMode ?? 'nin') === 'requery' ? 'selected' : '' }}>Requery</option>
+                                    </select>
+                                </div>
+                            </div>
+
                             <!-- Lookup Mode Tabs (NIN / Phone / Tracking ID / Demographic) -->
                             <div class="nin-tabs mb-4">
-                                <button class="nin-tab {{ ($initialMode ?? 'nin') === 'nin' ? 'active' : '' }}" data-mode="nin" onclick="switchMode('nin', this)">Standard NIN Lookup</button>
-                                <button class="nin-tab {{ ($initialMode ?? 'nin') === 'selfie' ? 'active' : '' }}" data-mode="selfie" onclick="switchMode('selfie', this)">Face (Selfie)</button>
-                                <button class="nin-tab {{ ($initialMode ?? 'nin') === 'phone' ? 'active' : '' }}" data-mode="phone" onclick="switchMode('phone', this)">Phone Lookup</button>
-                                <button class="nin-tab {{ ($initialMode ?? 'nin') === 'tracking' ? 'active' : '' }}" data-mode="tracking" onclick="switchMode('tracking', this)">Tracking ID</button>
-                                <button class="nin-tab {{ ($initialMode ?? 'nin') === 'validation' ? 'active' : '' }}" data-mode="validation" onclick="switchMode('validation', this)">NIN Validation</button>
-                                <button class="nin-tab {{ ($initialMode ?? 'nin') === 'validation_status' ? 'active' : '' }}" data-mode="validation_status" onclick="switchMode('validation_status', this)">Validation Status</button>
-                                <button class="nin-tab {{ ($initialMode ?? 'nin') === 'demographic' ? 'active' : '' }}" data-mode="demographic" onclick="switchMode('demographic', this)">Demographic Search</button>
-                                <button class="nin-tab {{ ($initialMode ?? 'nin') === 'share_code' ? 'active' : '' }}" data-mode="share_code" onclick="switchMode('share_code', this)">Share Code</button>
-                                <button class="nin-tab {{ ($initialMode ?? 'nin') === 'requery' ? 'active' : '' }}" data-mode="requery" onclick="switchMode('requery', this)">Requery</button>
+                                <button type="button" class="nin-tab {{ ($initialMode ?? 'nin') === 'nin' ? 'active' : '' }}" data-mode="nin" onclick="switchMode('nin', this)"><i class="fa-regular fa-id-card mr-1.5"></i> Standard NIN</button>
+                                <button type="button" class="nin-tab {{ ($initialMode ?? 'nin') === 'selfie' ? 'active' : '' }}" data-mode="selfie" onclick="switchMode('selfie', this)"><i class="fa-solid fa-camera mr-1.5"></i> Face (Selfie)</button>
+                                <button type="button" class="nin-tab {{ ($initialMode ?? 'nin') === 'phone' ? 'active' : '' }}" data-mode="phone" onclick="switchMode('phone', this)"><i class="fa-solid fa-phone mr-1.5"></i> Phone Lookup</button>
+                                <button type="button" class="nin-tab {{ ($initialMode ?? 'nin') === 'tracking' ? 'active' : '' }}" data-mode="tracking" onclick="switchMode('tracking', this)"><i class="fa-solid fa-fingerprint mr-1.5"></i> Tracking ID</button>
+                                <button type="button" class="nin-tab {{ ($initialMode ?? 'nin') === 'validation' ? 'active' : '' }}" data-mode="validation" onclick="switchMode('validation', this)"><i class="fa-solid fa-file-shield mr-1.5"></i> Validation</button>
+                                <button type="button" class="nin-tab {{ ($initialMode ?? 'nin') === 'validation_status' ? 'active' : '' }}" data-mode="validation_status" onclick="switchMode('validation_status', this)"><i class="fa-solid fa-rotate mr-1.5"></i> Status</button>
+                                <button type="button" class="nin-tab {{ ($initialMode ?? 'nin') === 'demographic' ? 'active' : '' }}" data-mode="demographic" onclick="switchMode('demographic', this)"><i class="fa-solid fa-users mr-1.5"></i> Demographic</button>
+                                <button type="button" class="nin-tab {{ ($initialMode ?? 'nin') === 'share_code' ? 'active' : '' }}" data-mode="share_code" onclick="switchMode('share_code', this)"><i class="fa-solid fa-key mr-1.5"></i> Share Code</button>
+                                <button type="button" class="nin-tab {{ ($initialMode ?? 'nin') === 'requery' ? 'active' : '' }}" data-mode="requery" onclick="switchMode('requery', this)"><i class="fa-solid fa-clock-rotate-left mr-1.5"></i> Requery</button>
                             </div>
 
                             <div class="consent-box mb-4">
@@ -177,28 +199,58 @@
 
                                 <!-- Output Type -->
                                 <div class="form-group mb-4" id="outputTypeGroup" style="{{ in_array(($initialMode ?? 'nin'), ['validation', 'validation_status'], true) ? 'display:none;' : '' }}">
-                                    <label class="font-weight-600 mb-2 small text-muted">Output Type</label>
-                                    <div class="d-flex align-items-center flex-wrap" style="gap: 12px;">
-                                        <div class="custom-control custom-radio">
-                                            <input type="radio" id="ot_info" name="output_type" value="info_page" class="custom-control-input">
-                                            <label class="custom-control-label" for="ot_info" title="View details on screen only"><i class="fa-solid fa-display text-muted mr-1"></i> Information Page</label>
-                                        </div>
-                                        <div class="custom-control custom-radio">
-                                            <input type="radio" id="ot_standard" name="output_type" value="standard_slip" class="custom-control-input">
-                                            <label class="custom-control-label" for="ot_standard" title="Generate the standard printable slip"><i class="fa-regular fa-file-pdf text-muted mr-1"></i> Standard Slip</label>
-                                        </div>
-                                        <div class="custom-control custom-radio">
-                                            <input type="radio" id="ot_regular" name="output_type" value="regular_slip" class="custom-control-input">
-                                            <label class="custom-control-label" for="ot_regular" title="Generate regular slip"><i class="fa-regular fa-id-card text-muted mr-1"></i> Regular Slip</label>
-                                        </div>
-                                        <div class="custom-control custom-radio">
-                                            <input type="radio" id="ot_premium" name="output_type" value="premium_slip" class="custom-control-input" checked>
-                                            <label class="custom-control-label" for="ot_premium" title="Generate plastic-ready premium card"><i class="fa-solid fa-address-card text-warning mr-1"></i> Premium Slip</label>
-                                        </div>
-                                        <div class="custom-control custom-radio">
-                                            <input type="radio" id="ot_vnin" name="output_type" value="vnin_slip" class="custom-control-input">
-                                            <label class="custom-control-label" for="ot_vnin" title="Generate virtual NIN token slip"><i class="fa-solid fa-qrcode text-muted mr-1"></i> vNIN Slip</label>
-                                        </div>
+                                    <label class="font-weight-600 mb-2 small text-muted">Output Slip / Document Format</label>
+                                    <div class="output-type-cards">
+                                        <label class="output-card active" for="ot_premium">
+                                            <input type="radio" id="ot_premium" name="output_type" value="premium_slip" class="d-none" checked>
+                                            <div class="output-card-inner">
+                                                <i class="fa-solid fa-address-card text-warning"></i>
+                                                <div class="output-card-text">
+                                                    <strong>Premium Slip</strong>
+                                                    <small>Plastic Card Format</small>
+                                                </div>
+                                            </div>
+                                        </label>
+                                        <label class="output-card" for="ot_regular">
+                                            <input type="radio" id="ot_regular" name="output_type" value="regular_slip" class="d-none">
+                                            <div class="output-card-inner">
+                                                <i class="fa-regular fa-id-card text-info"></i>
+                                                <div class="output-card-text">
+                                                    <strong>Regular Slip</strong>
+                                                    <small>Color Official Format</small>
+                                                </div>
+                                            </div>
+                                        </label>
+                                        <label class="output-card" for="ot_standard">
+                                            <input type="radio" id="ot_standard" name="output_type" value="standard_slip" class="d-none">
+                                            <div class="output-card-inner">
+                                                <i class="fa-regular fa-file-pdf text-primary"></i>
+                                                <div class="output-card-text">
+                                                    <strong>Standard Slip</strong>
+                                                    <small>Standard Printable</small>
+                                                </div>
+                                            </div>
+                                        </label>
+                                        <label class="output-card" for="ot_vnin">
+                                            <input type="radio" id="ot_vnin" name="output_type" value="vnin_slip" class="d-none">
+                                            <div class="output-card-inner">
+                                                <i class="fa-solid fa-qrcode text-success"></i>
+                                                <div class="output-card-text">
+                                                    <strong>vNIN Slip</strong>
+                                                    <small>Virtual Token Slip</small>
+                                                </div>
+                                            </div>
+                                        </label>
+                                        <label class="output-card" for="ot_info">
+                                            <input type="radio" id="ot_info" name="output_type" value="info_page" class="d-none">
+                                            <div class="output-card-inner">
+                                                <i class="fa-solid fa-display text-muted"></i>
+                                                <div class="output-card-text">
+                                                    <strong>Info Page</strong>
+                                                    <small>On-Screen Data Only</small>
+                                                </div>
+                                            </div>
+                                        </label>
                                     </div>
                                 </div>
 
@@ -407,7 +459,7 @@
 <style>
     /* ── Service Header ── */
     .service-header-card { background: rgba(255,255,255,0.03); border: var(--border-glass); border-radius: 20px; padding: 24px; display: flex; align-items: center; gap: 20px; }
-    .sh-icon { width: 60px; height: 60px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; }
+    .sh-icon { width: 60px; height: 60px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0; }
     .nin-bg { background: rgba(59, 130, 246, 0.1); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.2); }
     .sh-text h1 { font-size: 1.5rem; font-weight: 800; margin: 0; }
     .sh-text p { margin: 4px 0 0; color: var(--clr-text-muted); font-size: 0.95rem; }
@@ -422,18 +474,96 @@
     .main-panel.active { display: block; }
 
     /* ── Lookup Mode Tabs (NIN / Phone / Tracking ID) ── */
-    .nin-tabs { display: flex; gap: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 15px; overflow-x: auto; }
-    .nin-tab { background: none; border: none; color: var(--clr-text-muted); font-size: 0.85rem; font-weight: 600; padding: 8px 0; border-bottom: 2px solid transparent; white-space: nowrap; transition: all 0.2s; cursor: pointer; }
-    .nin-tab.active { color: var(--clr-primary); border-bottom-color: var(--clr-primary); }
+    .nin-tabs {
+        display: flex;
+        gap: 8px;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+        padding-bottom: 12px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scroll-behavior: smooth;
+        scrollbar-width: none;
+    }
+    .nin-tabs::-webkit-scrollbar { display: none; }
+    .nin-tab {
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 999px;
+        color: var(--clr-text-muted);
+        font-size: 0.8rem;
+        font-weight: 600;
+        padding: 8px 16px;
+        white-space: nowrap;
+        transition: all 0.2s ease;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        min-height: 40px;
+    }
+    .nin-tab:hover {
+        background: rgba(255,255,255,0.06);
+        color: #ffffff;
+    }
+    .nin-tab.active {
+        background: rgba(59, 130, 246, 0.18);
+        border-color: #3b82f6;
+        color: #60a5fa;
+        box-shadow: 0 2px 10px rgba(59, 130, 246, 0.25);
+    }
     .nin-tab:disabled { opacity: 0.4; cursor: not-allowed; }
 
     /* ── Consent / Form ── */
     .consent-box { background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 12px; padding: 15px; display: flex; gap: 12px; font-size: 0.85rem; color: var(--clr-text-muted); }
-    .consent-box i { color: #3b82f6; font-size: 1.2rem; }
+    .consent-box i { color: #3b82f6; font-size: 1.2rem; flex-shrink: 0; }
     .panel-card { background: var(--clr-bg-card); backdrop-filter: blur(25px); border: var(--border-glass); border-radius: 20px; }
     .input-wrap { position: relative; display: flex; align-items: center; }
     .input-wrap i { position: absolute; left: 15px; color: var(--clr-text-muted); z-index: 1; }
-    .input-wrap .form-control { padding-left: 45px !important; height: 50px; }
+    .input-wrap .form-control { padding-left: 45px !important; height: 50px; font-size: 1rem; }
+
+    /* ── Output Type Cards ── */
+    .output-type-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 10px;
+    }
+    .output-card {
+        display: block;
+        margin: 0;
+        cursor: pointer;
+    }
+    .output-card-inner {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        padding: 10px 12px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        transition: all 0.2s ease;
+        min-height: 52px;
+    }
+    .output-card-inner i {
+        font-size: 1.25rem;
+        flex-shrink: 0;
+    }
+    .output-card-text strong {
+        display: block;
+        font-size: 0.8rem;
+        color: #fff;
+        line-height: 1.2;
+    }
+    .output-card-text small {
+        display: block;
+        font-size: 0.68rem;
+        color: var(--clr-text-muted);
+        line-height: 1.2;
+    }
+    .output-card.active .output-card-inner,
+    .output-card input:checked + .output-card-inner {
+        background: rgba(59, 130, 246, 0.16);
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 1px #3b82f6;
+    }
 
     /* ── Result Card ── */
     .result-card-nexus { background: rgba(255,255,255,0.02); border: var(--border-glass); border-radius: 18px; padding: 25px; }
@@ -445,6 +575,117 @@
     .nin-slip-success-banner { background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.35); border-radius: 14px; padding: 16px 18px; }
     .badge-outline-primary { border: 1px solid rgba(59, 130, 246, 0.3); color: #3b82f6; background: transparent; font-size: 0.7rem; padding: 3px 8px; border-radius: 6px; }
     .mode-info { padding: 10px 12px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 10px; }
+
+    /* ── Responsive Mobile Optimizations ── */
+    @media (max-width: 768px) {
+        .service-header-card {
+            padding: 16px;
+            gap: 14px;
+            border-radius: 16px;
+        }
+        .sh-icon {
+            width: 48px;
+            height: 48px;
+            font-size: 1.25rem;
+            border-radius: 12px;
+        }
+        .sh-text h1 {
+            font-size: 1.25rem;
+        }
+        .sh-text p {
+            font-size: 0.85rem;
+        }
+        .panel-card {
+            padding: 16px !important;
+            border-radius: 16px;
+        }
+        .tab-strip {
+            background: rgba(255,255,255,0.04);
+            border-radius: 12px;
+            padding: 4px;
+            border: 1px solid rgba(255,255,255,0.08);
+            gap: 4px;
+        }
+        .s-tab {
+            flex: 1;
+            padding: 10px 8px;
+            text-align: center;
+            border-radius: 8px;
+            border: none !important;
+            font-size: 0.82rem;
+        }
+        .s-tab.active {
+            background: var(--clr-primary, #3b82f6);
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
+        }
+        .output-type-cards {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+        .output-card-inner {
+            padding: 8px 10px;
+            min-height: 48px;
+        }
+        .output-card-inner i {
+            font-size: 1.1rem;
+        }
+        .output-card-text strong {
+            font-size: 0.75rem;
+        }
+        .output-card-text small {
+            font-size: 0.65rem;
+        }
+        .result-card-nexus {
+            padding: 16px !important;
+            border-radius: 14px !important;
+        }
+        .result-header-wrap {
+            flex-direction: column !important;
+            text-align: center !important;
+            gap: 12px !important;
+        }
+        .result-avatar {
+            width: 80px !important;
+            height: 80px !important;
+            margin: 0 auto;
+        }
+        .result-grid-nexus {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 8px !important;
+        }
+        .rg-cell {
+            padding: 8px 10px !important;
+        }
+        .rg-cell span {
+            font-size: 0.65rem !important;
+        }
+        .rg-cell strong {
+            font-size: 0.8rem !important;
+            word-break: break-word;
+        }
+        .result-actions-wrap {
+            flex-direction: column !important;
+        }
+        .result-actions-wrap .btn {
+            width: 100% !important;
+            min-height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .table-responsive {
+            -webkit-overflow-scrolling: touch;
+        }
+        .admin-table th, .admin-table td {
+            padding: 10px 8px !important;
+            font-size: 0.8rem !important;
+        }
+        .admin-table .btn-xs {
+            padding: 4px 8px !important;
+            font-size: 0.75rem !important;
+        }
+    }
 
     /* ── Print Media Optimization ── */
     @media print {
@@ -570,12 +811,32 @@
         updateVerificationTypes();
     }
 
+    function switchModeFromMobile(mode) {
+        const btn = document.querySelector('.nin-tab[data-mode="' + mode + '"]');
+        if (btn) {
+            switchMode(mode, btn);
+            try {
+                btn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+            } catch (e) {}
+        }
+    }
+
     function switchMode(mode, btn) {
         currentMode = mode;
         currentPrice = prices[mode] || prices.nin;
         document.getElementById('modeInput').value = mode;
         document.querySelectorAll('.nin-tab').forEach(t => t.classList.remove('active'));
-        btn.classList.add('active');
+        if (btn) btn.classList.add('active');
+
+        // Sync mobile dropdown
+        const mobileSelect = document.getElementById('mobileModeSelect');
+        if (mobileSelect && mobileSelect.value !== mode) {
+            mobileSelect.value = mode;
+        }
+        const mobileBadge = document.getElementById('mobilePriceBadge');
+        if (mobileBadge) {
+            mobileBadge.textContent = '₦' + Number(currentPrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
         const label = document.getElementById('number-label');
         const input = document.getElementById('number');
         const icon = document.getElementById('number-icon');
@@ -959,16 +1220,16 @@
         const html = `
             ${slipBanner}
             <div class="result-card-nexus animate__animated animate__fadeIn">
-                <div class="d-flex align-items-center gap-4 mb-4">
+                <div class="result-header-wrap d-flex align-items-center gap-4 mb-4">
                     <img src="${photoSrc}" class="result-avatar" onerror="this.src='https://ui-avatars.com/api/?name=${data.firstname || 'N'}+${data.lastname || 'A'}&background=3b82f6&color=fff'">
-                    <div>
+                    <div class="result-identity-info">
                         <div class="badge-accent bg-success-light text-success mb-2 border-0"><i class="fa-solid fa-circle-check"></i> Identity Authenticated</div>
                         <h4 class="h5 font-weight-bold mb-1">${name}</h4>
                         <p class="text-muted small m-0">NIN: ${nin}</p>
                     </div>
                 </div>
                 <div class="result-grid-nexus">${cells}</div>
-                <div class="mt-4 pt-3 border-top border-white-5 d-flex gap-3">
+                <div class="result-actions-wrap mt-4 pt-3 border-top border-white-5 d-flex gap-2 gap-sm-3">
                     ${actionButtons}
                 </div>
             </div>
@@ -1041,8 +1302,8 @@
         const statusUrl = res.status_url || '';
         const html = `
             <div class="result-card-nexus animate__animated animate__fadeIn">
-                <div class="d-flex align-items-start gap-3 mb-3">
-                    <i class="fa-solid fa-circle-check text-success mt-1"></i>
+                <div class="result-header-wrap d-flex align-items-start gap-3 mb-3">
+                    <i class="fa-solid fa-circle-check text-success mt-1 fa-lg"></i>
                     <div>
                         <div class="badge-accent bg-warning-light text-warning mb-2 border-0"><i class="fa-solid fa-hourglass-half"></i> Submitted</div>
                         <h4 class="h5 font-weight-bold mb-1">NIN Validation Submitted</h4>
@@ -1053,7 +1314,7 @@
                     <div class="result-cell"><span class="cell-label">NIN</span><span class="cell-value">${nin || '—'}</span></div>
                     <div class="result-cell"><span class="cell-label">Reference</span><span class="cell-value">${res.reference_id || '—'}</span></div>
                 </div>
-                <div class="mt-4 pt-3 border-top border-white-5 d-flex gap-3">
+                <div class="result-actions-wrap mt-4 pt-3 border-top border-white-5 d-flex gap-2 gap-sm-3">
                     <button class="btn btn-outline-light flex-grow-1" onclick="ninCheckValidationStatus('${statusUrl}', '${nin}', '${resultId}')">
                         <i class="fa-solid fa-rotate mr-2"></i> Check Status
                     </button>
@@ -1151,6 +1412,10 @@
     }
 
     $(document).ready(function() {
+        $(document).on('change', 'input[name="output_type"]', function() {
+            $('.output-card').removeClass('active');
+            $(this).closest('.output-card').addClass('active');
+        });
         @if(session('nin_slip_download_url'))
         window.setTimeout(function () {
             ninShowSlipReadyModal(@json(session('nin_slip_download_url')), function () {});

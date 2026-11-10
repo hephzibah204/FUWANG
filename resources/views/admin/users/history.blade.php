@@ -49,7 +49,10 @@ Transaction History{{ $user ? ' – ' . $user->fullname : '' }}
                         </div>
                     </td>
                     <td class="py-3 px-4 align-middle text-right font-weight-bold">
-                        @if(!$isCredit)
+                        @if(abs($delta) < 0.01)
+                            <span class="text-white-50">₦0.00</span>
+                            <span class="badge badge-dark border border-white-10 text-white-50 ml-1 font-weight-normal" style="font-size: 0.65rem;">Free</span>
+                        @elseif(!$isCredit)
                             <span style="color: #ef4444;">-₦{{ number_format(abs($delta), 2) }}</span>
                         @else
                             <span style="color: #22c55e;">+₦{{ number_format($delta, 2) }}</span>

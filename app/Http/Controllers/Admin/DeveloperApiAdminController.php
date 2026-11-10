@@ -155,21 +155,31 @@ class DeveloperApiAdminController extends Controller
             'websiteCount30d' => max($websiteCount, $declaredWebsites->count()),
         ];
 
-        $pricing = [
-            'developer_api_nin_price' => (float) SystemSetting::get('developer_api_nin_price', 100),
-            'developer_api_nin_validation_price' => (float) SystemSetting::get('developer_api_nin_validation_price', 500),
-            'developer_api_ipe_clearance_price' => (float) SystemSetting::get('developer_api_ipe_clearance_price', 700),
-            'developer_api_bvn_basic_price' => (float) SystemSetting::get('developer_api_bvn_basic_price', 100),
-            'developer_api_bvn_premium_price' => (float) SystemSetting::get('developer_api_bvn_premium_price', 500),
-            'developer_api_cac_price' => (float) SystemSetting::get('developer_api_cac_price', 300),
-            'developer_api_drivers_license_price' => (float) SystemSetting::get('developer_api_drivers_license_price', 200),
-            'developer_api_tin_price' => (float) SystemSetting::get('developer_api_tin_price', 200),
-            'developer_api_voters_card_price' => (float) SystemSetting::get('developer_api_voters_card_price', 150),
-            'developer_api_vtu_airtime_discount' => (float) SystemSetting::get('developer_api_vtu_airtime_discount', 2.0),
-            'developer_api_vtu_data_discount' => (float) SystemSetting::get('developer_api_vtu_data_discount', 3.0),
-            'developer_api_vtu_cable_fee' => (float) SystemSetting::get('developer_api_vtu_cable_fee', 0.0),
-            'developer_api_vtu_electricity_fee' => (float) SystemSetting::get('developer_api_vtu_electricity_fee', 0.0),
+        $defaultPricing = [
+            'developer_api_nin_price' => 100.0,
+            'developer_api_nin_validation_price' => 500.0,
+            'developer_api_ipe_clearance_price' => 700.0,
+            'developer_api_bvn_basic_price' => 100.0,
+            'developer_api_bvn_premium_price' => 500.0,
+            'developer_api_cac_price' => 300.0,
+            'developer_api_drivers_license_price' => 200.0,
+            'developer_api_tin_price' => 200.0,
+            'developer_api_voters_card_price' => 150.0,
+            'developer_api_vtu_airtime_discount' => 2.0,
+            'developer_api_vtu_data_discount' => 3.0,
+            'developer_api_vtu_cable_fee' => 0.0,
+            'developer_api_vtu_electricity_fee' => 0.0,
         ];
+
+        $pricing = [];
+        foreach ($defaultPricing as $key => $defaultVal) {
+            $val = SystemSetting::get($key, $defaultVal);
+            $numeric = (is_numeric($val) && $val !== '') ? (float) $val : $defaultVal;
+            if (!str_contains($key, 'fee') && $numeric <= 0 && $defaultVal > 0) {
+                $numeric = $defaultVal;
+            }
+            $pricing[$key] = $numeric;
+        }
 
         $docs = [
             'title' => (string) SystemSetting::get('developer_api_docs_title', 'Developer API Documentation'),
@@ -247,8 +257,13 @@ class DeveloperApiAdminController extends Controller
         ]);
 
         foreach ($data as $key => $value) {
-            SystemSetting::set($key, (string) $value, 'developer_api', 'number', ucwords(str_replace('_', ' ', $key)));
+            if ($value !== null && $value !== '') {
+                SystemSetting::set($key, (string) $value, 'developer_api', 'number', ucwords(str_replace('_', ' ', $key)));
+            }
         }
+
+        Cache::forget('system_settings_all');
+        SystemSetting::clearLocalCache();
 
         return back()->with('success', 'Developer API pricing updated successfully.');
     }
@@ -298,7 +313,7 @@ class DeveloperApiAdminController extends Controller
         foreach ($fields as $field) {
             if ($request->has($field)) {
                 $val = $request->input($field);
-                if ($val !== null && $val !== '') {
+                if ($val !== null && $val !== '' && is_numeric($val)) {
                     $custom[$field] = (float) $val;
                 } else {
                     unset($custom[$field]);
@@ -308,6 +323,8 @@ class DeveloperApiAdminController extends Controller
 
         $user->api_custom_pricing = empty($custom) ? null : $custom;
         $user->save();
+
+        Cache::forget('system_settings_all');
 
         return back()->with('success', "Custom API pricing for {$user->email} updated successfully.");
     }

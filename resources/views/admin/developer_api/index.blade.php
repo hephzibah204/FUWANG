@@ -409,6 +409,28 @@
                             </td>
                         </tr>
 
+                    @empty
+                        <tr><td colspan="6" class="text-center py-4 text-white-50">No API applications yet.</td></tr>
+                    @endforelse
+                    </tbody>
+                </table>
+            </div>
+            <div class="mt-3">
+                {{ $applications->links('pagination::bootstrap-4') }}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Developer Application Modals (Outside Table DOM to prevent form corruption) -->
+@foreach($applications as $app)
+    @php
+        $site = data_get($app->api_application_details, 'website');
+        $purpose = data_get($app->api_application_details, 'intended_use');
+        $company = data_get($app->api_application_details, 'company_name');
+        $volume = data_get($app->api_application_details, 'estimated_monthly_volume');
+        $appliedAt = data_get($app->api_application_details, 'applied_at');
+    @endphp
                         <!-- Developer Profile Modal -->
                         <div class="modal fade" id="developerProfileModal{{ $app->id }}" tabindex="-1" role="dialog" aria-hidden="true">
                             <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
@@ -685,47 +707,47 @@
 
                                             <div class="form-group mb-2.5">
                                                 <label class="text-white-50 small mb-1">NIN Verification (₦) <span class="text-muted">(Default: ₦{{ number_format($pricing['developer_api_nin_price'], 2) }})</span></label>
-                                                <input type="number" step="0.01" min="0" name="developer_api_nin_price" value="{{ data_get($app->api_custom_pricing, 'developer_api_nin_price') }}" class="form-control text-white rounded-3" placeholder="Default: {{ $pricing['developer_api_nin_price'] }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                                                <input type="number" step="0.01" min="0" name="developer_api_nin_price" value="{{ data_get($app->api_custom_pricing, 'developer_api_nin_price') ?? data_get($app->api_custom_pricing, 'nin') }}" class="form-control text-white rounded-3" placeholder="Default: {{ $pricing['developer_api_nin_price'] }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
                                             </div>
 
                                             <div class="form-group mb-2.5">
                                                 <label class="text-white-50 small mb-1">NIN Validation (₦) <span class="text-muted">(Default: ₦{{ number_format($pricing['developer_api_nin_validation_price'] ?? 500, 2) }})</span></label>
-                                                <input type="number" step="0.01" min="0" name="developer_api_nin_validation_price" value="{{ data_get($app->api_custom_pricing, 'developer_api_nin_validation_price') }}" class="form-control text-white rounded-3" placeholder="Default: {{ $pricing['developer_api_nin_validation_price'] ?? 500 }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                                                <input type="number" step="0.01" min="0" name="developer_api_nin_validation_price" value="{{ data_get($app->api_custom_pricing, 'developer_api_nin_validation_price') ?? data_get($app->api_custom_pricing, 'nin_validation') }}" class="form-control text-white rounded-3" placeholder="Default: {{ $pricing['developer_api_nin_validation_price'] ?? 500 }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
                                             </div>
 
                                             <div class="form-group mb-2.5">
                                                 <label class="text-white-50 small mb-1">IPE Clearance (₦) <span class="text-muted">(Default: ₦{{ number_format($pricing['developer_api_ipe_clearance_price'] ?? 700, 2) }})</span></label>
-                                                <input type="number" step="0.01" min="0" name="developer_api_ipe_clearance_price" value="{{ data_get($app->api_custom_pricing, 'developer_api_ipe_clearance_price') }}" class="form-control text-white rounded-3" placeholder="Default: {{ $pricing['developer_api_ipe_clearance_price'] ?? 700 }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                                                <input type="number" step="0.01" min="0" name="developer_api_ipe_clearance_price" value="{{ data_get($app->api_custom_pricing, 'developer_api_ipe_clearance_price') ?? data_get($app->api_custom_pricing, 'ipe_clearance') }}" class="form-control text-white rounded-3" placeholder="Default: {{ $pricing['developer_api_ipe_clearance_price'] ?? 700 }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
                                             </div>
 
                                             <div class="form-group mb-2.5">
                                                 <label class="text-white-50 small mb-1">BVN Basic (₦) <span class="text-muted">(Default: ₦{{ number_format($pricing['developer_api_bvn_basic_price'], 2) }})</span></label>
-                                                <input type="number" step="0.01" min="0" name="developer_api_bvn_basic_price" value="{{ data_get($app->api_custom_pricing, 'developer_api_bvn_basic_price') }}" class="form-control text-white rounded-3" placeholder="Default: {{ $pricing['developer_api_bvn_basic_price'] }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                                                <input type="number" step="0.01" min="0" name="developer_api_bvn_basic_price" value="{{ data_get($app->api_custom_pricing, 'developer_api_bvn_basic_price') ?? data_get($app->api_custom_pricing, 'bvn_basic') }}" class="form-control text-white rounded-3" placeholder="Default: {{ $pricing['developer_api_bvn_basic_price'] }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
                                             </div>
 
                                             <div class="form-group mb-2.5">
                                                 <label class="text-white-50 small mb-1">BVN Premium (₦) <span class="text-muted">(Default: ₦{{ number_format($pricing['developer_api_bvn_premium_price'], 2) }})</span></label>
-                                                <input type="number" step="0.01" min="0" name="developer_api_bvn_premium_price" value="{{ data_get($app->api_custom_pricing, 'developer_api_bvn_premium_price') }}" class="form-control text-white rounded-3" placeholder="Default: {{ $pricing['developer_api_bvn_premium_price'] }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                                                <input type="number" step="0.01" min="0" name="developer_api_bvn_premium_price" value="{{ data_get($app->api_custom_pricing, 'developer_api_bvn_premium_price') ?? data_get($app->api_custom_pricing, 'bvn_premium') }}" class="form-control text-white rounded-3" placeholder="Default: {{ $pricing['developer_api_bvn_premium_price'] }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
                                             </div>
 
                                             <div class="form-group mb-2.5">
                                                 <label class="text-white-50 small mb-1">CAC Verification (₦) <span class="text-muted">(Default: ₦{{ number_format($pricing['developer_api_cac_price'] ?? 300, 2) }})</span></label>
-                                                <input type="number" step="0.01" min="0" name="developer_api_cac_price" value="{{ data_get($app->api_custom_pricing, 'developer_api_cac_price') }}" class="form-control text-white rounded-3" placeholder="Default: {{ $pricing['developer_api_cac_price'] ?? 300 }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                                                <input type="number" step="0.01" min="0" name="developer_api_cac_price" value="{{ data_get($app->api_custom_pricing, 'developer_api_cac_price') ?? data_get($app->api_custom_pricing, 'cac') }}" class="form-control text-white rounded-3" placeholder="Default: {{ $pricing['developer_api_cac_price'] ?? 300 }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
                                             </div>
 
                                             <div class="form-group mb-2.5">
                                                 <label class="text-white-50 small mb-1">Driver's License (₦) <span class="text-muted">(Default: ₦{{ number_format($pricing['developer_api_drivers_license_price'] ?? 200, 2) }})</span></label>
-                                                <input type="number" step="0.01" min="0" name="developer_api_drivers_license_price" value="{{ data_get($app->api_custom_pricing, 'developer_api_drivers_license_price') }}" class="form-control text-white rounded-3" placeholder="Default: {{ $pricing['developer_api_drivers_license_price'] ?? 200 }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                                                <input type="number" step="0.01" min="0" name="developer_api_drivers_license_price" value="{{ data_get($app->api_custom_pricing, 'developer_api_drivers_license_price') ?? data_get($app->api_custom_pricing, 'drivers_license') }}" class="form-control text-white rounded-3" placeholder="Default: {{ $pricing['developer_api_drivers_license_price'] ?? 200 }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
                                             </div>
 
                                             <div class="form-group mb-2.5">
                                                 <label class="text-white-50 small mb-1">TIN Verification (₦) <span class="text-muted">(Default: ₦{{ number_format($pricing['developer_api_tin_price'] ?? 200, 2) }})</span></label>
-                                                <input type="number" step="0.01" min="0" name="developer_api_tin_price" value="{{ data_get($app->api_custom_pricing, 'developer_api_tin_price') }}" class="form-control text-white rounded-3" placeholder="Default: {{ $pricing['developer_api_tin_price'] ?? 200 }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                                                <input type="number" step="0.01" min="0" name="developer_api_tin_price" value="{{ data_get($app->api_custom_pricing, 'developer_api_tin_price') ?? data_get($app->api_custom_pricing, 'tin') }}" class="form-control text-white rounded-3" placeholder="Default: {{ $pricing['developer_api_tin_price'] ?? 200 }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
                                             </div>
 
                                             <div class="form-group mb-3">
                                                 <label class="text-white-50 small mb-1">Voter's Card (₦) <span class="text-muted">(Default: ₦{{ number_format($pricing['developer_api_voters_card_price'] ?? 150, 2) }})</span></label>
-                                                <input type="number" step="0.01" min="0" name="developer_api_voters_card_price" value="{{ data_get($app->api_custom_pricing, 'developer_api_voters_card_price') }}" class="form-control text-white rounded-3" placeholder="Default: {{ $pricing['developer_api_voters_card_price'] ?? 150 }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                                                <input type="number" step="0.01" min="0" name="developer_api_voters_card_price" value="{{ data_get($app->api_custom_pricing, 'developer_api_voters_card_price') ?? data_get($app->api_custom_pricing, 'voters_card') }}" class="form-control text-white rounded-3" placeholder="Default: {{ $pricing['developer_api_voters_card_price'] ?? 150 }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
                                             </div>
 
                                             <hr style="border-color: rgba(255,255,255,0.08);" class="my-3">
@@ -736,22 +758,22 @@
 
                                             <div class="form-group mb-2.5">
                                                 <label class="text-white-50 small mb-1">Airtime Discount (%) <span class="text-muted">(Default: {{ $pricing['developer_api_vtu_airtime_discount'] ?? 2.0 }}%)</span></label>
-                                                <input type="number" step="0.01" min="0" max="100" name="developer_api_vtu_airtime_discount" value="{{ data_get($app->api_custom_pricing, 'developer_api_vtu_airtime_discount') }}" class="form-control text-white rounded-3" placeholder="Default: {{ $pricing['developer_api_vtu_airtime_discount'] ?? 2.0 }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                                                <input type="number" step="0.01" min="0" max="100" name="developer_api_vtu_airtime_discount" value="{{ data_get($app->api_custom_pricing, 'developer_api_vtu_airtime_discount') ?? data_get($app->api_custom_pricing, 'airtime_discount') }}" class="form-control text-white rounded-3" placeholder="Default: {{ $pricing['developer_api_vtu_airtime_discount'] ?? 2.0 }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
                                             </div>
 
                                             <div class="form-group mb-2.5">
                                                 <label class="text-white-50 small mb-1">Data Discount (%) <span class="text-muted">(Default: {{ $pricing['developer_api_vtu_data_discount'] ?? 3.0 }}%)</span></label>
-                                                <input type="number" step="0.01" min="0" max="100" name="developer_api_vtu_data_discount" value="{{ data_get($app->api_custom_pricing, 'developer_api_vtu_data_discount') }}" class="form-control text-white rounded-3" placeholder="Default: {{ $pricing['developer_api_vtu_data_discount'] ?? 3.0 }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                                                <input type="number" step="0.01" min="0" max="100" name="developer_api_vtu_data_discount" value="{{ data_get($app->api_custom_pricing, 'developer_api_vtu_data_discount') ?? data_get($app->api_custom_pricing, 'data_discount') }}" class="form-control text-white rounded-3" placeholder="Default: {{ $pricing['developer_api_vtu_data_discount'] ?? 3.0 }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
                                             </div>
 
                                             <div class="form-group mb-2.5">
                                                 <label class="text-white-50 small mb-1">Cable TV Fee (₦) <span class="text-muted">(Default: ₦{{ number_format($pricing['developer_api_vtu_cable_fee'] ?? 0.0, 2) }})</span></label>
-                                                <input type="number" step="0.01" min="0" name="developer_api_vtu_cable_fee" value="{{ data_get($app->api_custom_pricing, 'developer_api_vtu_cable_fee') }}" class="form-control text-white rounded-3" placeholder="Default: {{ $pricing['developer_api_vtu_cable_fee'] ?? 0.0 }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                                                <input type="number" step="0.01" min="0" name="developer_api_vtu_cable_fee" value="{{ data_get($app->api_custom_pricing, 'developer_api_vtu_cable_fee') ?? data_get($app->api_custom_pricing, 'cable_fee') }}" class="form-control text-white rounded-3" placeholder="Default: {{ $pricing['developer_api_vtu_cable_fee'] ?? 0.0 }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
                                             </div>
 
                                             <div class="form-group mb-3">
                                                 <label class="text-white-50 small mb-1">Electricity Fee (₦) <span class="text-muted">(Default: ₦{{ number_format($pricing['developer_api_vtu_electricity_fee'] ?? 0.0, 2) }})</span></label>
-                                                <input type="number" step="0.01" min="0" name="developer_api_vtu_electricity_fee" value="{{ data_get($app->api_custom_pricing, 'developer_api_vtu_electricity_fee') }}" class="form-control text-white rounded-3" placeholder="Default: {{ $pricing['developer_api_vtu_electricity_fee'] ?? 0.0 }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
+                                                <input type="number" step="0.01" min="0" name="developer_api_vtu_electricity_fee" value="{{ data_get($app->api_custom_pricing, 'developer_api_vtu_electricity_fee') ?? data_get($app->api_custom_pricing, 'electricity_fee') }}" class="form-control text-white rounded-3" placeholder="Default: {{ $pricing['developer_api_vtu_electricity_fee'] ?? 0.0 }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);">
                                             </div>
                                         </div>
                                         <div class="modal-footer border-0 pt-0 d-flex justify-content-between">
@@ -769,18 +791,9 @@
                                 </div>
                             </div>
                         </div>
-                    @empty
-                        <tr><td colspan="6" class="text-center py-4 text-white-50">No API applications yet.</td></tr>
-                    @endforelse
-                    </tbody>
-                </table>
-            </div>
-            <div class="mt-3">
-                {{ $applications->links('pagination::bootstrap-4') }}
-            </div>
-        </div>
-    </div>
-</div>
+
+@endforeach
+
 
     <div class="col-lg-6 mb-4">
         <div class="card border-0 rounded-4 p-4 h-100" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.07) !important;">

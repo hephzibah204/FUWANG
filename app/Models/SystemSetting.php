@@ -61,7 +61,7 @@ class SystemSetting extends Model
             return $default;
         }
 
-        if ($value === null) {
+        if ($value === null || $value === '') {
             return $default;
         }
 
