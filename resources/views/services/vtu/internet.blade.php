@@ -23,9 +23,9 @@
                     @csrf
 
                     <div class="form-group mb-4">
-                        <label class="font-weight-600 mb-2 d-block">Select Provider</label>
+                        <label class="font-weight-600 mb-2 d-block">Network Band</label>
                         <select class="form-control" name="provider_id" id="providerSelect">
-                            <option value="">Auto-select best provider</option>
+                            <option value="">Auto-route (Best Band)</option>
                         </select>
                         <div class="text-muted small mt-2" id="providerMeta"></div>
                     </div>

@@ -117,7 +117,7 @@
             <div class="cta-card glass-panel p-5 text-center">
                 <div class="cta-badge mb-3">ADMIN CONTROL TOWER</div>
                 <h2 class="mb-4">Are you a Business Owner?</h2>
-                <p class="lead mb-5 opacity-75">Take full control of your verification providers, set custom pricing for your sub-users, and monitor all transactions from a single dashboard.</p>
+                <p class="lead mb-5 opacity-75">Take full control of your verification channels, set custom pricing for your sub-users, and monitor all transactions from a single dashboard.</p>
                 <div class="d-flex justify-content-center gap-3">
                     <a href="{{ route('register') }}" class="btn btn-white btn-lg px-5">Start Scaling Today</a>
                 </div>

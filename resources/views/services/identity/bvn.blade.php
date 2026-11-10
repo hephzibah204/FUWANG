@@ -79,18 +79,18 @@
 
                         <div class="row mt-2 align-items-end">
                             <div class="col-md-4 mb-3">
-                                <label class="font-weight-600 mb-2 small text-muted">Provider</label>
+                                <label class="font-weight-600 mb-2 small text-muted">Network Band</label>
                                 @if($bvnProviders->count() > 1)
                                     <select id="verify_provider" name="api_provider_id" class="form-control form-control-sm">
                                         @foreach($bvnProviders as $provider)
-                                            <option value="{{ $provider->id }}">{{ $provider->name }}</option>
+                                            <option value="{{ $provider->id }}">Band {{ $loop->iteration }}</option>
                                         @endforeach
                                     </select>
                                 @elseif($bvnProviders->count() == 1)
                                     <input type="hidden" id="verify_provider" name="api_provider_id" value="{{ $bvnProviders->first()->id }}">
-                                    <div class="text-white font-weight-bold">{{ $bvnProviders->first()->name }}</div>
+                                    <div class="text-white font-weight-bold">Band 1</div>
                                 @else
-                                    <div class="text-warning small"><i class="fa-solid fa-triangle-exclamation"></i> Legacy Gateway Active</div>
+                                    <div class="text-warning small"><i class="fa-solid fa-triangle-exclamation"></i> Band 1 Active</div>
                                 @endif
                             </div>
                             <div class="col-md-4 mb-3">
@@ -240,7 +240,7 @@
                                             @elseif($req->isRefunded())
                                                 <span class="small text-muted">Not Found (Refunded)</span>
                                             @else
-                                                <span class="small text-white-50"><i class="fa-regular fa-clock mr-1"></i> Pending provider...</span>
+                                                <span class="small text-white-50"><i class="fa-regular fa-clock mr-1"></i> Processing request...</span>
                                             @endif
                                         </td>
                                         <td>{{ $req->created_at->format('M d, Y h:i A') }}</td>
@@ -282,7 +282,7 @@
                         <tr>
                             <th>Reference</th>
                             <th>Identifier</th>
-                            <th>Provider</th>
+                            <th>Network Band</th>
                             <th>Date</th>
                             <th class="text-right">Action</th>
                         </tr>

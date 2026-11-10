@@ -880,7 +880,7 @@
     function regenerateAutoFundingAccounts() {
         Swal.fire({
             title: 'Regenerate accounts?',
-            text: 'This will request new reserved accounts from providers.',
+            text: 'This will request new reserved accounts from banking partners.',
             icon: 'warning',
             showCancelButton: true,
             confirmButtonText: 'Regenerate',

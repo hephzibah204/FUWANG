@@ -34,9 +34,9 @@
                     </div>
 
                     <div class="form-group mb-4">
-                        <label class="font-weight-600 mb-2 d-block">Select Provider</label>
+                        <label class="font-weight-600 mb-2 d-block">Network Band</label>
                         <select class="form-control" name="provider_id" id="providerSelect">
-                            <option value="">Auto-select best provider</option>
+                            <option value="">Auto-route (Best Band)</option>
                         </select>
                         <div class="text-muted small mt-2" id="providerMeta"></div>
                     </div>
@@ -163,7 +163,7 @@ $(document).ready(function() {
     const serviceID = $('#serviceID').val();
     const variation = $('#variation_code').val();
     const url = baseProvidersUrl + '?serviceID=' + encodeURIComponent(serviceID || '') + '&variation_code=' + encodeURIComponent(variation || '');
-    $('#providerSelect').empty().append('<option value="">Auto-select best provider</option>');
+    $('#providerSelect').empty().append('<option value="">Auto-route (Best Band)</option>');
     $.get(url).done(function(res) {
       if (!res || !res.status) return;
       providers = res.providers || [];

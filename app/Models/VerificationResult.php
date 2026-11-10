@@ -133,15 +133,23 @@ class VerificationResult extends Model
         }
 
         if (stripos((string) $value, 'vuvaa') !== false) {
-            return 'Provider 1';
+            return 'Band 1';
         }
         if (stripos((string) $value, 'dataverify') !== false) {
-            return 'Provider 2';
+            return 'Band 2';
+        }
+        if (stripos((string) $value, 'robost') !== false) {
+            return 'Band 1';
+        }
+
+        // If it already says Band X, return it
+        if (preg_match('/^Band\s*\d+/i', (string) $value)) {
+            return $value;
         }
 
         // Deterministic masking for any other providers
-        $hash = crc32((string) $value);
-        return 'Provider ' . (($hash % 10) + 3);
+        $hash = abs(crc32((string) $value));
+        return 'Band ' . (($hash % 3) + 1);
     }
 
     public function getActivitylogOptions(): LogOptions

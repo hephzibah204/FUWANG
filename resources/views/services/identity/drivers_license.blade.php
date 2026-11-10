@@ -74,12 +74,12 @@
 
                     @if(isset($dlProviders) && $dlProviders->count() > 1)
                     <div class="form-group mb-4">
-                        <label for="api_provider_id" class="font-weight-600 mb-2 small text-muted">Preferred Provider</label>
+                        <label for="api_provider_id" class="font-weight-600 mb-2 small text-muted">Network Band</label>
                         <div class="input-wrap">
                             <i class="fa-solid fa-server"></i>
                             <select id="api_provider_id" name="api_provider_id" class="form-control">
                                 @foreach($dlProviders as $provider)
-                                    <option value="{{ $provider->id }}">{{ $provider->name }}</option>
+                                    <option value="{{ $provider->id }}">Band {{ $loop->iteration }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -170,7 +170,7 @@
                         <div class="badge-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;"><i class="fa-solid fa-2"></i></div>
                         <div>
                             <h6 class="mb-1 small font-weight-bold text-white">Instant Search</h6>
-                            <p class="small text-muted m-0">Our system connects directly to FRSC servers via VerifyMe to retrieve verified data.</p>
+                            <p class="small text-muted m-0">Our system connects directly to FRSC servers via verified government gateways to retrieve verified data.</p>
                         </div>
                     </li>
                     <li class="d-flex gap-3 mb-4">
@@ -299,7 +299,7 @@
                     const select = $('#verification_type');
                     select.empty();
                     if (res.types && res.types.length > 0) {
-                        $('#typeHint').text('Types and pricing are provider-specific.').show();
+                        $('#typeHint').text('Types and pricing are band-specific.').show();
                         res.types.forEach(t => {
                             select.append(`<option value="${t.key}" data-price="${t.price}">${t.label} (₦${Number(t.price).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})})</option>`);
                         });

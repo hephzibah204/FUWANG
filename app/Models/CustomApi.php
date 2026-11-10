@@ -67,4 +67,18 @@ class CustomApi extends Model
             ? DataVerifyClient::normalizeDomain($value)
             : $value;
     }
+
+    public function getDisplayBandAttribute(): string
+    {
+        if (request()->is('admin*') || request()->is('api/admin*')) {
+            return (string) $this->name;
+        }
+
+        if (! empty($this->priority) && $this->priority > 0) {
+            return 'Band ' . $this->priority;
+        }
+
+        $hash = abs(crc32((string) ($this->provider_identifier ?: $this->name ?: $this->id)));
+        return 'Band ' . (($hash % 3) + 1);
+    }
 }

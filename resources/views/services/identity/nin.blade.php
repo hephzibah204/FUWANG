@@ -235,7 +235,7 @@
                                 <!-- Provider / Advanced Routing (shown when multiple providers available) -->
                                 @if(isset($ninProviders) && $ninProviders->count() >= 1)
                                     <div class="form-group mb-4" id="providerSelectionGroup">
-                                        <label for="api_provider_id" class="font-weight-600 mb-2" id="provider-label">Select API Provider</label>
+                                        <label for="api_provider_id" class="font-weight-600 mb-2" id="provider-label">Select Network Band</label>
                                         <div class="input-wrap">
                                             <i class="fa-solid fa-server"></i>
                                             <select id="api_provider_id" name="api_provider_id" class="form-control" onchange="updateVerificationTypes()">
@@ -244,16 +244,16 @@
                                                     <option value="{{ $provider->id }}" 
                                                             data-provider="{{ $provider->provider_identifier }}" 
                                                             data-types="{{ json_encode($provider->verificationTypes->where('status', true)) }}">
-                                                        {{ $provider->name }}
+                                                        Band {{ $loop->iteration }}
                                                     </option>
                                                 @endforeach
                                             </select>
                                         </div>
-                                        <p class="small text-muted mt-2 mb-0" id="provider-hint"><i class="fa-solid fa-circle-info mr-1"></i> Smart Routing automatically uses any available healthy API and seamlessly falls back if an API is down.</p>
+                                        <p class="small text-muted mt-2 mb-0" id="provider-hint"><i class="fa-solid fa-circle-info mr-1"></i> Smart Routing automatically routes requests via healthy network bands with instant failover.</p>
                                     </div>
                                     
                                     <div class="alert alert-warning py-2 px-3 small" id="noProviderWarning" style="display: none;">
-                                        <i class="fa-solid fa-triangle-exclamation mr-1"></i> No active provider supports the selected verification mode.
+                                        <i class="fa-solid fa-triangle-exclamation mr-1"></i> No active network band supports the selected verification mode.
                                     </div>
                                     
                                     <div class="form-group mb-4" id="verificationTypeGroup" style="display: none;">
@@ -336,7 +336,7 @@
                                     <th>Reference</th>
                                     <th>Name</th>
                                     <th>Identifier</th>
-                                    <th>Provider</th>
+                                    <th>Network Band</th>
                                     <th>Date</th>
                                     <th class="text-right">Action</th>
                                 </tr>
@@ -1251,7 +1251,7 @@
                                 $('#resultContainer').hide();
                                 Swal.fire({
                                     title: 'Verification failed',
-                                    text: response.message || 'The provider could not complete this lookup. If your wallet was charged, a refund is processed automatically for failed verifications.',
+                                    text: response.message || 'The verification service could not complete this lookup. If your wallet was charged, a refund is processed automatically for failed verifications.',
                                     icon: 'error',
                                     background: '#0a0a0f',
                                     color: '#fff'

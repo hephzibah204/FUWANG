@@ -20,7 +20,7 @@
             </div>
         @else
             <p class="text-white-50 small mb-4">
-                This step is for <strong class="text-white">KYC tier upgrade</strong> only. We attempt virtual account generation using your BVN and upgrade you when the provider confirms it.
+                This step is for <strong class="text-white">KYC tier upgrade</strong> only. We attempt virtual account generation using your BVN and upgrade you when banking partners confirm it.
                 @if (Route::has('services.bvn'))
                     For match/combi and other BVN tools, use <a href="{{ route('services.bvn') }}" class="text-primary font-weight-bold">Services → BVN</a>.
                 @endif

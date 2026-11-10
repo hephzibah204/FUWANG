@@ -111,18 +111,9 @@ class VTUController extends Controller
             ->where('status', true)
             ->orderBy('priority', 'asc')
             ->get()
-            ->map(function ($p) {
+            ->map(function ($p, $index) {
                 $cfg = is_array($p->config) ? $p->config : [];
-
-                $maskedName = '';
-                if (stripos((string) $p->name, 'vuvaa') !== false || stripos((string) $p->provider_identifier, 'vuvaa') !== false) {
-                    $maskedName = 'Provider 1';
-                } elseif (stripos((string) $p->name, 'dataverify') !== false || stripos((string) $p->provider_identifier, 'dataverify') !== false) {
-                    $maskedName = 'Provider 2';
-                } else {
-                    $hash = crc32((string) $p->name);
-                    $maskedName = 'Provider ' . (($hash % 10) + 3);
-                }
+                $maskedName = 'Band ' . ($index + 1);
 
                 return [
                     'id' => $p->id,

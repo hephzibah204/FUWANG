@@ -123,7 +123,7 @@
                         <form id="marketplaceForm" action="{{ route('services.address_verify.marketplace') }}" method="POST">
                             @csrf
                             <h6 class="x-small text-muted uppercase font-weight-bold mb-3 tracking-wider">Marketplace Address Search</h6>
-                            <p class="small text-muted mb-4">Fetch already verified addresses from the VerifyMe marketplace.</p>
+                            <p class="small text-muted mb-4">Fetch already verified addresses from the national compliance database.</p>
                             
                             <div class="row">
                                 <div class="col-md-6 mb-4">

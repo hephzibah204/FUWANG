@@ -68,17 +68,17 @@
                     @if(isset($cacProviders) && $cacProviders->count() >= 1)
                         <div class="row mt-3">
                             <div class="col-md-5 mb-3">
-                                <label class="font-weight-600 mb-2 small text-muted">Provider</label>
+                                <label class="font-weight-600 mb-2 small text-muted">Network Band</label>
                                 @if($cacProviders->count() > 1)
                                     <select id="api_provider_id" name="api_provider_id" class="form-control form-control-sm">
                                         @foreach($cacProviders as $provider)
-                                            <option value="{{ $provider->id }}">{{ $provider->name }}</option>
+                                            <option value="{{ $provider->id }}">Band {{ $loop->iteration }}</option>
                                         @endforeach
                                     </select>
                                 @else
                                     <input type="hidden" id="api_provider_id" name="api_provider_id" value="{{ $cacProviders->first()->id }}">
-                                    <div class="text-white font-weight-bold">{{ $cacProviders->first()->name }}</div>
-                                    <div class="text-muted small">Only one provider is enabled.</div>
+                                    <div class="text-white font-weight-bold">Band 1</div>
+                                    <div class="text-muted small">Band 1 routing active.</div>
                                 @endif
                             </div>
                             <div class="col-md-7 mb-3">
@@ -248,7 +248,7 @@
                     const select = $('#verification_type');
                     select.empty();
                     if (res.types && res.types.length > 0) {
-                        $('#typeHint').text('Types and pricing are provider-specific.').show();
+                        $('#typeHint').text('Types and pricing are band-specific.').show();
                         res.types.forEach(t => {
                             select.append(`<option value="${t.key}" data-price="${t.price}">${t.label} (₦${Number(t.price).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})})</option>`);
                         });

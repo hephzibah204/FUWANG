@@ -20,7 +20,7 @@
             </div>
         @else
             <p class="text-white-50 small mb-4">
-                This step is for <strong class="text-white">KYC tier upgrade</strong> only. We attempt virtual account generation using your NIN and upgrade you when the provider confirms it.
+                This step is for <strong class="text-white">KYC tier upgrade</strong> only. We attempt virtual account generation using your NIN and upgrade you when banking partners confirm it.
                 @if (Route::has('services.nin'))
                     For the full NIN suite (phone, tracking, selfie, etc.), use <a href="{{ route('services.nin') }}" class="text-primary font-weight-bold">Services → NIN</a>.
                 @endif

@@ -51,12 +51,12 @@
 
                     @if(isset($waecProviders) && $waecProviders->count() > 1)
                     <div class="form-group mb-4">
-                        <label for="api_provider_id" class="font-weight-600 mb-2 small text-muted">Preferred Provider</label>
+                        <label for="api_provider_id" class="font-weight-600 mb-2 small text-muted">Network Band</label>
                         <div class="input-wrap">
                             <i class="fa-solid fa-server"></i>
                             <select id="api_provider_id" name="api_provider_id" class="form-control">
                                 @foreach($waecProviders as $provider)
-                                    <option value="{{ $provider->id }}">{{ $provider->name }}</option>
+                                    <option value="{{ $provider->id }}">Band {{ $loop->iteration }}</option>
                                 @endforeach
                             </select>
                         </div>

@@ -55,7 +55,7 @@
                             <thead>
                                 <tr>
                                     <th>Service Name</th>
-                                    <th>Provider</th>
+                                    <th>Network Band</th>
                                     <th>Verification Type</th>
                                     <th class="text-right pr-4">Cost (₦)</th>
                                 </tr>
@@ -66,12 +66,13 @@
                                         @foreach($customPrices[$type] as $provider)
                                             @php
                                                 $providerTypes = $provider->verificationTypes ?? collect();
+                                                $bandLabel = 'Band ' . $loop->iteration;
                                             @endphp
                                             @if($providerTypes->count() > 0)
                                                 @foreach($providerTypes as $t)
                                                     <tr>
                                                         <td class="align-middle font-weight-bold text-white">{{ $serviceNames[$type] ?? strtoupper(str_replace('_', ' ', $type)) }}</td>
-                                                        <td class="align-middle text-muted small">{{ $provider->name }}</td>
+                                                        <td class="align-middle text-muted small"><span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 9999px; padding: 2px 8px; font-weight: 600;">{{ $bandLabel }}</span></td>
                                                         <td class="align-middle text-muted small">{{ $t->label }}</td>
                                                         <td class="align-middle text-right pr-4 font-weight-bold text-primary">
                                                             ₦{{ number_format((float) $t->price, 2) }}
@@ -81,7 +82,7 @@
                                             @else
                                                 <tr>
                                                     <td class="align-middle font-weight-bold text-white">{{ $serviceNames[$type] ?? strtoupper(str_replace('_', ' ', $type)) }}</td>
-                                                    <td class="align-middle text-muted small">{{ $provider->name }}</td>
+                                                    <td class="align-middle text-muted small"><span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 9999px; padding: 2px 8px; font-weight: 600;">{{ $bandLabel }}</span></td>
                                                     <td class="align-middle text-muted small">Standard</td>
                                                     <td class="align-middle text-right pr-4 font-weight-bold text-primary">
                                                         ₦{{ number_format((float) $provider->price, 2) }}
@@ -110,14 +111,14 @@
                             @if(!$customPrices->has('nin') && isset($legacyPrices->nin_by_nin_price))
                                 <tr>
                                     <td class="align-middle font-weight-bold text-white">NIN Verification (Legacy)</td>
-                                    <td class="align-middle text-muted small">Global System</td>
+                                    <td class="align-middle text-muted small"><span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 9999px; padding: 2px 8px; font-weight: 600;">Band 1</span></td>
                                     <td class="align-middle text-right pr-4 font-weight-bold">₦{{ number_format($legacyPrices->nin_by_nin_price, 2) }}</td>
                                 </tr>
                             @endif
                             @if(!$customPrices->has('bvn') && isset($legacyPrices->bvn_by_bvn))
                                 <tr>
                                     <td class="align-middle font-weight-bold text-white">BVN Verification (Legacy)</td>
-                                    <td class="align-middle text-muted small">Global System</td>
+                                    <td class="align-middle text-muted small"><span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 9999px; padding: 2px 8px; font-weight: 600;">Band 1</span></td>
                                     <td class="align-middle text-right pr-4 font-weight-bold">₦{{ number_format($legacyPrices->bvn_by_bvn, 2) }}</td>
                                 </tr>
                             @endif
@@ -138,7 +139,7 @@
                     <i class="fa-solid fa-circle-info"></i>
                     <div class="kyc-text">
                         <strong>Real-time Updates</strong>
-                        <p>Prices are automatically updated whenever the system administrator changes provider configurations.</p>
+                        <p>Prices are automatically updated in real-time according to current network band configurations.</p>
                     </div>
                 </div>
 
@@ -178,10 +179,10 @@
                                 {
                                     "@type": "Product",
                                     "name": "{{ $serviceNames[$type] ?? strtoupper(str_replace('_', ' ', $type)) }} - {{ $t->label }}",
-                                    "description": "{{ $serviceNames[$type] ?? strtoupper(str_replace('_', ' ', $type)) }} by {{ $provider->name }} ({{ $t->label }})",
+                                    "description": "{{ $serviceNames[$type] ?? strtoupper(str_replace('_', ' ', $type)) }} via Band {{ $loop->parent->iteration }} ({{ $t->label }})",
                                     "brand": {
                                         "@type": "Brand",
-                                        "name": "{{ $provider->name }}"
+                                        "name": "Fuwa.NG"
                                     },
                                     "offers": {
                                         "@type": "Offer",
@@ -196,10 +197,10 @@
                             {
                                 "@type": "Product",
                                 "name": "{{ $serviceNames[$type] ?? strtoupper(str_replace('_', ' ', $type)) }}",
-                                "description": "{{ $serviceNames[$type] ?? strtoupper(str_replace('_', ' ', $type)) }} by {{ $provider->name }}",
+                                "description": "{{ $serviceNames[$type] ?? strtoupper(str_replace('_', ' ', $type)) }} via Band {{ $loop->iteration }}",
                                 "brand": {
                                     "@type": "Brand",
-                                    "name": "{{ $provider->name }}"
+                                    "name": "Fuwa.NG"
                                 },
                                 "offers": {
                                     "@type": "Offer",

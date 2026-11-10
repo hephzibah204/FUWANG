@@ -69,10 +69,10 @@
 
                     @if(isset($bioProviders) && $bioProviders->count() > 1)
                     <div class="form-group mb-4">
-                        <label for="api_provider_id" class="font-weight-600 mb-2 small text-muted">Provider</label>
+                        <label for="api_provider_id" class="font-weight-600 mb-2 small text-muted">Network Band</label>
                         <select id="api_provider_id" name="api_provider_id" class="form-control">
                             @foreach($bioProviders as $provider)
-                                <option value="{{ $provider->id }}">{{ $provider->name }}</option>
+                                <option value="{{ $provider->id }}">Band {{ $loop->iteration }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -134,7 +134,7 @@
                     <div class="badge-icon-bg" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;"><i class="fa-solid fa-robot"></i></div>
                     <div>
                         <h6 class="small font-weight-bold">AI Driven Logic</h6>
-                        <p class="x-small text-muted mb-0">VerifyMe Uses advanced neural networks to compare your snapshot with government records.</p>
+                        <p class="x-small text-muted mb-0">Uses advanced neural networks to compare your snapshot with official government records.</p>
                     </div>
                 </div>
                 
