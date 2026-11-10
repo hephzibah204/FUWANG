@@ -1176,15 +1176,15 @@ class VerificationController extends Controller
 
             $isPendingOrReview = $existing ? in_array($existing->status, ['pending', 'waiting_for_review'], true) : true;
             if ($isPendingOrReview) {
-                if ($isRobostRecord) {
+                if ($isRobostRecord || $validationMode !== 'dataverify') {
                     $resolved = $hasRobost && $checkRobost();
                     if (!$resolved && $hasDv) {
                         $checkDv();
                     }
                 } else {
-                    $resolved = $hasDv && $checkDv();
-                    if (!$resolved && $hasRobost) {
-                        $checkRobost();
+                    $resolved = $hasRobost && $checkRobost();
+                    if (!$resolved && $hasDv) {
+                        $checkDv();
                     }
                 }
             }
@@ -1394,18 +1394,19 @@ class VerificationController extends Controller
                 };
 
                 // Determine primary engine based on configuration and active credentials
-                $primary = 'dataverify';
+                // Robosttech is the first choice for validation
+                $primary = 'robosttech';
                 if ($validationMode === 'robosttech') {
                     $primary = $hasRobost ? 'robosttech' : ($hasDv ? 'dataverify' : 'robosttech');
                 } elseif ($validationMode === 'dataverify') {
                     $primary = $hasDv ? 'dataverify' : ($hasRobost ? 'robosttech' : 'dataverify');
                 } else { // auto or api
-                    if ($hasDv && !$hasRobost) {
-                        $primary = 'dataverify';
-                    } elseif ($hasRobost && !$hasDv) {
+                    if ($hasRobost) {
                         $primary = 'robosttech';
-                    } else {
+                    } elseif ($hasDv) {
                         $primary = 'dataverify';
+                    } else {
+                        $primary = 'robosttech';
                     }
                 }
 
@@ -1730,9 +1731,9 @@ class VerificationController extends Controller
                         $checkDv();
                     }
                 } else {
-                    $resolved = $hasDv && $checkDv();
-                    if (!$resolved && $hasRobost) {
-                        $checkRobost();
+                    $resolved = $hasRobost && $checkRobost();
+                    if (!$resolved && $hasDv) {
+                        $checkDv();
                     }
                 }
             }
@@ -1941,18 +1942,19 @@ class VerificationController extends Controller
             };
 
             if (in_array($ipeClearanceMode, ['robosttech', 'api', 'dataverify', 'auto'], true)) {
-                $primary = 'dataverify';
+                // Robosttech is the first choice for IPE clearance
+                $primary = 'robosttech';
                 if ($ipeClearanceMode === 'robosttech') {
                     $primary = $hasRobost ? 'robosttech' : ($hasDv ? 'dataverify' : 'robosttech');
                 } elseif ($ipeClearanceMode === 'dataverify') {
                     $primary = $hasDv ? 'dataverify' : ($hasRobost ? 'robosttech' : 'dataverify');
                 } else { // auto or api
-                    if ($hasDv && !$hasRobost) {
-                        $primary = 'dataverify';
-                    } elseif ($hasRobost && !$hasDv) {
+                    if ($hasRobost) {
                         $primary = 'robosttech';
-                    } else {
+                    } elseif ($hasDv) {
                         $primary = 'dataverify';
+                    } else {
+                        $primary = 'robosttech';
                     }
                 }
 
@@ -2618,17 +2620,11 @@ class VerificationController extends Controller
             return $robostProvider ?: $dvProvider;
         }
 
-        // Auto / API mode: prioritize whichever provider actually has active credentials configured
-        if ($hasDv && !$hasRobost) {
-            return $dvProvider ?: $robostProvider;
-        }
-        if ($hasRobost && !$hasDv) {
+        // Auto / API mode: prioritize Robosttech as first choice
+        if ($hasRobost) {
             return $robostProvider ?: $dvProvider;
         }
-        if ($hasDv && $hasRobost) {
-            if ($robostProvider && $dvProvider && $robostProvider->priority < $dvProvider->priority) {
-                return $robostProvider;
-            }
+        if ($hasDv) {
             return $dvProvider ?: $robostProvider;
         }
 

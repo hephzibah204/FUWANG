@@ -423,10 +423,20 @@ class NINController extends Controller
             return $provider;
         }
 
-        if (in_array($mode, ['validation', 'validation_status', 'clearance', 'clearance_status', 'ipe', 'ipe_clearance'], true)) {
+        if (in_array($mode, ['phone', 'validation', 'validation_status', 'clearance', 'clearance_status', 'ipe', 'ipe_clearance'], true)) {
+            $svcCtrl = app(VerificationController::class);
+            $robost = CustomApi::whereIn('service_type', ['nin_verification', 'nin', 'nin_validation', 'validation', 'identity', 'clearance', 'ipe_clearance'])
+                ->where('status', true)
+                ->where('provider_identifier', 'robosttech')
+                ->first();
+
+            if ($robost && $svcCtrl->hasRobosttechCredentials($robost) && $this->providerSupportsMode($robost, $mode)) {
+                return $robost;
+            }
+
             $apiCenter = ApiCenter::first();
             $hasDv = !empty(env('DATAVERIFY_API_KEY')) || !empty($apiCenter?->dataverify_api_key) || !empty(\App\Models\SystemSetting::get('dataverify_api_key'));
-            $hasRobost = !empty(env('ROBOSTTECH_API_KEY')) || !empty($apiCenter?->robosttech_api_key) || !empty(\App\Models\SystemSetting::get('robosttech_api_key'));
+            $hasRobost = !empty(env('ROBOSTTECH_API_KEY')) || !empty($apiCenter?->robosttech_api_key) || !empty(\App\Models\SystemSetting::get('robosttech_api_key')) || !empty(\App\Models\SystemSetting::get('robost_api_key'));
 
             $providers = CustomApi::whereIn('service_type', ['nin_verification', 'nin', 'nin_validation', 'validation', 'identity', 'clearance', 'ipe_clearance'])
                 ->where('status', true)
@@ -437,8 +447,14 @@ class NINController extends Controller
             $matched = $providers->sortBy(function (CustomApi $p) use ($hasDv, $hasRobost) {
                 $isDv = strtolower((string) $p->provider_identifier) === 'dataverify';
                 $isRobost = strtolower((string) $p->provider_identifier) === 'robosttech';
-                $hasKey = ($isDv && $hasDv) || ($isRobost && $hasRobost) || !empty($p->api_key);
-                return $hasKey ? 0 : 1;
+                // Prioritize Robosttech first
+                if ($isRobost && $hasRobost) {
+                    return 0;
+                }
+                if ($isDv && $hasDv) {
+                    return 1;
+                }
+                return !empty($p->api_key) ? 2 : 3;
             })->first();
 
             return $matched ?? CustomApi::whereIn('service_type', ['nin_verification', 'nin', 'nin_validation', 'validation', 'identity', 'clearance', 'ipe_clearance'])
@@ -1022,8 +1038,8 @@ class NINController extends Controller
                 'provider_identifier' => 'robosttech',
                 'endpoint' => 'https://robosttech.com/api/nin_verify',
                 'status' => true,
-                'priority' => 20,
-                'supported_modes' => ['nin', 'phone', 'validation', 'validation_status', 'clearance'],
+                'priority' => 5,
+                'supported_modes' => ['nin', 'phone', 'demographic', 'validation', 'validation_status', 'clearance'],
             ],
             [
                 'name' => 'VerifyMe NG',
@@ -1057,6 +1073,22 @@ class NINController extends Controller
                             'supported_modes' => $data['supported_modes'] ?? ['nin', 'selfie', 'share_code', 'requery'],
                             'status' => true,
                         ]);
+                    }
+                } elseif ($data['provider_identifier'] === 'robosttech') {
+                    $existingModes = is_array($existing->supported_modes) ? $existing->supported_modes : [];
+                    $mergedModes = array_values(array_unique(array_merge($existingModes, ['nin', 'phone', 'demographic', 'validation', 'validation_status', 'clearance'])));
+                    $robostUpdates = [];
+                    if ((int) $existing->priority !== 5) {
+                        $robostUpdates['priority'] = 5;
+                    }
+                    if ($mergedModes !== $existingModes) {
+                        $robostUpdates['supported_modes'] = $mergedModes;
+                    }
+                    if (!$existing->status) {
+                        $robostUpdates['status'] = true;
+                    }
+                    if (!empty($robostUpdates)) {
+                        $existing->update($robostUpdates);
                     }
                 } elseif ($data['provider_identifier'] === 'dataverify') {
                     $normalized = DataVerifyClient::normalizeDomain((string) $existing->endpoint);

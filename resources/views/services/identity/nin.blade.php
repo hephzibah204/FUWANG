@@ -542,8 +542,8 @@
                 submitBtn.innerHTML = ninSubmitLabel(mode);
             }
             
-            // If validation mode, RobostTech is specifically selected by default
-            if (mode === 'validation' || mode === 'validation_status') {
+            // If validation or phone lookup mode, RobostTech is specifically selected by default
+            if (['validation', 'validation_status', 'phone'].includes(mode)) {
                 const robost = Array.from(providerSelect.options).find(opt => {
                     if (opt.value === '' || opt.style.display === 'none') return false;
                     return (opt.getAttribute('data-provider') || '').toLowerCase() === 'robosttech';

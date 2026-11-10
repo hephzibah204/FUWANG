@@ -235,6 +235,14 @@ class VerificationController extends Controller
             return null;
         }
 
+        // For phone search: Robosttech is the first choice
+        if ($mode === 'phone') {
+            $robost = $providers->first(fn (CustomApi $p) => strtolower((string)$p->provider_identifier) === 'robosttech');
+            if ($robost) {
+                return $robost;
+            }
+        }
+
         if ($mode === 'nin') {
             $vuvaa = $providers->first(fn (CustomApi $p) => VuvaaClient::isVuvaaProvider($p));
             if ($vuvaa) {
@@ -521,7 +529,7 @@ class VerificationController extends Controller
         $user = $request->user();
         $mode = $request->input('mode', 'submit');
         $category = trim((string) $request->input('category', 'Improcessing Error'));
-        $ipeClearanceMode = \App\Models\SystemSetting::get('ipe_clearance_mode', 'dataverify');
+        $ipeClearanceMode = \App\Models\SystemSetting::get('ipe_clearance_mode', 'robosttech');
 
         if ($mode === 'status') {
             $existing = VerificationResult::where(function ($query) use ($trackingId) {
@@ -587,8 +595,8 @@ class VerificationController extends Controller
                     $robostKey = $svcController->getRobosttechApiKey($robostProvider);
                     $hasRobost = !empty($robostKey);
 
-                    // If Robosttech is primary mode or preferred
-                    if ($ipeClearanceMode === 'robosttech' || ($hasRobost && empty($dvProvider?->api_key))) {
+                    // If Robosttech is primary mode or preferred (first choice in auto/api)
+                    if (in_array($ipeClearanceMode, ['robosttech', 'auto', 'api'], true) || ($hasRobost && empty($dvProvider?->api_key))) {
                         $apiCenter = ApiCenter::first();
                         $endpoint = $svcController->resolveRobostEndpoint(
                             (string) ($apiCenter?->robosttech_endpoint_clearance ?: $robostProvider?->endpoint ?: 'https://robosttech.com/api'),
@@ -799,41 +807,106 @@ class VerificationController extends Controller
                 $referenceId = 'VAL-' . strtoupper(bin2hex(random_bytes(4)));
 
                 if ($validationMode !== 'manual') {
+                    $svcController = app(\App\Http\Controllers\Service\VerificationController::class);
+                    $robostProvider = CustomApi::query()->whereIn('service_type', ['validation', 'nin_validation', 'nin_verification'])->where('status', true)->where(function ($q) {
+                        $q->where('provider_identifier', 'robosttech')->orWhere('endpoint', 'like', '%robosttech%');
+                    })->first();
+                    $robostKey = $svcController->getRobosttechApiKey($robostProvider);
+                    $hasRobost = !empty($robostKey);
+
+                    // Robosttech is the first choice for validation
+                    if ($hasRobost && $validationMode !== 'dataverify') {
+                        $apiCenter = ApiCenter::first();
+                        $endpoint = $svcController->resolveRobostEndpoint(
+                            (string) ($apiCenter?->robosttech_endpoint_validation ?: $robostProvider?->endpoint ?: 'https://robosttech.com/api'),
+                            'validation'
+                        );
+                        try {
+                            $res = Http::timeout(30)->withHeaders([
+                                'api-key' => $robostKey,
+                                'Accept' => 'application/json',
+                                'Content-Type' => 'application/json'
+                            ])->post($endpoint, ['nin' => $ninNumber]);
+
+                            $apiData = $res->json();
+                            if ($res->successful() || (is_array($apiData) && (stripos((string)($apiData['message'] ?? ''), 'already exist') !== false || ($apiData['exist'] ?? false)))) {
+                                $apiStatus = strtolower((string) ($apiData['status'] ?? $apiData['data']['status'] ?? 'waiting_for_review'));
+                                $isCompleted = in_array($apiStatus, ['validated', 'completed', 'valid'])
+                                    || !empty($apiData['nin_data'])
+                                    || (!empty($apiData['data']['firstname']) && !empty($apiData['data']['nin']));
+                                $initialStatus = $isCompleted ? 'successful' : 'waiting_for_review';
+
+                                $vr = VerificationResult::create([
+                                    'user_id' => $user->id,
+                                    'service_type' => 'nin_validation',
+                                    'identifier' => $ninNumber,
+                                    'provider_name' => 'Robosttech',
+                                    'status' => $initialStatus,
+                                    'reference_id' => $referenceId,
+                                    'admin_note' => $apiData['message'] ?? 'Validation submitted to Robosttech.',
+                                    'response_data' => [
+                                        'nin' => $ninNumber,
+                                        'validation_reason' => $reason,
+                                        'amount_paid' => (float) $price,
+                                        'api_response' => $apiData ?: [],
+                                    ],
+                                ]);
+
+                                return [
+                                    'status' => true,
+                                    'message' => 'Validation request submitted successfully.',
+                                    'result_id' => $vr->id,
+                                    'reference_id' => $referenceId,
+                                    'data' => [
+                                        'nin' => $ninNumber,
+                                        'status' => $initialStatus,
+                                        'validation_reason' => $reason,
+                                    ],
+                                ];
+                            }
+                        } catch (\Throwable $e) {
+                            Log::warning('Api/VerificationController: Robosttech validation error: ' . $e->getMessage());
+                        }
+                    }
+
+                    // Fallback to DataVerify
                     $dvProvider = CustomApi::query()->whereIn('service_type', ['validation', 'nin_validation', 'nin_verification'])->where('status', true)->where(function ($q) {
                         $q->where('provider_identifier', 'dataverify')->orWhere('endpoint', 'like', '%dataverify%');
                     })->first();
 
-                    $client = new DataVerifyClient($dvProvider);
-                    $subRes = $client->submitNinValidation($ninNumber, 'no_record_found');
-                    if ($subRes['ok'] ?? false) {
-                        $vr = VerificationResult::create([
-                            'user_id' => $user->id,
-                            'service_type' => 'nin_validation',
-                            'identifier' => $ninNumber,
-                            'provider_name' => 'DataVerify',
-                            'status' => 'waiting_for_review',
-                            'reference_id' => $referenceId,
-                            'admin_note' => $subRes['message'] ?: 'Validation submitted to provider.',
-                            'response_data' => [
-                                'nin' => $ninNumber,
-                                'validation_reason' => $reason,
-                                'transaction_id' => $subRes['transaction_id'] ?? null,
-                                'amount_paid' => (float) $price,
-                                'api_response' => $subRes['data'] ?? [],
-                            ],
-                        ]);
-
-                        return [
-                            'status' => true,
-                            'message' => 'Validation request submitted successfully.',
-                            'result_id' => $vr->id,
-                            'reference_id' => $referenceId,
-                            'data' => [
-                                'nin' => $ninNumber,
+                    if ($dvProvider) {
+                        $client = new DataVerifyClient($dvProvider);
+                        $subRes = $client->submitNinValidation($ninNumber, 'no_record_found');
+                        if ($subRes['ok'] ?? false) {
+                            $vr = VerificationResult::create([
+                                'user_id' => $user->id,
+                                'service_type' => 'nin_validation',
+                                'identifier' => $ninNumber,
+                                'provider_name' => 'DataVerify',
                                 'status' => 'waiting_for_review',
-                                'validation_reason' => $reason,
-                            ],
-                        ];
+                                'reference_id' => $referenceId,
+                                'admin_note' => $subRes['message'] ?: 'Validation submitted to provider.',
+                                'response_data' => [
+                                    'nin' => $ninNumber,
+                                    'validation_reason' => $reason,
+                                    'transaction_id' => $subRes['transaction_id'] ?? null,
+                                    'amount_paid' => (float) $price,
+                                    'api_response' => $subRes['data'] ?? [],
+                                ],
+                            ]);
+
+                            return [
+                                'status' => true,
+                                'message' => 'Validation request submitted successfully.',
+                                'result_id' => $vr->id,
+                                'reference_id' => $referenceId,
+                                'data' => [
+                                    'nin' => $ninNumber,
+                                    'status' => 'waiting_for_review',
+                                    'validation_reason' => $reason,
+                                ],
+                            ];
+                        }
                     }
                 }
 

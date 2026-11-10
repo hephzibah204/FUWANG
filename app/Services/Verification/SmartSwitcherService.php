@@ -119,15 +119,21 @@ class SmartSwitcherService
             $isRobost = strtolower((string) $p->provider_identifier) === 'robosttech';
             $isDv = strtolower((string) $p->provider_identifier) === 'dataverify' || str_contains(strtolower((string) $p->endpoint), 'dataverify');
             $modeBonus = 0;
-            if (in_array($mode, ['validation', 'validation_status', 'clearance', 'clearance_status', 'ipe', 'ipe_clearance'], true)) {
+            if (in_array($mode, ['phone', 'validation', 'validation_status', 'clearance', 'clearance_status', 'ipe', 'ipe_clearance'], true)) {
                 $apiCenter = ApiCenter::first();
                 $hasKey = false;
                 if ($isDv) {
                     $hasKey = !empty($p->api_key) || !empty($apiCenter?->dataverify_api_key) || !empty(env('DATAVERIFY_API_KEY')) || !empty(\App\Models\SystemSetting::get('dataverify_api_key'));
                 } elseif ($isRobost) {
-                    $hasKey = !empty($p->api_key) || !empty($apiCenter?->robosttech_api_key) || !empty(env('ROBOSTTECH_API_KEY')) || !empty(\App\Models\SystemSetting::get('robosttech_api_key'));
+                    $hasKey = !empty($p->api_key) || !empty($apiCenter?->robosttech_api_key) || !empty(env('ROBOSTTECH_API_KEY')) || !empty(\App\Models\SystemSetting::get('robosttech_api_key')) || !empty(\App\Models\SystemSetting::get('robost_api_key'));
                 }
-                $modeBonus = $hasKey ? -5000 : 5000;
+                if ($isRobost && $hasKey) {
+                    $modeBonus = -10000;
+                } elseif ($hasKey) {
+                    $modeBonus = -5000;
+                } else {
+                    $modeBonus = 5000;
+                }
             }
 
             $failCount = (int) Cache::get('provider.fail.count.' . $p->id, 0);
