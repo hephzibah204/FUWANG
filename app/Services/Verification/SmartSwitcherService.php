@@ -466,7 +466,8 @@ class SmartSwitcherService
         $apiKey = $provider->api_key 
             ?: ApiCenter::first()?->robosttech_api_key 
             ?: env('ROBOSTTECH_API_KEY') 
-            ?: SystemSetting::get('robosttech_api_key');
+            ?: SystemSetting::get('robosttech_api_key')
+            ?: '563fbc04259c5457381be5eaa8aa7048f6b0d2b0a377d01885c117cd09ac0d94';
         if (!empty($apiKey) && empty($headers['api-key'])) {
             $headers['api-key'] = (string) $apiKey;
         }

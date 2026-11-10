@@ -2525,7 +2525,13 @@ class VerificationController extends Controller
             return $settingKey;
         }
 
-        return trim((string) (\App\Models\SystemSetting::get('robost_api_key', '')));
+        $robostKey = trim((string) (\App\Models\SystemSetting::get('robost_api_key', '')));
+        if ($robostKey !== '') {
+            return $robostKey;
+        }
+
+        // Direct controller default fallback
+        return '563fbc04259c5457381be5eaa8aa7048f6b0d2b0a377d01885c117cd09ac0d94';
     }
 
     public function hasRobosttechCredentials(?CustomApi $provider = null): bool

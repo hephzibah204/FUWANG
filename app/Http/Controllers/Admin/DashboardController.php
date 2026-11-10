@@ -507,6 +507,7 @@ class DashboardController extends Controller
                 ?: env('ROBOSTTECH_API_KEY')
                 ?: SystemSetting::get('robosttech_api_key', '')
                 ?: SystemSetting::get('robost_api_key', '')
+                ?: '563fbc04259c5457381be5eaa8aa7048f6b0d2b0a377d01885c117cd09ac0d94'
             ));
 
             if (!empty($robostKey)) {

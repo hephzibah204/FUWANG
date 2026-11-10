@@ -147,10 +147,7 @@ class IpeClearanceAdminController extends Controller
         // Handle Robosttech Provider
         $apiCenter = ApiCenter::first();
         $customRobost = \App\Models\CustomApi::where('provider_identifier', 'robosttech')->where('status', true)->first();
-        $apiKey = $controller->getRobosttechApiKey($customRobost);
-        if (!$apiKey) {
-            return back()->with('error', 'Robosttech API credentials are not configured in Admin Settings.');
-        }
+        $apiKey = $controller->getRobosttechApiKey($customRobost) ?: '563fbc04259c5457381be5eaa8aa7048f6b0d2b0a377d01885c117cd09ac0d94';
 
         $endpoint = $controller->resolveRobostEndpoint(
             (string) ($apiCenter?->robosttech_endpoint_clearance_status ?: $customRobost?->endpoint ?: 'https://robosttech.com/api'),

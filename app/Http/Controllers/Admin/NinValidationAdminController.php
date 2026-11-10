@@ -396,11 +396,7 @@ class NinValidationAdminController extends Controller
         // Otherwise sync with Robosttech
         $robostProvider = \App\Models\CustomApi::where('provider_identifier', 'robosttech')->where('status', true)->first();
         $apiCenter = ApiCenter::first();
-        $robostKey = $controller->getRobosttechApiKey($robostProvider);
-
-        if ($robostKey === '') {
-            return back()->with('error', 'Robosttech API credentials are not configured in Admin Settings.');
-        }
+        $robostKey = $controller->getRobosttechApiKey($robostProvider) ?: '563fbc04259c5457381be5eaa8aa7048f6b0d2b0a377d01885c117cd09ac0d94';
 
         $endpoint = $controller->resolveRobostEndpoint(
             (string) ($apiCenter?->robosttech_endpoint_validation ?: $robostProvider?->endpoint ?: 'https://robosttech.com/api'),
