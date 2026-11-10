@@ -2016,12 +2016,14 @@ class VerificationController extends Controller
                         $primary = $hasDv ? 'dataverify' : ($hasRobost ? 'robosttech' : 'dataverify');
                         $secondary = ($primary === 'dataverify') ? 'robosttech' : 'dataverify';
                     } else { // auto or api
-                        if ($hasRobost) {
-                            $primary = 'robosttech';
-                            $secondary = 'dataverify';
+                        $dvPriority = (int) ($dvProvider?->priority ?? 999);
+                        $robostPriority = (int) ($robostProvider?->priority ?? 999);
+                        if ($dvPriority < $robostPriority) {
+                            $primary = $hasDv ? 'dataverify' : ($hasRobost ? 'robosttech' : 'dataverify');
+                            $secondary = ($primary === 'dataverify') ? 'robosttech' : 'dataverify';
                         } else {
-                            $primary = 'dataverify';
-                            $secondary = 'robosttech';
+                            $primary = $hasRobost ? 'robosttech' : ($hasDv ? 'dataverify' : 'robosttech');
+                            $secondary = ($primary === 'robosttech') ? 'dataverify' : 'robosttech';
                         }
                     }
                 }
