@@ -9,6 +9,7 @@ use App\Services\VerificationResultService;
 use App\Services\WalletService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class PollBvnRetrievalCommand extends Command
 {
@@ -31,6 +32,11 @@ class PollBvnRetrievalCommand extends Command
      */
     public function handle(WalletService $wallet, VerificationResultService $vaultService): int
     {
+        if (!Schema::hasTable('bvn_retrieval_requests')) {
+            $this->warn('bvn_retrieval_requests table does not exist. Skipping poll.');
+            return Command::SUCCESS;
+        }
+
         $limit = (int) $this->option('limit');
         $pending = BvnRetrievalRequest::query()
             ->where('status', 'pending')

@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Artisan;
 
 class BVNController extends Controller
 {
@@ -38,10 +40,25 @@ class BVNController extends Controller
             ->latest()
             ->get();
 
-        // 4. Load BVN Retrieval Requests
-        $retrievalRequests = BvnRetrievalRequest::where('user_id', Auth::id())
-            ->latest()
-            ->get();
+        // 4. Load BVN Retrieval Requests safely
+        $retrievalRequests = collect();
+        try {
+            if (!Schema::hasTable('bvn_retrieval_requests')) {
+                Artisan::call('migrate', [
+                    '--path' => 'database/migrations/2026_09_29_100000_create_bvn_retrieval_requests_table.php',
+                    '--force' => true,
+                ]);
+            }
+
+            if (Schema::hasTable('bvn_retrieval_requests')) {
+                $retrievalRequests = BvnRetrievalRequest::where('user_id', Auth::id())
+                    ->latest()
+                    ->get();
+            }
+        } catch (\Throwable $e) {
+            Log::warning('BVN retrieval requests table check/migration fallback: ' . $e->getMessage());
+            $retrievalRequests = collect();
+        }
 
         // 5. Load Pricing Setup
         $legacyPrice = VerificationPrice::first();
@@ -542,6 +559,24 @@ class BVNController extends Controller
         $orderType = 'BVN Retrieval Request';
         $txReference = 'BVNRET';
 
+        if (!Schema::hasTable('bvn_retrieval_requests')) {
+            try {
+                Artisan::call('migrate', [
+                    '--path' => 'database/migrations/2026_09_29_100000_create_bvn_retrieval_requests_table.php',
+                    '--force' => true,
+                ]);
+            } catch (\Throwable $e) {
+                Log::error('Auto-migration for bvn_retrieval_requests failed: ' . $e->getMessage());
+            }
+
+            if (!Schema::hasTable('bvn_retrieval_requests')) {
+                $errMsg = 'BVN retrieval service is temporarily unavailable. Please try again shortly.';
+                return $expectsJson
+                    ? response()->json(['status' => false, 'message' => $errMsg])
+                    : back()->withErrors(['bvn_retrieval' => $errMsg])->withInput();
+            }
+        }
+
         $paid = app(PaidActionService::class)->run(
             $user,
             $price,
@@ -620,6 +655,13 @@ class BVNController extends Controller
     {
         $expectsJson = $request->expectsJson() || $request->ajax() || $request->wantsJson();
         $user = Auth::user();
+
+        if (!Schema::hasTable('bvn_retrieval_requests')) {
+            $errMsg = 'BVN retrieval records are temporarily unavailable.';
+            return $expectsJson
+                ? response()->json(['status' => false, 'message' => $errMsg])
+                : back()->with('error', $errMsg);
+        }
 
         $retrieval = BvnRetrievalRequest::where('user_id', $user->id)->findOrFail($id);
 
