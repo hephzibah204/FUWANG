@@ -103,10 +103,11 @@ class SmartSwitcherService
             'identity',
             'clearance',
             'ipe_clearance',
+            'personalization',
         ])
         ->where('status', true);
 
-        if (in_array($mode, ['validation', 'validation_status', 'clearance', 'clearance_status', 'ipe', 'ipe_clearance'], true)) {
+        if (in_array($mode, ['validation', 'validation_status', 'clearance', 'clearance_status', 'ipe', 'ipe_clearance', 'personalization', 'personalization_status'], true)) {
             $query->whereIn('provider_identifier', ['robosttech', 'dataverify']);
         }
 
@@ -395,6 +396,13 @@ class SmartSwitcherService
                 $trackingId = (string) ($request->input('tracking_id') ?: $request->input('number') ?: $number);
                 $txId = (string) ($request->input('transaction_id') ?: $request->input('reference_id') ?: '');
                 $res = $client->checkIpeClearanceStatus($trackingId, $txId ?: null);
+            } elseif (in_array($mode, ['personalization'], true)) {
+                $trackingId = (string) ($request->input('tracking_id') ?: $request->input('number') ?: $number);
+                $res = $client->submitPersonalization($trackingId);
+            } elseif (in_array($mode, ['personalization_status'], true)) {
+                $trackingId = (string) ($request->input('tracking_id') ?: $request->input('number') ?: $number);
+                $txId = (string) ($request->input('transaction_id') ?: $request->input('reference_id') ?: '');
+                $res = $client->checkPersonalizationStatus($trackingId, $txId ?: null);
             } else {
                 return ['status' => false, 'message' => "Mode [{$mode}] not supported by DataVerify."];
             }
@@ -681,8 +689,12 @@ class SmartSwitcherService
 
         $ident = strtolower((string) ($provider->provider_identifier ?: ''));
 
-        if ($ident === 'robosttech' || $ident === 'dataverify') {
-            return in_array($mode, ['nin', 'phone', 'demographic', 'tracking', 'validation', 'validation_status', 'clearance', 'clearance_status', 'ipe', 'ipe_clearance'], true);
+        if ($ident === 'robosttech') {
+            return in_array($mode, ['nin', 'phone', 'demographic', 'tracking', 'validation', 'validation_status', 'clearance', 'clearance_status', 'ipe', 'ipe_clearance', 'personalization', 'personalization_status'], true);
+        }
+
+        if ($ident === 'dataverify') {
+            return in_array($mode, ['nin', 'phone', 'demographic', 'tracking', 'validation', 'validation_status', 'clearance', 'clearance_status', 'ipe', 'ipe_clearance', 'personalization', 'personalization_status'], true);
         }
 
         $modes = is_array($provider->supported_modes) ? $provider->supported_modes : [];

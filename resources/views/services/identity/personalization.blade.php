@@ -32,7 +32,7 @@
                     <form id="personalizationForm" action="{{ route('services.personalization.verify') }}" method="POST">
                         @csrf
                         <div class="row">
-                            <div class="col-md-8 mb-4">
+                            <div class="col-md-6 mb-4">
                                 <label for="tracking_id" class="font-weight-600 mb-2 small text-muted">NIMC Tracking ID</label>
                                 <div class="input-wrap">
                                     <i class="fa-solid fa-hashtag"></i>
@@ -42,7 +42,21 @@
                                     <i class="fa-solid fa-circle-info mr-1 text-primary"></i> Submitting a tracking ID initiates identity profile personalization on NIMC records.
                                 </small>
                             </div>
-                            <div class="col-md-4 text-right mt-2 d-flex align-items-end justify-content-end">
+                            <div class="col-md-6 mb-4">
+                                <label for="network_band" class="font-weight-600 mb-2 small text-muted">Network Routing Band</label>
+                                <div class="input-wrap">
+                                    <i class="fa-solid fa-server"></i>
+                                    <select id="network_band" name="network_band" class="form-control">
+                                        <option value="auto" selected>✨ SmartSwitch & Auto Failover (Recommended)</option>
+                                        <option value="band_1">Band 1 (Primary Gateway)</option>
+                                        <option value="band_2">Band 2 (Alternative Gateway)</option>
+                                    </select>
+                                </div>
+                                <small class="text-muted mt-2 d-block">
+                                    <i class="fa-solid fa-bolt mr-1 text-warning"></i> Choose Band 1, Band 2, or SmartSwitch for automated failover.
+                                </small>
+                            </div>
+                            <div class="col-12 text-right mt-2 d-flex align-items-end justify-content-end">
                                 <button type="submit" class="btn btn-primary btn-lg px-5 w-100" id="submit-btn" style="height: 50px;">
                                     <i class="fa-solid fa-bolt mr-2"></i> Set Up Profile
                                 </button>
@@ -71,6 +85,7 @@
                                 <tr>
                                     <th>Reference</th>
                                     <th>Tracking ID</th>
+                                    <th>Band</th>
                                     <th>Status</th>
                                     <th>Date</th>
                                     <th class="text-right">Action</th>
@@ -81,10 +96,12 @@
                                     @php
                                         $isSucc = in_array(strtolower((string)$res->status), ['successful', 'success', 'cleared', 'active', 'completed']);
                                         $isPend = in_array(strtolower((string)$res->status), ['pending', 'waiting_for_review', 'processing']);
+                                        $bandLabel = $res->response_data['network_band'] ?? (str_contains(strtolower($res->provider_name ?? ''), 'dataverify') ? 'Band 2' : 'Band 1');
                                     @endphp
                                     <tr>
                                         <td><code class="text-primary">{{ $res->reference_id }}</code></td>
                                         <td><strong>{{ $res->identifier }}</strong></td>
+                                        <td><span class="badge badge-secondary px-2 py-1"><i class="fa-solid fa-server mr-1"></i> {{ $bandLabel }}</span></td>
                                         <td>
                                             @if($isSucc)
                                                 <span class="badge badge-success px-2 py-1"><i class="fa-solid fa-circle-check mr-1"></i> Completed</span>

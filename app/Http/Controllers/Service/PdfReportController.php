@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\VerificationResult;
 use App\Models\ApiCenter;
 use App\Models\ApiToken;
+use App\Models\CustomApi;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -698,25 +699,72 @@ class PdfReportController extends Controller
             return $result;
         }
 
-        $apiCenter = ApiCenter::first();
-        if (!$apiCenter || empty($apiCenter->robosttech_api_key)) {
-            return $result;
-        }
-
         $trackingId = trim((string) ($result->identifier ?: ($responseData['tracking_id'] ?? '')));
         if ($trackingId === '') {
             return $result;
         }
 
+        $rawProvider = strtolower((string) ($result->getRawOriginal('provider_name') ?? $result->provider_name ?? ''));
+        $isDv = str_contains($rawProvider, 'dataverify') || strtolower((string)($responseData['network_band'] ?? '')) === 'band 2';
+
+        if ($isDv) {
+            try {
+                $dvProvider = CustomApi::where('provider_identifier', 'dataverify')->where('status', true)->first();
+                $dvClient = new \App\Services\DataVerify\DataVerifyClient($dvProvider);
+                $txId = $responseData['transaction_id'] ?? null;
+                $dvRes = $dvClient->checkPersonalizationStatus($trackingId, $txId);
+
+                if ($dvRes['ok'] ?? false) {
+                    $apiData = $dvRes['data'] ?? [];
+                    $mergedData = array_merge($responseData, is_array($apiData) ? $apiData : []);
+                    if (!empty($dvRes['nin'])) {
+                        $mergedData['nin'] = $dvRes['nin'];
+                    }
+                    if (!empty($dvRes['user_data'])) {
+                        $mergedData['user_data'] = $dvRes['user_data'];
+                        foreach (['firstname', 'first_name', 'lastname', 'last_name', 'middlename', 'middle_name', 'dob', 'birthdate', 'gender', 'sex', 'photo', 'image', 'photo_base64', 'photoBase64', 'nin', 'phone', 'telephoneno'] as $f) {
+                            if (isset($dvRes['user_data'][$f]) && (!isset($mergedData[$f]) || $mergedData[$f] === '')) {
+                                $mergedData[$f] = $dvRes['user_data'][$f];
+                            }
+                        }
+                    }
+                    if (!empty($dvRes['pdf_base64'])) {
+                        $mergedData['pdf_base64'] = $dvRes['pdf_base64'];
+                    }
+
+                    if ($dvRes['status'] === 'successful') {
+                        $result->status = 'successful';
+                        $result->admin_note = $dvRes['message'] ?: 'Personalization completed via DataVerify (Band 2).';
+                    } elseif ($dvRes['status'] === 'failed') {
+                        $result->status = 'failed';
+                        $result->admin_note = $dvRes['message'] ?: 'Personalization rejected on DataVerify.';
+                    }
+                    $result->response_data = $mergedData;
+                    $result->save();
+                    return $result;
+                }
+            } catch (\Throwable $e) {
+                Log::warning('DataVerify personalization report sync error: ' . $e->getMessage());
+            }
+        }
+
+        $apiCenter = ApiCenter::first();
+        $robostProvider = CustomApi::where('provider_identifier', 'robosttech')->where('status', true)->first();
         $verificationCtrl = app(VerificationController::class);
+        $apiKey = $verificationCtrl->getRobosttechApiKey($robostProvider);
+        if (empty($apiKey)) {
+            return $result;
+        }
+
         $endpoint = $verificationCtrl->resolveRobostEndpoint(
-            (string) ($apiCenter->robosttech_endpoint_personalization ?: 'https://robosttech.com/api'),
+            (string) ($apiCenter?->robosttech_endpoint_personalization ?: $robostProvider?->endpoint ?: 'https://robosttech.com/api'),
             'personalization_status'
         );
 
         try {
             $response = Http::timeout(25)->withHeaders([
-                'api-key' => $apiCenter->robosttech_api_key,
+                'api-key' => $apiKey,
+                'Accept' => 'application/json',
                 'Content-Type' => 'application/json',
             ])->post($endpoint, [
                 'tracking_id' => $trackingId,

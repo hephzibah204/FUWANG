@@ -477,8 +477,11 @@ class NINController extends Controller
         }
 
         $ident = strtolower((string) ($provider->provider_identifier ?: ''));
-        if ($ident === 'robosttech' || $ident === 'dataverify') {
-            return in_array($mode, ['nin', 'phone', 'demographic', 'tracking', 'vnin', 'validation', 'validation_status', 'clearance', 'clearance_status', 'ipe', 'ipe_clearance'], true);
+        if ($ident === 'robosttech') {
+            return in_array($mode, ['nin', 'phone', 'demographic', 'tracking', 'vnin', 'validation', 'validation_status', 'clearance', 'clearance_status', 'ipe', 'ipe_clearance', 'personalization', 'personalization_status'], true);
+        }
+        if ($ident === 'dataverify') {
+            return in_array($mode, ['nin', 'phone', 'demographic', 'tracking', 'vnin', 'validation', 'validation_status', 'clearance', 'clearance_status', 'ipe', 'ipe_clearance', 'personalization', 'personalization_status'], true);
         }
 
         $modes = is_array($provider->supported_modes) ? $provider->supported_modes : [];

@@ -507,6 +507,213 @@ class DataVerifyClient
     }
 
     /**
+     * Submit a Personalization request to DataVerify
+     *
+     * @param string $trackingId Alphanumeric NIMC tracking ID (max 20 characters)
+     * @return array{ok: bool, tracking_id: string, transaction_id: ?string, price: ?float, message: string, data: array, status: string}
+     */
+    public function submitPersonalization(string $trackingId): array
+    {
+        $url = $this->resolvePersonalizationEndpoint();
+        $apiKey = $this->apiKey();
+        if ($apiKey === '') {
+            return [
+                'ok' => false,
+                'status' => 'failed',
+                'tracking_id' => $trackingId,
+                'transaction_id' => null,
+                'price' => null,
+                'message' => 'DataVerify API key is missing.',
+                'data' => [],
+            ];
+        }
+
+        $headers = is_array($this->provider?->headers) ? $this->provider->headers : [];
+        $headers['Authorization'] = 'Bearer ' . $apiKey;
+        $headers['X-API-Key'] = $apiKey;
+        $headers['api-key'] = $apiKey;
+        $headers['Accept'] = 'application/json';
+        $headers['Content-Type'] = $headers['Content-Type'] ?? 'application/json';
+
+        $payload = [
+            'api_key' => $apiKey,
+            'tracking_id' => trim($trackingId),
+        ];
+
+        try {
+            $res = Http::timeout((int) ($this->provider?->timeout_seconds ?: 60))
+                ->acceptJson()
+                ->asJson()
+                ->withHeaders($headers)
+                ->post($url, $payload);
+        } catch (\Throwable $e) {
+            return [
+                'ok' => false,
+                'status' => 'failed',
+                'tracking_id' => $trackingId,
+                'transaction_id' => null,
+                'price' => null,
+                'message' => 'Connection to DataVerify failed: ' . $e->getMessage(),
+                'data' => [],
+            ];
+        }
+
+        $json = $res->json();
+        if (!$res->successful() || !is_array($json)) {
+            $msg = is_array($json) ? ($json['message'] ?? $json['detail'] ?? 'DataVerify personalization submission failed.') : ('HTTP ' . $res->status());
+            return [
+                'ok' => false,
+                'status' => 'failed',
+                'tracking_id' => $trackingId,
+                'transaction_id' => null,
+                'price' => null,
+                'message' => (string) $msg,
+                'data' => is_array($json) ? $json : [],
+            ];
+        }
+
+        $isAccepted = ($json['accepted'] ?? false) === true
+            || ($json['status'] ?? false) === true
+            || strtolower((string) ($json['status'] ?? '')) === 'success'
+            || strtolower((string) ($json['request_status'] ?? '')) === 'pending';
+
+        if (!$isAccepted) {
+            $msg = (string) ($json['message'] ?? $json['detail'] ?? 'DataVerify personalization request rejected.');
+            return [
+                'ok' => false,
+                'status' => 'failed',
+                'tracking_id' => $trackingId,
+                'transaction_id' => null,
+                'price' => null,
+                'message' => $msg,
+                'data' => $json,
+            ];
+        }
+
+        $txId = (string) ($json['transaction_id'] ?? $json['data']['transaction_id'] ?? '');
+
+        return [
+            'ok' => true,
+            'status' => 'pending',
+            'tracking_id' => $trackingId,
+            'transaction_id' => $txId ?: null,
+            'price' => isset($json['price']) ? (float) $json['price'] : null,
+            'category' => (string) ($json['category'] ?? 'to_get_slip'),
+            'message' => (string) ($json['message'] ?? 'Personalization request submitted successfully to DataVerify.'),
+            'data' => $json,
+        ];
+    }
+
+    /**
+     * Poll / check status of a Personalization request on DataVerify
+     *
+     * @param string $trackingId Alphanumeric NIMC tracking ID
+     * @param string|null $transactionId Optional transaction ID from submission
+     * @return array{ok: bool, status: string, tracking_id: string, transaction_id: ?string, nin: ?string, user_data: ?array, pdf_base64: ?string, message: string, data: array}
+     */
+    public function checkPersonalizationStatus(string $trackingId, ?string $transactionId = null): array
+    {
+        $url = $this->resolvePersonalizationStatusEndpoint();
+        $apiKey = $this->apiKey();
+        if ($apiKey === '') {
+            return [
+                'ok' => false,
+                'status' => 'failed',
+                'tracking_id' => $trackingId,
+                'transaction_id' => $transactionId,
+                'nin' => null,
+                'user_data' => null,
+                'pdf_base64' => null,
+                'message' => 'DataVerify API key is missing.',
+                'data' => [],
+            ];
+        }
+
+        $headers = is_array($this->provider?->headers) ? $this->provider->headers : [];
+        $headers['Authorization'] = 'Bearer ' . $apiKey;
+        $headers['X-API-Key'] = $apiKey;
+        $headers['api-key'] = $apiKey;
+        $headers['Accept'] = 'application/json';
+        $headers['Content-Type'] = $headers['Content-Type'] ?? 'application/json';
+
+        $payload = [
+            'api_key' => $apiKey,
+            'tracking_id' => trim($trackingId),
+        ];
+        if (!empty($transactionId)) {
+            $payload['transaction_id'] = trim($transactionId);
+        }
+
+        try {
+            $res = Http::timeout((int) ($this->provider?->timeout_seconds ?: 60))
+                ->acceptJson()
+                ->asJson()
+                ->withHeaders($headers)
+                ->post($url, $payload);
+        } catch (\Throwable $e) {
+            return [
+                'ok' => false,
+                'status' => 'failed',
+                'tracking_id' => $trackingId,
+                'transaction_id' => $transactionId,
+                'nin' => null,
+                'user_data' => null,
+                'pdf_base64' => null,
+                'message' => 'Connection to DataVerify failed: ' . $e->getMessage(),
+                'data' => [],
+            ];
+        }
+
+        $json = $res->json();
+        if (!$res->successful() || !is_array($json)) {
+            $msg = is_array($json) ? ($json['message'] ?? $json['detail'] ?? 'DataVerify status check failed.') : ('HTTP ' . $res->status());
+            return [
+                'ok' => false,
+                'status' => 'failed',
+                'tracking_id' => $trackingId,
+                'transaction_id' => $transactionId,
+                'nin' => null,
+                'user_data' => null,
+                'pdf_base64' => null,
+                'message' => (string) $msg,
+                'data' => is_array($json) ? $json : [],
+            ];
+        }
+
+        $rawReqStatus = strtolower(trim((string) (
+            $json['request_status']
+            ?? $json['data']['request_status']
+            ?? $json['status']
+            ?? $json['data']['status']
+            ?? 'pending'
+        )));
+
+        $hasNin = !empty($json['nin']) || !empty($json['data']['nin']) || !empty($json['user_data']['nin']);
+        $hasPdf = !empty($json['pdf_base64']) || !empty($json['data']['pdf_base64']) || !empty($json['user_data']['pdf_base64']);
+
+        $isCompleted = in_array($rawReqStatus, ['completed', 'complete', 'successful', 'success', 'done', 'approved'], true) || ($hasNin && $hasPdf);
+        $isFailed = in_array($rawReqStatus, ['failed', 'fail', 'rejected', 'error', 'record_not_found', 'not_found'], true);
+
+        $status = $isCompleted ? 'successful' : ($isFailed ? 'failed' : 'pending');
+
+        $resolvedNin = $json['nin'] ?? $json['data']['nin'] ?? ($json['user_data']['nin'] ?? null);
+        $userData = $json['user_data'] ?? $json['data']['user_data'] ?? ($json['data'] ?? null);
+        $pdfBase64 = $json['pdf_base64'] ?? $json['data']['pdf_base64'] ?? ($json['user_data']['pdf_base64'] ?? null);
+
+        return [
+            'ok' => true,
+            'status' => $status,
+            'tracking_id' => $trackingId,
+            'transaction_id' => (string) ($json['transaction_id'] ?? $transactionId),
+            'nin' => $resolvedNin ? (string) $resolvedNin : null,
+            'user_data' => is_array($userData) ? $userData : null,
+            'pdf_base64' => is_string($pdfBase64) ? $pdfBase64 : null,
+            'message' => (string) ($json['message'] ?? ($isCompleted ? 'Personalization completed.' : 'Personalization in progress.')),
+            'data' => $json,
+        ];
+    }
+
+    /**
      * Submit an IPE Clearance request to DataVerify
      *
      * @param string $trackingId Alphanumeric NIMC tracking ID (max 20 characters)
@@ -996,6 +1203,36 @@ class DataVerifyClient
         }
 
         return 'https://dataverify.org/api/developers/validation_status.php';
+    }
+
+    public function resolvePersonalizationEndpoint(): string
+    {
+        $configured = trim((string) (
+            \App\Models\SystemSetting::get('dataverify_endpoint_personalization')
+            ?? ApiCenter::query()->first()?->getAttribute('dataverify_endpoint_personalization')
+            ?? ''
+        ));
+
+        if ($configured !== '') {
+            return self::normalizeDomain($configured);
+        }
+
+        return 'https://dataverify.org/api/developers/personalization.php';
+    }
+
+    public function resolvePersonalizationStatusEndpoint(): string
+    {
+        $configured = trim((string) (
+            \App\Models\SystemSetting::get('dataverify_endpoint_personalization_status')
+            ?? ApiCenter::query()->first()?->getAttribute('dataverify_endpoint_personalization_status')
+            ?? ''
+        ));
+
+        if ($configured !== '') {
+            return self::normalizeDomain($configured);
+        }
+
+        return 'https://dataverify.org/api/developers/personalization_status.php';
     }
 
     /**
