@@ -66,7 +66,9 @@
                                         @foreach($customPrices[$type] as $provider)
                                             @php
                                                 $providerTypes = $provider->verificationTypes ?? collect();
-                                                $bandLabel = 'Band ' . $loop->iteration;
+                                                $bandLabel = \App\Support\NetworkBandResolver::isPaymentGateway($provider)
+                                                    ? \App\Support\NetworkBandResolver::getPaymentGatewayLabel($provider)
+                                                    : ('Band ' . $loop->iteration);
                                             @endphp
                                             @if($providerTypes->count() > 0)
                                                 @foreach($providerTypes as $t)
@@ -172,6 +174,9 @@
                     @foreach($customPrices[$type] as $provider)
                         @php
                             $providerTypes = $provider->verificationTypes ?? collect();
+                            $jsonBand = \App\Support\NetworkBandResolver::isPaymentGateway($provider)
+                                ? \App\Support\NetworkBandResolver::getPaymentGatewayLabel($provider)
+                                : ('Band ' . $loop->iteration);
                         @endphp
                         @if($providerTypes->count() > 0)
                             @foreach($providerTypes as $t)
@@ -179,7 +184,7 @@
                                 {
                                     "@type": "Product",
                                     "name": "{{ $serviceNames[$type] ?? strtoupper(str_replace('_', ' ', $type)) }} - {{ $t->label }}",
-                                    "description": "{{ $serviceNames[$type] ?? strtoupper(str_replace('_', ' ', $type)) }} via Band {{ $loop->parent->iteration }} ({{ $t->label }})",
+                                    "description": "{{ $serviceNames[$type] ?? strtoupper(str_replace('_', ' ', $type)) }} via {{ $jsonBand }} ({{ $t->label }})",
                                     "brand": {
                                         "@type": "Brand",
                                         "name": "Fuwa.NG"
@@ -197,7 +202,7 @@
                             {
                                 "@type": "Product",
                                 "name": "{{ $serviceNames[$type] ?? strtoupper(str_replace('_', ' ', $type)) }}",
-                                "description": "{{ $serviceNames[$type] ?? strtoupper(str_replace('_', ' ', $type)) }} via Band {{ $loop->iteration }}",
+                                "description": "{{ $serviceNames[$type] ?? strtoupper(str_replace('_', ' ', $type)) }} via {{ $jsonBand }}",
                                 "brand": {
                                     "@type": "Brand",
                                     "name": "Fuwa.NG"

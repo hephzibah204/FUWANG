@@ -19,7 +19,7 @@
                     <div class="section-icon verification"><i class="fa-solid fa-credit-card"></i></div>
                     <div>
                         <div class="h5 mb-0 text-white">Card Funding</div>
-                        <div class="small text-white-50">Instant Card / USSD / Bank Transfer Checkout</div>
+                        <div class="small text-white-50">Paystack, Flutterwave (and active gateways)</div>
                     </div>
                 </div>
 
@@ -44,7 +44,7 @@
                     <div class="section-icon lifestyle"><i class="fa-solid fa-building-columns"></i></div>
                     <div>
                         <div class="h5 mb-0 text-white">Bank Transfer (Auto Funding)</div>
-                        <div class="small text-white-50">Dedicated Virtual Accounts (Band 1)</div>
+                        <div class="small text-white-50">PayVessel / Monnify / PaymentPoint (if configured)</div>
                     </div>
                 </div>
 
@@ -54,7 +54,7 @@
                 @if (! $hasTier2Identity)
                     <div class="alert mb-3 py-2 px-3 small" role="note" style="background: rgba(234, 179, 8, 0.08); border: 1px solid rgba(234, 179, 8, 0.28); color: #fde68a;">
                         <i class="fa-solid fa-id-card mr-1"></i>
-                        <strong>Banking partners</strong> require a <strong>successful account KYC BVN or NIN verification</strong> before dedicated bank numbers can be issued. Complete Tier 2 verification first, then use <strong>Load Accounts</strong>.
+                        <strong>Monnify and Flutterwave</strong> require a <strong>successful account KYC BVN or NIN verification</strong> before dedicated bank numbers can be issued. Complete Tier 2 verification first, then use <strong>Load Accounts</strong>.
                         @if (\Illuminate\Support\Facades\Route::has('account.kyc.nin') || \Illuminate\Support\Facades\Route::has('account.kyc.bvn'))
                             <span class="d-block mt-2">
                                 @if (\Illuminate\Support\Facades\Route::has('account.kyc.nin'))

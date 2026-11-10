@@ -91,4 +91,32 @@ class UserDashboardProviderMaskingTest extends TestCase
         $res4 = new VerificationResult(['provider_name' => 'VerifyMe ID Gateway']);
         $this->assertEquals('Band 4', $res4->provider_name);
     }
+
+    #[Test]
+    public function test_payment_gateways_retain_authentic_brand_names(): void
+    {
+        $resMonnify = new VerificationResult(['provider_name' => 'Monnify']);
+        $this->assertEquals('Monnify', $resMonnify->provider_name);
+
+        $resFlw = new VerificationResult(['provider_name' => 'Flutterwave']);
+        $this->assertEquals('Flutterwave', $resFlw->provider_name);
+
+        $resPaystack = new VerificationResult(['provider_name' => 'Paystack']);
+        $this->assertEquals('Paystack', $resPaystack->provider_name);
+
+        $user = User::create([
+            'fullname' => 'Payer User',
+            'username' => 'payeruser',
+            'email' => 'payer@fuwa.ng',
+            'password' => Hash::make('Password@123'),
+            'number' => '08012345678',
+            'email_verified_at' => now(),
+        ]);
+
+        $response = $this->actingAs($user)->get(route('wallet.fund'));
+        $response->assertOk();
+        $response->assertSee('Paystack');
+        $response->assertSee('Flutterwave');
+        $response->assertSee('Monnify');
+    }
 }
