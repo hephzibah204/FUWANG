@@ -173,5 +173,21 @@ class AgentDashboardManagementAndIdCardTest extends TestCase
 
         \Carbon\Carbon::setTestNow();
     }
+
+    public function test_agent_landing_has_no_ai_slop(): void
+    {
+        $response = $this->get(route('agent.landing'));
+
+        $response->assertStatus(200);
+        $response->assertDontSee('gradient-text');
+        $response->assertDontSee('cta-gradient');
+        $response->assertDontSee('fa-shield-cat');
+        $response->assertDontSee('spinner-grow');
+        $response->assertDontSee('blur(60px)');
+        $response->assertSee('agent-terminal-card');
+        $response->assertSee('agent-hero-title');
+        $response->assertSee('agent-feature-card');
+        $response->assertSee('NIMC Accredited Ecosystem Partner');
+    }
 }
 
