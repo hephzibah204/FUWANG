@@ -75,9 +75,40 @@
     @vite(['resources/js/vendor.js', 'resources/js/layout.js'])
     <link rel="stylesheet" href="https://unpkg.com/intro.js/minified/introjs.min.css">
     
+    <!-- Theme Detection (Eliminates Flash of Unstyled Theme) -->
+    <script nonce="{{ $cspNonce ?? '' }}">
+        (function() {
+            try {
+                var savedTheme = localStorage.getItem('theme');
+                if (!savedTheme && localStorage.getItem('high-contrast') === 'true') {
+                    savedTheme = 'light';
+                }
+                var theme = (savedTheme === 'light' || savedTheme === 'dark') ? savedTheme : 'dark';
+                document.documentElement.setAttribute('data-theme', theme);
+                if (theme === 'light') {
+                    document.documentElement.classList.add('theme-light');
+                } else {
+                    document.documentElement.classList.add('theme-dark');
+                }
+            } catch (e) {}
+        })();
+    </script>
+
     <style>
         :root {
             --sidebar-w: 260px;
+        }
+
+        [data-theme="light"],
+        html.theme-light,
+        body.theme-light {
+            --clr-bg: #f8fafc;
+            --clr-bg-card: #ffffff;
+            --clr-bg-nav: rgba(255, 255, 255, 0.95);
+            --clr-text-main: #0f172a;
+            --clr-text-muted: #64748b;
+            --border-glass: 1px solid #e2e8f0;
+            --shadow-glow: 0 4px 20px rgba(0, 0, 0, 0.05);
         }
         
         html, body {
@@ -167,9 +198,6 @@
             <div class="nav-item {{ Request::routeIs('dashboard') ? 'active' : '' }}">
                 <a href="{{ route('dashboard') }}"><i class="fa-solid fa-house"></i> Overview</a>
             </div>
-            <div class="nav-item {{ Request::routeIs('history') ? 'active' : '' }}">
-                <a href="{{ route('history') }}"><i class="fa-solid fa-clock-rotate-left"></i> History</a>
-            </div>
             @if(Route::has('parcels.dashboard'))
             <div class="nav-item {{ Request::is('parcels-agent*') ? 'active' : '' }}">
                 <a href="{{ route('parcels.dashboard') }}"><i class="fa-solid fa-box-open"></i> Parcels Agent</a>
@@ -218,6 +246,9 @@
             <div class="nav-item {{ Request::routeIs('profile') ? 'active' : '' }}">
                 <a href="{{ route('profile') }}"><i class="fa-solid fa-user-gear"></i> Profile</a>
             </div>
+            <div class="nav-item {{ Request::routeIs('history') ? 'active' : '' }}">
+                <a href="{{ route('history') }}"><i class="fa-solid fa-clock-rotate-left"></i> History</a>
+            </div>
             <div class="nav-item {{ Request::routeIs('profile.activity') ? 'active' : '' }}">
                 <a href="{{ route('profile.activity') }}"><i class="fa-solid fa-list-check"></i> Activity Log</a>
             </div>
@@ -245,6 +276,9 @@
                 Welcome back, <span>{{ explode(' ', Auth::user()->fullname)[0] ?? Auth::user()->username }}</span>
             </div>
             <div class="topbar-right">
+                <button class="action-btn text-decoration-none me-2" id="themeToggle" title="Toggle Light / Dark Mode" aria-label="Toggle theme" style="background: transparent; border: none; font-size: 1.15rem; cursor: pointer; color: var(--clr-text-muted);">
+                    <i class="fa-solid fa-sun" id="themeToggleIcon"></i>
+                </button>
                 <div class="wallet-balance d-none d-md-block">
                     <span class="text-muted small">Balance:</span>
                     <h5 class="m-0">₦{{ number_format(Auth::user()->balance?->user_balance ?? 0, 2) }}</h5>
@@ -287,6 +321,50 @@
     <script src="{{ asset('assets/nexus/js/nexus.js') }}"></script>
     <script src="{{ asset('assets/nexus/js/payment-modal.js') }}"></script>
     <script src="https://unpkg.com/intro.js/minified/intro.min.js"></script>
+    <script>
+        (function() {
+            const toggleBtn = document.getElementById('themeToggle');
+            const toggleIcon = document.getElementById('themeToggleIcon');
+
+            function updateThemeUI(theme) {
+                const isLight = theme === 'light';
+                document.documentElement.setAttribute('data-theme', theme);
+                document.documentElement.classList.toggle('theme-light', isLight);
+                document.documentElement.classList.toggle('theme-dark', !isLight);
+                document.body.classList.toggle('theme-light', isLight);
+                document.body.classList.toggle('theme-dark', !isLight);
+
+                if (toggleIcon) {
+                    toggleIcon.className = isLight ? 'fa-solid fa-moon' : 'fa-solid fa-sun';
+                }
+                if (toggleBtn) {
+                    toggleBtn.setAttribute('title', isLight ? 'Switch to Dark Mode' : 'Switch to Light Mode');
+                }
+            }
+
+            function getActiveTheme() {
+                var stored = localStorage.getItem('theme');
+                if (!stored && localStorage.getItem('high-contrast') === 'true') stored = 'light';
+                return (stored === 'light' || stored === 'dark') ? stored : (document.documentElement.getAttribute('data-theme') || 'dark');
+            }
+
+            updateThemeUI(getActiveTheme());
+
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const current = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+                    const next = current === 'light' ? 'dark' : 'light';
+                    updateThemeUI(next);
+                    try {
+                        localStorage.setItem('theme', next);
+                        localStorage.setItem('high-contrast', next === 'light' ? 'true' : 'false');
+                    } catch (e) {}
+                    window.dispatchEvent(new CustomEvent('fuwa:theme-changed', { detail: { theme: next } }));
+                });
+            }
+        })();
+    </script>
     @stack('scripts')
 </body>
 </html>

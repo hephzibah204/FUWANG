@@ -122,6 +122,7 @@ class User extends Authenticatable implements CanResetPasswordContract, MustVeri
         'email',
         'google_id',
         'google_avatar',
+        'avatar',
         'password',
         'transaction_pin',
         'reseller_id',
@@ -346,5 +347,24 @@ class User extends Authenticatable implements CanResetPasswordContract, MustVeri
     public function setPhoneNumberAttribute($value): void
     {
         $this->attributes['number'] = $value;
+    }
+
+    /**
+     * Get the resolved public URL for the user's avatar.
+     */
+    public function getAvatarUrlAttribute(): ?string
+    {
+        if (!empty($this->avatar)) {
+            if (str_starts_with($this->avatar, 'http://') || str_starts_with($this->avatar, 'https://') || str_starts_with($this->avatar, '//')) {
+                return $this->avatar;
+            }
+            return \Illuminate\Support\Facades\Storage::url($this->avatar);
+        }
+
+        if (!empty($this->google_avatar)) {
+            return $this->google_avatar;
+        }
+
+        return null;
     }
 }

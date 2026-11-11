@@ -85,6 +85,25 @@
     
     @vite(['resources/js/vendor.js', 'resources/js/app.js', 'resources/js/layout.js'])
     
+    <!-- Theme Detection (Eliminates Flash of Unstyled Theme) -->
+    <script nonce="{{ $cspNonce ?? '' }}">
+        (function() {
+            try {
+                var savedTheme = localStorage.getItem('theme');
+                if (!savedTheme && localStorage.getItem('high-contrast') === 'true') {
+                    savedTheme = 'light';
+                }
+                var theme = (savedTheme === 'light' || savedTheme === 'dark') ? savedTheme : 'dark';
+                document.documentElement.setAttribute('data-theme', theme);
+                if (theme === 'light') {
+                    document.documentElement.classList.add('theme-light');
+                } else {
+                    document.documentElement.classList.add('theme-dark');
+                }
+            } catch (e) {}
+        })();
+    </script>
+
     <style>
         :root {
             --sidebar-w: 260px;
@@ -104,35 +123,59 @@
             --option-selected: #bfdbfe;
             --option-text: #111827;
         }
+
+        [data-theme="light"],
+        html.theme-light,
+        body.theme-light {
+            --clr-bg: #f8fafc;
+            --clr-bg-card: #ffffff;
+            --clr-bg-nav: rgba(255, 255, 255, 0.95);
+            --clr-text-main: #0f172a;
+            --clr-text-muted: #64748b;
+            --border-glass: 1px solid #e2e8f0;
+            --shadow-glow: 0 4px 20px rgba(0, 0, 0, 0.05);
+
+            --select-surface: #ffffff;
+            --select-surface-hover: #f1f5f9;
+            --select-surface-disabled: #f8fafc;
+            --select-border: #cbd5e1;
+            --select-text: #0f172a;
+            --select-muted: #64748b;
+            --option-surface: #ffffff;
+            --option-surface-hover: #f1f5f9;
+            --option-selected: #dbeafe;
+            --option-text: #0f172a;
+        }
         
         body {
             background-color: var(--clr-bg);
             color: var(--clr-text-main);
             font-family: 'Outfit', sans-serif;
+            transition: background-color 0.25s ease, color 0.25s ease;
         }
 
         .topbar-greeting { white-space: nowrap; }
 
         .search-hub-wrapper { position: relative; max-width: 400px; }
         .search-hub-wrapper i { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--clr-text-muted); pointer-events: none; }
-        .search-hub-wrapper input { width: 100%; background: rgba(255,255,255,0.05); border: var(--border-glass); border-radius: 12px; padding: 10px 15px 10px 45px; color: #fff; font-size: 0.9rem; transition: all 0.3s ease; }
+        .search-hub-wrapper input { width: 100%; background: rgba(255,255,255,0.05); border: var(--border-glass); border-radius: 12px; padding: 10px 15px 10px 45px; color: var(--clr-text-main); font-size: 0.9rem; transition: all 0.3s ease; }
         .search-hub-wrapper input:focus { background: rgba(255,255,255,0.08); border-color: var(--clr-primary); box-shadow: 0 0 15px rgba(59, 130, 246, 0.2); outline: none; }
         .search-results-dropdown { position: absolute; top: 100%; left: 0; right: 0; background: var(--clr-bg-nav); border: var(--border-glass); border-radius: 12px; margin-top: 10px; z-index: 1000; max-height: 300px; overflow-y: auto; box-shadow: 0 15px 30px rgba(0,0,0,0.5); }
         .search-result-item { display: flex; align-items: center; gap: 12px; padding: 12px 15px; color: var(--clr-text-muted); text-decoration: none; transition: all 0.2s ease; border-bottom: 1px solid rgba(255,255,255,0.05); }
         .search-result-item:last-child { border-bottom: none; }
-        .search-result-item:hover { background: rgba(255,255,255,0.05); color: #fff; text-decoration: none; }
+        .search-result-item:hover { background: rgba(255,255,255,0.05); color: var(--clr-text-main); text-decoration: none; }
         .search-result-item i { font-size: 1.1rem; width: 20px; text-align: center; }
         .search-result-info { flex: 1; }
-        .search-result-title { display: block; font-weight: 600; font-size: 0.9rem; color: #fff; }
+        .search-result-title { display: block; font-weight: 600; font-size: 0.9rem; color: var(--clr-text-main); }
         .search-result-category { display: block; font-size: 0.75rem; color: var(--clr-text-muted); }
 
         .fade-in { animation: fadeIn 0.3s ease; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
         /* Bootstrap Overrides for Fuwa.NG */
-        .modal-content { background: var(--clr-bg-card); backdrop-filter: blur(20px); border: var(--border-glass); border-radius: 20px; }
-        .form-control { background: rgba(255,255,255,0.05); border: var(--border-glass); color: #fff; border-radius: 12px; padding: 12px; }
-        .form-control:focus { background: rgba(255,255,255,0.08); border-color: var(--clr-primary); color: #fff; box-shadow: none; }
+        .modal-content { background: var(--clr-bg-card); backdrop-filter: blur(20px); border: var(--border-glass); border-radius: 20px; color: var(--clr-text-main); }
+        .form-control { background: rgba(255,255,255,0.05); border: var(--border-glass); color: var(--clr-text-main); border-radius: 12px; padding: 12px; }
+        .form-control:focus { background: rgba(255,255,255,0.08); border-color: var(--clr-primary); color: var(--clr-text-main); box-shadow: none; }
         select.form-control {
             background-color: var(--select-surface) !important;
             color: var(--select-text) !important;
@@ -170,7 +213,7 @@
         .btn-primary:hover { transform: translateY(-2px); box-shadow: var(--shadow-glow); }
         .dropdown-menu { background: var(--clr-bg-nav); backdrop-filter: blur(15px); border: var(--border-glass); border-radius: 15px; }
         .dropdown-item { color: var(--clr-text-muted); padding: 10px 20px; }
-        .dropdown-item:hover { background: rgba(255,255,255,0.05); color: #fff; }
+        .dropdown-item:hover { background: rgba(255,255,255,0.05); color: var(--clr-text-main); }
 
         /* High Contrast Support Global */
         body.high-contrast {
@@ -666,9 +709,6 @@
                     @endif
                 </span></a>
             </div>
-            <div class="nav-item {{ Request::routeIs('history') ? 'active' : '' }}">
-                <a href="{{ route('history') }}"><i class="fa-solid fa-clock-rotate-left"></i> <span class="nav-text">History</span></a>
-            </div>
             <div class="nav-item {{ Request::routeIs('services.price_list') ? 'active' : '' }}">
                 <a href="{{ route('services.price_list') }}"><i class="fa-solid fa-tags"></i> <span class="nav-text">Price List</span></a>
             </div>
@@ -805,9 +845,12 @@
             </div>
             @endif
 
-            <div class="nav-section">Account Settings</div>
+            <div class="nav-section">Account & Records</div>
             <div class="nav-item {{ Request::routeIs('profile') ? 'active' : '' }}">
                 <a href="{{ route('profile') }}"><i class="fa-solid fa-user-gear"></i> <span class="nav-text">Profile</span></a>
+            </div>
+            <div class="nav-item {{ Request::routeIs('history') ? 'active' : '' }}">
+                <a href="{{ route('history') }}"><i class="fa-solid fa-clock-rotate-left"></i> <span class="nav-text">History</span></a>
             </div>
             @elseif($adminUser)
             <div class="nav-section">Admin</div>
@@ -837,14 +880,17 @@
                 <div class="sidebar-user">
                     <div class="sidebar-user-avatar">
                         @php
-                            $sidebarAvatar = $showFullAdminSidebar ? ($adminUser?->avatar ?? null) : null;
+                            $adminAvatarPath = $adminUser?->avatar;
+                            $sidebarAvatar = $showFullAdminSidebar
+                                ? ($adminAvatarPath ? \Illuminate\Support\Facades\Storage::url($adminAvatarPath) : null)
+                                : ($webUser?->avatar_url ?? null);
                             $sidebarName = $showFullAdminSidebar
                                 ? ($adminUser?->fullname ?? $adminUser?->username ?? 'Admin')
                                 : ($webUser?->fullname ?? $webUser?->username ?? 'User');
                             $sidebarRole = $showFullAdminSidebar ? 'Admin' : ucfirst($webUser?->role ?? 'User');
                         @endphp
                         @if($sidebarAvatar)
-                            <img src="{{ \Illuminate\Support\Facades\Storage::url($sidebarAvatar) }}" alt="{{ $sidebarName }}" class="sidebar-user-avatar-img">
+                            <img src="{{ $sidebarAvatar }}" alt="{{ $sidebarName }}" class="sidebar-user-avatar-img">
                         @else
                             <span class="sidebar-user-avatar-fallback">{{ strtoupper(substr($sidebarName, 0, 1)) }}</span>
                         @endif
@@ -973,8 +1019,8 @@
                         </a>
                     @endif
                 @endif
-                <button class="action-btn text-decoration-none" id="highContrastToggle" title="Toggle High Contrast Mode" aria-label="High Contrast">
-                    <i class="fa-solid fa-circle-half-stroke"></i>
+                <button class="action-btn text-decoration-none" id="themeToggle" title="Toggle Light / Dark Mode" aria-label="Toggle theme">
+                    <i class="fa-solid fa-sun" id="themeToggleIcon"></i>
                 </button>
                 @if($webUser)
                 <div class="wallet-balance">
@@ -1105,17 +1151,66 @@
     <script src="{{ $assetPrefix . '/assets/nexus/js/csrf-fetch.js?v=' . @filemtime(public_path('assets/nexus/js/csrf-fetch.js')) }}"></script>
     <script src="{{ $assetPrefix . '/assets/nexus/js/nexus.js?v=' . @filemtime(public_path('assets/nexus/js/nexus.js')) }}"></script>
     <script>
-        // High Contrast Logic
-        const hcToggle = document.getElementById('highContrastToggle');
-        if (hcToggle) {
-            if (localStorage.getItem('high-contrast') === 'true') {
-                document.body.classList.add('high-contrast');
+        // Robust Theme Toggle Logic (Light / Dark Mode)
+        (function() {
+            const toggleBtn = document.getElementById('themeToggle') || document.getElementById('highContrastToggle');
+            const toggleIcon = document.getElementById('themeToggleIcon') || (toggleBtn ? toggleBtn.querySelector('i') : null);
+
+            function updateThemeUI(theme) {
+                const isLight = theme === 'light';
+                document.documentElement.setAttribute('data-theme', theme);
+                document.documentElement.classList.toggle('theme-light', isLight);
+                document.documentElement.classList.toggle('theme-dark', !isLight);
+                document.body.classList.toggle('theme-light', isLight);
+                document.body.classList.toggle('theme-dark', !isLight);
+
+                if (toggleIcon) {
+                    if (isLight) {
+                        toggleIcon.className = 'fa-solid fa-moon';
+                    } else {
+                        toggleIcon.className = 'fa-solid fa-sun';
+                    }
+                }
+                if (toggleBtn) {
+                    toggleBtn.setAttribute('title', isLight ? 'Switch to Dark Mode' : 'Switch to Light Mode');
+                    toggleBtn.setAttribute('aria-label', isLight ? 'Switch to Dark Mode' : 'Switch to Light Mode');
+                }
             }
-            hcToggle.addEventListener('click', () => {
-                const isHC = document.body.classList.toggle('high-contrast');
-                localStorage.setItem('high-contrast', isHC);
-            });
-        }
+
+            function getActiveTheme() {
+                var stored = localStorage.getItem('theme');
+                if (!stored && localStorage.getItem('high-contrast') === 'true') {
+                    stored = 'light';
+                }
+                return (stored === 'light' || stored === 'dark') ? stored : (document.documentElement.getAttribute('data-theme') || 'dark');
+            }
+
+            function setTheme(theme, showFeedback) {
+                updateThemeUI(theme);
+                try {
+                    localStorage.setItem('theme', theme);
+                    localStorage.setItem('high-contrast', theme === 'light' ? 'true' : 'false');
+                } catch (e) {}
+
+                if (showFeedback && window.nexusToast) {
+                    window.nexusToast((theme === 'light' ? 'Light' : 'Dark') + ' mode enabled', 'success', 2500);
+                }
+                window.dispatchEvent(new CustomEvent('fuwa:theme-changed', { detail: { theme: theme } }));
+            }
+
+            // Sync UI state on load
+            const activeTheme = getActiveTheme();
+            updateThemeUI(activeTheme);
+
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const current = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+                    const next = current === 'light' ? 'dark' : 'light';
+                    setTheme(next, true);
+                });
+            }
+        })();
 
         // Global Toast System
         window.nexusToast = function(msg, type = 'success', duration = 4000) {

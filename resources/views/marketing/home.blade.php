@@ -484,7 +484,7 @@
                         “Switching our customer onboarding to Fuwa dropped our verification drop-off by 38%. The instant NIMC response with pre-rendered premium slips eliminated manual reviews entirely.”
                     </blockquote>
                     <div class="hm-proof-author">
-                        <img src="{{ $assetPrefix . \App\Support\TestimonialAvatars::webPath('Chioma|Operations|Fintech') }}" alt="Chioma" class="hm-proof-avatar" width="40" height="40" loading="lazy">
+                        <img src="{{ $assetPrefix . \App\Support\TestimonialAvatars::webPath('Chioma|Operations|Fintech') }}" alt="Chioma Adeyemi" class="hm-proof-avatar" width="40" height="40" loading="lazy">
                         <div>
                             <div class="hm-proof-name">Chioma Adeyemi</div>
                             <div class="hm-proof-role">Head of Operations — Regulated Lagos Fintech</div>
@@ -497,7 +497,7 @@
                         “Our inter-state parcel waybills and customer QR tracking run completely through Fuwa’s logistics API. We went from endless dispute calls to zero lost packages across our South-West hubs.”
                     </blockquote>
                     <div class="hm-proof-author">
-                        <img src="{{ $assetPrefix . \App\Support\TestimonialAvatars::webPath('Yusuf|Logistics|Dispatch') }}" alt="Yusuf" class="hm-proof-avatar" width="40" height="40" loading="lazy">
+                        <img src="{{ $assetPrefix . \App\Support\TestimonialAvatars::webPath('Yusuf|Logistics|Dispatch') }}" alt="Yusuf Ibrahim" class="hm-proof-avatar" width="40" height="40" loading="lazy">
                         <div>
                             <div class="hm-proof-name">Yusuf Ibrahim</div>
                             <div class="hm-proof-role">Logistics Director — Nationwide Courier Network</div>

@@ -90,18 +90,17 @@ document.addEventListener('DOMContentLoaded', function() {
             send
             .then(data => {
                 removeLoading(loadingId);
-                if (data.success) {
-                    appendMessage('ai', data.response);
-                } else {
-                    appendMessage('ai', "I'm sorry, I encountered an error. Please try again.");
-                }
+                const reply = (data && (data.response || data.message))
+                    ? (data.response || data.message)
+                    : "I am ready to help you navigate Fuwa.NG! Ask me about NIN, BVN, Airtime, Virtual Cards, or visit our [Support Center](/tickets).";
+                appendMessage('ai', reply);
                 scrollToBottom();
                 setFormDisabled(false);
             })
             .catch(error => {
                 console.error("AI Chat Error:", error);
                 removeLoading(loadingId);
-                appendMessage('ai', "I'm having trouble connecting right now. Please check your connection.");
+                appendMessage('ai', "I'm having a brief connection delay. You can visit the [Dashboard](/dashboard) or contact our [Support Center](/tickets) while I reconnect.");
                 scrollToBottom();
                 setFormDisabled(false);
             });
@@ -166,10 +165,24 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function safeFormat(value) {
-        const escaped = escapeHtml(value);
-        const withLinks = escaped.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, function(_m, text, url) {
-            return '<a href="' + url + '" target="_blank" rel="noopener noreferrer">' + text + '</a>';
+        let text = escapeHtml(value);
+
+        // Bold: **text**
+        text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+
+        // Links: [text](/route) or [text](https://...) or [text](mailto:...)
+        text = text.replace(/\[([^\]]+)\]\(((\/|https?:\/\/|mailto:)[^\s)]+)\)/g, function(_m, label, url) {
+            const isExternal = url.startsWith('http');
+            const targetAttr = isExternal ? ' target="_blank" rel="noopener noreferrer"' : '';
+            return '<a href="' + url + '"' + targetAttr + ' class="ai-chat-link font-weight-bold" style="text-decoration: underline;">' + label + '</a>';
         });
-        return withLinks.replace(/\n/g, '<br>');
+
+        // Bullet lists: lines starting with "- " or "* "
+        text = text.replace(/(?:^|\n)[-*]\s+(.+)/g, '<br>• $1');
+
+        // Newlines to <br>
+        text = text.replace(/\n/g, '<br>');
+
+        return text.replace(/^<br>/, '');
     }
 });

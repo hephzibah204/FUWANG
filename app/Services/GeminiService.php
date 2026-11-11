@@ -11,7 +11,8 @@ use App\Services\LegalDrafting\LegalDraftRequest;
 class GeminiService
 {
     protected ?string $apiKey;
-    protected string $baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+    protected string $model = 'gemini-3.8-flash';
+    protected string $baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent';
 
     public function __construct()
     {
@@ -47,7 +48,7 @@ class GeminiService
     }
 
     /**
-     * Generate content using Gemini Pro
+     * Generate content using Gemini
      */
     public function generateResponse(string $prompt, string $systemInstruction = ''): array
     {
@@ -57,33 +58,45 @@ class GeminiService
 
         try {
             $fullPrompt = $systemInstruction ? "Instructions: $systemInstruction\n\nUser Request: $prompt" : $prompt;
+            $modelsToTry = [$this->model, 'gemini-2.5-flash'];
+            $lastError = null;
 
-            $response = Http::timeout(45)->post($this->baseUrl . '?key=' . $this->apiKey, [
-                'contents' => [
-                    [
-                        'parts' => [
-                            ['text' => $fullPrompt]
+            foreach ($modelsToTry as $targetModel) {
+                try {
+                    $endpoint = "https://generativelanguage.googleapis.com/v1beta/models/{$targetModel}:generateContent?key=" . $this->apiKey;
+
+                    $response = Http::timeout(6)->connectTimeout(3)->post($endpoint, [
+                        'contents' => [
+                            [
+                                'parts' => [
+                                    ['text' => $fullPrompt]
+                                ]
+                            ]
+                        ],
+                        'generationConfig' => [
+                            'temperature' => 0.7,
+                            'topK' => 40,
+                            'topP' => 0.95,
+                            'maxOutputTokens' => 2048,
                         ]
-                    ]
-                ],
-                'generationConfig' => [
-                    'temperature' => 0.7,
-                    'topK' => 40,
-                    'topP' => 0.95,
-                    'maxOutputTokens' => 2048,
-                ]
-            ]);
+                    ]);
 
-            if ($response->successful()) {
-                $data = $response->json();
-                $text = $data['candidates'][0]['content']['parts'][0]['text'] ?? 'No response generated.';
-                return [
-                    'status' => true,
-                    'text' => $text
-                ];
+                    if ($response->successful()) {
+                        $data = $response->json();
+                        $text = $data['candidates'][0]['content']['parts'][0]['text'] ?? 'No response generated.';
+                        return [
+                            'status' => true,
+                            'text' => $text
+                        ];
+                    }
+
+                    $lastError = $response->json() ?? $response->body();
+                } catch (\Throwable $subException) {
+                    $lastError = $subException->getMessage();
+                }
             }
 
-            Log::error('Gemini API Error', ['response' => $response->json()]);
+            Log::warning('Gemini API Error across candidates', ['error' => $lastError]);
             return ['status' => false, 'message' => 'AI Service currently unavailable.'];
 
         } catch (\Exception $e) {

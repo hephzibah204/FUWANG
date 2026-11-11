@@ -8,6 +8,14 @@
         --dash-glow-purple: rgba(139, 92, 246, 0.15);
     }
 
+    [data-theme="light"],
+    body.theme-light {
+        --dash-card-bg: #ffffff;
+        --dash-card-border: #e2e8f0;
+        --dash-glow-primary: rgba(59, 130, 246, 0.05);
+        --dash-glow-purple: rgba(139, 92, 246, 0.05);
+    }
+
     /* Welcome Hero Container */
     .welcome-hero {
         position: relative;

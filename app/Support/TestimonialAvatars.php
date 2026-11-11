@@ -4,11 +4,27 @@ namespace App\Support;
 
 final class TestimonialAvatars
 {
+    /**
+     * Curated, verified photo mappings for specific named testimonials.
+     * Ensures consistent gender and distinct high-resolution headshots.
+     */
+    private const EXPLICIT_MAP = [
+        'chioma' => 'images/people/testimonials/testimonial-03.jpg', // Professional woman with glasses
+        'yusuf'  => 'images/people/testimonials/testimonial-05.jpg', // Professional man in grey blazer with glasses
+        'amaka'  => 'images/people/testimonials/testimonial-04.jpg', // Professional woman with braided locs
+    ];
+
     public static function pool(): array
     {
         $dir = public_path('images/people/testimonials');
         if (! is_dir($dir)) {
-            return [];
+            return [
+                'images/people/testimonials/testimonial-03.jpg',
+                'images/people/testimonials/testimonial-05.jpg',
+                'images/people/testimonials/testimonial-04.jpg',
+                'images/people/testimonials/testimonial-07.jpg',
+                'images/people/testimonials/testimonial-02.jpg',
+            ];
         }
 
         $files = array_merge(
@@ -28,6 +44,14 @@ final class TestimonialAvatars
         $basenames = array_values(array_unique($basenames));
         sort($basenames, SORT_STRING);
 
+        if ($basenames === []) {
+            return [
+                'images/people/testimonials/testimonial-03.jpg',
+                'images/people/testimonials/testimonial-05.jpg',
+                'images/people/testimonials/testimonial-04.jpg',
+            ];
+        }
+
         return array_map(
             static fn (string $name) => 'images/people/testimonials/' . $name,
             $basenames
@@ -36,19 +60,20 @@ final class TestimonialAvatars
 
     public static function relativePath(string $seed): string
     {
+        $lower = strtolower($seed);
+        foreach (self::EXPLICIT_MAP as $keyword => $path) {
+            if (str_contains($lower, $keyword)) {
+                return $path;
+            }
+        }
+
         $pool = self::pool();
         if ($pool === []) {
-            return 'images/people/customer-1.jpg';
+            return 'images/people/testimonials/testimonial-05.jpg';
         }
 
         $index = (int) (abs(crc32($seed)) % count($pool));
-        $path = $pool[$index] ?? $pool[0];
-
-        if (is_file(public_path($path))) {
-            return $path;
-        }
-
-        return 'images/people/customer-1.jpg';
+        return $pool[$index] ?? $pool[0];
     }
 
     public static function webPath(string $seed): string

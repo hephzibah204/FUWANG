@@ -7,6 +7,7 @@ use App\Services\KycService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use PragmaRX\Google2FA\Google2FA;
@@ -99,11 +100,15 @@ class ProfileController extends Controller
 
     public function update(Request $request)
     {
+        /** @var User $user */
         $user = Auth::user();
 
         $request->validate([
-            'fullname' => 'sometimes|string|max:100',
-            'number' => 'sometimes|string|digits:11',
+            'fullname' => 'nullable|string|max:100',
+            'number' => ['nullable', 'string', 'max:25'],
+            'username' => ['nullable', 'string', 'max:60', Rule::unique('users')->ignore($user->id)],
+            'avatar' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'remove_avatar' => 'nullable|boolean',
             'current_password' => 'required_with:new_password|string',
             'new_password' => ['nullable', 'string', 'confirmed', Password::min(8)->mixedCase()->numbers()->symbols()],
             'current_pin' => 'required_with:new_pin|string',
@@ -112,25 +117,53 @@ class ProfileController extends Controller
 
         $data = [];
 
-        if ($request->filled('fullname')) {
-            $data['fullname'] = $request->fullname;
-        }
-        if ($request->filled('number')) {
-            $data['number'] = $request->number;
+        if ($request->has('fullname')) {
+            $data['fullname'] = trim((string) $request->fullname);
         }
 
+        if ($request->has('number')) {
+            $data['number'] = trim((string) $request->number);
+        }
+
+        if ($request->filled('username')) {
+            $data['username'] = strtolower(trim((string) $request->username));
+        }
+
+        // Handle Avatar Upload or Removal
+        if ($request->boolean('remove_avatar')) {
+            if ($user->avatar && Storage::disk('public')->exists($user->avatar)) {
+                Storage::disk('public')->delete($user->avatar);
+            }
+            $data['avatar'] = null;
+        } elseif ($request->hasFile('avatar')) {
+            if ($user->avatar && Storage::disk('public')->exists($user->avatar)) {
+                Storage::disk('public')->delete($user->avatar);
+            }
+            $path = $request->file('avatar')->store('avatars', 'public');
+            $data['avatar'] = $path;
+        }
+
+        // Handle Password Change
         if ($request->filled('new_password')) {
             if (! Hash::check($request->current_password, $user->password)) {
-                return response()->json(['status' => false, 'message' => 'Current password is incorrect.']);
+                $err = 'Current password is incorrect.';
+                if ($request->expectsJson() || $request->ajax()) {
+                    return response()->json(['status' => false, 'message' => $err], 422);
+                }
+                return back()->with('error', $err);
             }
             $data['password'] = Hash::make($request->new_password);
         }
 
+        // Handle Transaction PIN Change
         if ($request->filled('new_pin')) {
             if (! $this->transactionPinMatches($user, (string) $request->current_pin)) {
-                return response()->json(['status' => false, 'message' => 'Current PIN is incorrect.']);
+                $err = 'Current PIN is incorrect.';
+                if ($request->expectsJson() || $request->ajax()) {
+                    return response()->json(['status' => false, 'message' => $err], 422);
+                }
+                return back()->with('error', $err);
             }
-            // Plain 4-digit PIN (same as RegisterController); session/login expect this format.
             $data['transaction_pin'] = $request->new_pin;
         }
 
@@ -141,7 +174,23 @@ class ProfileController extends Controller
             }
         }
 
-        return response()->json(['status' => true, 'message' => 'Profile updated successfully.']);
+        $user->refresh();
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'status' => true,
+                'message' => 'Profile updated successfully.',
+                'user' => [
+                    'fullname' => $user->fullname,
+                    'username' => $user->username,
+                    'email' => $user->email,
+                    'number' => $user->number,
+                    'avatar_url' => $user->avatar_url,
+                ],
+            ]);
+        }
+
+        return back()->with('success', 'Profile updated successfully.');
     }
 
     /**
