@@ -41,5 +41,18 @@ class PublicAuctionsTest extends TestCase
         $response->assertSee('Test Auction Item');
         $response->assertSee('LOT-TEST-001');
     }
+
+    public function test_public_auctions_has_no_ai_slop()
+    {
+        $response = $this->get(route('public.auctions.index'));
+
+        $response->assertStatus(200);
+        $response->assertDontSee('built for speed');
+        $response->assertDontSee('rotate(8deg)');
+        $response->assertDontSee('translateY(-6px)');
+        $response->assertSee('auction-hero-panel');
+        $response->assertSee('auction-lot-card');
+        $response->assertSee('Verified Public Auctions');
+    }
 }
 
