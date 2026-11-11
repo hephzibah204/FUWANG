@@ -160,39 +160,47 @@
                                 </div>
 
                                 <!-- Demographic-only fields -->
-                                <div id="identityFields" style="display:none;">
+                                <div id="identityFields" style="{{ ($initialMode ?? 'nin') === 'demographic' ? '' : 'display:none;' }}">
                                     <div class="row">
-                                        <div class="col-md-3 mb-4">
-                                            <label for="firstname" class="font-weight-600 mb-2 small text-muted">First Name</label>
+                                        <div class="col-md-4 col-sm-6 mb-3">
+                                            <label for="firstname" class="font-weight-600 mb-2 small text-muted">First Name <span class="text-danger">*</span></label>
                                             <div class="input-wrap">
                                                 <i class="fa-solid fa-user"></i>
-                                                <input type="text" id="firstname" name="firstname" class="form-control" placeholder="JOHN">
+                                                <input type="text" id="firstname" name="firstname" class="form-control" placeholder="WASILA">
                                             </div>
                                         </div>
-                                        <div class="col-md-3 mb-4">
-                                            <label for="lastname" class="font-weight-600 mb-2 small text-muted">Last Name</label>
+                                        <div class="col-md-4 col-sm-6 mb-3">
+                                            <label for="middlename" class="font-weight-600 mb-2 small text-muted">Middle Name <span class="text-muted">(Optional)</span></label>
                                             <div class="input-wrap">
                                                 <i class="fa-solid fa-user"></i>
-                                                <input type="text" id="lastname" name="lastname" class="form-control" placeholder="DOE">
+                                                <input type="text" id="middlename" name="middlename" class="form-control" placeholder="Optional">
                                             </div>
                                         </div>
-                                        <div class="col-md-3 mb-4">
-                                            <label for="gender" class="font-weight-600 mb-2 small text-muted">Gender</label>
+                                        <div class="col-md-4 col-sm-12 mb-3">
+                                            <label for="lastname" class="font-weight-600 mb-2 small text-muted">Last Name (Surname) <span class="text-danger">*</span></label>
+                                            <div class="input-wrap">
+                                                <i class="fa-solid fa-user"></i>
+                                                <input type="text" id="lastname" name="lastname" class="form-control" placeholder="BALA">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 col-sm-6 mb-3">
+                                            <label for="gender" class="font-weight-600 mb-2 small text-muted">Gender <span class="text-danger">*</span></label>
                                             <div class="input-wrap">
                                                 <i class="fa-solid fa-venus-mars"></i>
                                                 <select id="gender" name="gender" class="form-control">
-                                                    <option value="">Select</option>
-                                                    <option value="M">Male</option>
-                                                    <option value="F">Female</option>
+                                                    <option value="">Select Gender</option>
+                                                    <option value="female">Female</option>
+                                                    <option value="male">Male</option>
                                                 </select>
                                             </div>
                                         </div>
-                                        <div class="col-md-3 mb-4">
-                                            <label for="dob" class="font-weight-600 mb-2 small text-muted">Date of Birth</label>
+                                        <div class="col-md-6 col-sm-6 mb-3">
+                                            <label for="dob" class="font-weight-600 mb-2 small text-muted">Date of Birth <span class="text-danger">*</span></label>
                                             <div class="input-wrap">
                                                 <i class="fa-solid fa-calendar"></i>
-                                                <input type="text" id="dob" name="dob" class="form-control" placeholder="DD-MM-YYYY">
+                                                <input type="date" id="dob" name="dob" class="form-control" placeholder="YYYY-MM-DD">
                                             </div>
+                                            <small class="text-muted">Select or enter date of birth (e.g. 2009-01-01)</small>
                                         </div>
                                     </div>
                                 </div>
@@ -855,6 +863,16 @@
         const outputTypeGroup = document.getElementById('outputTypeGroup');
         const validationReasonGroup = document.getElementById('validationReasonGroup');
         const validationReason = document.getElementById('validation_reason');
+        const fn = document.getElementById('firstname');
+        const ln = document.getElementById('lastname');
+        const gen = document.getElementById('gender');
+        const db = document.getElementById('dob');
+
+        if (fn) fn.required = false;
+        if (ln) ln.required = false;
+        if (gen) gen.required = false;
+        if (db) db.required = false;
+
         const updateShareReasonOtherVisibility = () => {
             if (!shareReasonSelect || !shareReasonOtherGroup || !shareReasonOtherInput) return;
             const isOther = shareReasonSelect.value === 'other';
@@ -976,6 +994,7 @@
             if (validationReason) validationReason.required = false;
         } else if (mode === 'demographic') {
             numberGroup.style.display = 'none';
+            input.required = false;
             selfieGroup.style.display = 'none';
             selfieInput.required = false;
             shareCodeGroup.style.display = 'none';
@@ -987,6 +1006,10 @@
             requeryGroup.style.display = 'none';
             requeryInput.required = false;
             identityFields.style.display = '';
+            if (fn) fn.required = true;
+            if (ln) ln.required = true;
+            if (gen) gen.required = true;
+            if (db) db.required = true;
             if (outputTypeGroup) outputTypeGroup.style.display = '';
             if (validationReasonGroup) validationReasonGroup.style.display = 'none';
             if (validationReason) validationReason.required = false;

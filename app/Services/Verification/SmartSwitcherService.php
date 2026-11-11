@@ -120,7 +120,7 @@ class SmartSwitcherService
             $isRobost = strtolower((string) $p->provider_identifier) === 'robosttech';
             $isDv = strtolower((string) $p->provider_identifier) === 'dataverify' || str_contains(strtolower((string) $p->endpoint), 'dataverify');
             $modeBonus = 0;
-            if (in_array($mode, ['phone', 'validation', 'validation_status', 'clearance', 'clearance_status', 'ipe', 'ipe_clearance'], true)) {
+            if (in_array($mode, ['phone', 'validation', 'validation_status', 'clearance', 'clearance_status', 'ipe', 'ipe_clearance', 'demographic'], true)) {
                 $apiCenter = ApiCenter::first();
                 $hasKey = false;
                 if ($isDv) {
@@ -370,7 +370,8 @@ class SmartSwitcherService
                 $res = $client->verify('demographic', [
                     'firstname' => (string) $request->input('firstname'),
                     'lastname' => (string) $request->input('lastname'),
-                    'dob' => (string) $request->input('dob'),
+                    'middlename' => (string) $request->input('middlename', ''),
+                    'dob' => (string) ($request->input('dateOfBirth') ?: $request->input('dob')),
                     'gender' => (string) ($request->input('gender') ?? ''),
                 ]);
             } elseif (in_array($mode, ['tracking', 'tid'], true)) {
@@ -498,12 +499,26 @@ class SmartSwitcherService
         } elseif ($mode === 'phone') {
             $payload = ['phone' => trim((string) ($request->input('phone') ?: $number))];
         } elseif ($mode === 'demographic') {
+            $dob = trim((string) ($request->input('dateOfBirth') ?: $request->input('dob') ?: ''));
+            $formattedDob = $dob;
+            try {
+                if ($dob !== '') {
+                    $formattedDob = \Carbon\Carbon::parse($dob)->format('Y-m-d');
+                }
+            } catch (\Throwable $e) {}
+
+            $genderRaw = strtolower(trim((string) $request->input('gender', '')));
+            $gender = in_array($genderRaw, ['m', 'male'], true) 
+                ? 'male' 
+                : (in_array($genderRaw, ['f', 'female'], true) ? 'female' : $genderRaw);
+
             $payload = [
                 'firstname' => strtoupper(trim((string) $request->input('firstname'))),
                 'lastname' => strtoupper(trim((string) $request->input('lastname'))),
                 'middlename' => strtoupper(trim((string) $request->input('middlename', ''))),
-                'gender' => strtolower(trim((string) $request->input('gender'))),
-                'dateOfBirth' => trim((string) $request->input('dob')),
+                'gender' => $gender,
+                'dateOfBirth' => $formattedDob,
+                'dob' => $formattedDob,
             ];
         } elseif (in_array($mode, ['clearance', 'clearance_status', 'ipe', 'ipe_clearance', 'personalization', 'personalization_status'], true)) {
             $trackingId = trim((string) ($request->input('tracking_id') ?: $request->input('number') ?: $number));

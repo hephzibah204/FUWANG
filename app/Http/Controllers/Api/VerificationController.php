@@ -19,11 +19,18 @@ class VerificationController extends Controller
 {
     public function verifyNin(Request $request)
     {
+        if ($request->input('mode') === 'demographic' && !$request->filled('dob') && $request->filled('dateOfBirth')) {
+            $request->merge(['dob' => $request->input('dateOfBirth')]);
+        }
+
         $request->validate([
-            'number' => ['required', 'string'],
-            'firstname' => ['nullable', 'string'],
-            'lastname' => ['nullable', 'string'],
-            'dob' => ['nullable', 'string'],
+            'number' => ['required_unless:mode,demographic', 'nullable', 'string'],
+            'firstname' => ['required_if:mode,demographic', 'nullable', 'string'],
+            'lastname' => ['required_if:mode,demographic', 'nullable', 'string'],
+            'middlename' => ['nullable', 'string'],
+            'dob' => ['required_if:mode,demographic', 'nullable', 'string'],
+            'dateOfBirth' => ['nullable', 'string'],
+            'gender' => ['required_if:mode,demographic', 'nullable', 'string'],
             'mode' => ['required', 'in:nin,phone,demographic'],
             'api_provider_id' => ['nullable', 'exists:custom_apis,id'],
         ]);
@@ -54,7 +61,10 @@ class VerificationController extends Controller
         $price = (float) $user->getDeveloperApiPrice('developer_api_nin_price', 100.0);
 
         // Concurrency lock: prevent duplicate debits from rapid API client retries
-        $lockKey = "api_nin_lock_{$user->id}_{$request->mode}_" . md5((string) $request->number);
+        $lockTarget = $request->filled('number') 
+            ? (string) $request->number 
+            : ($request->input('firstname') . '_' . $request->input('lastname') . '_' . ($request->input('dob') ?: $request->input('dateOfBirth')));
+        $lockKey = "api_nin_lock_{$user->id}_{$request->mode}_" . md5($lockTarget);
         $lock = Cache::lock($lockKey, 20);
 
         if (!$lock->get()) {
@@ -152,7 +162,12 @@ class VerificationController extends Controller
             $robost = $this->callRobostTechNin($provider, (string) $request->mode, (string) $request->number);
             if ($robost['status']) {
                 $data = $robost['data'] ?? [];
-                $vr = app(VerificationResultService::class)->create($user, 'nin_verification', (string) $request->number, (string) $provider->name, $data, 'success');
+                $identifier = (string) (
+                    $request->number 
+                    ?: ($data['nin'] ?? null) 
+                    ?: trim(($request->firstname ?? '') . ' ' . ($request->lastname ?? ''))
+                );
+                $vr = app(VerificationResultService::class)->create($user, 'nin_verification', $identifier, (string) $provider->name, $data, 'success');
 
                 return [
                     'status' => true,
@@ -235,8 +250,8 @@ class VerificationController extends Controller
             return null;
         }
 
-        // For phone search: Robosttech is the first choice
-        if ($mode === 'phone') {
+        // For phone & demographic search: Robosttech is the first choice
+        if ($mode === 'phone' || $mode === 'demographic') {
             $robost = $providers->first(fn (CustomApi $p) => strtolower((string)$p->provider_identifier) === 'robosttech');
             if ($robost) {
                 return $robost;
@@ -280,12 +295,26 @@ class VerificationController extends Controller
         }
 
         if ($mode === 'demographic') {
+            $dob = trim((string) (request()->input('dateOfBirth') ?: request()->input('dob')));
+            $formattedDob = $dob;
+            try {
+                if ($dob !== '') {
+                    $formattedDob = \Carbon\Carbon::parse($dob)->format('Y-m-d');
+                }
+            } catch (\Throwable $e) {}
+
+            $genderRaw = strtolower(trim((string) request()->input('gender')));
+            $gender = in_array($genderRaw, ['m', 'male'], true) 
+                ? 'male' 
+                : (in_array($genderRaw, ['f', 'female'], true) ? 'female' : $genderRaw);
+
             $payload = [
                 'firstname' => strtoupper(trim((string) request()->input('firstname'))),
                 'lastname' => strtoupper(trim((string) request()->input('lastname'))),
                 'middlename' => strtoupper(trim((string) request()->input('middlename', ''))),
-                'gender' => strtolower(trim((string) request()->input('gender'))),
-                'dateOfBirth' => trim((string) (request()->input('dateOfBirth') ?: request()->input('dob'))),
+                'gender' => $gender,
+                'dateOfBirth' => $formattedDob,
+                'dob' => $formattedDob,
             ];
         } elseif ($mode === 'phone') {
             $payload = ['phone' => trim($number)];
@@ -311,8 +340,9 @@ class VerificationController extends Controller
 
         $statusVal = strtolower((string) ($json['status'] ?? ''));
         $looksSuccessful = ($json['success'] ?? false) === true
+            || ($json['status'] ?? false) === true
             || ($json['approved'] ?? false) === true
-            || $statusVal === 'success' || $statusVal === 'true' || $statusVal === 'ok';
+            || in_array($statusVal, ['success', 'true', 'ok', 'completed', '1'], true);
         if (! $looksSuccessful && (isset($json['status']) || isset($json['success']))) {
             return ['status' => false, 'message' => (string) ($json['message'] ?? 'RobostTech verification was not successful.')];
         }

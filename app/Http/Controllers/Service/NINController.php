@@ -95,6 +95,10 @@ class NINController extends Controller
 
     public function verify(Request $request)
     {
+        if ($request->input('mode') === 'demographic' && !$request->filled('dob') && $request->filled('dateOfBirth')) {
+            $request->merge(['dob' => $request->input('dateOfBirth')]);
+        }
+
         $request->validate([
             'mode' => ['required', 'in:nin,phone,tracking,demographic,selfie,share_code,requery,validation,validation_status'],
             'number' => ['required_if:mode,nin,phone,tracking,selfie,validation,validation_status', 'nullable', 'string'],
@@ -103,7 +107,9 @@ class NINController extends Controller
             'share_reason_other' => ['nullable', 'string', 'max:120'],
             'firstname' => ['required_if:mode,demographic', 'nullable', 'string'],
             'lastname' => ['required_if:mode,demographic', 'nullable', 'string'],
+            'middlename' => ['nullable', 'string'],
             'dob' => ['required_if:mode,demographic', 'nullable', 'string'],
+            'dateOfBirth' => ['nullable', 'string'],
             'gender' => ['required_if:mode,demographic', 'nullable', 'string'],
             'selfie' => ['required_if:mode,selfie', 'nullable', 'file', 'mimes:jpg,jpeg,png', 'max:4096'],
             'validation_reason' => ['required_if:mode,validation', 'nullable', 'string', 'max:120'],
@@ -244,7 +250,12 @@ class NINController extends Controller
         }
 
         // Concurrency lock: prevent rapid double-clicks or concurrent duplicate debits for the same query
-        $idNumber = (string) ($request->input('number') ?: $request->input('share_code') ?: $request->input('reference_id') ?: $request->input('firstname'));
+        $idNumber = (string) (
+            $request->input('number')
+            ?: $request->input('share_code')
+            ?: $request->input('reference_id')
+            ?: ($request->input('firstname') . '_' . $request->input('lastname') . '_' . ($request->input('dob') ?: $request->input('dateOfBirth')))
+        );
         $lockKey = "nin_verify_lock_{$user->id}_{$mode}_" . md5(trim($idNumber));
         $lock = Cache::lock($lockKey, 20);
 
@@ -282,12 +293,20 @@ class NINController extends Controller
                         }
                     }
 
+                    $identifier = (string) (
+                        $request->number
+                        ?: $request->share_code
+                        ?: $request->reference_id
+                        ?: ($data['nin'] ?? null)
+                        ?: trim(($request->firstname ?? '') . ' ' . ($request->lastname ?? ''))
+                    );
+
                     $result = app(VerificationResultService::class)->create(
                         $user,
                         $mode === 'selfie'
                             ? 'nin_face_verification'
                             : ($mode === 'validation' || $mode === 'validation_status' ? 'nin_validation' : 'nin_verification'),
-                        (string) ($request->number ?? $request->share_code ?? $request->reference_id),
+                        $identifier,
                         (string) ($response['provider'] ?? 'Unknown Provider'),
                         $data,
                         ($mode === 'validation' || $mode === 'validation_status') ? 'pending' : 'success',
@@ -656,12 +675,26 @@ class NINController extends Controller
         } elseif ($mode === 'phone') {
             $payload = ['phone' => trim((string) $request->input('number'))];
         } elseif ($mode === 'demographic') {
+            $dob = trim((string) ($request->input('dateOfBirth') ?: $request->input('dob') ?: ''));
+            $formattedDob = $dob;
+            try {
+                if ($dob !== '') {
+                    $formattedDob = \Carbon\Carbon::parse($dob)->format('Y-m-d');
+                }
+            } catch (\Throwable $e) {}
+
+            $genderRaw = strtolower(trim((string) $request->input('gender', '')));
+            $gender = in_array($genderRaw, ['m', 'male'], true) 
+                ? 'male' 
+                : (in_array($genderRaw, ['f', 'female'], true) ? 'female' : $genderRaw);
+
             $payload = [
                 'firstname' => strtoupper(trim((string) $request->input('firstname'))),
                 'lastname' => strtoupper(trim((string) $request->input('lastname'))),
                 'middlename' => strtoupper(trim((string) $request->input('middlename', ''))),
-                'gender' => strtolower(trim((string) $request->input('gender'))),
-                'dateOfBirth' => trim((string) $request->input('dob')),
+                'gender' => $gender,
+                'dateOfBirth' => $formattedDob,
+                'dob' => $formattedDob,
             ];
         } elseif ($mode === 'clearance' || $mode === 'clearance_status') {
             $payload = ['tracking_id' => trim((string) ($request->input('tracking_id') ?: $request->input('number')))];
