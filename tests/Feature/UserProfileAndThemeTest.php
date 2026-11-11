@@ -113,4 +113,20 @@ class UserProfileAndThemeTest extends TestCase
         // History route presence
         $response->assertSee(route('history'), false);
     }
+
+    public function test_user_dashboard_has_no_ai_slop()
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->get(route('dashboard'));
+
+        $response->assertStatus(200);
+        $response->assertDontSee('id="aiFabToggle"', false);
+        $response->assertDontSee('id="aiChatCard"', false);
+        $response->assertDontSee('nexus-ai.js', false);
+        $response->assertDontSee('hero-bg-accent', false);
+        $response->assertDontSee('hw-glow', false);
+        $response->assertDontSee('secure command center', false);
+        $response->assertDontSee('fa-crown', false);
+    }
 }

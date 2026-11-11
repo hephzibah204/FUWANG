@@ -22,15 +22,14 @@
         </div>
     @endif
 
-    <!-- Premium Welcome Hero -->
+    <!-- Welcome Hero -->
     <div class="welcome-hero mb-4" data-step="1" data-intro="Welcome to your Dashboard! This is your main hub for all activities.">
-        <div class="hero-bg-accent"></div>
         <div class="row align-items-center position-relative">
             <div class="col-lg-7 mb-4 mb-lg-0">
                 <div class="hero-welcome-text">
                     <div class="d-flex align-items-center gap-2 mb-3">
-                        <span class="badge badge-primary px-3 py-2" style="border-radius: 10px; background: rgba(59, 130, 246, 0.15); font-weight: 600;">
-                            <i class="fa-solid fa-crown mr-1 text-warning"></i> {{ (Auth::user()->role ?? 'user') === 'admin' ? 'Administrator' : 'Standard Member' }}
+                        <span class="badge px-3 py-1 font-weight-medium rounded-pill" style="background: rgba(59, 130, 246, 0.1); color: var(--clr-primary, #3b82f6); font-size: 0.78rem;">
+                            <i class="fa-solid fa-circle-user mr-1"></i> {{ (Auth::user()->role ?? 'user') === 'admin' ? 'Administrator' : 'Personal Account' }}
                         </span>
                         @if(!empty($hasTier2Kyc))
                             <span class="kyc-status-badge kyc-verified">
@@ -42,14 +41,14 @@
                             </a>
                         @endif
                         @if(Auth::user()->enrollmentAgent)
-                            <a href="{{ route('agent.switch_mode', ['mode' => 'agency']) }}" class="btn btn-sm btn-primary rounded-pill px-3 py-1 font-weight-bold ml-auto" style="background: linear-gradient(135deg, #2563eb, #1d4ed8); border: 1px solid rgba(255,255,255,0.2);">
+                            <a href="{{ route('agent.switch_mode', ['mode' => 'agency']) }}" class="btn btn-sm btn-primary rounded-pill px-3 py-1 font-weight-bold ml-auto" style="border: 1px solid rgba(255,255,255,0.2);">
                                 <i class="fa-solid fa-id-card-clip mr-1"></i> Switch to Agent Dashboard
                             </a>
                         @endif
                     </div>
                     
-                    <h1 class="display-4 font-weight-bold mb-2">Hello, {{ explode(' ', Auth::user()->fullname)[0] ?? Auth::user()->username }}!</h1>
-                    <p class="text-white-50 lead mb-4" style="font-size: 1.05rem;">Manage your identity verifications and digital services from your secure command center.</p>
+                    <h1 class="welcome-heading">Welcome, {{ explode(' ', Auth::user()->fullname)[0] ?? Auth::user()->username }}</h1>
+                    <p class="welcome-subtext">Manage identity verifications, wallet balances, and services</p>
                     
                     <div class="hero-stats-row">
                         <x-nexus.stat-card label="Total Verifications" :value="number_format($verificationCount ?? 0)" icon="fa-fingerprint" />
@@ -60,7 +59,6 @@
             </div>
             <div class="col-lg-5">
                 <div class="hero-wallet-card" data-step="2" data-intro="This is your wallet. You can fund it to start using our services.">
-                    <div class="hw-glow"></div>
                     <div class="hw-content">
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <div class="d-flex align-items-center">
@@ -69,13 +67,13 @@
                                     <i class="fa-solid fa-eye" id="balanceToggleIcon"></i>
                                 </button>
                             </div>
-                            <i class="fa-solid fa-wallet text-white-50" style="font-size: 1.25rem;"></i>
+                            <i class="fa-solid fa-wallet text-white-50" style="font-size: 1.15rem;"></i>
                         </div>
                         <div class="hw-amount mb-4" id="walletBalanceDisplay" data-actual-balance="₦{{ number_format($balance, 2) }}">
                             ₦{{ number_format($balance, 2) }}
                         </div>
                         <div class="hw-actions d-flex gap-2">
-                            <button class="btn btn-primary flex-grow-1 font-weight-bold py-2" data-toggle="modal" data-target="#fundWalletModal" style="border-radius: 12px; background: #ffffff; color: #1e40af; border: none;">
+                            <button class="btn flex-grow-1 font-weight-bold py-2" data-toggle="modal" data-target="#fundWalletModal" style="border-radius: 10px; background: #ffffff; color: #1e3a8a; border: none; font-size: 0.9rem;">
                                 <i class="fa-solid fa-plus-circle mr-1"></i> Fund Wallet
                             </button>
                             <a href="{{ route('wallet.fund') }}" class="btn btn-glass px-3 d-flex align-items-center justify-content-center" title="Virtual Accounts & Transfers">
@@ -97,11 +95,11 @@
         <div class="panel-card">
             <div class="panel-hdr mb-3">
                 <div class="d-flex align-items-center">
-                    <div class="section-icon lifestyle mr-3" style="width: 40px; height: 40px; border-radius: 10px; background: rgba(139, 92, 246, 0.15); color: #a78bfa; display: flex; align-items: center; justify-content: center;">
+                    <div class="mr-3" style="width: 36px; height: 36px; border-radius: 8px; background: rgba(59, 130, 246, 0.1); color: var(--clr-primary, #3b82f6); display: flex; align-items: center; justify-content: center; font-size: 1.05rem;">
                         <i class="fa-solid fa-building-columns"></i>
                     </div>
                     <div>
-                        <h2 class="h6 font-weight-bold m-0 text-white">Dedicated Virtual Accounts</h2>
+                        <h2 class="h6 font-weight-bold m-0" style="color: var(--clr-text-main, #f8fafc);">Dedicated Virtual Accounts</h2>
                         <p class="small text-muted m-0">Transfer funds to any assigned account below for instant wallet crediting</p>
                     </div>
                 </div>
@@ -123,7 +121,7 @@
     <div class="service-filter-bar mb-3">
         <div class="service-search-box">
             <i class="fa-solid fa-magnifying-glass"></i>
-            <input type="text" id="serviceSearchInput" placeholder="Search services (e.g., NIN, BVN, Airtime, CAC)..." onkeyup="filterServices()">
+            <input type="text" id="serviceSearchInput" placeholder="Search services (NIN, BVN, Airtime, CAC)..." onkeyup="filterServices()">
         </div>
         <div class="category-pills">
             <div class="cat-pill active" data-filter="all" onclick="selectServiceCategory('all', this)">
@@ -145,18 +143,18 @@
     <div class="dashboard-section service-group mb-4" data-category="identity" data-step="4" data-intro="This section provides quick access to our identity verification services.">
         <div class="section-hdr mb-3">
             <div class="d-flex align-items-center">
-                <div class="section-icon identity mr-3" style="width: 36px; height: 36px; border-radius: 10px; background: rgba(16, 185, 129, 0.15); color: #34d399; display: flex; align-items: center; justify-content: center;">
+                <div class="mr-3" style="width: 32px; height: 32px; border-radius: 8px; background: rgba(59, 130, 246, 0.08); color: var(--clr-primary, #3b82f6); display: flex; align-items: center; justify-content: center; font-size: 0.95rem;">
                     <i class="fa-solid fa-id-card"></i>
                 </div>
                 <div>
-                    <h2 class="h6 font-weight-bold m-0 text-white">Identity Proofing</h2>
-                    <p class="small text-muted m-0">Core government & national ID verification suites</p>
+                    <h2 class="h6 font-weight-bold m-0" style="color: var(--clr-text-main, #f8fafc);">Identity Proofing</h2>
+                    <p class="small text-muted m-0">Government & national ID verification suites</p>
                 </div>
             </div>
         </div>
         <div class="quick-grid">
             @if(\App\Models\SystemSetting::get('nin_service_enabled', 'true') === 'true')
-                <x-nexus.service-card title="NIN Suite" :href="route('services.nin.suite')" icon="fa-id-card-clip" iconVariant="solid" style="border: 1px solid rgba(59, 130, 246, 0.4);" />
+                <x-nexus.service-card title="NIN Suite" :href="route('services.nin.suite')" icon="fa-id-card-clip" iconVariant="solid" />
             @endif
 
             @if(\App\Models\SystemSetting::get('bvn_service_enabled', 'true') === 'true')
@@ -174,12 +172,12 @@
     <div class="dashboard-section service-group mb-4" data-category="verification">
         <div class="section-hdr mb-3">
             <div class="d-flex align-items-center">
-                <div class="section-icon verification mr-3" style="width: 36px; height: 36px; border-radius: 10px; background: rgba(59, 130, 246, 0.15); color: #60a5fa; display: flex; align-items: center; justify-content: center;">
+                <div class="mr-3" style="width: 32px; height: 32px; border-radius: 8px; background: rgba(59, 130, 246, 0.08); color: var(--clr-primary, #3b82f6); display: flex; align-items: center; justify-content: center; font-size: 0.95rem;">
                     <i class="fa-solid fa-shield-halved"></i>
                 </div>
                 <div>
-                    <h2 class="h6 font-weight-bold m-0 text-white">Corporate & Verification Hub</h2>
-                    <p class="small text-muted m-0">Enterprise validation, biometrics and address authentication</p>
+                    <h2 class="h6 font-weight-bold m-0" style="color: var(--clr-text-main, #f8fafc);">Corporate & Verification</h2>
+                    <p class="small text-muted m-0">Enterprise validation, biometrics and registry authentication</p>
                 </div>
             </div>
         </div>
@@ -196,19 +194,19 @@
     <div class="dashboard-section service-group mb-4" data-category="lifestyle">
         <div class="section-hdr mb-3">
             <div class="d-flex align-items-center">
-                <div class="section-icon lifestyle mr-3" style="width: 36px; height: 36px; border-radius: 10px; background: rgba(139, 92, 246, 0.15); color: #a78bfa; display: flex; align-items: center; justify-content: center;">
+                <div class="mr-3" style="width: 32px; height: 32px; border-radius: 8px; background: rgba(59, 130, 246, 0.08); color: var(--clr-primary, #3b82f6); display: flex; align-items: center; justify-content: center; font-size: 0.95rem;">
                     <i class="fa-solid fa-bolt"></i>
                 </div>
                 <div>
-                    <h2 class="h6 font-weight-bold m-0 text-white">Ecosystem & Lifestyle</h2>
-                    <p class="small text-muted m-0">Utilities, business management and lifestyle services</p>
+                    <h2 class="h6 font-weight-bold m-0" style="color: var(--clr-text-main, #f8fafc);">Utilities & Value Added</h2>
+                    <p class="small text-muted m-0">Airtime, utilities, legal tools and lifestyle services</p>
                 </div>
             </div>
             <a href="{{ route('services.price_list') }}" class="small text-primary font-weight-bold">View Prices</a>
         </div>
         <div class="quick-grid">
             @if(\App\Models\SystemSetting::get('airtime_data_enabled', 'true') === 'true')
-                <x-nexus.service-card title="VTU Hub" :href="route('services.vtu.hub')" icon="fa-mobile-screen-button" iconVariant="solid" badge="TOP-UP" badgeColor="var(--clr-accent-2)" />
+                <x-nexus.service-card title="VTU Hub" :href="route('services.vtu.hub')" icon="fa-mobile-screen-button" iconVariant="solid" />
             @endif
 
             @if(\App\Models\SystemSetting::get('legal_service_enabled', 'true') === 'true')
@@ -309,20 +307,20 @@
                         </div>
                     @endif
                     
-                    <div class="p-3 rounded-lg mt-auto" style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.12), rgba(59, 130, 246, 0.08)); border: 1px solid rgba(139, 92, 246, 0.25); border-radius: 14px;">
+                    <div class="p-3 rounded-3 mt-auto" style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--dash-card-border); border-radius: 12px;">
                         <div class="d-flex justify-content-between align-items-center mb-1">
-                            <span class="small font-weight-bold text-white">Invite & Earn 10%</span>
-                            <span class="badge badge-pill badge-primary px-2" style="font-size: 0.65rem;">Reward</span>
+                            <span class="small font-weight-bold" style="color: var(--clr-text-main, #f8fafc);">Referral Program</span>
+                            <span class="small text-muted">10% commission</span>
                         </div>
-                        <p class="small text-muted mb-2" style="font-size: 0.75rem;">Share your unique link and earn commissions on every verification funded.</p>
+                        <p class="small text-muted mb-2" style="font-size: 0.75rem;">Earn commission on every verification funded by your invited referrals.</p>
                         <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
-                            <code class="text-primary font-weight-bold px-2 py-1 rounded" style="font-size: 0.95rem; background: rgba(0,0,0,0.3);">{{ Auth::user()->referral_id }}</code>
-                            <button class="btn btn-sm btn-primary py-1 px-3 ref-copy" data-referral-url="{{ url('/register?ref=' . urlencode((string) Auth::user()->referral_id)) }}" style="border-radius: 8px; font-weight: 600;">
+                            <code class="text-primary font-weight-bold px-2 py-1 rounded" style="font-size: 0.85rem; background: rgba(59, 130, 246, 0.08);">{{ Auth::user()->referral_id }}</code>
+                            <button class="btn btn-sm btn-primary py-1 px-3 ref-copy" data-referral-url="{{ url('/register?ref=' . urlencode((string) Auth::user()->referral_id)) }}" style="border-radius: 6px; font-weight: 600; font-size: 0.78rem;">
                                 <i class="fa-solid fa-copy mr-1"></i> Copy
                             </button>
                         </div>
-                        <a href="{{ route('referrals.index') }}" class="btn btn-sm btn-block btn-glass py-2" style="border-radius: 8px; font-size: 0.75rem; letter-spacing: 0.5px;">
-                            <i class="fa-solid fa-chart-line mr-1"></i> VIEW DETAILED ANALYTICS
+                        <a href="{{ route('referrals.index') }}" class="btn btn-sm btn-block btn-glass py-2" style="border-radius: 8px; font-size: 0.75rem;">
+                            View detailed analytics <i class="fa-solid fa-arrow-right ml-1"></i>
                         </a>
                     </div>
                 </div>
@@ -389,9 +387,9 @@
                     <p class="text-muted small mb-3">Choose an alternative funding method below:</p>
                     <div class="d-grid gap-3">
                         <button class="btn btn-outline-primary w-100 py-3 mb-2 text-left d-flex align-items-center" onclick="showAutoFundingAccounts()" style="border-radius: 12px; background: rgba(59, 130, 246, 0.05);">
-                            <i class="fa-solid fa-robot mr-3 text-primary" style="font-size: 1.4rem;"></i>
+                            <i class="fa-solid fa-building-columns mr-3 text-primary" style="font-size: 1.25rem;"></i>
                             <div>
-                                <div class="font-weight-bold text-white">Instant Auto Dedicated Accounts</div>
+                                <div class="font-weight-bold text-white">Instant Dedicated Bank Accounts</div>
                                 <div class="small text-muted">Wema, PalmPay, Sterling bank transfers</div>
                             </div>
                         </button>

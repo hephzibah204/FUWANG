@@ -2,109 +2,85 @@
 <style>
     /* Global Dashboard Tokens */
     :root {
-        --dash-card-bg: rgba(15, 23, 42, 0.7);
+        --dash-card-bg: #0f172a;
         --dash-card-border: rgba(255, 255, 255, 0.08);
-        --dash-glow-primary: rgba(59, 130, 246, 0.15);
-        --dash-glow-purple: rgba(139, 92, 246, 0.15);
     }
 
     [data-theme="light"],
     body.theme-light {
         --dash-card-bg: #ffffff;
         --dash-card-border: #e2e8f0;
-        --dash-glow-primary: rgba(59, 130, 246, 0.05);
-        --dash-glow-purple: rgba(139, 92, 246, 0.05);
     }
 
     /* Welcome Hero Container */
     .welcome-hero {
         position: relative;
-        padding: 2.25rem 2.5rem;
-        background: linear-gradient(135deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.95) 100%);
-        border-radius: 24px;
+        padding: 1.75rem 2rem;
+        background: var(--dash-card-bg);
+        border-radius: 16px;
         border: 1px solid var(--dash-card-border);
         overflow: hidden;
-        backdrop-filter: blur(24px);
-        -webkit-backdrop-filter: blur(24px);
-        box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
     }
 
-    .hero-bg-accent {
-        position: absolute;
-        top: -120px;
-        right: -80px;
-        width: 380px;
-        height: 380px;
-        background: radial-gradient(circle, var(--dash-glow-primary) 0%, rgba(139, 92, 246, 0.08) 40%, transparent 70%);
-        z-index: 0;
-        pointer-events: none;
-        filter: blur(20px);
+
+    .welcome-heading {
+        color: var(--clr-text-main, #f8fafc);
+        font-weight: 700;
+        letter-spacing: -0.3px;
+        font-size: 1.55rem;
+        line-height: 1.25;
+        margin-bottom: 0.25rem;
     }
 
-    .hero-welcome-text h1 {
-        color: #f8fafc;
-        font-weight: 800;
-        letter-spacing: -0.5px;
-        font-size: 2.1rem;
+    .welcome-subtext {
+        color: var(--clr-text-muted, #94a3b8);
+        font-size: 0.875rem;
+        margin-bottom: 1.25rem;
+        line-height: 1.4;
     }
 
     .hero-stats-row {
         display: flex;
         flex-wrap: wrap;
-        gap: 1.5rem;
+        gap: 1rem;
     }
 
     .h-stat {
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        border-radius: 14px;
-        padding: 10px 16px;
-        min-width: 130px;
+        background: rgba(255, 255, 255, 0.025);
+        border: 1px solid var(--dash-card-border);
+        border-radius: 10px;
+        padding: 8px 14px;
+        min-width: 120px;
     }
 
     .h-stat-label {
         font-size: 0.7rem;
-        color: #94a3b8;
+        color: var(--clr-text-muted, #94a3b8);
         text-transform: uppercase;
-        letter-spacing: 0.8px;
+        letter-spacing: 0.5px;
         margin-bottom: 2px;
-        font-weight: 600;
+        font-weight: 500;
     }
 
     .h-stat-val {
-        font-size: 1.15rem;
+        font-size: 1.05rem;
         font-weight: 700;
-        color: #f8fafc;
+        color: var(--clr-text-main, #f8fafc);
+        font-variant-numeric: tabular-nums;
     }
 
-    /* Modern Glass Wallet Card */
+    /* Professional Financial Wallet Card */
     .hero-wallet-card {
-        background: linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #2563eb 100%);
-        border-radius: 22px;
-        padding: 1.75rem 2rem;
+        background: linear-gradient(135deg, #0f274a 0%, #1e40af 100%);
+        border-radius: 16px;
+        padding: 1.5rem 1.75rem;
         position: relative;
         overflow: hidden;
-        box-shadow: 0 20px 35px -10px rgba(37, 99, 235, 0.45);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.12);
     }
 
-    .hero-wallet-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 25px 45px -10px rgba(37, 99, 235, 0.55);
-    }
-
-    .hw-glow {
-        position: absolute;
-        bottom: -40px;
-        right: -40px;
-        width: 140px;
-        height: 140px;
-        background: rgba(255, 255, 255, 0.15);
-        filter: blur(30px);
-        border-radius: 50%;
-        pointer-events: none;
-    }
 
     .hw-content {
         position: relative;
@@ -112,88 +88,88 @@
     }
 
     .hw-amount {
-        font-size: 2.2rem;
-        font-weight: 800;
+        font-size: 2rem;
+        font-weight: 700;
         color: #ffffff;
-        letter-spacing: -0.8px;
+        letter-spacing: -0.5px;
         line-height: 1.2;
+        font-variant-numeric: tabular-nums;
     }
 
     .balance-toggle-btn {
-        background: rgba(255, 255, 255, 0.18);
+        background: rgba(255, 255, 255, 0.15);
         border: none;
         color: #ffffff;
-        width: 32px;
-        height: 32px;
+        width: 28px;
+        height: 28px;
         border-radius: 50%;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         cursor: pointer;
-        transition: all 0.2s ease;
+        transition: background 0.15s ease;
         margin-left: 8px;
-        font-size: 0.85rem;
+        font-size: 0.8rem;
     }
 
     .balance-toggle-btn:hover {
-        background: rgba(255, 255, 255, 0.3);
-        transform: scale(1.05);
+        background: rgba(255, 255, 255, 0.25);
     }
 
     .btn-glass {
-        background: rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.1);
         color: #ffffff;
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 10px;
         font-weight: 600;
-        transition: all 0.2s ease;
+        transition: background 0.15s ease;
     }
 
     .btn-glass:hover {
-        background: rgba(255, 255, 255, 0.25);
+        background: rgba(255, 255, 255, 0.2);
         color: #ffffff;
     }
 
     /* Virtual Account Showcase Card */
     .va-highlight-card {
-        background: linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.85));
+        background: var(--dash-card-bg);
         border: 1px solid var(--dash-card-border);
-        border-radius: 20px;
-        padding: 1.5rem;
-        backdrop-filter: blur(16px);
+        border-radius: 14px;
+        padding: 1.25rem 1.5rem;
         position: relative;
         overflow: hidden;
     }
 
     .va-bank-badge {
-        font-size: 0.75rem;
-        font-weight: 700;
-        letter-spacing: 0.5px;
+        font-size: 0.72rem;
+        font-weight: 600;
+        letter-spacing: 0.4px;
         text-transform: uppercase;
-        padding: 4px 10px;
-        border-radius: 8px;
-        background: rgba(59, 130, 246, 0.15);
-        color: #93c5fd;
-        border: 1px solid rgba(59, 130, 246, 0.3);
+        padding: 3px 8px;
+        border-radius: 6px;
+        background: rgba(59, 130, 246, 0.1);
+        color: #60a5fa;
+        border: 1px solid rgba(59, 130, 246, 0.2);
     }
 
     .va-num-display {
-        font-size: 1.45rem;
-        font-weight: 800;
-        letter-spacing: 1.5px;
-        color: #f8fafc;
-        font-family: 'Outfit', monospace;
+        font-size: 1.35rem;
+        font-weight: 700;
+        letter-spacing: 1.2px;
+        color: var(--clr-text-main, #f8fafc);
+        font-variant-numeric: tabular-nums;
+        font-family: inherit;
     }
 
     .va-copy-btn {
-        background: rgba(59, 130, 246, 0.2);
-        color: #60a5fa;
-        border: 1px solid rgba(59, 130, 246, 0.35);
-        border-radius: 10px;
-        padding: 6px 14px;
-        font-size: 0.8rem;
+        background: rgba(59, 130, 246, 0.12);
+        color: #3b82f6;
+        border: 1px solid rgba(59, 130, 246, 0.25);
+        border-radius: 8px;
+        padding: 5px 12px;
+        font-size: 0.78rem;
         font-weight: 600;
-        transition: all 0.2s ease;
+        transition: all 0.15s ease;
     }
 
     .va-copy-btn:hover {
@@ -208,91 +184,89 @@
         flex-wrap: wrap;
         align-items: center;
         justify-content: space-between;
-        gap: 1rem;
-        margin-bottom: 1.5rem;
+        gap: 0.75rem;
+        margin-bottom: 1.25rem;
     }
 
     .service-search-box {
         position: relative;
-        min-width: 260px;
-        max-width: 380px;
+        min-width: 240px;
+        max-width: 360px;
         flex: 1;
     }
 
     .service-search-box i {
         position: absolute;
-        left: 14px;
+        left: 12px;
         top: 50%;
         transform: translateY(-50%);
-        color: #94a3b8;
-        font-size: 0.9rem;
+        color: var(--clr-text-muted, #94a3b8);
+        font-size: 0.85rem;
     }
 
     .service-search-box input {
         width: 100%;
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 12px;
-        padding: 10px 14px 10px 38px;
-        color: #f8fafc;
-        font-size: 0.875rem;
-        transition: all 0.2s ease;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--dash-card-border);
+        border-radius: 10px;
+        padding: 8px 12px 8px 34px;
+        color: var(--clr-text-main, #f8fafc);
+        font-size: 0.85rem;
+        transition: border-color 0.15s ease;
     }
 
     .service-search-box input:focus {
-        background: rgba(255, 255, 255, 0.07);
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+        background: rgba(255, 255, 255, 0.05);
+        border-color: var(--clr-primary, #3b82f6);
         outline: none;
     }
 
     .category-pills {
         display: flex;
-        gap: 8px;
+        gap: 6px;
         overflow-x: auto;
-        padding-bottom: 4px;
+        padding-bottom: 2px;
     }
 
     .cat-pill {
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        color: #94a3b8;
-        padding: 7px 14px;
-        border-radius: 10px;
-        font-size: 0.8rem;
-        font-weight: 600;
+        background: transparent;
+        border: 1px solid var(--dash-card-border);
+        color: var(--clr-text-muted, #94a3b8);
+        padding: 6px 13px;
+        border-radius: 8px;
+        font-size: 0.78rem;
+        font-weight: 500;
         cursor: pointer;
-        transition: all 0.2s ease;
+        transition: all 0.15s ease;
         white-space: nowrap;
         user-select: none;
     }
 
     .cat-pill:hover {
-        background: rgba(255, 255, 255, 0.07);
-        color: #f8fafc;
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--clr-text-main, #f8fafc);
     }
 
     .cat-pill.active {
         background: #3b82f6;
         color: #ffffff;
         border-color: #3b82f6;
-        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
     }
 
-    /* Quick Grid & Service Card Upgrades */
+    /* Quick Grid & Service Cards */
     .quick-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-        gap: 14px;
+        gap: 10px;
     }
 
     .qa-card {
-        background: rgba(255, 255, 255, 0.025);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        border-radius: 18px;
-        padding: 18px 12px;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid var(--dash-card-border);
+        border-radius: 12px;
+        padding: 14px 10px;
         text-align: center;
-        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: border-color 0.15s ease, background 0.15s ease;
         text-decoration: none !important;
         position: relative;
         display: flex;
@@ -302,114 +276,112 @@
     }
 
     .qa-card:hover {
-        background: rgba(255, 255, 255, 0.06);
-        border-color: rgba(59, 130, 246, 0.5);
-        transform: translateY(-4px);
-        box-shadow: 0 12px 25px -5px rgba(59, 130, 246, 0.25);
+        background: rgba(255, 255, 255, 0.04);
+        border-color: rgba(59, 130, 246, 0.35);
+        transform: none;
+        box-shadow: none;
     }
 
     .qa-icon {
-        width: 46px;
-        height: 46px;
-        border-radius: 14px;
+        width: 38px;
+        height: 38px;
+        border-radius: 8px;
         display: flex;
         align-items: center;
         justify-content: center;
-        margin: 0 auto 10px;
-        font-size: 1.3rem;
-        background: rgba(255, 255, 255, 0.04);
-        color: #60a5fa;
-        transition: all 0.2s ease;
+        margin: 0 auto 8px;
+        font-size: 1.15rem;
+        background: rgba(59, 130, 246, 0.08);
+        color: #3b82f6;
     }
 
     .qa-card:hover .qa-icon {
-        background: rgba(59, 130, 246, 0.2);
-        transform: scale(1.08);
+        background: rgba(59, 130, 246, 0.14);
+        transform: none;
     }
 
     .qa-label {
         font-size: 0.8rem;
-        font-weight: 600;
-        color: #e2e8f0;
+        font-weight: 500;
+        color: var(--clr-text-main, #e2e8f0);
         line-height: 1.25;
     }
 
     .qa-badge {
         position: absolute;
-        top: 8px;
-        right: 8px;
-        font-size: 0.6rem;
-        padding: 2px 6px;
-        border-radius: 6px;
+        top: 6px;
+        right: 6px;
+        font-size: 0.58rem;
+        padding: 1px 5px;
+        border-radius: 4px;
         color: #fff;
-        font-weight: 700;
+        font-weight: 600;
         text-transform: uppercase;
-        letter-spacing: 0.4px;
+        letter-spacing: 0.3px;
     }
 
     /* Panels & Cards */
     .panel-card {
-        background: rgba(15, 23, 42, 0.7);
+        background: var(--dash-card-bg);
         border: 1px solid var(--dash-card-border);
-        border-radius: 20px;
-        padding: 1.5rem;
-        backdrop-filter: blur(16px);
-        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        border-radius: 16px;
+        padding: 1.25rem 1.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
     }
 
     .panel-hdr {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        margin-bottom: 1.25rem;
+        margin-bottom: 1rem;
     }
 
     /* Recent Transactions Styling */
     .txn-row-item {
-        background: rgba(255, 255, 255, 0.02);
-        border: 1px solid rgba(255, 255, 255, 0.04);
-        border-radius: 14px;
-        padding: 12px 16px;
-        margin-bottom: 8px;
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--dash-card-border);
+        border-radius: 10px;
+        padding: 10px 14px;
+        margin-bottom: 6px;
         display: flex;
         align-items: center;
-        gap: 14px;
-        transition: all 0.2s ease;
+        gap: 12px;
+        transition: background 0.15s ease;
         text-decoration: none !important;
     }
 
     .txn-row-item:hover {
-        background: rgba(255, 255, 255, 0.05);
-        border-color: rgba(255, 255, 255, 0.1);
-        transform: translateX(4px);
+        background: rgba(255, 255, 255, 0.04);
+        border-color: rgba(255, 255, 255, 0.12);
+        transform: none;
     }
 
     .txn-icon {
-        width: 38px;
-        height: 38px;
-        border-radius: 10px;
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1rem;
+        font-size: 0.9rem;
         flex-shrink: 0;
     }
 
     .txn-icon.success {
-        background: rgba(16, 185, 129, 0.12);
-        color: #34d399;
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
         border: 1px solid rgba(16, 185, 129, 0.2);
     }
 
     .txn-icon.failed {
-        background: rgba(239, 68, 68, 0.12);
-        color: #f87171;
+        background: rgba(239, 68, 68, 0.1);
+        color: #ef4444;
         border: 1px solid rgba(239, 68, 68, 0.2);
     }
 
     .txn-icon.pending {
-        background: rgba(245, 158, 11, 0.12);
-        color: #fbbf24;
+        background: rgba(245, 158, 11, 0.1);
+        color: #f59e0b;
         border: 1px solid rgba(245, 158, 11, 0.2);
     }
 
@@ -418,60 +390,60 @@
         display: flex;
         align-items: center;
         gap: 12px;
-        padding: 12px 14px;
-        background: rgba(255, 255, 255, 0.02);
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        border-radius: 14px;
-        transition: all 0.2s ease;
+        padding: 10px 12px;
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--dash-card-border);
+        border-radius: 10px;
+        transition: background 0.15s ease;
     }
 
     .mini-stat-item:hover {
-        background: rgba(255, 255, 255, 0.04);
-        transform: translateX(3px);
+        background: rgba(255, 255, 255, 0.035);
+        transform: none;
     }
 
     .mini-stat-item i {
-        width: 34px;
-        height: 34px;
+        width: 32px;
+        height: 32px;
         display: flex;
         align-items: center;
         justify-content: center;
         background: rgba(255, 255, 255, 0.04);
-        border-radius: 10px;
-        font-size: 1rem;
+        border-radius: 8px;
+        font-size: 0.9rem;
     }
 
     /* KYC Badge Pill */
     .kyc-status-badge {
         display: inline-flex;
         align-items: center;
-        gap: 6px;
-        padding: 5px 12px;
-        border-radius: 20px;
-        font-size: 0.75rem;
-        font-weight: 700;
-        letter-spacing: 0.3px;
+        gap: 5px;
+        padding: 3px 10px;
+        border-radius: 6px;
+        font-size: 0.72rem;
+        font-weight: 600;
+        letter-spacing: 0.2px;
     }
 
     .kyc-verified {
-        background: rgba(16, 185, 129, 0.15);
-        color: #34d399;
-        border: 1px solid rgba(16, 185, 129, 0.3);
+        background: rgba(16, 185, 129, 0.1);
+        color: #10b981;
+        border: 1px solid rgba(16, 185, 129, 0.25);
     }
 
     .kyc-unverified {
-        background: rgba(245, 158, 11, 0.15);
-        color: #fbbf24;
-        border: 1px solid rgba(245, 158, 11, 0.3);
+        background: rgba(245, 158, 11, 0.1);
+        color: #f59e0b;
+        border: 1px solid rgba(245, 158, 11, 0.25);
     }
 
     /* Responsive Queries */
     @media (max-width: 991px) {
         .welcome-hero {
-            padding: 1.75rem;
+            padding: 1.5rem;
         }
-        .hero-welcome-text h1 {
-            font-size: 1.75rem;
+        .welcome-heading {
+            font-size: 1.35rem;
         }
     }
 
@@ -484,19 +456,19 @@
             max-width: 100%;
         }
         .quick-grid {
-            grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
-            gap: 10px;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 8px;
         }
         .qa-card {
-            padding: 14px 8px;
+            padding: 12px 6px;
         }
         .qa-icon {
-            width: 40px;
-            height: 40px;
-            font-size: 1.15rem;
+            width: 34px;
+            height: 34px;
+            font-size: 1rem;
         }
         .qa-label {
-            font-size: 0.75rem;
+            font-size: 0.72rem;
         }
     }
 </style>

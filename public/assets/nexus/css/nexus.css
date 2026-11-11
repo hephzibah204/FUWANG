@@ -79,6 +79,10 @@ body {
     background: radial-gradient(circle, rgba(139, 92, 246, 0.2) 0%, rgba(3, 7, 18, 0) 70%);
 }
 
+.dashboard-body .bg-glow {
+    display: none !important;
+}
+
 /* =========================================
    Typography & Utilities
 ========================================= */

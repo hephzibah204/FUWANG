@@ -239,9 +239,7 @@
             backdrop-filter: none !important;
             box-shadow: none !important;
         }
-        body.high-contrast .bg-glow,
-        body.high-contrast .hero-bg-accent,
-        body.high-contrast .hw-glow {
+        body.high-contrast .bg-glow {
             display: none !important;
         }
         body.high-contrast .text-primary,
@@ -483,9 +481,11 @@
     $showDashboardChrome = $isAuthed && ! $isAuthPage && ! $isPublicPage;
 @endphp
 <body class="{{ $showDashboardChrome ? 'dashboard-body' : '' }}">
-    <!-- Background Elements -->
-    <div class="bg-glow blob-1"></div>
-    <div class="bg-glow blob-2"></div>
+    @if(!$showDashboardChrome)
+        <!-- Background Elements (Public Only) -->
+        <div class="bg-glow blob-1"></div>
+        <div class="bg-glow blob-2"></div>
+    @endif
 
     @php 
         $hideNav = trim($__env->yieldContent('hide_nav')) === 'true';
@@ -1110,38 +1110,7 @@
         <!-- Dynamic WhatsApp Widget handled by whatsappWidget.js -->
         <meta name="auth-check" content="{{ Auth::check() ? 'true' : 'false' }}">
 
-        @if($webUser)
-        <!-- AI Assistant FAB & Chat -->
-        <button class="ai-fab shadow-glow" id="aiFabToggle" type="button" title="{{ \App\Models\SystemSetting::get('site_name', 'Fuwa.NG') }} AI Assistant" aria-label="Open AI Assistant Chat" aria-expanded="false" aria-controls="aiChatCard">
-            <i class="fa-solid fa-robot" aria-hidden="true"></i>
-        </button>
 
-        <div class="ai-chat-card" id="aiChatCard" role="dialog" aria-label="AI Assistant Chat" hidden>
-            <div class="ai-chat-header">
-                <div class="d-flex align-items-center">
-                    <div class="ai-avatar mr-2"><i class="fa-solid fa-robot"></i></div>
-                    <div>
-                        <h6 class="mb-0 font-weight-bold">{{ \App\Models\SystemSetting::get('site_name', 'Fuwa.NG') }} AI</h6>
-                        <span class="small ai-status">Online Assistant</span>
-                    </div>
-                </div>
-                <button class="ai-close" id="aiChatClose" type="button" aria-label="Close AI Assistant Chat"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
-            </div>
-            <div class="ai-chat-body" id="aiChatBody" role="log" aria-live="polite" aria-relevant="additions text">
-                <div class="ai-msg ai-msg-bot">
-                    <div class="ai-msg-content">Hello {{ explode(' ', $webUser->fullname)[0] ?? 'there' }}! I am your {{ \App\Models\SystemSetting::get('site_name', 'Fuwa.NG') }} AI assistant. How can I help you navigate the platform today?</div>
-                </div>
-            </div>
-            <div class="ai-chat-footer">
-                <form id="aiChatForm" class="d-flex align-items-center">
-                    <input type="text" id="aiChatInput" class="ai-input mr-2" placeholder="Ask AI something..." autocomplete="off" required>
-                    <button type="submit" class="ai-send" aria-label="Send message">
-                        <i class="fa-solid fa-paper-plane"></i>
-                    </button>
-                </form>
-            </div>
-        </div>
-        @endif
     </main>
 
     <!-- Toast Container -->
@@ -1236,7 +1205,6 @@
     </script>
     @if($showDashboardChrome)
         <script src="{{ $assetPrefix . '/assets/nexus/js/payment-modal.js?v=' . @filemtime(public_path('assets/nexus/js/payment-modal.js')) }}"></script>
-        <script src="{{ $assetPrefix . '/assets/nexus/js/nexus-ai.js?v=' . @filemtime(public_path('assets/nexus/js/nexus-ai.js')) }}"></script>
     @endif
     <script nonce="{{ $cspNonce ?? '' }}">
         window.__toggleNexusSidebar = function (event) {
