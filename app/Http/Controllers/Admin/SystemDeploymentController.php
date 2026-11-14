@@ -8,6 +8,8 @@ use App\Models\AdminAuditLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class SystemDeploymentController extends Controller
 {
@@ -88,6 +90,14 @@ class SystemDeploymentController extends Controller
             $outputs[] = "Cache clear error: " . $e->getMessage();
         }
 
+        // Auto-heal migrations table if AUTO_INCREMENT is missing
+        try {
+            $repair = static::repairMigrationsTable();
+            if (!empty($repair['status']) && $repair['status'] === 'repaired') {
+                $outputs[] = "\n>>> [Auto-Heal] " . ($repair['message'] ?? 'Repaired migrations table.');
+            }
+        } catch (\Throwable $ignored) {}
+
         $outputs[] = "\n>>> [3/3] Deployment sequence completed successfully.";
 
         // Audit Log
@@ -146,13 +156,33 @@ class SystemDeploymentController extends Controller
         }
 
         try {
-            Artisan::call('migrate', ['--force' => true]);
-            $output = Artisan::output();
+            // Auto-heal migrations table if AUTO_INCREMENT on id was lost
+            $repair = static::repairMigrationsTable();
+
+            try {
+                Artisan::call('migrate', ['--force' => true]);
+                $output = Artisan::output();
+            } catch (\Throwable $migrationError) {
+                // If migration fails with missing default value or error 1364, repair and retry once
+                if (str_contains($migrationError->getMessage(), "Field 'id' doesn't have a default value") ||
+                    str_contains($migrationError->getMessage(), '1364')) {
+                    static::repairMigrationsTable();
+                    Artisan::call('migrate', ['--force' => true]);
+                    $output = Artisan::output();
+                } else {
+                    throw $migrationError;
+                }
+            }
+
+            $message = 'Database migrations finished.';
+            if (!empty($repair['status']) && $repair['status'] === 'repaired') {
+                $output = "[System Auto-Healed: " . ($repair['message'] ?? 'Repaired migrations table.') . "]\n\n" . $output;
+            }
 
             return response()->json([
                 'status' => 'success',
-                'output' => $output,
-                'message' => 'Database migrations finished.',
+                'output' => $output ?: 'Nothing to migrate.',
+                'message' => $message,
             ]);
         } catch (\Throwable $e) {
             return response()->json([
@@ -160,6 +190,84 @@ class SystemDeploymentController extends Controller
                 'output' => $e->getMessage(),
                 'message' => 'Migration failed: ' . $e->getMessage(),
             ], 500);
+        }
+    }
+
+    /**
+     * Auto-heal migrations table if AUTO_INCREMENT on id was lost (MySQL 1364 error).
+     */
+    public static function repairMigrationsTable(): array
+    {
+        $log = [];
+        try {
+            if (!Schema::hasTable('migrations')) {
+                return ['status' => 'skipped', 'message' => 'migrations table does not exist.'];
+            }
+
+            $driver = DB::connection()->getDriverName();
+            if ($driver !== 'mysql') {
+                return ['status' => 'skipped', 'message' => "Driver is {$driver}, not mysql."];
+            }
+
+            $colInfo = DB::select("SHOW COLUMNS FROM `migrations` LIKE 'id'");
+            if (empty($colInfo)) {
+                DB::statement("ALTER TABLE `migrations` ADD `id` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY FIRST");
+                return ['status' => 'repaired', 'message' => 'Added missing id AUTO_INCREMENT PRIMARY KEY to migrations.'];
+            }
+
+            $col = (array) $colInfo[0];
+            $extra = strtolower($col['Extra'] ?? $col['extra'] ?? '');
+            if (str_contains($extra, 'auto_increment')) {
+                return ['status' => 'ok', 'message' => 'migrations.id has AUTO_INCREMENT.'];
+            }
+
+            // Fix any 0 or negative IDs
+            try {
+                $hasZeroOrNegative = DB::table('migrations')->where('id', '<=', 0)->exists();
+                if ($hasZeroOrNegative) {
+                    DB::statement("SET @r := 0");
+                    DB::statement("UPDATE `migrations` SET `id` = (@r := @r + 1) ORDER BY `batch` ASC, `id` ASC");
+                    $log[] = 'Renumbered invalid migration IDs.';
+                }
+            } catch (\Throwable $e) {}
+
+            $pkInfo = DB::select("SHOW KEYS FROM `migrations` WHERE Key_name = 'PRIMARY'");
+            $hasPk = !empty($pkInfo);
+            $pkCol = '';
+            if ($hasPk) {
+                $firstPk = (array) $pkInfo[0];
+                $pkCol = strtolower($firstPk['Column_name'] ?? $firstPk['column_name'] ?? '');
+            }
+
+            try {
+                if ($hasPk && $pkCol === 'id') {
+                    DB::statement("ALTER TABLE `migrations` MODIFY `id` INT UNSIGNED NOT NULL AUTO_INCREMENT");
+                } elseif ($hasPk) {
+                    DB::statement("ALTER TABLE `migrations` DROP PRIMARY KEY, MODIFY `id` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY");
+                } else {
+                    DB::statement("ALTER TABLE `migrations` MODIFY `id` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY");
+                }
+            } catch (\Throwable $e) {
+                try {
+                    DB::statement("ALTER TABLE `migrations` MODIFY `id` INT UNSIGNED NOT NULL AUTO_INCREMENT");
+                } catch (\Throwable $e2) {
+                    DB::statement("ALTER TABLE `migrations` MODIFY `id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY");
+                }
+            }
+
+            // Ensure auto_increment sequence starts after max id
+            try {
+                $maxId = DB::table('migrations')->max('id');
+                if ($maxId && $maxId > 0) {
+                    $nextId = (int) $maxId + 1;
+                    DB::statement("ALTER TABLE `migrations` AUTO_INCREMENT = {$nextId}");
+                }
+            } catch (\Throwable $e) {}
+
+            $log[] = 'Restored AUTO_INCREMENT on migrations.id.';
+            return ['status' => 'repaired', 'message' => implode(' ', $log)];
+        } catch (\Throwable $e) {
+            return ['status' => 'error', 'message' => 'Failed to repair migrations table: ' . $e->getMessage()];
         }
     }
 

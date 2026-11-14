@@ -38,6 +38,12 @@ class AppServiceProvider extends ServiceProvider
     {
         View::share('exceptionAsMarkdown', false);
 
+        if (app()->runningInConsole() && !app()->environment('testing')) {
+            try {
+                \App\Http\Controllers\Admin\SystemDeploymentController::repairMigrationsTable();
+            } catch (\Throwable $ignored) {}
+        }
+
         Gate::before(function ($user, $ability) {
             if ($user instanceof \App\Models\Admin && $user->is_super_admin) {
                 return true;
