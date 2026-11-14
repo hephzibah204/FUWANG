@@ -17,6 +17,9 @@
             <p class="text-white-50 mb-0">Centralized governance, real-time metrics, terminal monitoring, and mass broadcast dispatch for NIN Enrollment Agents.</p>
         </div>
         <div class="d-flex gap-2 flex-wrap">
+            <a href="{{ route('admin.agents.pricing') }}" class="btn btn-outline-emerald rounded-pill px-3 fw-bold" style="color: #34d399; border-color: rgba(52, 211, 153, 0.4);">
+                <i class="fa-solid fa-tags me-2"></i>NIN Agent Pricing
+            </a>
             <a href="{{ route('admin.agents.notifications.index') }}" class="btn btn-primary rounded-pill px-3 fw-bold">
                 <i class="fa-solid fa-bullhorn me-2"></i>Send Broadcast
             </a>

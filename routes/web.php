@@ -776,6 +776,9 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
             Route::prefix('agents')->name('agents.')->group(function () {
                 Route::get('/', [App\Http\Controllers\Admin\AdminAgentController::class, 'index'])->name('index');
                 Route::get('/overview', [App\Http\Controllers\Admin\AdminAgentController::class, 'overview'])->name('overview');
+                Route::get('/pricing', [App\Http\Controllers\Admin\AdminAgentPricingController::class, 'index'])->name('pricing');
+                Route::post('/pricing', [App\Http\Controllers\Admin\AdminAgentPricingController::class, 'update'])->name('pricing.update');
+                Route::post('/pricing/reset', [App\Http\Controllers\Admin\AdminAgentPricingController::class, 'resetOverrides'])->name('pricing.reset');
                 Route::get('/leaderboard', [App\Http\Controllers\Admin\AdminAgentController::class, 'leaderboard'])->name('leaderboard');
                 Route::post('/leaderboard/publish', [App\Http\Controllers\Admin\AdminAgentController::class, 'publishLeaderboard'])->name('leaderboard.publish');
                 Route::get('/upload-preapproved', [App\Http\Controllers\Admin\AdminAgentController::class, 'showUploadPreApproved'])->name('upload_preapproved');

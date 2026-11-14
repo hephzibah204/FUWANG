@@ -322,4 +322,57 @@ class AdminAgentManagementTest extends TestCase
         $response->assertOk();
         $response->assertSee('Station Licenses Desk');
     }
+
+    public function test_admin_can_access_agent_nin_pricing_page_under_agency_network(): void
+    {
+        $response = $this->actingAs($this->admin, 'admin')
+            ->get(route('admin.agents.pricing'));
+
+        $response->assertOk();
+        $response->assertSee('NIN Pricing for Enrollment Agents');
+        $response->assertSee('Default Wholesale Discount');
+        $response->assertSee('Standard NIN Verification');
+        $response->assertSee('NIN Validation (NIMC Sync)');
+    }
+
+    public function test_admin_can_update_agent_wholesale_pricing_under_agency_network(): void
+    {
+        $user = User::factory()->create();
+        EnrollmentAgent::create([
+            'user_id' => $user->id,
+            'full_name' => 'Agent Pricing Verifier',
+            'phone_number' => '08099887766',
+            'residential_address' => 'Sample Address',
+            'office_address' => 'Sample Office',
+            'bvn' => '12345678901',
+            'nin' => '12345678901',
+            'status' => 'approved',
+            'state' => 'Abuja',
+        ]);
+
+        $response = $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.agents.pricing.update'), [
+                'agent_discount_percentage' => 20,
+                'agent_nin_by_nin_price' => 125.0,
+                'agent_validation_price' => 520.0,
+                'agent_nin_modification_price' => 1950.0,
+            ]);
+
+        $response->assertRedirect(route('admin.agents.pricing'));
+        $response->assertSessionHas('success');
+
+        $this->assertEquals(20.0, (float) \App\Models\SystemSetting::get('agent_discount_percentage'));
+        $this->assertEquals(125.0, \App\Services\Pricing\PriceResolverService::resolve($user, 'nin_by_nin_price'));
+        $this->assertEquals(520.0, \App\Services\Pricing\PriceResolverService::resolve($user, 'validation_price'));
+        $this->assertEquals(1950.0, \App\Services\Pricing\PriceResolverService::resolve($user, 'nin_modification_price'));
+    }
+
+    public function test_admin_can_reset_agent_price_overrides(): void
+    {
+        $response = $this->actingAs($this->admin, 'admin')
+            ->post(route('admin.agents.pricing.reset'));
+
+        $response->assertRedirect(route('admin.agents.pricing'));
+        $response->assertSessionHas('success');
+    }
 }

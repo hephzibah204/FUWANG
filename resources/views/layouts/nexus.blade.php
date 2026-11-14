@@ -573,6 +573,9 @@
                     <a href="{{ route('admin.agents.roster.index') }}" class="{{ Request::routeIs('admin.agents.roster.*') ? 'active' : '' }}">
                         <i class="fa-solid fa-clipboard-user me-2 text-xs opacity-75"></i> Master Roster
                     </a>
+                    <a href="{{ route('admin.agents.pricing') }}" class="{{ Request::routeIs('admin.agents.pricing*') ? 'active' : '' }}">
+                        <i class="fa-solid fa-tags me-2 text-xs text-emerald-400 opacity-75"></i> NIN Agent Pricing
+                    </a>
                     <a href="{{ route('admin.agents.leaderboard') }}" class="{{ Request::routeIs('admin.agents.leaderboard*') ? 'active' : '' }}">
                         <i class="fa-solid fa-trophy me-2 text-xs opacity-75"></i> Leaderboard & MVA
                     </a>
