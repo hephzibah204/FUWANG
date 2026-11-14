@@ -87,9 +87,9 @@ class VerificationController extends Controller
             'nin_face_verification' => \App\Models\SystemSetting::get('nin_face_verification_price', 500),
             'credit_bureau_advance' => \App\Models\SystemSetting::get('credit_bureau_price', 1000),
             'biometric_verification' => \App\Models\SystemSetting::get('biometric_verification_price', 500),
-            'validation' => $vPrice->validation_price ?? 700,
-            'clearance' => $vPrice->ipe_clearance_price ?? 400,
-            'personalization' => $vPrice->personalization_price ?? 100,
+            'validation' => \App\Services\Pricing\PriceResolverService::resolve(Auth::user(), 'validation_price', $vPrice->validation_price ?? 700),
+            'clearance' => \App\Services\Pricing\PriceResolverService::resolve(Auth::user(), 'ipe_clearance_price', $vPrice->ipe_clearance_price ?? 400),
+            'personalization' => \App\Services\Pricing\PriceResolverService::resolve(Auth::user(), 'personalization_price', $vPrice->personalization_price ?? 100),
         ];
 
         // Ensure we group all address verifications pending to show
@@ -975,7 +975,7 @@ class VerificationController extends Controller
                         ->latest()
                         ->get();
 
-        $price = VerificationPrice::first()->validation_price ?? 700;
+        $price = \App\Services\Pricing\PriceResolverService::resolve(Auth::user(), 'validation_price', 700);
         $validationMode = \App\Models\SystemSetting::get('nin_validation_mode', 'auto');
         $activeProvider = $this->preferredValidationProvider();
         if ($validationMode === 'manual') {
@@ -1231,6 +1231,7 @@ class VerificationController extends Controller
             : 500.0;
         $userPrice = $user ? (float) $user->getDeveloperApiPrice('developer_api_nin_validation_price', $defaultValPrice) : $defaultValPrice;
         $price = $userPrice > 0 ? $userPrice : $defaultValPrice;
+        $price = \App\Services\Pricing\PriceResolverService::resolve($user, 'validation_price', $price);
         $wallet = app(WalletService::class);
         $debit = $wallet->debit($user, (float) $price, 'Document Validation (' . $ninNumber . ')', 'VAL');
         if (!$debit['ok']) {
@@ -1559,7 +1560,7 @@ class VerificationController extends Controller
                         ->latest()
                         ->get();
 
-        $price = VerificationPrice::first()->ipe_clearance_price ?? 700;
+        $price = \App\Services\Pricing\PriceResolverService::resolve(Auth::user(), 'ipe_clearance_price', 700);
         $ipeMode = \App\Models\SystemSetting::get('ipe_clearance_mode', 'auto');
 
         $dvProvider = CustomApi::query()
@@ -1826,6 +1827,7 @@ class VerificationController extends Controller
             : 700.0;
         $userPrice = $user ? (float) $user->getDeveloperApiPrice('developer_api_ipe_clearance_price', $defaultClearPrice) : $defaultClearPrice;
         $price = $userPrice > 0 ? $userPrice : $defaultClearPrice;
+        $price = \App\Services\Pricing\PriceResolverService::resolve($user, 'ipe_clearance_price', $price);
         $wallet = app(WalletService::class);
         $debit = $wallet->debit($user, (float) $price, 'IPE Clearance Submission (' . $trackingId . ')', 'CLEAR');
         if (!$debit['ok']) {
@@ -2200,10 +2202,7 @@ class VerificationController extends Controller
                         ->latest()
                         ->get();
 
-        $price = 100;
-        if (Schema::hasTable('verification_prices')) {
-            $price = VerificationPrice::first()->personalization_price ?? 100;
-        }
+        $price = \App\Services\Pricing\PriceResolverService::resolve(Auth::user(), 'personalization_price', 100);
 
         return view('services.identity.personalization', compact('history', 'price'));
     }
@@ -2448,10 +2447,7 @@ class VerificationController extends Controller
         }
 
         // SUBMIT MODE (Charged on submission, not refunded per provider billing terms)
-        $price = 100;
-        if (Schema::hasTable('verification_prices')) {
-            $price = VerificationPrice::first()->personalization_price ?? 100;
-        }
+        $price = \App\Services\Pricing\PriceResolverService::resolve(Auth::user(), 'personalization_price', 100);
 
         $wallet = app(WalletService::class);
         $debit = $wallet->debit($user, (float) $price, 'Personalization', 'PERS');

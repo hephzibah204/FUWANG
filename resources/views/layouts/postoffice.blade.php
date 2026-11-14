@@ -13,16 +13,23 @@
 
     <style>
         :root {
-            --po-primary: #f59e0b; /* Amber/Orange for Logistics */
-            --po-secondary: #1e293b;
-            --po-accent: #3b82f6;
-            --bg-dark: #0f172a;
-            --glass-white: rgba(255, 255, 255, 0.03);
+            --po-primary: #f59e0b; /* Tarmac Amber */
+            --po-primary-hover: #d97706;
+            --po-secondary: #131926;
+            --po-accent: #38bdf8;
+            --bg-dark: #090d16;
+            --surface-card: #0e1422;
+            --surface-card-hover: #131a2b;
+            --surface-raised: #182033;
             --border-glass: rgba(255, 255, 255, 0.08);
+            --border-glass-subtle: rgba(255, 255, 255, 0.05);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
             --po-select-surface: #111827;
-            --po-select-surface-hover: #172033;
-            --po-select-surface-disabled: #0b1220;
-            --po-select-border: rgba(148, 163, 184, 0.38);
+            --po-select-surface-hover: #141c2e;
+            --po-select-surface-disabled: #090d16;
+            --po-select-border: rgba(148, 163, 184, 0.25);
             --po-select-text: #f8fafc;
             --po-select-muted: #94a3b8;
             --po-option-surface: #ffffff;
@@ -32,46 +39,41 @@
         }
 
         body {
-            font-family: 'Outfit', sans-serif;
+            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background-color: var(--bg-dark);
-            color: #fff;
+            color: var(--text-primary);
             margin: 0;
             overflow-x: hidden;
-            background-image: 
-                radial-gradient(circle at 10% 20%, rgba(245, 158, 11, 0.05) 0%, transparent 40%),
-                radial-gradient(circle at 90% 80%, rgba(59, 130, 246, 0.05) 0%, transparent 40%);
-            background-attachment: fixed;
+            -webkit-font-smoothing: antialiased;
         }
 
         .navbar-po {
-            background: rgba(10, 15, 25, 0.7);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border-bottom: 1px solid rgba(255,255,255,0.06);
-            padding: 1rem 2rem;
+            background: #090d16;
+            border-bottom: 1px solid var(--border-glass);
+            padding: 0.85rem 2rem;
             position: sticky;
             top: 0;
             z-index: 1000;
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
         }
 
         .nav-link {
-            color: rgba(255,255,255,0.7) !important;
+            color: var(--text-secondary) !important;
             font-weight: 500;
-            transition: 0.3s;
+            font-size: 0.95rem;
+            transition: color 0.15s ease;
             padding: 0.5rem 1rem !important;
         }
 
         .nav-link:hover {
-            color: var(--po-primary) !important;
+            color: var(--text-primary) !important;
         }
 
         .po-sidebar {
             width: 280px;
             height: calc(100vh - 70px);
-            background: rgba(255,255,255,0.01);
+            background: #090d16;
             border-right: 1px solid var(--border-glass);
-            padding: 2rem 1.5rem;
+            padding: 1.5rem;
             position: fixed;
             left: 0;
             top: 70px;
@@ -86,79 +88,84 @@
 
         /* Hero / Public Layout */
         .po-public-content {
-            padding: 2.5rem 0;
-            max-width: 1200px;
+            padding: 2rem 0 4rem;
+            max-width: 1240px;
             margin: 0 auto;
         }
 
         .glass-card {
-            background: rgba(255,255,255,0.03);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255,255,255,0.08) !important;
-            border-radius: 20px;
-            transition: all 0.3s ease;
-            box-shadow: 0 20px 40px -10px rgba(0,0,0,0.3);
+            background: var(--surface-card);
+            border: 1px solid var(--border-glass) !important;
+            border-radius: 16px;
+            transition: border-color 0.15s ease, background-color 0.15s ease;
         }
         .glass-card:hover {
-            transform: translateY(-5px);
-            border-color: rgba(255,255,255,0.15) !important;
-            box-shadow: 0 25px 50px -10px rgba(0,0,0,0.5);
+            border-color: rgba(255, 255, 255, 0.15) !important;
+            background: var(--surface-card-hover);
         }
 
         .btn-po-primary {
             background: var(--po-primary);
-            color: #000;
+            color: #0b0f19 !important;
             font-weight: 600;
-            border: none;
-            border-radius: 12px;
-            padding: 0.75rem 1.5rem;
-            transition: 0.3s;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            padding: 0.65rem 1.35rem;
+            font-size: 0.95rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.15s ease;
         }
 
         .btn-po-primary:hover {
-            background: #d97706;
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(245, 158, 11, 0.2);
+            background: var(--po-primary-hover);
+            color: #000 !important;
         }
 
         .po-menu-item {
             display: flex;
             align-items: center;
-            padding: 0.85rem 1.25rem;
-            color: rgba(255,255,255,0.6);
+            padding: 0.65rem 1rem;
+            color: var(--text-secondary);
             text-decoration: none !important;
-            border-radius: 12px;
-            margin-bottom: 0.5rem;
-            transition: 0.3s;
+            border-radius: 8px;
+            margin-bottom: 0.25rem;
+            font-size: 0.9rem;
+            transition: background 0.15s ease, color 0.15s ease;
         }
 
         .po-menu-item i {
-            width: 24px;
-            margin-right: 12px;
-            font-size: 1.1rem;
+            width: 20px;
+            margin-right: 10px;
+            font-size: 1rem;
+            color: var(--text-muted);
         }
 
         .po-menu-item:hover, .po-menu-item.active {
-            background: rgba(245, 158, 11, 0.15);
+            background: var(--surface-raised);
+            color: var(--text-primary);
+        }
+
+        .po-menu-item:hover i, .po-menu-item.active i {
             color: var(--po-primary);
-            transform: translateX(5px);
         }
 
         .tracking-input {
-            background: rgba(255,255,255,0.05);
+            background: var(--surface-raised);
             border: 1px solid var(--border-glass);
-            color: #fff;
-            border-radius: 15px;
-            padding: 1.2rem;
-            font-size: 1.1rem;
+            color: var(--text-primary);
+            border-radius: 10px;
+            padding: 0.75rem 1rem;
+            font-size: 0.95rem;
+            transition: border-color 0.15s ease, background 0.15s ease;
         }
 
         .tracking-input:focus {
-            background: rgba(255,255,255,0.08);
+            background: var(--surface-card);
             border-color: var(--po-primary);
             color: #fff;
-            box-shadow: none;
+            box-shadow: 0 0 0 1px var(--po-primary);
         }
 
         /* Accessible logistics selects: light text on dark closed control,

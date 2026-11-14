@@ -113,6 +113,77 @@
                 </div>
             </div>
 
+            <h6 class="text-white fw-bold mb-3 mt-2"><i class="fa-solid fa-percent text-success me-2"></i>Enrollment Agent Wholesale Pricing &amp; Discount</h6>
+            <div class="p-3 rounded-3 mb-4" style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2);">
+                <div class="row align-items-center">
+                    <div class="col-md-4 mb-3 mb-md-0">
+                        <label class="text-white-50 small mb-1 fw-bold">Agent Default Discount Rate (%)</label>
+                        <div class="input-group">
+                            <input type="number" step="0.5" name="agent_discount_percentage" class="form-control text-white rounded-3 font-monospace fw-bold" value="{{ $agentDiscountPercentage ?? 15.0 }}" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(16, 185, 129, 0.4);">
+                            <span class="input-group-text bg-dark text-white border-secondary">%</span>
+                        </div>
+                        <small class="text-white-50 text-2xs mt-1 d-block">Applies a 15% discount across all services without custom overrides.</small>
+                    </div>
+                    <div class="col-md-8">
+                        <div class="small text-white-50">
+                            <i class="fa-solid fa-circle-info text-success me-1"></i>
+                            Approved NIN Enrollment Agents automatically pay the wholesale price for identity verification and slip services. You can override specific service rates below or leave blank to inherit the 15% discount.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-3 mb-4">
+                    <label class="text-white-50 small mb-2">Agent: NIN by NIN (₦)</label>
+                    <input type="number" name="agent_nin_by_nin_price" class="form-control text-white rounded-3" value="{{ $vp->agent_nin_by_nin_price ?? round(($vp->nin_by_nin_price ?? 200) * 0.85, 2) }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(16, 185, 129, 0.3);">
+                </div>
+                <div class="col-md-3 mb-4">
+                    <label class="text-white-50 small mb-2">Agent: NIN by Phone (₦)</label>
+                    <input type="number" name="agent_nin_by_number_price" class="form-control text-white rounded-3" value="{{ $vp->agent_nin_by_number_price ?? round(($vp->nin_by_number_price ?? 200) * 0.85, 2) }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(16, 185, 129, 0.3);">
+                </div>
+                <div class="col-md-3 mb-4">
+                    <label class="text-white-50 small mb-2">Agent: NIN Demography (₦)</label>
+                    <input type="number" name="agent_nin_by_demography_price" class="form-control text-white rounded-3" value="{{ $vp->agent_nin_by_demography_price ?? round(($vp->nin_by_demography_price ?? 200) * 0.85, 2) }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(16, 185, 129, 0.3);">
+                </div>
+                <div class="col-md-3 mb-4">
+                    <label class="text-white-50 small mb-2">Agent: Tracking ID (₦)</label>
+                    <input type="number" name="agent_verify_by_tracking_id" class="form-control text-white rounded-3" value="{{ $vp->agent_verify_by_tracking_id ?? round(($vp->verify_by_tracking_id ?? 300) * 0.85, 2) }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(16, 185, 129, 0.3);">
+                </div>
+                <div class="col-md-3 mb-4">
+                    <label class="text-white-50 small mb-2">Agent: Validation (₦)</label>
+                    <input type="number" name="agent_validation_price" class="form-control text-white rounded-3" value="{{ $vp->agent_validation_price ?? round(($vp->validation_price ?? 700) * 0.85, 2) }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(16, 185, 129, 0.3);">
+                </div>
+                <div class="col-md-3 mb-4">
+                    <label class="text-white-50 small mb-2">Agent: IPE Clearance (₦)</label>
+                    <input type="number" name="agent_ipe_clearance_price" class="form-control text-white rounded-3" value="{{ $vp->agent_ipe_clearance_price ?? round(($vp->ipe_clearance_price ?? 700) * 0.85, 2) }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(16, 185, 129, 0.3);">
+                </div>
+                <div class="col-md-3 mb-4">
+                    <label class="text-white-50 small mb-2">Agent: Personalization (₦)</label>
+                    <input type="number" name="agent_personalization_price" class="form-control text-white rounded-3" value="{{ $vp->agent_personalization_price ?? round(($vp->personalization_price ?? 100) * 0.85, 2) }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(16, 185, 129, 0.3);">
+                </div>
+                <div class="col-md-3 mb-4">
+                    <label class="text-white-50 small mb-2">Agent: Face/Selfie (₦)</label>
+                    <input type="number" name="agent_nin_face_price" class="form-control text-white rounded-3" value="{{ $agentNinFacePrice ?? 425 }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(16, 185, 129, 0.3);">
+                </div>
+                <div class="col-md-3 mb-4">
+                    <label class="text-white-50 small mb-2">Agent: Modification (₦)</label>
+                    <input type="number" name="agent_nin_modification_price" class="form-control text-white rounded-3" value="{{ $agentNinModificationPrice ?? 2125 }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(16, 185, 129, 0.3);">
+                </div>
+                <div class="col-md-3 mb-4">
+                    <label class="text-white-50 small mb-2">Agent: BVN Retrieval (₦)</label>
+                    <input type="number" name="agent_bvn_retrieval_price" class="form-control text-white rounded-3" value="{{ $agentBvnRetrievalPrice ?? round(($bvnRetrievalPrice ?? 800) * 0.85, 2) }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(16, 185, 129, 0.3);">
+                </div>
+                <div class="col-md-3 mb-4">
+                    <label class="text-white-50 small mb-2">Agent: BVN by BVN (₦)</label>
+                    <input type="number" name="agent_bvn_by_bvn" class="form-control text-white rounded-3" value="{{ $vp->agent_bvn_by_bvn ?? round(($vp->bvn_by_bvn ?? 100) * 0.85, 2) }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(16, 185, 129, 0.3);">
+                </div>
+                <div class="col-md-3 mb-4">
+                    <label class="text-white-50 small mb-2">Agent: BVN by Phone (₦)</label>
+                    <input type="number" name="agent_bvn_by_number" class="form-control text-white rounded-3" value="{{ $vp->agent_bvn_by_number ?? round(($vp->bvn_by_number ?? 120) * 0.85, 2) }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(16, 185, 129, 0.3);">
+                </div>
+            </div>
+
             <h6 class="text-white fw-bold mb-3"><i class="fa-solid fa-id-badge text-warning me-2"></i>NIN Enrollment Agent Station License Pricing</h6>
             <div class="row">
                 <div class="col-md-4 mb-4">

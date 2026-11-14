@@ -13,7 +13,7 @@ class NINModificationController extends Controller
     public function index(Request $request)
     {
         $user = Auth::user();
-        $price = SystemSetting::get('nin_modification_price', 2500);
+        $price = \App\Services\Pricing\PriceResolverService::resolve($user, 'nin_modification_price', 2500);
         
         $hasConsent = $this->hasConsent($request);
         return view('services.identity.nin_modification', compact('user', 'price', 'hasConsent'));
@@ -52,7 +52,7 @@ class NINModificationController extends Controller
             }
         }
 
-        $price = SystemSetting::get('nin_modification_price', 2500);
+        $price = \App\Services\Pricing\PriceResolverService::resolve($user, 'nin_modification_price', 2500);
         $wallet = app(\App\Services\WalletService::class);
         
         $debit = $wallet->debit($user, (float)$price, 'NIN Modification Request', 'NIN_MOD');

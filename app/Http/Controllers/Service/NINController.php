@@ -28,11 +28,17 @@ class NINController extends Controller
 
     public function suiteIndex()
     {
-        return view('services.identity.nin_suite');
+        $user = Auth::user();
+        $suitePrices = \App\Services\Pricing\PriceResolverService::getNinSuitePrices($user);
+        $isAgent = \App\Services\Pricing\PriceResolverService::isEligibleAgent($user);
+
+        return view('services.identity.nin_suite', compact('suitePrices', 'isAgent'));
     }
 
     public function index(Request $request)
     {
+        $user = Auth::user();
+        $isAgent = \App\Services\Pricing\PriceResolverService::isEligibleAgent($user);
         $legacyPricing = VerificationPrice::first();
 
         try {
@@ -67,13 +73,13 @@ class NINController extends Controller
         });
 
         $prices = [
-            'nin' => (float) ($legacyPricing->nin_by_nin_price ?? 200),
-            'phone' => (float) ($legacyPricing->nin_by_number_price ?? 200),
-            'tracking' => (float) ($legacyPricing->verify_by_tracking_id ?? 300),
-            'validation' => (float) (\App\Models\SystemSetting::get('nin_validation_price', 200)),
+            'nin' => \App\Services\Pricing\PriceResolverService::resolve($user, 'nin', 200),
+            'phone' => \App\Services\Pricing\PriceResolverService::resolve($user, 'phone', 200),
+            'tracking' => \App\Services\Pricing\PriceResolverService::resolve($user, 'tracking', 300),
+            'validation' => \App\Services\Pricing\PriceResolverService::resolve($user, 'validation', 200),
             'validation_status' => 0.0,
-            'selfie' => (float) (\App\Models\SystemSetting::get('nin_face_verification_price', 500)),
-            'share_code' => (float) ($legacyPricing->nin_by_nin_price ?? 200),
+            'selfie' => \App\Services\Pricing\PriceResolverService::resolve($user, 'selfie', 500),
+            'share_code' => \App\Services\Pricing\PriceResolverService::resolve($user, 'share_code', 200),
             'requery' => 0.0,
         ];
 
@@ -90,7 +96,7 @@ class NINController extends Controller
             $initialMode = 'nin';
         }
 
-        return view('services.identity.nin', compact('prices', 'ninProviders', 'providerModes', 'myResults', 'apiCenter', 'initialMode'));
+        return view('services.identity.nin', compact('prices', 'ninProviders', 'providerModes', 'myResults', 'apiCenter', 'initialMode', 'isAgent'));
     }
 
     public function verify(Request $request)
@@ -950,6 +956,8 @@ class NINController extends Controller
             return 0.0;
         }
 
+        $user = Auth::user();
+
         // 2. Explicit custom verification type price or provider price
         if ($provider) {
             $type = $provider->verificationTypes()
@@ -957,40 +965,22 @@ class NINController extends Controller
                 ->where('status', true)
                 ->first();
             if ($type && $type->price !== null) {
-                return (float) $type->price;
+                $basePrice = (float) $type->price;
+                return \App\Services\Pricing\PriceResolverService::isEligibleAgent($user)
+                    ? \App\Services\Pricing\PriceResolverService::getAgentPrice($mode, $basePrice)
+                    : $basePrice;
             }
 
             if ($provider->price !== null && (float) $provider->price > 0 && !in_array($mode, ['validation', 'selfie', 'tracking'], true)) {
-                return (float) $provider->price;
+                $basePrice = (float) $provider->price;
+                return \App\Services\Pricing\PriceResolverService::isEligibleAgent($user)
+                    ? \App\Services\Pricing\PriceResolverService::getAgentPrice($mode, $basePrice)
+                    : $basePrice;
             }
         }
 
-        // 3. Mode-specific prices matching dashboard/UI settings exactly
-        $legacyPricing = VerificationPrice::first();
-
-        switch ($mode) {
-            case 'phone':
-                $price = (float) ($legacyPricing->nin_by_number_price ?? 200.0);
-                return $price > 0 ? $price : 200.0;
-            case 'tracking':
-                $price = (float) ($legacyPricing->verify_by_tracking_id ?? 300.0);
-                return $price > 0 ? $price : 300.0;
-            case 'validation':
-                $valPrice = (float) \App\Models\SystemSetting::get('nin_validation_price', 200.0);
-                if ($valPrice <= 0 && $legacyPricing && (float) $legacyPricing->validation_price > 0) {
-                    $valPrice = (float) $legacyPricing->validation_price;
-                }
-                return $valPrice > 0 ? $valPrice : 200.0;
-            case 'selfie':
-                $selfiePrice = (float) \App\Models\SystemSetting::get('nin_face_verification_price', 500.0);
-                return $selfiePrice > 0 ? $selfiePrice : 500.0;
-            case 'share_code':
-            case 'nin':
-            case 'demographic':
-            default:
-                $ninPrice = (float) ($legacyPricing->nin_by_nin_price ?? 200.0);
-                return $ninPrice > 0 ? $ninPrice : 200.0;
-        }
+        // 3. Mode-specific prices matching dashboard/UI settings exactly (with 15% agent discount / override)
+        return \App\Services\Pricing\PriceResolverService::resolve($user, $mode);
     }
 
     /**

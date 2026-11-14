@@ -14,6 +14,9 @@
         <x-slot name="badges">
             <span class="badge-accent"><i class="fa-solid fa-shield-halved"></i> NIMC Certified</span>
             <span class="badge-accent"><i class="fa-solid fa-bolt"></i> < 3s Response</span>
+            @if(!empty($isAgent))
+                <span class="badge-accent text-success"><i class="fa-solid fa-tag"></i> Agent Rate (15% Wholesale)</span>
+            @endif
         </x-slot>
     </x-nexus.service-header>
 
@@ -101,7 +104,7 @@
                                         <i class="fa-regular fa-id-card" id="number-icon"></i>
                                         <input type="text" id="number" name="number" class="form-control" placeholder="{{ (($initialMode ?? 'nin') === 'validation') ? 'Enter 11-digit NIN (record not found case)' : ((($initialMode ?? 'nin') === 'validation_status') ? 'Enter the NIN used for validation' : 'Enter 11-digit NIN') }}" maxlength="25" required>
                                     </div>
-                                    <p class="small text-muted mt-2">Verification Fee: <span class="text-white font-weight-bold" id="priceDisplay">₦{{ number_format($prices['nin'], 2) }}</span></p>
+                                    <p class="small text-muted mt-2">Verification Fee: <span class="text-white font-weight-bold" id="priceDisplay">₦{{ number_format($prices['nin'], 2) }}</span>@if(!empty($isAgent)) <span class="badge bg-success-soft text-success ml-2 font-weight-normal"><i class="fa-solid fa-tag mr-1"></i>15% Agent Discount Applied</span>@endif</p>
                                 </div>
 
                                 <div class="form-group mb-4" id="selfieGroup" style="display:none;">

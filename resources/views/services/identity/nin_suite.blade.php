@@ -7,17 +7,49 @@
     <!-- Header -->
     <div class="d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between gap-3 mb-4">
         <div>
-            <div class="d-flex align-items-center gap-2 mb-1">
+            <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
                 <span class="badge-accent"><i class="fa-solid fa-id-card mr-1 text-primary"></i> NIMC Suite</span>
                 <span class="badge-accent text-success"><i class="fa-solid fa-circle-check mr-1"></i> Live Gateway</span>
+                @if(!empty($isAgent))
+                    <span class="badge-accent text-warning border-warning"><i class="fa-solid fa-tag mr-1"></i> Enrollment Agent Wholesale (15% Off)</span>
+                @endif
             </div>
             <h1 class="h3 font-weight-bold mb-1 text-white">NIN Verification Suite</h1>
             <p class="text-muted small mb-0">Official NIMC identity verification, slip printing, validation, and biometric services.</p>
         </div>
-        <a href="{{ route('dashboard') }}" class="btn btn-outline-secondary btn-sm w-100 w-sm-auto text-center">
-            <i class="fa-solid fa-arrow-left mr-2"></i> Back to Dashboard
-        </a>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            @if(!empty($isAgent))
+                <a href="{{ route('agent.dashboard') }}" class="btn btn-primary btn-sm">
+                    <i class="fa-solid fa-gauge mr-1"></i> Agency Terminal
+                </a>
+                <a href="{{ route('agent.switch_mode', ['mode' => 'user']) }}" class="btn btn-outline-info btn-sm">
+                    <i class="fa-solid fa-arrow-right-arrow-left mr-1"></i> User Dashboard
+                </a>
+            @else
+                <a href="{{ route('dashboard') }}" class="btn btn-outline-secondary btn-sm w-100 w-sm-auto text-center">
+                    <i class="fa-solid fa-arrow-left mr-2"></i> Back to Dashboard
+                </a>
+            @endif
+        </div>
     </div>
+
+    @if(!empty($isAgent))
+        <!-- Agent Wholesale Pricing & Multi-service Notice -->
+        <div class="alert border-0 rounded-4 p-3 mb-4 d-flex align-items-center justify-content-between flex-wrap gap-3" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(6, 78, 59, 0.25)); border: 1px solid rgba(16, 185, 129, 0.3) !important;">
+            <div class="d-flex align-items-center gap-3">
+                <div class="rounded-circle p-2 text-center" style="background: rgba(16, 185, 129, 0.2); width: 42px; height: 42px;">
+                    <i class="fa-solid fa-certificate text-success fa-lg"></i>
+                </div>
+                <div>
+                    <h6 class="text-white fw-bold mb-0">Enrollment Agent Wholesale Rates Applied</h6>
+                    <span class="text-white-50 small">You receive an automatic 15% discount on all verification and slip fees. For consumer services (VTU, utility bills, CAC registration, virtual cards), switch freely to the User Dashboard with your shared wallet balance.</span>
+                </div>
+            </div>
+            <a href="{{ route('agent.switch_mode', ['mode' => 'user']) }}" class="btn btn-outline-light btn-sm rounded-pill px-3 py-1.5 fw-bold">
+                <i class="fa-solid fa-layer-group me-1"></i> Explore Consumer Services
+            </a>
+        </div>
+    @endif
 
     <!-- Suite Grid -->
     <div class="row g-3 g-md-4">
@@ -30,6 +62,14 @@
                     </div>
                     <h5 class="suite-title">NIN Verification</h5>
                     <p class="suite-desc d-none d-sm-block">Instant identity verification by 11-digit NIN.</p>
+                    <div class="suite-price mb-2">
+                        @if(!empty($suitePrices['nin']['is_discounted']))
+                            <del class="text-muted small me-1">₦{{ number_format($suitePrices['nin']['standard'], 2) }}</del>
+                            <span class="text-success font-weight-bold">₦{{ number_format($suitePrices['nin']['effective'], 2) }}</span>
+                        @else
+                            <span class="text-white font-weight-bold">₦{{ number_format($suitePrices['nin']['effective'] ?? 200, 2) }}</span>
+                        @endif
+                    </div>
                     <span class="suite-action text-primary">
                         Launch <i class="fa-solid fa-arrow-right ml-1"></i>
                     </span>
@@ -46,6 +86,14 @@
                     </div>
                     <h5 class="suite-title">Print NIN Slip</h5>
                     <p class="suite-desc d-none d-sm-block">Standard, Premium, Regular, and vNIN slips.</p>
+                    <div class="suite-price mb-2">
+                        @if(!empty($suitePrices['nin']['is_discounted']))
+                            <del class="text-muted small me-1">₦{{ number_format($suitePrices['nin']['standard'], 2) }}</del>
+                            <span class="text-success font-weight-bold">₦{{ number_format($suitePrices['nin']['effective'], 2) }}</span>
+                        @else
+                            <span class="text-white font-weight-bold">₦{{ number_format($suitePrices['nin']['effective'] ?? 200, 2) }}</span>
+                        @endif
+                    </div>
                     <span class="suite-action text-info">
                         Print <i class="fa-solid fa-arrow-right ml-1"></i>
                     </span>
@@ -62,6 +110,14 @@
                     </div>
                     <h5 class="suite-title">NIN Validation</h5>
                     <p class="suite-desc d-none d-sm-block">Resolve Record Not Found on banks & SIM registration.</p>
+                    <div class="suite-price mb-2">
+                        @if(!empty($suitePrices['validation']['is_discounted']))
+                            <del class="text-muted small me-1">₦{{ number_format($suitePrices['validation']['standard'], 2) }}</del>
+                            <span class="text-success font-weight-bold">₦{{ number_format($suitePrices['validation']['effective'], 2) }}</span>
+                        @else
+                            <span class="text-white font-weight-bold">₦{{ number_format($suitePrices['validation']['effective'] ?? 700, 2) }}</span>
+                        @endif
+                    </div>
                     <span class="suite-action text-success">
                         Validate <i class="fa-solid fa-arrow-right ml-1"></i>
                     </span>
@@ -78,6 +134,14 @@
                     </div>
                     <h5 class="suite-title">Personalization</h5>
                     <p class="suite-desc d-none d-sm-block">Personalize tracking ID & generate active NIN slip.</p>
+                    <div class="suite-price mb-2">
+                        @if(!empty($suitePrices['personalization']['is_discounted']))
+                            <del class="text-muted small me-1">₦{{ number_format($suitePrices['personalization']['standard'], 2) }}</del>
+                            <span class="text-success font-weight-bold">₦{{ number_format($suitePrices['personalization']['effective'], 2) }}</span>
+                        @else
+                            <span class="text-white font-weight-bold">₦{{ number_format($suitePrices['personalization']['effective'] ?? 200, 2) }}</span>
+                        @endif
+                    </div>
                     <span class="suite-action text-purple">
                         Personalize <i class="fa-solid fa-arrow-right ml-1"></i>
                     </span>
@@ -94,6 +158,14 @@
                     </div>
                     <h5 class="suite-title">IPE Clearance</h5>
                     <p class="suite-desc d-none d-sm-block">Resolve Internal Processing Errors without NIN.</p>
+                    <div class="suite-price mb-2">
+                        @if(!empty($suitePrices['clearance']['is_discounted']))
+                            <del class="text-muted small me-1">₦{{ number_format($suitePrices['clearance']['standard'], 2) }}</del>
+                            <span class="text-success font-weight-bold">₦{{ number_format($suitePrices['clearance']['effective'], 2) }}</span>
+                        @else
+                            <span class="text-white font-weight-bold">₦{{ number_format($suitePrices['clearance']['effective'] ?? 700, 2) }}</span>
+                        @endif
+                    </div>
                     <span class="suite-action text-warning">
                         Clear Error <i class="fa-solid fa-arrow-right ml-1"></i>
                     </span>
@@ -110,6 +182,14 @@
                     </div>
                     <h5 class="suite-title">Face Verification</h5>
                     <p class="suite-desc d-none d-sm-block">Biometric selfie facial matching with NIMC.</p>
+                    <div class="suite-price mb-2">
+                        @if(!empty($suitePrices['selfie']['is_discounted']))
+                            <del class="text-muted small me-1">₦{{ number_format($suitePrices['selfie']['standard'], 2) }}</del>
+                            <span class="text-success font-weight-bold">₦{{ number_format($suitePrices['selfie']['effective'], 2) }}</span>
+                        @else
+                            <span class="text-white font-weight-bold">₦{{ number_format($suitePrices['selfie']['effective'] ?? 250, 2) }}</span>
+                        @endif
+                    </div>
                     <span class="suite-action text-pink">
                         Match Face <i class="fa-solid fa-arrow-right ml-1"></i>
                     </span>
@@ -126,6 +206,14 @@
                     </div>
                     <h5 class="suite-title">Phone Lookup</h5>
                     <p class="suite-desc d-none d-sm-block">Find linked NIN using registered phone number.</p>
+                    <div class="suite-price mb-2">
+                        @if(!empty($suitePrices['phone']['is_discounted']))
+                            <del class="text-muted small me-1">₦{{ number_format($suitePrices['phone']['standard'], 2) }}</del>
+                            <span class="text-success font-weight-bold">₦{{ number_format($suitePrices['phone']['effective'], 2) }}</span>
+                        @else
+                            <span class="text-white font-weight-bold">₦{{ number_format($suitePrices['phone']['effective'] ?? 250, 2) }}</span>
+                        @endif
+                    </div>
                     <span class="suite-action text-teal">
                         Find by Phone <i class="fa-solid fa-arrow-right ml-1"></i>
                     </span>
@@ -142,6 +230,14 @@
                     </div>
                     <h5 class="suite-title">Tracking ID</h5>
                     <p class="suite-desc d-none d-sm-block">Retrieve full NIN record using enrollment tracking ID.</p>
+                    <div class="suite-price mb-2">
+                        @if(!empty($suitePrices['tracking']['is_discounted']))
+                            <del class="text-muted small me-1">₦{{ number_format($suitePrices['tracking']['standard'], 2) }}</del>
+                            <span class="text-success font-weight-bold">₦{{ number_format($suitePrices['tracking']['effective'], 2) }}</span>
+                        @else
+                            <span class="text-white font-weight-bold">₦{{ number_format($suitePrices['tracking']['effective'] ?? 200, 2) }}</span>
+                        @endif
+                    </div>
                     <span class="suite-action text-amber">
                         Search ID <i class="fa-solid fa-arrow-right ml-1"></i>
                     </span>

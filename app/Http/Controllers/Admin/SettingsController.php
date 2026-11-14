@@ -53,6 +53,11 @@ class SettingsController extends Controller
         $agentLicenseRegularPrice = (float) SystemSetting::get('agent_license_regular_price', 150000);
         $agentLicensePromoEndsAt = (string) SystemSetting::get('agent_license_promo_ends_at', '2026-10-10 23:59:59');
 
+        $agentDiscountPercentage = (float) SystemSetting::get('agent_discount_percentage', 15.0);
+        $agentNinModificationPrice = SystemSetting::get('agent_nin_modification_price');
+        $agentNinFacePrice = SystemSetting::get('agent_nin_face_verification_price');
+        $agentBvnRetrievalPrice = SystemSetting::get('agent_bvn_retrieval_price');
+
         return view('admin.settings.index', compact(
             'apiSettings', 'apiCenter', 'notification',
             'verifyPrices', 'manualFunding', 'notaryDocs',
@@ -67,7 +72,11 @@ class SettingsController extends Controller
             'ninValidationMode',
             'agentLicensePromoPrice',
             'agentLicenseRegularPrice',
-            'agentLicensePromoEndsAt'
+            'agentLicensePromoEndsAt',
+            'agentDiscountPercentage',
+            'agentNinModificationPrice',
+            'agentNinFacePrice',
+            'agentBvnRetrievalPrice'
         ));
     }
 
@@ -106,9 +115,22 @@ class SettingsController extends Controller
             'agent_license_promo_price' => 'nullable|numeric|min:0',
             'agent_license_regular_price' => 'nullable|numeric|min:0',
             'agent_license_promo_ends_at' => 'nullable|string',
+            'agent_discount_percentage' => 'nullable|numeric|min:0|max:100',
+            'agent_nin_by_nin_price'          => 'nullable|numeric|min:0',
+            'agent_nin_by_number_price'       => 'nullable|numeric|min:0',
+            'agent_nin_by_demography_price'   => 'nullable|numeric|min:0',
+            'agent_verify_by_tracking_id'     => 'nullable|numeric|min:0',
+            'agent_validation_price'          => 'nullable|numeric|min:0',
+            'agent_ipe_clearance_price'       => 'nullable|numeric|min:0',
+            'agent_personalization_price'     => 'nullable|numeric|min:0',
+            'agent_bvn_by_bvn'                => 'nullable|numeric|min:0',
+            'agent_bvn_by_number'             => 'nullable|numeric|min:0',
+            'agent_nin_modification_price'    => 'nullable|numeric|min:0',
+            'agent_nin_face_price'            => 'nullable|numeric|min:0',
+            'agent_bvn_retrieval_price'       => 'nullable|numeric|min:0',
         ]);
 
-        DB::table('verification_prices')->where('id', 1)->update([
+        $updateData = [
             'nin_by_nin_price'        => $request->nin_by_nin_price,
             'nin_by_number_price'     => $request->nin_by_number_price,
             'nin_by_demography_price' => $request->nin_by_demography_price,
@@ -118,7 +140,42 @@ class SettingsController extends Controller
             'validation_price'        => $request->validation_price,
             'ipe_clearance_price'     => $request->ipe_clearance_price,
             'personalization_price'   => $request->personalization_price,
-        ]);
+        ];
+
+        $agentCols = [
+            'agent_nin_by_nin_price',
+            'agent_nin_by_number_price',
+            'agent_nin_by_demography_price',
+            'agent_verify_by_tracking_id',
+            'agent_validation_price',
+            'agent_ipe_clearance_price',
+            'agent_personalization_price',
+            'agent_bvn_by_bvn',
+            'agent_bvn_by_number',
+        ];
+        foreach ($agentCols as $col) {
+            if (\Illuminate\Support\Facades\Schema::hasColumn('verification_prices', $col)) {
+                $updateData[$col] = $request->filled($col) ? (float) $request->input($col) : null;
+            }
+        }
+
+        DB::table('verification_prices')->where('id', 1)->update($updateData);
+
+        if ($request->has('agent_discount_percentage')) {
+            SystemSetting::set('agent_discount_percentage', (float) $request->input('agent_discount_percentage', 15.0), 'pricing');
+        }
+
+        if ($request->filled('agent_nin_modification_price')) {
+            SystemSetting::set('agent_nin_modification_price', (float) $request->agent_nin_modification_price, 'pricing');
+        }
+
+        if ($request->filled('agent_nin_face_price')) {
+            SystemSetting::set('agent_nin_face_verification_price', (float) $request->agent_nin_face_price, 'pricing');
+        }
+
+        if ($request->filled('agent_bvn_retrieval_price')) {
+            SystemSetting::set('agent_bvn_retrieval_price', (float) $request->agent_bvn_retrieval_price, 'pricing');
+        }
 
         if ($request->filled('bvn_retrieval_price')) {
             SystemSetting::set('bvn_retrieval_price', (float) $request->bvn_retrieval_price, 'pricing');

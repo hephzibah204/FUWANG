@@ -261,23 +261,46 @@
         </div>
     </div>
 
-    <!-- Quick Tools & NIN Suite -->
+    <!-- Quick Tools & NIN Suite Hub -->
     <div class="row g-3 mb-4">
         <div class="col-md-12">
             <div class="card border-0 rounded-4 p-4" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08) !important;">
-                <h5 class="text-white fw-bold mb-3"><i class="fa-solid fa-bolt text-warning me-2"></i>Agency Enrollment Actions</h5>
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                    <div>
+                        <h5 class="text-white fw-bold mb-1">
+                            <i class="fa-solid fa-bolt text-warning me-2"></i>NIN Suite & Verification Hub
+                        </h5>
+                        <p class="text-white-50 small mb-0">Authorized NIMC agent direct gateway. Wholesale pricing applied automatically.</p>
+                    </div>
+                    <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 rounded-pill font-monospace">
+                        <i class="fa-solid fa-tag me-1"></i>15% Wholesale Agent Discount Active
+                    </span>
+                </div>
+
                 <div class="row g-3">
                     <div class="col-md-3">
-                        <a href="{{ route('services.nin.suite') }}" class="btn btn-outline-primary rounded-3 w-100 p-3 text-start d-flex align-items-center justify-content-between">
+                        <a href="{{ route('services.nin.suite') }}" class="btn btn-outline-primary rounded-3 w-100 p-3 text-start d-flex align-items-center justify-content-between h-100">
                             <div>
-                                <h6 class="text-white fw-bold mb-1">NIN Verification</h6>
-                                <span class="text-white-50 small">Verify NIN / IPE / Phone</span>
+                                <div class="d-flex align-items-center gap-1 mb-1">
+                                    <h6 class="text-white fw-bold mb-0">NIN Suite Hub</h6>
+                                    <span class="badge bg-primary rounded-pill font-monospace small">All Tools</span>
+                                </div>
+                                <span class="text-white-50 small">All-in-one NIMC verification suite</span>
                             </div>
                             <i class="fa-solid fa-arrow-right"></i>
                         </a>
                     </div>
                     <div class="col-md-3">
-                        <a href="{{ route('services.nin') }}?mode=demographic" class="btn btn-outline-info rounded-3 w-100 p-3 text-start d-flex align-items-center justify-content-between">
+                        <a href="{{ route('services.nin') }}" class="btn btn-outline-info rounded-3 w-100 p-3 text-start d-flex align-items-center justify-content-between h-100">
+                            <div>
+                                <h6 class="text-white fw-bold mb-1">NIN Verification</h6>
+                                <span class="text-white-50 small">Verify by 11-digit NIN or Phone</span>
+                            </div>
+                            <i class="fa-solid fa-arrow-right"></i>
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{{ route('services.nin') }}?mode=demographic" class="btn btn-outline-info rounded-3 w-100 p-3 text-start d-flex align-items-center justify-content-between h-100">
                             <div>
                                 <h6 class="text-white fw-bold mb-1">Demographic Lookup</h6>
                                 <span class="text-white-50 small">Verify by Name & DOB</span>
@@ -286,16 +309,43 @@
                         </a>
                     </div>
                     <div class="col-md-3">
-                        <a href="{{ route('services.nin.modification') }}" class="btn btn-outline-success rounded-3 w-100 p-3 text-start d-flex align-items-center justify-content-between">
+                        <a href="{{ route('services.validation') }}" class="btn btn-outline-success rounded-3 w-100 p-3 text-start d-flex align-items-center justify-content-between h-100">
                             <div>
-                                <h6 class="text-white fw-bold mb-1">NIN Modification</h6>
-                                <span class="text-white-50 small">Name/DOB updates</span>
+                                <h6 class="text-white fw-bold mb-1">NIN Validation</h6>
+                                <span class="text-white-50 small">Fix 'Record Not Found' on SIM/Banks</span>
                             </div>
                             <i class="fa-solid fa-arrow-right"></i>
                         </a>
                     </div>
                     <div class="col-md-3">
-                        <a href="{{ route('agent.issues.index') }}" class="btn btn-outline-warning rounded-3 w-100 p-3 text-start d-flex align-items-center justify-content-between">
+                        <a href="{{ route('services.clearance') }}" class="btn btn-outline-warning rounded-3 w-100 p-3 text-start d-flex align-items-center justify-content-between h-100">
+                            <div>
+                                <h6 class="text-white fw-bold mb-1">IPE Clearance</h6>
+                                <span class="text-white-50 small">Clear Internal Processing Error</span>
+                            </div>
+                            <i class="fa-solid fa-arrow-right"></i>
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{{ route('services.personalization') }}" class="btn btn-outline-light rounded-3 w-100 p-3 text-start d-flex align-items-center justify-content-between h-100">
+                            <div>
+                                <h6 class="text-white fw-bold mb-1">Personalization</h6>
+                                <span class="text-white-50 small">Tracking ID to slip generation</span>
+                            </div>
+                            <i class="fa-solid fa-arrow-right"></i>
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{{ route('services.nin.modification') }}" class="btn btn-outline-success rounded-3 w-100 p-3 text-start d-flex align-items-center justify-content-between h-100">
+                            <div>
+                                <h6 class="text-white fw-bold mb-1">NIN Modification</h6>
+                                <span class="text-white-50 small">Name, DOB, and phone updates</span>
+                            </div>
+                            <i class="fa-solid fa-arrow-right"></i>
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{{ route('agent.issues.index') }}" class="btn btn-outline-danger rounded-3 w-100 p-3 text-start d-flex align-items-center justify-content-between h-100">
                             <div>
                                 <h6 class="text-white fw-bold mb-1">Issue Helpdesk</h6>
                                 <span class="text-white-50 small">Report fault & upload proof</span>
@@ -303,18 +353,22 @@
                             <i class="fa-solid fa-arrow-right"></i>
                         </a>
                     </div>
+                </div>
 
-                    {{-- Digital Agent ID Card (Backend & UI ready; kept hidden from display for future rollout as requested)
-                    <div class="col-md-3">
-                        <a href="{{ route('agent.id_card') }}" class="btn btn-outline-light rounded-3 w-100 p-3 text-start d-flex align-items-center justify-content-between">
-                            <div>
-                                <h6 class="text-white fw-bold mb-1">Official ID Card</h6>
-                                <span class="text-white-50 small">Printable Digital Credential</span>
-                            </div>
-                            <i class="fa-solid fa-arrow-right"></i>
-                        </a>
+                <!-- Seamless User Dashboard Switcher Notice -->
+                <div class="mt-4 p-3 rounded-3 d-flex align-items-center justify-content-between flex-wrap gap-3" style="background: rgba(59, 130, 246, 0.08); border: 1px dashed rgba(59, 130, 246, 0.3);">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="rounded-circle p-2 text-center" style="background: rgba(59, 130, 246, 0.2); width: 40px; height: 40px;">
+                            <i class="fa-solid fa-layer-group text-primary"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-white fw-bold mb-0">Need More Services? (Airtime, Data, Electricity, CAC, Virtual Cards)</h6>
+                            <span class="text-white-50 small">Your wallet balance is unified. Switch to the user dashboard anytime to access consumer features.</span>
+                        </div>
                     </div>
-                    --}}
+                    <a href="{{ route('agent.switch_mode', ['mode' => 'user']) }}" class="btn btn-primary rounded-pill px-4 py-2 fw-bold text-nowrap">
+                        <i class="fa-solid fa-arrow-right-arrow-left me-2"></i>Switch to User Dashboard
+                    </a>
                 </div>
             </div>
         </div>
