@@ -13,6 +13,10 @@ class CreateActivityLogsTable extends Migration
      */
     public function up()
     {
+        if (Schema::hasTable('activity_logs')) {
+            return;
+        }
+
         Schema::create('activity_logs', function (Blueprint $table) {
             $table->id();
             $table->morphs('loggable');
