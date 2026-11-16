@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Service;
 
 use App\Http\Controllers\Controller;
 use App\Models\CustomApi;
+use App\Models\SystemSetting;
 use App\Models\Transaction;
 use App\Models\VtuTransaction;
 use App\Services\EducationEpinConsolidationService;
@@ -985,7 +986,7 @@ class VTUController extends Controller
 
         $msgLen = mb_strlen($request->message);
         $pages = $msgLen > 160 ? (int) ceil($msgLen / 153) : 1;
-        $ratePerSms = (float) config('vtu_services.bulk_sms_rate', 4.00);
+        $ratePerSms = (float) SystemSetting::get('vtu_bulk_sms_rate', config('vtu_services.bulk_sms_rate', 4.00));
         $totalAmount = count($recipients) * $pages * $ratePerSms;
 
         $result = $this->vtuHub->processRequest([
