@@ -20,6 +20,7 @@
     <div class="row">
         <div class="col-lg-8">
             <div class="panel-card p-4">
+                <x-nexus.flash-message />
                 <form id="dataForm" action="{{ route('services.vtu.data.buy') }}" method="POST">
                     @csrf
                     
@@ -216,11 +217,12 @@
                     }
                     btn.prop('disabled', false).html('<i class="fa-solid fa-cloud-arrow-down mr-2"></i> Activate Bundle');
                 },
-                error: function() {
+                error: function(xhr) {
                     $('#loaderOverlay').hide();
+                    let errMsg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'An unexpected connection error occurred.';
                     Swal.fire({ 
                         title: 'Error', 
-                        text: 'An unexpected connection error occurred.', 
+                        text: errMsg, 
                         icon: 'error',
                         background: '#0a0a0f',
                         color: '#fff'

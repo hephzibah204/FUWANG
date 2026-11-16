@@ -18,6 +18,7 @@
         <div class="col-md-5 mb-4">
             <div class="card border-0 shadow-sm" style="background: #1e293b;">
                 <div class="card-body p-4">
+                    <x-nexus.flash-message />
                     <form id="rechargePrintForm">
                         @csrf
                         

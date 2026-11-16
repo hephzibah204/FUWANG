@@ -21,6 +21,8 @@
         </x-slot>
     </x-nexus.service-header>
 
+    <x-nexus.flash-message />
+
     <!-- Unified Wallet & Live Stats Banner -->
     <div class="panel-card p-4 mb-4 vtu-hero-card">
         <div class="row align-items-center">

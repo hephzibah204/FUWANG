@@ -20,6 +20,8 @@
     <div class="row">
         <div class="col-lg-8">
             <div class="panel-card p-4">
+                <x-nexus.flash-message />
+
                 @php
                     $airtimeDiscount = (float) \App\Models\SystemSetting::get('vtu_airtime_discount_percent', 2.0);
                 @endphp
@@ -168,11 +170,12 @@
                     }
                     btn.prop('disabled', false).html('<i class="fa-solid fa-bolt mr-2"></i> Purchase Top-up');
                 },
-                error: function() {
+                error: function(xhr) {
                     $('#loaderOverlay').hide();
+                    let errMsg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'An unexpected error occurred.';
                     Swal.fire({ 
                         title: 'Error', 
-                        text: 'An unexpected error occurred.', 
+                        text: errMsg, 
                         icon: 'error',
                         background: '#0a0a0f',
                         color: '#fff'

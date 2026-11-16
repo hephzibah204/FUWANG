@@ -21,6 +21,7 @@
     <div class="row">
         <div class="col-lg-8">
             <div class="panel-card p-4">
+                <x-nexus.flash-message />
                 <form id="bulkSmsForm" action="{{ route('services.vtu.bulksms.send') }}" method="POST">
                     @csrf
                     

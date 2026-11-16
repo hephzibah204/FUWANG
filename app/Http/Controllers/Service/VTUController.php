@@ -686,7 +686,7 @@ class VTUController extends Controller
             ],
         ]);
 
-        return response()->json($result);
+        return $this->respondWithVtuResult($request, $result);
     }
 
     public function waecRegistrationIndex()
@@ -723,7 +723,7 @@ class VTUController extends Controller
             ],
         ]);
 
-        return response()->json($result);
+        return $this->respondWithVtuResult($request, $result);
     }
 
     public function necoIndex()
@@ -760,7 +760,7 @@ class VTUController extends Controller
             ],
         ]);
 
-        return response()->json($result);
+        return $this->respondWithVtuResult($request, $result);
     }
 
     public function nabtebIndex()
@@ -797,7 +797,7 @@ class VTUController extends Controller
             ],
         ]);
 
-        return response()->json($result);
+        return $this->respondWithVtuResult($request, $result);
     }
 
     public function jambIndex()
@@ -834,7 +834,7 @@ class VTUController extends Controller
             ],
         ]);
 
-        return response()->json($result);
+        return $this->respondWithVtuResult($request, $result);
     }
 
     // ── Regular VTU Methods ────────────────
@@ -866,7 +866,7 @@ class VTUController extends Controller
             ],
         ]);
 
-        return response()->json($result);
+        return $this->respondWithVtuResult($request, $result);
     }
 
     public function buyData(Request $request)
@@ -899,7 +899,7 @@ class VTUController extends Controller
             ],
         ]);
 
-        return response()->json($result);
+        return $this->respondWithVtuResult($request, $result);
     }
 
     public function buyCable(Request $request)
@@ -925,7 +925,7 @@ class VTUController extends Controller
             ],
         ]);
 
-        return response()->json($result);
+        return $this->respondWithVtuResult($request, $result);
     }
 
     public function buyElectricity(Request $request)
@@ -953,7 +953,7 @@ class VTUController extends Controller
             ($v['variation_code'] ?? null) !== $request->variation_code ||
             ($v['meter_number'] ?? null) !== $request->meter_number
         ) {
-            return response()->json(['status' => false, 'message' => 'Please verify meter before payment.'], 422);
+            return $this->respondWithVtuResult($request, ['status' => false, 'message' => 'Please verify meter before payment.'], null, 422);
         }
 
         $result = $this->vtuHub->processRequest([
@@ -978,7 +978,7 @@ class VTUController extends Controller
             \Illuminate\Support\Facades\Cache::forget('vtu_elec_val_' . $request->validation_token);
         }
 
-        return response()->json($result);
+        return $this->respondWithVtuResult($request, $result);
     }
 
     public function bulkSmsIndex()
@@ -1005,7 +1005,7 @@ class VTUController extends Controller
         }
 
         if (empty($recipients)) {
-            return response()->json(['status' => false, 'message' => 'Please provide at least one valid phone number.'], 422);
+            return $this->respondWithVtuResult($request, ['status' => false, 'message' => 'Please provide at least one valid phone number.'], null, 422);
         }
 
         $msgLen = mb_strlen($request->message);
@@ -1027,7 +1027,7 @@ class VTUController extends Controller
             ],
         ]);
 
-        return response()->json($result);
+        return $this->respondWithVtuResult($request, $result);
     }
 
     public function webhookDatasub(Request $request)

@@ -19,6 +19,7 @@
     <div class="row">
         <div class="col-lg-8">
             <div class="panel-card p-4">
+                <x-nexus.flash-message />
                 <form id="electricityForm" action="{{ route('services.vtu.electricity.buy') }}" method="POST">
                     @csrf
                     <input type="hidden" name="validation_token" id="validation_token" value="">
@@ -311,9 +312,10 @@
                     }
                     btn.prop('disabled', false).html('<i class="fa-solid fa-bolt mr-2"></i> Pay Bill');
                 },
-                error: function() {
+                error: function(xhr) {
                     $('#loaderOverlay').hide();
-                    Swal.fire({ title: 'Error', text: 'An unexpected error occurred.', icon: 'error', background: '#0a0a0f', color: '#fff' });
+                    let errMsg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'An unexpected error occurred.';
+                    Swal.fire({ title: 'Error', text: errMsg, icon: 'error', background: '#0a0a0f', color: '#fff' });
                     btn.prop('disabled', false).html('<i class="fa-solid fa-bolt mr-2"></i> Pay Bill');
                 }
             });

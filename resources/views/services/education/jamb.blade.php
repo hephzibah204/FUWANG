@@ -28,6 +28,8 @@
                     <span class="ml-auto badge badge-primary py-2 px-3">₦{{ number_format($price ?? \App\Models\SystemSetting::get('vtu_jamb_price', 4700), 2) }}</span>
                 </div>
 
+                <x-nexus.flash-message />
+
                 <form id="jambForm" action="{{ route('services.education.jamb.buy') }}" method="POST">
                     @csrf
                     
@@ -196,8 +198,9 @@
                                 btn.prop('disabled', false).html(originalBtnHtml);
                             }
                         },
-                        error: function() {
-                            Swal.fire({ title: 'Network Error', text: 'Unable to communicate with the payment server.', icon: 'error', background: '#0a0a0f', color: '#fff' });
+                        error: function(xhr) {
+                            let errMsg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Unable to communicate with the payment server.';
+                            Swal.fire({ title: 'Network Error', text: errMsg, icon: 'error', background: '#0a0a0f', color: '#fff' });
                             btn.prop('disabled', false).html(originalBtnHtml);
                         }
                     });

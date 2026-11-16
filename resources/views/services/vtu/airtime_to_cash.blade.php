@@ -19,6 +19,7 @@
     <div class="row">
         <div class="col-lg-8">
             <div class="panel-card p-4">
+                <x-nexus.flash-message />
                 <form id="a2cForm" action="{{ route('services.vtu.airtime_to_cash.submit') }}" method="POST">
                     @csrf
 

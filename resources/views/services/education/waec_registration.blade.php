@@ -27,6 +27,8 @@
                     <span class="ml-auto badge badge-primary py-2 px-3">₦{{ number_format($price ?? \App\Models\SystemSetting::get('vtu_waec_reg_price', 18500), 2) }}</span>
                 </div>
 
+                <x-nexus.flash-message />
+
                 <form id="waecRegForm" action="{{ route('services.education.waec_registration.buy') }}" method="POST">
                     @csrf
                     
@@ -179,6 +181,11 @@
                                 Swal.fire({ title: 'Error', text: response.message, icon: 'error', background: '#0a0a0f', color: '#fff' });
                                 btn.prop('disabled', false).html(originalBtnHtml);
                             }
+                        },
+                        error: function(xhr) {
+                            let errMsg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Unable to connect to gateway.';
+                            Swal.fire({ title: 'Error', text: errMsg, icon: 'error', background: '#0a0a0f', color: '#fff' });
+                            btn.prop('disabled', false).html(originalBtnHtml);
                         }
                     });
                 }
