@@ -350,7 +350,7 @@
                 <div class="p-3 rounded text-center" style="background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.15);">
                     <div class="small font-weight-bold text-white mb-1"><i class="fa-solid fa-headset mr-1 text-primary"></i> Need Help with a Bill?</div>
                     <div class="text-muted x-small mb-2">Our support team is online 24/7 to resolve tokens and re-queries.</div>
-                    <a href="{{ route('ticket') }}" class="btn btn-outline btn-sm w-100 py-1">
+                    <a href="{{ Route::has('tickets.create') ? route('tickets.create') : (Route::has('tickets.index') ? route('tickets.index') : '#') }}" class="btn btn-outline btn-sm w-100 py-1">
                         Open Support Ticket
                     </a>
                 </div>
