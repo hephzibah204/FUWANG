@@ -20,6 +20,21 @@
     <div class="row">
         <div class="col-lg-8">
             <div class="panel-card p-4">
+                @php
+                    $airtimeDiscount = (float) \App\Models\SystemSetting::get('vtu_airtime_discount_percent', 2.0);
+                @endphp
+                @if($airtimeDiscount > 0)
+                    <div class="p-3 mb-4 rounded-3 d-flex align-items-center justify-content-between" style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25);">
+                        <div class="d-flex align-items-center">
+                            <i class="fa-solid fa-tags text-success fa-lg mr-3"></i>
+                            <div>
+                                <span class="font-weight-bold text-white small d-block">Special Airtime Discount Active</span>
+                                <span class="text-muted small">Enjoy {{ $airtimeDiscount }}% instant discount deducted automatically at checkout.</span>
+                            </div>
+                        </div>
+                        <span class="badge badge-success px-2 py-1 font-weight-bold">{{ $airtimeDiscount }}% OFF</span>
+                    </div>
+                @endif
                 <form id="airtimeForm" action="{{ route('services.vtu.airtime.buy') }}" method="POST">
                     @csrf
                     
@@ -30,7 +45,7 @@
                             <label class="nexus-net-option">
                                 <input type="radio" name="network" value="{{ $net }}" required>
                                 <div class="net-box">
-                                    <img src="{{ asset('images/' . strtolower($net) . '.png') }}" alt="{{ $net }}">
+                                    <img src="{{ asset('images/' . strtolower($net) . '.png') }}" alt="{{ $net }}" onerror="this.onerror=null; this.src='{{ asset('vtusite/images/' . strtolower($net) . '.png') }}';">
                                     <span>{{ $net }}</span>
                                 </div>
                             </label>

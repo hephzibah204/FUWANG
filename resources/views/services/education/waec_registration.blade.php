@@ -24,7 +24,7 @@
             <div class="panel-card p-4">
                 <div class="d-flex align-items-center mb-4 pb-3 border-bottom border-white-5">
                     <h2 class="h6 font-weight-bold m-0"><i class="fa-solid fa-cart-shopping mr-2 text-primary"></i> Order Registration PIN</h2>
-                    <span class="ml-auto badge badge-primary py-2 px-3">₦18,500.00</span>
+                    <span class="ml-auto badge badge-primary py-2 px-3">₦{{ number_format($price ?? \App\Models\SystemSetting::get('vtu_waec_reg_price', 18500), 2) }}</span>
                 </div>
 
                 <form id="waecRegForm" action="{{ route('services.education.waec_registration.buy') }}" method="POST">
@@ -72,7 +72,7 @@
                         </div>
                         <div class="d-flex justify-content-between">
                             <span class="font-weight-bold">Total Payable</span>
-                            <span class="font-weight-bold text-primary">₦18,500.00</span>
+                            <span class="font-weight-bold text-primary">₦{{ number_format($price ?? \App\Models\SystemSetting::get('vtu_waec_reg_price', 18500), 2) }}</span>
                         </div>
                     </div>
 
@@ -155,7 +155,7 @@
             
             Swal.fire({
                 title: 'Confirm Registration PIN',
-                text: "You are about to purchase a WAEC Registration PIN for ₦18,500.00. Continue?",
+                text: "You are about to purchase a WAEC Registration PIN for ₦{{ number_format($price ?? \App\Models\SystemSetting::get('vtu_waec_reg_price', 18500), 2) }}. Continue?",
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonText: 'Confirm Purchase',

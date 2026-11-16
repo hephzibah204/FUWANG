@@ -572,6 +572,15 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
             Route::get('/services',                    [App\Http\Controllers\Admin\ServiceManagementController::class, 'index'])->name('services.index');
             Route::post('/services/toggles/{feature}', [App\Http\Controllers\Admin\ServiceManagementController::class, 'setToggle'])->name('services.toggles.set');
 
+            // VTU Pricing & Data Bundles Management
+            Route::prefix('vtu/pricing')->name('vtu.pricing')->group(function () {
+                Route::get('/', [App\Http\Controllers\Admin\AdminVtuPricingController::class, 'index']);
+                Route::post('/rates', [App\Http\Controllers\Admin\AdminVtuPricingController::class, 'updateRates'])->name('.rates');
+                Route::post('/bundle', [App\Http\Controllers\Admin\AdminVtuPricingController::class, 'storeBundle'])->name('.bundle.store');
+                Route::put('/bundle/{id}', [App\Http\Controllers\Admin\AdminVtuPricingController::class, 'updateBundle'])->name('.bundle.update');
+                Route::delete('/bundle/{id}', [App\Http\Controllers\Admin\AdminVtuPricingController::class, 'deleteBundle'])->name('.bundle.delete');
+            });
+
             Route::get('/sandbox',                     [App\Http\Controllers\Admin\AdminSandboxController::class, 'index'])->name('sandbox.index');
             Route::get('/sandbox/nin',                 [App\Http\Controllers\Admin\AdminSandboxController::class, 'nin'])->name('sandbox.nin');
             Route::post('/sandbox/nin/verify',         [App\Http\Controllers\Admin\AdminSandboxController::class, 'verifyNin'])->name('sandbox.nin.verify');

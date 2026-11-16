@@ -25,7 +25,7 @@
             <div class="panel-card p-4">
                 <div class="d-flex align-items-center mb-4 pb-3 border-bottom border-white-5">
                     <h2 class="h6 font-weight-bold m-0"><i class="fa-solid fa-cart-shopping mr-2 text-primary"></i> Order New PIN</h2>
-                    <span class="ml-auto badge badge-primary py-2 px-3">₦950.00</span>
+                    <span class="ml-auto badge badge-primary py-2 px-3">₦{{ number_format($price ?? \App\Models\SystemSetting::get('vtu_waec_price', 3800), 2) }}</span>
                 </div>
 
                 <form id="waecForm" action="{{ route('services.education.waec.buy') }}" method="POST">
@@ -73,7 +73,7 @@
                         </div>
                         <div class="d-flex justify-content-between">
                             <span class="font-weight-bold">Total Amount</span>
-                            <span class="font-weight-bold text-primary">₦950.00</span>
+                            <span class="font-weight-bold text-primary">₦{{ number_format($price ?? \App\Models\SystemSetting::get('vtu_waec_price', 3800), 2) }}</span>
                         </div>
                     </div>
 
@@ -123,7 +123,7 @@
                     </li>
                     <li class="d-flex gap-3 mb-4">
                         <div class="rounded-circle bg-primary-soft d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; min-width: 32px; font-size: 12px; font-weight: 800; color: var(--clr-primary);">2</div>
-                        <div class="small text-muted">Confirm you have sufficient balance (₦950.00). Transactions are processed instantly.</div>
+                        <div class="small text-muted">Confirm you have sufficient balance (₦{{ number_format($price ?? \App\Models\SystemSetting::get('vtu_waec_price', 3800), 2) }}). Transactions are processed instantly.</div>
                     </li>
                     <li class="d-flex gap-3 mb-4">
                         <div class="rounded-circle bg-primary-soft d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; min-width: 32px; font-size: 12px; font-weight: 800; color: var(--clr-primary);">3</div>
@@ -204,7 +204,7 @@
             
             Swal.fire({
                 title: 'Confirm Purchase',
-                text: "You are about to purchase a WAEC Result Checker PIN for ₦950.00. Continue?",
+                text: "You are about to purchase a WAEC Result Checker PIN for ₦{{ number_format($price ?? \App\Models\SystemSetting::get('vtu_waec_price', 3800), 2) }}. Continue?",
                 icon: 'question',
                 showCancelButton: true,
                 confirmButtonColor: '#3b82f6',

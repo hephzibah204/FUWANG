@@ -99,7 +99,7 @@
     <div class="card-body pt-0 pb-3">
         <div class="row g-3">
             {{-- DataVerify Card --}}
-            <div class="col-lg-4 col-md-6">
+            <div class="col-lg-3 col-md-6">
                 <div class="p-3 rounded-3 border bg-light-subtle h-100 d-flex flex-column justify-content-between">
                     <div>
                         <div class="d-flex justify-content-between align-items-center mb-2">
@@ -130,7 +130,7 @@
             </div>
 
             {{-- RobostTech Card --}}
-            <div class="col-lg-4 col-md-6">
+            <div class="col-lg-3 col-md-6">
                 <div class="p-3 rounded-3 border bg-light-subtle h-100 d-flex flex-column justify-content-between">
                     <div>
                         <div class="d-flex justify-content-between align-items-center mb-2">
@@ -161,7 +161,7 @@
             </div>
 
             {{-- Vuvaa Card --}}
-            <div class="col-lg-4 col-md-12">
+            <div class="col-lg-3 col-md-6">
                 <div class="p-3 rounded-3 border bg-light-subtle h-100 d-flex flex-column justify-content-between">
                     <div>
                         <div class="d-flex justify-content-between align-items-center mb-2">
@@ -188,6 +188,39 @@
                             <a href="https://premiere.vuvaa.com" target="_blank" rel="noopener" class="text-decoration-none small">Portal &nearr;</a>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            {{-- Datasub247 Card --}}
+            <div class="col-lg-3 col-md-6">
+                <div class="p-3 rounded-3 border bg-light-subtle h-100 d-flex flex-column justify-content-between">
+                    <div>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="fw-bold text-dark">Datasub247 API</span>
+                                <span class="badge bg-secondary-subtle text-secondary small">VTU & Bills</span>
+                            </div>
+                            <span id="datasub-badge" class="badge {{ $providerBalances['datasub247']['badge_class'] ?? 'bg-secondary' }} rounded-pill px-2 py-1 small">
+                                {{ $providerBalances['datasub247']['status_label'] ?? 'Unknown' }}
+                            </span>
+                        </div>
+                        <div class="d-flex align-items-baseline gap-2 mb-1">
+                            <h3 class="mb-0 fw-bold text-dark" id="datasub-balance-val">
+                                {{ $providerBalances['datasub247']['formatted'] ?? '—' }}
+                            </h3>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center text-muted small mt-2 pt-2 border-top">
+                        <span id="datasub-msg" class="text-truncate me-2" style="max-width: 70%;">{{ $providerBalances['datasub247']['message'] ?? '' }}</span>
+                        <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                            @if(empty($providerBalances['datasub247']['configured']) || ($providerBalances['datasub247']['status'] ?? '') === 'error')
+                                <a href="{{ route('admin.custom_apis.index') }}" class="btn btn-xs btn-outline-primary py-0 px-2" style="font-size: 11px;">Configure</a>
+                            @endif
+                            <a href="https://datasub247.com" target="_blank" rel="noopener" class="text-decoration-none small">Top Up &nearr;</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
                 </div>
             </div>
         </div>
@@ -1106,6 +1139,18 @@
                         }
                         const vuvaaMsg = document.getElementById('vuvaa-msg');
                         if (vuvaaMsg) vuvaaMsg.innerText = data.vuvaa.message || '';
+                    }
+
+                    if (data.datasub247) {
+                        const datasubVal = document.getElementById('datasub-balance-val');
+                        if (datasubVal) datasubVal.innerText = data.datasub247.formatted || '—';
+                        const badge = document.getElementById('datasub-badge');
+                        if (badge) {
+                            badge.className = 'badge ' + (data.datasub247.badge_class || 'bg-secondary') + ' rounded-pill px-2 py-1 small';
+                            badge.innerText = data.datasub247.status_label || 'Unknown';
+                        }
+                        const datasubMsg = document.getElementById('datasub-msg');
+                        if (datasubMsg) datasubMsg.innerText = data.datasub247.message || '';
                     }
 
                     if (data.checked_at) {

@@ -30,7 +30,7 @@
                             <label class="nexus-net-option">
                                 <input type="radio" name="serviceID" value="{{ strtolower($provider) }}" {{ $loop->first ? 'checked' : '' }} required>
                                 <div class="net-box">
-                                    <img src="{{ asset('images/' . strtolower($provider) . '.png') }}" alt="{{ $provider }}" onerror="this.src='https://placehold.co/40x40?text={{ $provider }}'">
+                                    <img src="{{ asset('images/' . strtolower($provider) . '.png') }}" alt="{{ $provider }}" onerror="this.onerror=null; this.src='{{ asset('vtusite/images/' . strtolower($provider) . '.png') }}';">
                                     <span>{{ $provider }}</span>
                                 </div>
                             </label>

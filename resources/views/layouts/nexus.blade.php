@@ -519,6 +519,7 @@
                 <button type="button" class="submenu-toggle" aria-expanded="false"><i class="fa-solid fa-layer-group"></i> <span class="nav-text">Catalog</span> <i class="fa-solid fa-chevron-down ml-auto small submenu-arrow"></i></button>
                 <div class="submenu" role="region">
                     <a href="{{ route('admin.services.index') }}" class="{{ Request::routeIs('admin.services.*') ? 'active' : '' }}">Services</a>
+                    <a href="{{ route('admin.vtu.pricing') }}" class="{{ Request::routeIs('admin.vtu.pricing*') ? 'active' : '' }}">VTU Pricing</a>
                     <a href="{{ route('admin.custom_apis.index') }}" class="{{ Request::routeIs('admin.custom_apis.*') ? 'active' : '' }}">Custom APIs</a>
                 </div>
             </div>

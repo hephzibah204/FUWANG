@@ -30,7 +30,7 @@
                             <label class="nexus-net-option">
                                 <input type="radio" name="network" value="{{ $net }}" required>
                                 <div class="net-box">
-                                    <img src="{{ asset('images/' . strtolower($net) . '.png') }}" alt="{{ $net }}">
+                                    <img src="{{ asset('images/' . strtolower($net) . '.png') }}" alt="{{ $net }}" onerror="this.onerror=null; this.src='{{ asset('vtusite/images/' . strtolower($net) . '.png') }}';">
                                     <span>{{ $net }}</span>
                                 </div>
                             </label>

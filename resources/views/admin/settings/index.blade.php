@@ -65,6 +65,16 @@
 {{-- ── 2. Pricing Tab ────────────────────────────────── --}}
 <div class="s-panel" id="tab-pricing">
     <div class="card border-0 rounded-4 p-4" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.07) !important;">
+        <div class="p-3 rounded-3 mb-4 d-flex align-items-center justify-content-between flex-wrap gap-2" style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(37, 99, 235, 0.22)); border: 1px solid rgba(59, 130, 246, 0.35);">
+            <div>
+                <h6 class="text-white fw-bold mb-1"><i class="fa-solid fa-mobile-screen-button text-primary mr-1"></i> VTU & Data Bundles Pricing Manager</h6>
+                <small class="text-white-50">Configure data bundle rates (MTN, GLO, Airtel, 9mobile), airtime discount %, exam PINs (WAEC, NECO, NABTEB, JAMB), and bulk SMS.</small>
+            </div>
+            <a href="{{ route('admin.vtu.pricing') }}" class="btn btn-sm btn-primary rounded-pill px-3 py-2 font-weight-bold">
+                <i class="fa-solid fa-tags mr-1"></i> Manage VTU Prices & Bundles &rarr;
+            </a>
+        </div>
+
         <h5 class="text-white mb-1 fw-bold">Verification Pricing</h5>
         <p class="text-white-50 small mb-4">Set prices (₦) for all identity verification services.</p>
         <form id="pricingForm">

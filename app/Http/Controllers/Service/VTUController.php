@@ -630,8 +630,9 @@ class VTUController extends Controller
     public function waecIndex()
     {
         $waecProviders = CustomApi::where('service_type', 'education_waec')->where('status', true)->get();
+        $price = (float) SystemSetting::get('vtu_waec_price', 3800);
 
-        return view('services.education.waec', compact('waecProviders'));
+        return view('services.education.waec', compact('waecProviders', 'price'));
     }
 
     public function buyWaecPin(Request $request)
@@ -643,7 +644,7 @@ class VTUController extends Controller
             'provider_id' => ['nullable', 'integer', 'exists:custom_apis,id'],
         ]);
 
-        $amount = 950;
+        $amount = (float) SystemSetting::get('vtu_waec_price', 3800);
         $result = $this->vtuHub->processRequest([
             'service_type' => 'vtu_epin',
             'amount' => $amount,
@@ -666,8 +667,9 @@ class VTUController extends Controller
     public function waecRegistrationIndex()
     {
         $waecProviders = CustomApi::where('service_type', 'education_waec_registration')->where('status', true)->get();
+        $price = (float) SystemSetting::get('vtu_waec_reg_price', 18500);
 
-        return view('services.education.waec_registration', compact('waecProviders'));
+        return view('services.education.waec_registration', compact('waecProviders', 'price'));
     }
 
     public function buyWaecRegistrationPin(Request $request)
@@ -679,7 +681,7 @@ class VTUController extends Controller
             'provider_id' => ['nullable', 'integer', 'exists:custom_apis,id'],
         ]);
 
-        $amount = 18500;
+        $amount = (float) SystemSetting::get('vtu_waec_reg_price', 18500);
         $result = $this->vtuHub->processRequest([
             'service_type' => 'vtu_epin',
             'amount' => $amount,
@@ -702,8 +704,9 @@ class VTUController extends Controller
     public function necoIndex()
     {
         $providers = CustomApi::where('service_type', 'education_neco')->where('status', true)->get();
+        $price = (float) SystemSetting::get('vtu_neco_price', 1500);
 
-        return view('services.education.neco', compact('providers'));
+        return view('services.education.neco', compact('providers', 'price'));
     }
 
     public function buyNecoPin(Request $request)
@@ -715,7 +718,7 @@ class VTUController extends Controller
             'provider_id' => ['nullable', 'integer', 'exists:custom_apis,id'],
         ]);
 
-        $amount = 950;
+        $amount = (float) SystemSetting::get('vtu_neco_price', 1500);
         $result = $this->vtuHub->processRequest([
             'service_type' => 'vtu_epin',
             'amount' => $amount,
@@ -738,8 +741,9 @@ class VTUController extends Controller
     public function nabtebIndex()
     {
         $providers = CustomApi::where('service_type', 'education_nabteb')->where('status', true)->get();
+        $price = (float) SystemSetting::get('vtu_nabteb_price', 1200);
 
-        return view('services.education.nabteb', compact('providers'));
+        return view('services.education.nabteb', compact('providers', 'price'));
     }
 
     public function buyNabtebPin(Request $request)
@@ -751,7 +755,7 @@ class VTUController extends Controller
             'provider_id' => ['nullable', 'integer', 'exists:custom_apis,id'],
         ]);
 
-        $amount = 950;
+        $amount = (float) SystemSetting::get('vtu_nabteb_price', 1200);
         $result = $this->vtuHub->processRequest([
             'service_type' => 'vtu_epin',
             'amount' => $amount,
@@ -774,8 +778,9 @@ class VTUController extends Controller
     public function jambIndex()
     {
         $providers = CustomApi::where('service_type', 'education_jamb')->where('status', true)->get();
+        $price = (float) SystemSetting::get('vtu_jamb_price', 4700);
 
-        return view('services.education.jamb', compact('providers'));
+        return view('services.education.jamb', compact('providers', 'price'));
     }
 
     public function buyJambPin(Request $request)
@@ -787,7 +792,7 @@ class VTUController extends Controller
             'provider_id' => ['nullable', 'integer', 'exists:custom_apis,id'],
         ]);
 
-        $amount = 4700;
+        $amount = (float) SystemSetting::get('vtu_jamb_price', 4700);
         $result = $this->vtuHub->processRequest([
             'service_type' => 'vtu_epin',
             'amount' => $amount,
@@ -817,14 +822,21 @@ class VTUController extends Controller
             'phone' => 'required|string|digits:11',
         ]);
 
+        $discount = (float) SystemSetting::get('vtu_airtime_discount_percent', 2.0);
+        $chargedAmount = $discount > 0 
+            ? max(1, round($request->amount * (1 - ($discount / 100)), 2))
+            : (float) $request->amount;
+
         $result = $this->vtuHub->processRequest([
             'service_type' => 'vtu_airtime',
-            'amount' => $request->amount,
+            'amount' => $chargedAmount,
             'order_type' => 'Airtime Purchase',
             'tx_prefix' => 'VTU',
             'payload' => [
                 'network' => $request->network,
                 'amount' => $request->amount,
+                'charged_amount' => $chargedAmount,
+                'discount_percent' => $discount,
                 'phone' => $request->phone,
             ],
         ]);
@@ -841,14 +853,23 @@ class VTUController extends Controller
             'phone' => 'required|string|digits:11',
         ]);
 
+        $planAmount = (float) $request->amount;
+        if (Schema::hasTable('price_list')) {
+            $plan = DB::table('price_list')->where('id', $request->plan_id)->first();
+            if ($plan) {
+                $planAmount = (float) $plan->amount;
+            }
+        }
+
         $result = $this->vtuHub->processRequest([
             'service_type' => 'vtu_data',
-            'amount' => $request->amount,
+            'amount' => $planAmount,
             'order_type' => 'Data Purchase',
             'tx_prefix' => 'DATA',
             'payload' => [
                 'network' => $request->network,
                 'plan_id' => $request->plan_id,
+                'amount' => $planAmount,
                 'phone' => $request->phone,
             ],
         ]);

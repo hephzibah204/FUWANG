@@ -183,7 +183,7 @@
 
         <div class="vtu-edu-grid">
             <a href="{{ route('services.education.waec') }}" class="vtu-edu-card text-decoration-none">
-                <img src="{{ asset('vtusite/images/waec.png') }}" alt="WAEC" class="edu-img" onerror="this.src='https://placehold.co/40x40?text=WAEC'">
+                <img src="{{ asset('vtusite/images/waec.png') }}" alt="WAEC" class="edu-img" onerror="this.onerror=null; this.src='{{ asset('images/waec.png') }}';">
                 <div class="edu-info">
                     <div class="edu-title">WAEC Checker</div>
                     <div class="edu-sub">Result checking PIN</div>
@@ -191,7 +191,7 @@
             </a>
 
             <a href="{{ route('services.education.waec_registration') }}" class="vtu-edu-card text-decoration-none">
-                <img src="{{ asset('vtusite/images/waec.png') }}" alt="WAEC Reg" class="edu-img" onerror="this.src='https://placehold.co/40x40?text=WAEC'">
+                <img src="{{ asset('vtusite/images/waec.png') }}" alt="WAEC Reg" class="edu-img" onerror="this.onerror=null; this.src='{{ asset('images/waec.png') }}';">
                 <div class="edu-info">
                     <div class="edu-title">WAEC Registration</div>
                     <div class="edu-sub">Candidate registration PIN</div>
@@ -199,7 +199,7 @@
             </a>
 
             <a href="{{ route('services.education.neco') }}" class="vtu-edu-card text-decoration-none">
-                <img src="{{ asset('vtusite/images/neco.png') }}" alt="NECO" class="edu-img" onerror="this.src='https://placehold.co/40x40?text=NECO'">
+                <img src="{{ asset('vtusite/images/neco.png') }}" alt="NECO" class="edu-img" onerror="this.onerror=null; this.src='{{ asset('images/neco.png') }}';">
                 <div class="edu-info">
                     <div class="edu-title">NECO Token</div>
                     <div class="edu-sub">Result checker token</div>
@@ -207,7 +207,7 @@
             </a>
 
             <a href="{{ route('services.education.nabteb') }}" class="vtu-edu-card text-decoration-none">
-                <img src="{{ asset('vtusite/images/nabteb.png') }}" alt="NABTEB" class="edu-img" onerror="this.src='https://placehold.co/40x40?text=NABTEB'">
+                <img src="{{ asset('vtusite/images/nabteb.png') }}" alt="NABTEB" class="edu-img" onerror="this.onerror=null; this.src='{{ asset('images/nabteb.png') }}';">
                 <div class="edu-info">
                     <div class="edu-title">NABTEB PIN</div>
                     <div class="edu-sub">Result checker voucher</div>
@@ -215,7 +215,7 @@
             </a>
 
             <a href="{{ route('services.education.jamb') }}" class="vtu-edu-card text-decoration-none">
-                <img src="{{ asset('vtusite/images/jamb.png') }}" alt="JAMB" class="edu-img" onerror="this.src='https://placehold.co/40x40?text=JAMB'">
+                <img src="{{ asset('vtusite/images/jamb.png') }}" alt="JAMB" class="edu-img" onerror="this.onerror=null; this.src='{{ asset('images/jamb.png') }}';">
                 <div class="edu-info">
                     <div class="edu-title">JAMB ePIN</div>
                     <div class="edu-sub">UTME / DE registration</div>
@@ -315,7 +315,7 @@
                     <div class="p-3 rounded mb-3" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08);">
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <span class="text-muted small">Provider</span>
-                            <span class="font-weight-bold text-white small">Datasub247 Gateway</span>
+                            <span class="font-weight-bold text-white small">Network Band</span>
                         </div>
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <span class="text-muted small">Average Delivery</span>

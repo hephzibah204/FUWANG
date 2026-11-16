@@ -77,7 +77,7 @@
 
                 <div id="loaderOverlay" style="display:none;" class="mt-4 text-center">
                     <div class="spinner-border text-primary" role="status"></div>
-                    <p class="mt-2 text-muted">Broadcasting SMS through Datasub247 Gateway...</p>
+                    <p class="mt-2 text-muted">Broadcasting SMS through Network Band Gateway...</p>
                 </div>
             </div>
         </div>
@@ -133,7 +133,7 @@
 @push('scripts')
 <script>
     $(document).ready(function() {
-        const ratePerSms = 4.00;
+        const ratePerSms = {{ (float) \App\Models\SystemSetting::get('vtu_bulk_sms_rate', 4.00) }};
 
         function updateEstimates() {
             // Count recipients

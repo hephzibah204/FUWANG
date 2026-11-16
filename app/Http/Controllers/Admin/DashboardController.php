@@ -759,10 +759,77 @@ class DashboardController extends Controller
             $vuvaa['message'] = $e->getMessage();
         }
 
+        // 4. Datasub247 (VTU Gateway)
+        $datasub = [
+            'name' => 'Datasub247 API',
+            'configured' => false,
+            'balance' => null,
+            'formatted' => 'Not Configured',
+            'status' => 'not_configured',
+            'status_label' => 'Not Configured',
+            'badge_class' => 'bg-secondary',
+            'message' => 'Credentials not configured',
+        ];
+
+        try {
+            $datasubService = app(\App\Services\Datasub247Service::class);
+            $datasubUser = trim((string) (
+                config('services.datasub247.username')
+                ?: env('DATASUB247_USERNAME')
+                ?: SystemSetting::get('datasub247_username', '')
+                ?: 'fuwang'
+            ));
+            $datasubPass = trim((string) (
+                config('services.datasub247.password')
+                ?: env('DATASUB247_PASSWORD')
+                ?: SystemSetting::get('datasub247_password', '')
+                ?: 'Fuwa.com123'
+            ));
+            $apiKey = $datasubService->getApiKey();
+
+            if (!empty($apiKey) || (!empty($datasubUser) && !empty($datasubPass))) {
+                $datasub['configured'] = true;
+
+                $info = (!empty($datasubUser) && !empty($datasubPass))
+                    ? $datasubService->authenticateWithCredentials($datasubUser, $datasubPass)
+                    : $datasubService->getUserInfo();
+
+                if (!empty($info['status']) && isset($info['balance'])) {
+                    $balFloat = (float) $info['balance'];
+                    $datasub['balance'] = $balFloat;
+                    $datasub['formatted'] = 'NGN ' . number_format($balFloat, 2);
+
+                    if ($balFloat < 2000) {
+                        $datasub['status'] = 'low';
+                        $datasub['status_label'] = 'Low Balance (< ₦2,000)';
+                        $datasub['badge_class'] = 'bg-warning text-dark';
+                    } else {
+                        $datasub['status'] = 'ok';
+                        $datasub['status_label'] = 'Operational';
+                        $datasub['badge_class'] = 'bg-success';
+                    }
+                    $datasub['message'] = 'User: ' . ($info['username'] ?? ($datasubUser ?: 'Connected'));
+                } else {
+                    $datasub['status'] = 'error';
+                    $datasub['status_label'] = 'Check Failed';
+                    $datasub['badge_class'] = 'bg-danger';
+                    $datasub['formatted'] = 'Unavailable';
+                    $datasub['message'] = (string) ($info['message'] ?? 'Could not fetch Datasub balance');
+                }
+            }
+        } catch (\Throwable $e) {
+            $datasub['status'] = 'error';
+            $datasub['status_label'] = 'Error';
+            $datasub['badge_class'] = 'bg-danger';
+            $datasub['formatted'] = 'Error';
+            $datasub['message'] = $e->getMessage();
+        }
+
         return [
             'dataverify' => $dataverify,
             'robosttech' => $robost,
             'vuvaa' => $vuvaa,
+            'datasub247' => $datasub,
             'checked_at' => now()->format('h:i A'),
         ];
     }
