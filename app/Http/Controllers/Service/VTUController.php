@@ -28,6 +28,30 @@ class VTUController extends Controller
         $this->vtuHub = $vtuHub;
     }
 
+    /**
+     * Return formatted HTML response (redirect with session flash message) for web requests,
+     * or structured JSON for AJAX/API requests.
+     */
+    protected function respondWithVtuResult(Request $request, $result, ?string $fallbackRoute = null, int $statusHttp = 200)
+    {
+        if ($request->wantsJson() || $request->ajax()) {
+            $code = (is_array($result) && !empty($result['status'])) ? $statusHttp : ($statusHttp >= 400 ? $statusHttp : 400);
+            return response()->json($result, $code);
+        }
+
+        $status = is_array($result) && !empty($result['status']);
+        $message = is_array($result) 
+            ? (string) ($result['message'] ?? ($status ? 'Transaction completed successfully!' : 'Transaction could not be completed.')) 
+            : (string) $result;
+
+        $redirect = $fallbackRoute ? redirect()->route($fallbackRoute) : back();
+
+        return $redirect
+            ->with($status ? 'success' : 'error', $message)
+            ->with('vtu_result', is_array($result) ? $result : ['status' => $status, 'message' => $message])
+            ->withInput();
+    }
+
     public function hubIndex()
     {
         $user = Auth::user();
@@ -259,7 +283,7 @@ class VTUController extends Controller
             ],
         ]);
 
-        return response()->json($result);
+        return $this->respondWithVtuResult($request, $result);
     }
 
     public function internetIndex()
@@ -293,7 +317,7 @@ class VTUController extends Controller
             ],
         ]);
 
-        return response()->json($result);
+        return $this->respondWithVtuResult($request, $result);
     }
 
     public function bettingIndex()
@@ -325,7 +349,7 @@ class VTUController extends Controller
             ],
         ]);
 
-        return response()->json($result);
+        return $this->respondWithVtuResult($request, $result);
     }
 
     public function epinIndex()
@@ -372,7 +396,7 @@ class VTUController extends Controller
             ],
         ]);
 
-        return response()->json($result);
+        return $this->respondWithVtuResult($request, $result);
     }
 
     public function rechargePrintingIndex()

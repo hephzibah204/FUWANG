@@ -1121,6 +1121,8 @@
     <div class="nexus-toast-container" id="nexusToastContainer"></div>
 
     <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="{{ $assetPrefix . '/assets/nexus/js/csrf-fetch.js?v=' . @filemtime(public_path('assets/nexus/js/csrf-fetch.js')) }}"></script>
     <script src="{{ $assetPrefix . '/assets/nexus/js/nexus.js?v=' . @filemtime(public_path('assets/nexus/js/nexus.js')) }}"></script>
     <script>
