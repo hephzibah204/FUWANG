@@ -8,6 +8,9 @@ Route::prefix('whatsapp-widget')->group(function () {
     Route::post('/click', [\App\Http\Controllers\Api\WhatsAppWidgetController::class, 'trackClick'])->middleware('throttle:10,1');
 });
 
+// VTU Webhooks (No auth, direct callback from providers)
+Route::post('/vtu/webhook/datasub247', [\App\Http\Controllers\Service\VTUController::class, 'webhookDatasub']);
+
 Route::prefix('v1')->group(function () {
     Route::post('/auth/token', [\App\Http\Controllers\Api\AuthController::class, 'createToken'])->middleware('throttle:5,1');
     Route::post('/auth/apply-api', [\App\Http\Controllers\Api\AuthController::class, 'applyForApi'])->middleware(['auth', 'throttle:5,1']);

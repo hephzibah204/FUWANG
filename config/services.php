@@ -112,4 +112,11 @@ return [
         'api_key' => env('GOOGLE_MAPS_API_KEY'),
     ],
 
+    'datasub247' => [
+        'base_url' => env('DATASUB247_BASE_URL', 'https://datasub247.com'),
+        'api_key' => env('DATASUB247_API_KEY'),
+        'username' => env('DATASUB247_USERNAME'),
+        'password' => env('DATASUB247_PASSWORD'),
+    ],
+
 ];

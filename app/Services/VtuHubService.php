@@ -6,6 +6,7 @@ use App\Models\CustomApi;
 use App\Models\ApiCenter;
 use App\Models\VtuTransaction;
 use App\Services\WalletService;
+use App\Services\Datasub247Service;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
@@ -14,10 +15,17 @@ use Illuminate\Support\Facades\Validator;
 class VtuHubService
 {
     protected $wallet;
+    protected Datasub247Service $datasub247;
 
-    public function __construct(WalletService $wallet)
+    public function __construct(WalletService $wallet, Datasub247Service $datasub247)
     {
         $this->wallet = $wallet;
+        $this->datasub247 = $datasub247;
+    }
+
+    public function getDatasub247(): Datasub247Service
+    {
+        return $this->datasub247;
     }
 
     public function validateCustomer(string $serviceType, array $payload, ?int $providerId = null, ?array $providerServiceTypes = null): array
@@ -69,6 +77,47 @@ class VtuHubService
                 ->where('status', true)
                 ->orderBy('priority', 'asc')
                 ->first();
+        }
+
+        $isDatasub247 = ($provider && $provider->provider_identifier === 'datasub247')
+            || (!$provider && !empty($this->datasub247->getApiKey()));
+
+        if ($isDatasub247) {
+            if ($serviceType === 'vtu_electricity' || in_array('electricity_bills', $serviceTypeCandidates, true)) {
+                $disco = $payload['serviceID'] ?? $payload['disco'] ?? 1;
+                $meterNum = $payload['meter_number'] ?? '';
+                $meterType = $payload['variation_code'] ?? $payload['meter_type'] ?? 'prepaid';
+                $valRes = $this->datasub247->validateMeter($disco, $meterNum, $meterType);
+                if ($valRes['status']) {
+                    return [
+                        'status' => true,
+                        'message' => 'Meter validated.',
+                        'data' => $valRes['raw'] ?? [],
+                        'customer' => [
+                            'name' => $valRes['name'] ?? null,
+                            'address' => $valRes['address'] ?? null,
+                        ],
+                    ];
+                }
+                return $valRes;
+            }
+
+            if ($serviceType === 'vtu_cable_tv' || in_array('cable_tv', $serviceTypeCandidates, true)) {
+                $cable = $payload['serviceID'] ?? $payload['cable'] ?? 1;
+                $iuc = $payload['smart_card_number'] ?? $payload['iuc'] ?? '';
+                $valRes = $this->datasub247->validateCable($cable, $iuc);
+                if ($valRes['status']) {
+                    return [
+                        'status' => true,
+                        'message' => 'Card validated.',
+                        'data' => $valRes['raw'] ?? [],
+                        'customer' => [
+                            'name' => $valRes['name'] ?? null,
+                        ],
+                    ];
+                }
+                return $valRes;
+            }
         }
 
         if (!$provider) {
@@ -240,7 +289,11 @@ class VtuHubService
             }
         }
 
-        if (!$apiKey || !$endpoint) {
+        $isDatasub247 = ($provider && $provider->provider_identifier === 'datasub247')
+            || (!$provider && !empty($this->datasub247->getApiKey()))
+            || ($provider && empty($endpoint) && !empty($this->datasub247->getApiKey()));
+
+        if (!$isDatasub247 && (!$apiKey || !$endpoint)) {
             return ['status' => false, 'message' => 'Service currently unavailable. Please try again later.'];
         }
 
@@ -338,6 +391,40 @@ class VtuHubService
 
         // 3. Call API
         try {
+            if ($isDatasub247) {
+                $apiResult = $this->executeDatasub247($serviceType, $payload, $requestedAmount, $txId);
+                if (!$apiResult['status']) {
+                    $errMsg = $apiResult['message'] ?? 'Transaction failed at Datasub247';
+                    throw new \Exception($errMsg);
+                }
+
+                $json = $apiResult['data'] ?? [];
+                $providerRef = (string) ($json['request-id'] ?? $json['reference'] ?? $txId);
+
+                $this->wallet->markTransactionSuccess($txId);
+
+                $vtuTx->status = 'success';
+                $vtuTx->response_payload = $json;
+                $vtuTx->provider_reference = $providerRef ?: null;
+                $vtuTx->save();
+
+                return [
+                    'status' => true,
+                    'message' => $apiResult['message'] ?? 'Transaction successful!',
+                    'data' => $json,
+                    'reference' => $txId,
+                    'pin' => $apiResult['pin'] ?? $json['pin'] ?? null,
+                    'token' => $apiResult['token'] ?? $json['token'] ?? null,
+                    'breakdown' => [
+                        'direction' => $direction,
+                        'amount' => $requestedAmount,
+                        'discount' => $discount,
+                        'fee' => $fee,
+                        'total' => $total,
+                    ],
+                ];
+            }
+
             $basePayload = $payload;
             $basePayload['request_id'] = $txId;
 
@@ -562,5 +649,73 @@ class VtuHubService
         }
 
         return true;
+    }
+
+    /**
+     * Dispatch transaction to Datasub247 service
+     */
+    public function executeDatasub247(string $serviceType, array $payload, float $amount, string $txId): array
+    {
+        return match ($serviceType) {
+            'vtu_airtime' => $this->datasub247->purchaseAirtime(
+                (string) ($payload['network'] ?? 1),
+                (string) ($payload['phone'] ?? ''),
+                $amount,
+                (string) ($payload['plan_type'] ?? 'VTU'),
+                $txId,
+                (bool) ($payload['bypass'] ?? false)
+            ),
+            'vtu_data' => $this->datasub247->purchaseData(
+                (string) ($payload['network'] ?? 1),
+                (string) ($payload['phone'] ?? ''),
+                $payload['plan_id'] ?? $payload['data_plan'] ?? 1,
+                $txId,
+                (bool) ($payload['bypass'] ?? false)
+            ),
+            'vtu_cable_tv' => $this->datasub247->purchaseCable(
+                $payload['serviceID'] ?? $payload['cable'] ?? 1,
+                (string) ($payload['smart_card_number'] ?? $payload['iuc'] ?? ''),
+                $payload['variation_code'] ?? $payload['cable_plan'] ?? 1,
+                $txId,
+                (bool) ($payload['bypass'] ?? false)
+            ),
+            'vtu_electricity' => $this->datasub247->purchaseElectricity(
+                $payload['serviceID'] ?? $payload['disco'] ?? 1,
+                (string) ($payload['meter_number'] ?? ''),
+                (string) ($payload['variation_code'] ?? $payload['meter_type'] ?? 'prepaid'),
+                $amount,
+                $txId,
+                (bool) ($payload['bypass'] ?? false)
+            ),
+            'vtu_epin', 'education_waec', 'education_neco', 'education_nabteb', 'education_jamb' => $this->datasub247->purchaseExamPin(
+                $payload['serviceID'] ?? $payload['exam'] ?? 'waec',
+                (int) ($payload['quantity'] ?? 1),
+                $txId
+            ),
+            'vtu_bulksms' => $this->datasub247->sendBulkSms(
+                (string) ($payload['sender'] ?? 'FUWA'),
+                $payload['recipients'] ?? $payload['number'] ?? $payload['phone'] ?? '',
+                (string) ($payload['message'] ?? ''),
+                $txId
+            ),
+            'vtu_data_card' => $this->datasub247->purchaseDataCard(
+                $payload['network'] ?? 1,
+                (int) ($payload['plan_type'] ?? 1),
+                (int) ($payload['quantity'] ?? 1),
+                (string) ($payload['card_name'] ?? 'Fuwa.NG'),
+                $txId
+            ),
+            'vtu_recharge_card' => $this->datasub247->purchaseRechargeCard(
+                $payload['network'] ?? 1,
+                (int) ($payload['plan_type'] ?? 1),
+                (int) ($payload['quantity'] ?? 1),
+                (string) ($payload['card_name'] ?? 'Fuwa.NG'),
+                $txId
+            ),
+            default => [
+                'status' => false,
+                'message' => 'Unsupported service type for Datasub247: ' . $serviceType,
+            ],
+        };
     }
 }

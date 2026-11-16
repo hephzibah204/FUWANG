@@ -130,6 +130,7 @@
                         <a href="{{ route('services.vtu.data') }}" class="btn btn-outline btn-sm flex-grow-1" data-cta="vtu_hub_data"><i class="fa-solid fa-wifi mr-2"></i>Data</a>
                         <a href="{{ route('services.vtu.cable') }}" class="btn btn-outline btn-sm flex-grow-1" data-cta="vtu_hub_cable"><i class="fa-solid fa-tv mr-2"></i>Cable</a>
                         <a href="{{ route('services.vtu.electricity') }}" class="btn btn-outline btn-sm flex-grow-1" data-cta="vtu_hub_electricity"><i class="fa-solid fa-lightbulb mr-2"></i>Electricity</a>
+                        <a href="{{ route('services.vtu.bulksms') }}" class="btn btn-outline btn-sm flex-grow-1" data-cta="vtu_hub_bulksms"><i class="fa-solid fa-comments mr-2"></i>Bulk SMS</a>
                     </div>
                 </div>
             </div>
@@ -194,6 +195,7 @@
                 <a href="{{ route('services.vtu.data') }}" class="btn btn-outline" data-cta="vtu_hub_data"><i class="fa-solid fa-wifi mr-2"></i>Data</a>
                 <a href="{{ route('services.vtu.cable') }}" class="btn btn-outline" data-cta="vtu_hub_cable"><i class="fa-solid fa-tv mr-2"></i>Cable</a>
                 <a href="{{ route('services.vtu.electricity') }}" class="btn btn-outline" data-cta="vtu_hub_electricity"><i class="fa-solid fa-lightbulb mr-2"></i>Electricity</a>
+                <a href="{{ route('services.vtu.bulksms') }}" class="btn btn-outline" data-cta="vtu_hub_bulksms"><i class="fa-solid fa-comments mr-2"></i>Bulk SMS</a>
             </div>
         </div>
     </div>
@@ -308,6 +310,14 @@
                     <div class="p-3 rounded-lg" style="border: 1px solid rgba(255,255,255,0.10); background: rgba(255,255,255,0.02);">
                         <div class="font-weight-bold mb-1"><i class="fa-solid fa-print mr-2 text-white-50"></i>Recharge Card Printing</div>
                         <div class="text-muted small">Generate and print data/airtime PINs for resale.</div>
+                    </div>
+                </a>
+            </div>
+            <div class="col-md-6 mb-3">
+                <a href="{{ route('services.vtu.bulksms') }}" class="text-decoration-none d-block">
+                    <div class="p-3 rounded-lg" style="border: 1px solid rgba(255,255,255,0.10); background: rgba(255,255,255,0.02);">
+                        <div class="font-weight-bold mb-1"><i class="fa-solid fa-comments mr-2 text-white-50"></i>Bulk SMS</div>
+                        <div class="text-muted small">Send instant, branded SMS to single or multiple recipients.</div>
                     </div>
                 </a>
             </div>

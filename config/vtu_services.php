@@ -116,5 +116,43 @@ return [
                 'phone' => ['required', 'string', 'digits:11'],
             ],
         ],
+        'vtu_bulksms' => [
+            'label' => 'Bulk SMS',
+            'direction' => 'debit',
+            'order_type' => 'Bulk SMS Transmission',
+            'tx_prefix' => 'SMS',
+            'limits' => ['min' => 4, 'max' => 500000],
+            'rules' => [
+                'sender' => ['required', 'string', 'max:11'],
+                'recipients' => ['required', 'string'],
+                'message' => ['required', 'string'],
+            ],
+        ],
+        'vtu_data_card' => [
+            'label' => 'Data Card Printing',
+            'direction' => 'debit',
+            'order_type' => 'Data PIN Printing',
+            'tx_prefix' => 'DCP',
+            'limits' => ['min' => 100, 'max' => 500000],
+            'rules' => [
+                'network' => ['required'],
+                'plan_type' => ['required', 'integer'],
+                'quantity' => ['required', 'integer', 'min:1', 'max:100'],
+                'card_name' => ['required', 'string', 'max:50'],
+            ],
+        ],
+        'vtu_recharge_card' => [
+            'label' => 'Recharge Card Printing',
+            'direction' => 'debit',
+            'order_type' => 'Recharge Card Printing',
+            'tx_prefix' => 'RCP',
+            'limits' => ['min' => 100, 'max' => 500000],
+            'rules' => [
+                'network' => ['required'],
+                'plan_type' => ['required', 'integer'],
+                'quantity' => ['required', 'integer', 'min:1', 'max:100'],
+                'card_name' => ['required', 'string', 'max:50'],
+            ],
+        ],
     ],
 ];

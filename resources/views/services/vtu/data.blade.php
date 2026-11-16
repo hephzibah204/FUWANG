@@ -85,6 +85,9 @@
                     <a href="{{ route('services.vtu.cable') }}" class="btn btn-outline w-100 text-left py-3">
                         <i class="fa-solid fa-tv mr-2"></i> Cable TV Hub
                     </a>
+                    <a href="{{ route('services.vtu.bulksms') }}" class="btn btn-outline w-100 text-left py-3">
+                        <i class="fa-solid fa-comments mr-2"></i> Bulk SMS
+                    </a>
                 </div>
             </div>
 
@@ -124,17 +127,51 @@
 @push('scripts')
 <script>
     $(document).ready(function() {
-        const plans = @json($plans);
+        const serverPlans = @json($plans);
+
+        const defaultPlans = {
+            'MTN': [
+                { id: '1', name: '500MB SME (30 Days)', amount: 150 },
+                { id: '2', name: '1.0GB SME (30 Days)', amount: 280 },
+                { id: '3', name: '2.0GB SME (30 Days)', amount: 560 },
+                { id: '4', name: '3.0GB SME (30 Days)', amount: 840 },
+                { id: '5', name: '5.0GB SME (30 Days)', amount: 1400 },
+                { id: '6', name: '10.0GB SME (30 Days)', amount: 2800 }
+            ],
+            'GLO': [
+                { id: '1', name: '1.0GB Corporate Gifting (30 Days)', amount: 270 },
+                { id: '2', name: '2.0GB Corporate Gifting (30 Days)', amount: 540 },
+                { id: '3', name: '3.0GB Corporate Gifting (30 Days)', amount: 810 },
+                { id: '5', name: '5.0GB Corporate Gifting (30 Days)', amount: 1350 },
+                { id: '10', name: '10.0GB Corporate Gifting (30 Days)', amount: 2700 }
+            ],
+            'AIRTEL': [
+                { id: '1', name: '1.0GB Corporate Gifting (30 Days)', amount: 280 },
+                { id: '2', name: '2.0GB Corporate Gifting (30 Days)', amount: 560 },
+                { id: '5', name: '5.0GB Corporate Gifting (30 Days)', amount: 1400 },
+                { id: '10', name: '10.0GB Corporate Gifting (30 Days)', amount: 2800 }
+            ],
+            '9MOBILE': [
+                { id: '1', name: '1.0GB Corporate Gifting (30 Days)', amount: 250 },
+                { id: '2', name: '2.0GB Corporate Gifting (30 Days)', amount: 500 },
+                { id: '5', name: '5.0GB Corporate Gifting (30 Days)', amount: 1250 }
+            ]
+        };
 
         $('input[name="network"]').on('change', function() {
             let network = $(this).val();
             let planDropdown = $('#planSelect');
             planDropdown.empty().append('<option value="">-- Select Data Bundle --</option>');
             
-            if (network && plans[network]) {
-                plans[network].forEach(plan => {
+            if (network && serverPlans[network] && serverPlans[network].length > 0) {
+                serverPlans[network].forEach(plan => {
                     let displayName = plan.data_plan + (plan.validate ? ' ('+plan.validate+')' : '');
                     planDropdown.append(`<option value="${plan.id}" data-price="${plan.amount}">${displayName} - ₦${plan.amount}</option>`);
+                });
+                planDropdown.prop('disabled', false);
+            } else if (network && defaultPlans[network]) {
+                defaultPlans[network].forEach(plan => {
+                    planDropdown.append(`<option value="${plan.id}" data-price="${plan.amount}">${plan.name} - ₦${plan.amount}</option>`);
                 });
                 planDropdown.prop('disabled', false);
             } else {

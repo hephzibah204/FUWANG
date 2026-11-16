@@ -152,6 +152,31 @@ class VTUController extends Controller
         return view('services.vtu.cable');
     }
 
+    public function validateCable(Request $request)
+    {
+        $request->validate([
+            'provider_id' => ['nullable', 'integer', 'exists:custom_apis,id'],
+            'serviceID' => ['required', 'string'],
+            'smart_card_number' => ['required', 'string'],
+        ]);
+
+        $payload = [
+            'serviceID' => $request->serviceID,
+            'smart_card_number' => $request->smart_card_number,
+        ];
+
+        $res = $this->vtuHub->validateCustomer('vtu_cable_tv', $payload, $request->input('provider_id'));
+        if (! $res['status']) {
+            return response()->json($res, 422);
+        }
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Smartcard validated successfully.',
+            'customer' => $res['customer'] ?? null,
+        ]);
+    }
+
     public function electricityIndex()
     {
         return view('services.vtu.electricity');
@@ -373,17 +398,20 @@ class VTUController extends Controller
         $unitCost = $request->pin_type === 'data' ? (float) $request->data_plan_price : (float) $request->amount;
         $totalCost = $unitCost * (int) $request->quantity;
 
-        // Get API Keys from Admin Settings before debiting
+        $requestId = 'RCP_'.time().'_'.Str::random(6);
+        $orderType = $request->pin_type === 'data' ? 'Data PIN Printing' : 'Recharge Card Printing';
+
+        $datasub = app(\App\Services\Datasub247Service::class);
+        $hasDatasub = !empty($datasub->getApiKey());
+
+        // Get API Keys from Admin Settings if Datasub is not configured
         $apiCenter = DB::table('api_centers')->first();
         $userId = $apiCenter->clubkonnect_userid ?? null;
         $apiKey = $apiCenter->clubkonnect_apikey ?? null;
 
-        if (! $userId || ! $apiKey) {
+        if (!$hasDatasub && (! $userId || ! $apiKey)) {
             return response()->json(['status' => false, 'message' => 'Recharge Card Printing is not configured by the administrator yet.']);
         }
-
-        $requestId = 'RCP_'.time().'_'.Str::random(6);
-        $orderType = $request->pin_type === 'data' ? 'Data PIN Printing' : 'Recharge Card Printing';
 
         $walletService = app(WalletService::class);
         $debitResult = $walletService->debit($user, $totalCost, $orderType, 'RCP', $requestId);
@@ -396,6 +424,72 @@ class VTUController extends Controller
         }
 
         $tx = $debitResult['tx'] ?? null;
+
+        // Try Datasub247 first if configured
+        if ($hasDatasub) {
+            try {
+                $cardName = $user->username ?: config('app.name', 'Fuwa.NG');
+                if ($request->pin_type === 'data') {
+                    $res = $datasub->purchaseDataCard(
+                        $request->network,
+                        (int) $request->data_plan,
+                        (int) $request->quantity,
+                        $cardName,
+                        $requestId
+                    );
+                } else {
+                    $res = $datasub->purchaseRechargeCard(
+                        $request->network,
+                        (int) $request->amount,
+                        (int) $request->quantity,
+                        $cardName,
+                        $requestId
+                    );
+                }
+
+                if ($res['status']) {
+                    if ($tx) $tx->update(['status' => 'success']);
+                    $walletService->markTransactionSuccess($requestId);
+
+                    $data = $res['data'] ?? [];
+                    $serials = array_filter(array_map('trim', explode(',', (string) ($data['serial'] ?? ''))));
+                    $pins = array_filter(array_map('trim', explode(',', (string) ($data['pin'] ?? ''))));
+
+                    $netMap = ['01' => 'MTN', '02' => 'GLO', '04' => 'AIRTEL', '03' => '9MOBILE', '1' => 'MTN', '2' => 'GLO', '3' => 'AIRTEL', '4' => '9MOBILE'];
+                    $netLabel = $netMap[$request->network] ?? 'VTU';
+
+                    $formatted = [];
+                    $pinCount = count($pins);
+                    for ($i = 0; $i < $pinCount; $i++) {
+                        $formatted[] = [
+                            'mobilenetwork' => $netLabel,
+                            'amount' => $unitCost,
+                            'productname' => $request->pin_type === 'data' ? ($data['dataplan'] ?? 'Data Bundle') : ('₦' . $unitCost),
+                            'sno' => $serials[$i] ?? ($requestId . '-' . ($i + 1)),
+                            'serial' => $serials[$i] ?? ($requestId . '-' . ($i + 1)),
+                            'pin' => $pins[$i] ?? '',
+                            'load_pin' => $data['load_pin'] ?? ($request->pin_type === 'data' ? '*131*PIN#' : '*555*PIN#'),
+                            'check_balance' => $data['check_balance'] ?? '*556#',
+                        ];
+                    }
+
+                    return response()->json([
+                        'status' => true,
+                        'message' => 'PINs generated successfully.',
+                        'pins' => $formatted,
+                        'async' => false,
+                    ]);
+                } else {
+                    $walletService->credit($user, $totalCost, 'Refund: ' . $orderType, 'REF-' . $requestId);
+                    if ($tx) $tx->update(['status' => 'failed']);
+                    return response()->json(['status' => false, 'message' => $res['message'] ?? 'Unable to generate PINs.']);
+                }
+            } catch (\Throwable $e) {
+                $walletService->credit($user, $totalCost, 'Refund: ' . $orderType, 'REF-' . $requestId);
+                if ($tx) $tx->update(['status' => 'failed']);
+                return response()->json(['status' => false, 'message' => 'Error contacting PIN provider. Your wallet was refunded.']);
+            }
+        }
 
         try {
             if ($request->pin_type === 'data') {
@@ -839,5 +933,61 @@ class VTUController extends Controller
         }
 
         return response()->json($result);
+    }
+
+    public function bulkSmsIndex()
+    {
+        return view('services.vtu.bulksms');
+    }
+
+    public function sendBulkSms(Request $request)
+    {
+        $request->validate([
+            'provider_id' => ['nullable', 'integer', 'exists:custom_apis,id'],
+            'sender' => ['required', 'string', 'max:11'],
+            'recipients' => ['required', 'string'],
+            'message' => ['required', 'string'],
+        ]);
+
+        $rawRecipients = preg_split('/[\r\n,]+/', (string) $request->recipients);
+        $recipients = [];
+        foreach ($rawRecipients as $r) {
+            $cleaned = preg_replace('/[^0-9]/', '', trim((string) $r));
+            if (strlen($cleaned) >= 10 && !in_array($cleaned, $recipients, true)) {
+                $recipients[] = $cleaned;
+            }
+        }
+
+        if (empty($recipients)) {
+            return response()->json(['status' => false, 'message' => 'Please provide at least one valid phone number.'], 422);
+        }
+
+        $msgLen = mb_strlen($request->message);
+        $pages = $msgLen > 160 ? (int) ceil($msgLen / 153) : 1;
+        $ratePerSms = (float) config('vtu_services.bulk_sms_rate', 4.00);
+        $totalAmount = count($recipients) * $pages * $ratePerSms;
+
+        $result = $this->vtuHub->processRequest([
+            'service_type' => 'vtu_bulksms',
+            'amount' => $totalAmount,
+            'order_type' => 'Bulk SMS (' . count($recipients) . ' recipients)',
+            'tx_prefix' => 'SMS',
+            'provider_id' => $request->input('provider_id'),
+            'payload' => [
+                'sender' => $request->sender,
+                'recipients' => implode(',', $recipients),
+                'message' => $request->message,
+                'amount' => $totalAmount,
+            ],
+        ]);
+
+        return response()->json($result);
+    }
+
+    public function webhookDatasub(Request $request)
+    {
+        \Illuminate\Support\Facades\Log::info('Datasub247 Webhook Payload: ', $request->all());
+        $res = app(\App\Services\Datasub247Service::class)->handleWebhook($request->all());
+        return response()->json($res, ($res['status'] ?? false) ? 200 : 400);
     }
 }

@@ -375,6 +375,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/services/vtu/data/buy',    [App\Http\Controllers\Service\VTUController::class, 'buyData'])->middleware('kyc.enforce')->name('services.vtu.data.buy');
 
         Route::get('/services/vtu/cable',       [App\Http\Controllers\Service\VTUController::class, 'cableIndex'])->name('services.vtu.cable');
+        Route::post('/services/vtu/cable/validate', [App\Http\Controllers\Service\VTUController::class, 'validateCable'])->name('services.vtu.cable.validate');
         Route::post('/services/vtu/cable/buy',   [App\Http\Controllers\Service\VTUController::class, 'buyCable'])->middleware('kyc.enforce')->name('services.vtu.cable.buy');
 
         Route::get('/services/vtu/electricity', [App\Http\Controllers\Service\VTUController::class, 'electricityIndex'])->name('services.vtu.electricity');
@@ -397,6 +398,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/services/vtu/recharge-printing/generate', [App\Http\Controllers\Service\VTUController::class, 'generateRechargePins'])->middleware('kyc.enforce')->name('services.vtu.recharge_printing.generate');
         Route::get('/services/vtu/recharge-printing/query', [App\Http\Controllers\Service\VTUController::class, 'queryRechargeOrder'])->name('services.vtu.recharge_printing.query');
         Route::get('/services/vtu/recharge-printing/data-plans', [App\Http\Controllers\Service\VTUController::class, 'fetchDatabundlePlans'])->name('services.vtu.recharge_printing.data_plans');
+
+        // Bulk SMS
+        Route::get('/services/vtu/bulksms', [App\Http\Controllers\Service\VTUController::class, 'bulkSmsIndex'])->name('services.vtu.bulksms');
+        Route::post('/services/vtu/bulksms/send', [App\Http\Controllers\Service\VTUController::class, 'sendBulkSms'])->middleware('kyc.enforce')->name('services.vtu.bulksms.send');
 
         // Education Hub under VTU Hub
         Route::get('/services/vtu/education/waec',       [App\Http\Controllers\Service\VTUController::class, 'waecIndex'])->name('services.education.waec');
@@ -852,6 +857,8 @@ Route::withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class])->group(f
     Route::post('/webhook/flutterwave/card',  [App\Http\Controllers\WebhookController::class, 'handleFlutterwaveCard'])->name('webhook.flutterwave.card');
     Route::post('/payvessel_webhook.php', [App\Http\Controllers\WebhookController::class, 'handlePayvessel']);
     Route::post('/palmpay_webhook.php',   [App\Http\Controllers\WebhookController::class, 'handlePalmpay']);
+    Route::post('/webhooks/vtu/datasub247', [App\Http\Controllers\Service\VTUController::class, 'webhookDatasub'])->name('webhooks.vtu.datasub247');
+    Route::post('/api/vtu/webhook/datasub247', [App\Http\Controllers\Service\VTUController::class, 'webhookDatasub'])->name('api.vtu.webhook.datasub247');
 });
 
 
