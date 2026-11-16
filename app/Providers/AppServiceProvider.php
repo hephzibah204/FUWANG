@@ -28,7 +28,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton('migration.repository', function ($app) {
+            $table = $app['config']['database.migrations'] ?? 'migrations';
+            $tableName = is_array($table) ? ($table['table'] ?? 'migrations') : $table;
+
+            return new \App\Database\SafeDatabaseMigrationRepository($app['db'], $tableName ?: 'migrations');
+        });
     }
 
     /**

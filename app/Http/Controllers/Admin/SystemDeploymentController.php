@@ -221,45 +221,42 @@ class SystemDeploymentController extends Controller
                 return ['status' => 'ok', 'message' => 'migrations.id has AUTO_INCREMENT.'];
             }
 
-            // Fix any 0 or negative IDs
+            // Renumber all rows sequentially to guarantee no duplicate or <= 0 IDs exist before altering
             try {
-                $hasZeroOrNegative = DB::table('migrations')->where('id', '<=', 0)->exists();
-                if ($hasZeroOrNegative) {
-                    DB::statement("SET @r := 0");
-                    DB::statement("UPDATE `migrations` SET `id` = (@r := @r + 1) ORDER BY `batch` ASC, `id` ASC");
-                    $log[] = 'Renumbered invalid migration IDs.';
+                $rows = DB::table('migrations')->orderBy('id', 'asc')->get();
+                $counter = 1;
+                foreach ($rows as $r) {
+                    if (isset($r->migration)) {
+                        DB::table('migrations')
+                            ->where('migration', $r->migration)
+                            ->update(['id' => $counter++]);
+                    }
                 }
+                $log[] = 'Sequenced migration IDs.';
             } catch (\Throwable $e) {}
 
-            $pkInfo = DB::select("SHOW KEYS FROM `migrations` WHERE Key_name = 'PRIMARY'");
-            $hasPk = !empty($pkInfo);
-            $pkCol = '';
-            if ($hasPk) {
-                $firstPk = (array) $pkInfo[0];
-                $pkCol = strtolower($firstPk['Column_name'] ?? $firstPk['column_name'] ?? '');
-            }
+            // Drop any existing primary key so we can cleanly set id as AUTO_INCREMENT PRIMARY KEY
+            try {
+                DB::statement("ALTER TABLE `migrations` DROP PRIMARY KEY");
+            } catch (\Throwable $e) {}
 
             try {
-                if ($hasPk && $pkCol === 'id') {
-                    DB::statement("ALTER TABLE `migrations` MODIFY `id` INT UNSIGNED NOT NULL AUTO_INCREMENT");
-                } elseif ($hasPk) {
-                    DB::statement("ALTER TABLE `migrations` DROP PRIMARY KEY, MODIFY `id` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY");
-                } else {
-                    DB::statement("ALTER TABLE `migrations` MODIFY `id` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY");
-                }
+                DB::statement("ALTER TABLE `migrations` MODIFY `id` INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY");
             } catch (\Throwable $e) {
                 try {
-                    DB::statement("ALTER TABLE `migrations` MODIFY `id` INT UNSIGNED NOT NULL AUTO_INCREMENT");
-                } catch (\Throwable $e2) {
                     DB::statement("ALTER TABLE `migrations` MODIFY `id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY");
+                } catch (\Throwable $e2) {
+                    try {
+                        DB::statement("ALTER TABLE `migrations` MODIFY `id` INT UNSIGNED NOT NULL AUTO_INCREMENT");
+                    } catch (\Throwable $e3) {}
                 }
             }
 
             // Ensure auto_increment sequence starts after max id
             try {
-                $maxId = DB::table('migrations')->max('id');
-                if ($maxId && $maxId > 0) {
-                    $nextId = (int) $maxId + 1;
+                $maxId = (int) DB::table('migrations')->max('id');
+                if ($maxId > 0) {
+                    $nextId = $maxId + 1;
                     DB::statement("ALTER TABLE `migrations` AUTO_INCREMENT = {$nextId}");
                 }
             } catch (\Throwable $e) {}
