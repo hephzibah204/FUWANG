@@ -13,6 +13,9 @@ class VtuReconciliationService
     public function reconcile(VtuTransaction $tx): VtuTransaction
     {
         if ($tx->status !== 'pending') { return $tx; }
+        if (\App\Support\VtuCustomerMessages::confirmedBalanceFailure((array) $tx->response_payload)) {
+            return app(VtuSettlementService::class)->settle($tx, 'failed', (array) $tx->response_payload);
+        }
         $lock = Cache::lock('vtu-reconcile:'.$tx->id, 90);
         if (!$lock->get()) { return $tx; }
         try {

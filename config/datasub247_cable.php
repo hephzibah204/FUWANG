@@ -1,10 +1,36 @@
 <?php
 
-// Five of the 30 cable plans, supplied from account documentation on 2026-11-17.
+// Verified from every page of the signed-in Datasub247 documentation on 2026-11-17.
+// Documented amounts initialize new entries; existing selling prices are preserved.
 return [
     ['service_type' => 'vtu_cable_tv', 'service_id' => 'dstv', 'code' => 'datasub-dstv-1', 'provider_plan_id' => '1', 'label' => 'DSTV PADI', 'amount' => 4400, 'active' => true],
     ['service_type' => 'vtu_cable_tv', 'service_id' => 'dstv', 'code' => 'datasub-dstv-2', 'provider_plan_id' => '2', 'label' => 'DSTV YANGA', 'amount' => 6000, 'active' => true],
     ['service_type' => 'vtu_cable_tv', 'service_id' => 'dstv', 'code' => 'datasub-dstv-5', 'provider_plan_id' => '5', 'label' => 'DSTV PREMIUM', 'amount' => 44500, 'active' => true],
     ['service_type' => 'vtu_cable_tv', 'service_id' => 'dstv', 'code' => 'datasub-dstv-10', 'provider_plan_id' => '10', 'label' => 'DSTV CONFAM+ EXTRAVIEW', 'amount' => 17000, 'active' => true],
     ['service_type' => 'vtu_cable_tv', 'service_id' => 'dstv', 'code' => 'datasub-dstv-11', 'provider_plan_id' => '11', 'label' => 'DSTV YANGA+ EXTRAVIEW', 'amount' => 12000, 'active' => true],
+    ['service_type' => 'vtu_cable_tv', 'service_id' => 'dstv', 'code' => 'datasub-dstv-12', 'provider_plan_id' => '12', 'label' => 'DSTV PADI + EXTRAVIEW', 'amount' => 10500, 'active' => true],
+    ['service_type' => 'vtu_cable_tv', 'service_id' => 'dstv', 'code' => 'datasub-dstv-34', 'provider_plan_id' => '34', 'label' => 'DSTV -CONFAM', 'amount' => 11000, 'active' => true],
+    ['service_type' => 'vtu_cable_tv', 'service_id' => 'dstv', 'code' => 'datasub-dstv-35', 'provider_plan_id' => '35', 'label' => 'DSTV COMPACT', 'amount' => 19000, 'active' => true],
+    ['service_type' => 'vtu_cable_tv', 'service_id' => 'dstv', 'code' => 'datasub-dstv-38', 'provider_plan_id' => '38', 'label' => 'DSTV COMPACT PLUS', 'amount' => 30000, 'active' => true],
+    ['service_type' => 'vtu_cable_tv', 'service_id' => 'gotv', 'code' => 'datasub-gotv-59', 'provider_plan_id' => '59', 'label' => 'GOtv Max', 'amount' => 8500, 'active' => true],
+    ['service_type' => 'vtu_cable_tv', 'service_id' => 'gotv', 'code' => 'datasub-gotv-60', 'provider_plan_id' => '60', 'label' => 'GOtv Jolli', 'amount' => 5800, 'active' => true],
+    ['service_type' => 'vtu_cable_tv', 'service_id' => 'gotv', 'code' => 'datasub-gotv-61', 'provider_plan_id' => '61', 'label' => 'GOtv Jinja', 'amount' => 3900, 'active' => true],
+    ['service_type' => 'vtu_cable_tv', 'service_id' => 'gotv', 'code' => 'datasub-gotv-62', 'provider_plan_id' => '62', 'label' => 'GOtv Smallie - monthly', 'amount' => 1900, 'active' => true],
+    ['service_type' => 'vtu_cable_tv', 'service_id' => 'gotv', 'code' => 'datasub-gotv-63', 'provider_plan_id' => '63', 'label' => 'GOtv Smallie - Quarterly', 'amount' => 5100, 'active' => true],
+    ['service_type' => 'vtu_cable_tv', 'service_id' => 'gotv', 'code' => 'datasub-gotv-64', 'provider_plan_id' => '64', 'label' => 'GOtv Smallie - yearly', 'amount' => 15000, 'active' => true],
+    ['service_type' => 'vtu_cable_tv', 'service_id' => 'startimes', 'code' => 'datasub-startimes-66', 'provider_plan_id' => '66', 'label' => 'Nova (Dish) - 1 Month', 'amount' => 2100, 'active' => true],
+    ['service_type' => 'vtu_cable_tv', 'service_id' => 'startimes', 'code' => 'datasub-startimes-67', 'provider_plan_id' => '67', 'label' => 'Basic (Antenna) - 1 Month', 'amount' => 4000, 'active' => true],
+    ['service_type' => 'vtu_cable_tv', 'service_id' => 'startimes', 'code' => 'datasub-startimes-68', 'provider_plan_id' => '68', 'label' => 'Basic (Dish) -1 Month', 'amount' => 5100, 'active' => true],
+    ['service_type' => 'vtu_cable_tv', 'service_id' => 'startimes', 'code' => 'datasub-startimes-69', 'provider_plan_id' => '69', 'label' => 'Classic (Antenna) - 1 Month', 'amount' => 6000, 'active' => true],
+    ['service_type' => 'vtu_cable_tv', 'service_id' => 'startimes', 'code' => 'datasub-startimes-70', 'provider_plan_id' => '70', 'label' => 'Super (Dish) - 1 Month', 'amount' => 9800, 'active' => true],
+    ['service_type' => 'vtu_cable_tv', 'service_id' => 'startimes', 'code' => 'datasub-startimes-71', 'provider_plan_id' => '71', 'label' => 'Nova - 1 Week', 'amount' => 700, 'active' => true],
+    ['service_type' => 'vtu_cable_tv', 'service_id' => 'startimes', 'code' => 'datasub-startimes-72', 'provider_plan_id' => '72', 'label' => 'Basic (Antenna) - 1 Week', 'amount' => 1400, 'active' => true],
+    ['service_type' => 'vtu_cable_tv', 'service_id' => 'startimes', 'code' => 'datasub-startimes-73', 'provider_plan_id' => '73', 'label' => 'Basic (Dish) - 1 Week', 'amount' => 1700, 'active' => true],
+    ['service_type' => 'vtu_cable_tv', 'service_id' => 'startimes', 'code' => 'datasub-startimes-74', 'provider_plan_id' => '74', 'label' => 'Classic (Antenna) - 1 Week', 'amount' => 2000, 'active' => true],
+    ['service_type' => 'vtu_cable_tv', 'service_id' => 'startimes', 'code' => 'datasub-startimes-75', 'provider_plan_id' => '75', 'label' => 'Super (Dish) - 1 Week', 'amount' => 3300, 'active' => true],
+    ['service_type' => 'vtu_cable_tv', 'service_id' => 'dstv', 'code' => 'datasub-dstv-81', 'provider_plan_id' => '81', 'label' => 'DSTV COMPACT + EXTRAVIEW', 'amount' => 25000, 'active' => true],
+    ['service_type' => 'vtu_cable_tv', 'service_id' => 'dstv', 'code' => 'datasub-dstv-84', 'provider_plan_id' => '84', 'label' => 'DSTV PREMIUM + EXTRAVIEW', 'amount' => 50500, 'active' => true],
+    ['service_type' => 'vtu_cable_tv', 'service_id' => 'gotv', 'code' => 'datasub-gotv-85', 'provider_plan_id' => '85', 'label' => 'Supa', 'amount' => 11400, 'active' => true],
+    ['service_type' => 'vtu_cable_tv', 'service_id' => 'gotv', 'code' => 'datasub-gotv-87', 'provider_plan_id' => '87', 'label' => 'Gotv Supa Plus', 'amount' => 16800, 'active' => true],
+    ['service_type' => 'vtu_cable_tv', 'service_id' => 'startimes', 'code' => 'datasub-startimes-88', 'provider_plan_id' => '88', 'label' => 'Nova (Antenna) - 1 week', 'amount' => 2100, 'active' => true],
 ];

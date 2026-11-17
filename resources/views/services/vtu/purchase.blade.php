@@ -34,7 +34,7 @@
                     <fieldset data-fields disabled>
                         <div class="form-group mb-4">
                             <input type="hidden" id="vtu-band" name="provider_id" value="">
-                            <p class="small text-muted">Service supplied by Datasub247</p>
+                            <p class="small text-muted">Secure payment from your wallet.</p>
                         </div>
                         @if($networkService)
                             <div class="form-group mb-4">

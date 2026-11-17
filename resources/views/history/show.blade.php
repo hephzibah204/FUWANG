@@ -115,8 +115,8 @@
                         <div class="font-weight-bold text-white">{{ ucfirst($vtu->direction) }}</div>
                     </div>
                     <div class="col-md-6 mb-3">
-                        <div class="text-muted small mb-1">Provider Reference</div>
-                        <div class="font-weight-bold text-white">{{ $vtu->provider_reference ?? '-' }}</div>
+                        <div class="text-muted small mb-1">Transaction Reference</div>
+                        <div class="font-weight-bold text-white">{{ $vtu->transaction_id }}</div>
                     </div>
                     <div class="col-md-4 mb-3">
                         <div class="text-muted small mb-1">Amount</div>
@@ -132,24 +132,23 @@
                     </div>
                 </div>
 
-                @if($vtu->request_payload)
+                @php($delivery = \App\Support\VtuCustomerMessages::deliveryData((array) $vtu->response_payload))
+                @if($delivery)
                     <div class="mt-3">
-                        <div class="text-muted small mb-2">Request Payload</div>
-                        <pre class="p-3 rounded-lg" style="background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.10); color: rgba(255,255,255,0.85); overflow:auto; max-height: 200px;">{{ json_encode($vtu->request_payload, JSON_PRETTY_PRINT) }}</pre>
-                    </div>
-                @endif
-
-                @if($vtu->response_payload)
-                    <div class="mt-3">
-                        <div class="text-muted small mb-2">Response Payload</div>
-                        <pre class="p-3 rounded-lg" style="background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.10); color: rgba(255,255,255,0.85); overflow:auto; max-height: 200px;">{{ json_encode($vtu->response_payload, JSON_PRETTY_PRINT) }}</pre>
+                        <div class="text-muted small mb-2">Delivery details</div>
+                        <dl>
+                            @foreach($delivery as $key => $value)
+                                <dt>{{ ucfirst(str_replace('_', ' ', $key)) }}</dt>
+                                <dd>{{ is_array($value) ? json_encode($value) : $value }}</dd>
+                            @endforeach
+                        </dl>
                     </div>
                 @endif
 
                 @if($vtu->error_message)
                     <div class="mt-3">
                         <div class="text-muted small mb-2">Error Details</div>
-                        <div class="text-danger font-weight-bold">{{ $vtu->error_message }}</div>
+                        <div class="text-danger font-weight-bold">{{ \App\Support\VtuCustomerMessages::publicMessage($vtu->error_message) }}</div>
                     </div>
                 @endif
 

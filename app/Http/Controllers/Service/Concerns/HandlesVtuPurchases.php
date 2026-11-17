@@ -29,7 +29,7 @@ trait HandlesVtuPurchases
         abort_unless(isset(config('vtu_services.service_types',[])[$serviceType]),404);
         $id=$request->integer('provider_id') ?: (int) app(\App\Services\VtuProviderService::class)->providers($serviceType)->first()?->id;$products=[];
         if ($id && !app(\App\Services\VtuProviderService::class)->providers($serviceType)->contains('id', $id)) {
-            return response()->json(['status' => false, 'message' => 'Only Datasub247 is available.', 'products' => []], 422);
+            return response()->json(['status' => false, 'message' => 'This service is currently unavailable. Please contact admin.', 'products' => []], 422);
         }
         if($serviceType==='vtu_data'){
             $products=app(VtuCatalogService::class)->dataPlans($id ?: null)

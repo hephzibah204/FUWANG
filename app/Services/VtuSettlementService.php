@@ -52,9 +52,10 @@ class VtuSettlementService
                 }
             }
             $tx->status = $state;
+            $balanceLow = \App\Support\VtuCustomerMessages::balanceLow((array) $tx->response_payload);
             $tx->error_message = $state === 'pending'
-                ? 'Awaiting provider confirmation. Do not repeat this purchase.'
-                : ($state === 'failed' ? 'Provider rejected the transaction.'.($tx->direction === 'debit' ? ' Your wallet has been refunded.' : '') : null);
+                ? ($balanceLow ? \App\Support\VtuCustomerMessages::LOW_BALANCE : \App\Support\VtuCustomerMessages::PENDING)
+                : ($state === 'failed' ? ($balanceLow ? \App\Support\VtuCustomerMessages::LOW_BALANCE : 'Transaction failed.'.($tx->direction === 'debit' ? ' Your wallet has been refunded.' : '')) : null);
             $tx->save();
             return $tx;
         });

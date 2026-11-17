@@ -35,11 +35,11 @@ Legacy compatibility:
 
 Datasub247 is the sole enabled purchase provider. Other API records remain saved for future use. Provider selection is hidden and requests cannot use another provider.
 
-Run migrations 2026_11_17_120000 and 2026_11_17_121000 during deployment. They add the five MTN data plans and five DSTV plans supplied from the account documentation. These are partial catalogues (5 of 41 data plans and 5 of 30 cable plans). Existing prices are preserved. New entries start with the documented amounts; set selling prices in Admin VTU Pricing. No API credentials are embedded in the catalogue.
+Run migrations through 2026_11_17_130000 during deployment. Every page of the signed-in documentation was verified: 41 data plans across MTN, Airtel, GLO and 9mobile, and 30 cable plans across DSTV, GOtv and StarTimes. The completion migration also updates installations that already loaded only the first pages. Existing selling prices are preserved; inaccurate labels and validity periods are corrected. Legacy rows with IDs absent from the complete provider catalogue are retained unassigned for admin review. New entries start with the documented amounts; set selling prices in Admin VTU Pricing. No API credentials are embedded in the catalogue.
 
 - Data provider IDs: 1 (500MB / 7 days / NGN230), 2 (1GB / 30 days / NGN410), 3 (2GB / 7 days / NGN820), 4 (2GB / 30 days / NGN840), 6 (3GB / 30 days / NGN1140).
 - Network IDs: MTN=1, GLO=3, AIRTEL=2, 9MOBILE=4. Legacy Fuwa codes 02=GLO, 04=AIRTEL and 03=9MOBILE retain their original meanings.
-- Confirmed electricity IDs: Ikeja=1, Eko=2, Kano=3, Port Harcourt=4, Jos=5. Further DISCOs require confirmed IDs before selection is enabled.
+- All eight confirmed electricity IDs: Ikeja=1, Eko=2, Kano=3, Port Harcourt=4, Jos=5, Ibadan=6, Kaduna=7, Abuja=8.
 - Browser data plan IDs identify local catalogue rows. VtuCatalogService translates them to provider IDs exactly once. Unmapped rows are unavailable; local IDs must never be guessed as provider IDs.
 - Bulk bundle entry assigns Datasub automatically and validates every row before saving any row. A valid API token alone does not import plans. Empty printing plan tables are not seeded with guessed products.
 - Global prices and product settings save in one database transaction. Cache invalidation follows commit; failed saves retain entered figures and return an error.

@@ -38,12 +38,12 @@ class VtuProviderService
 
     public function listing(string $type): Collection
     {
-        $providers = $this->providers($type)->map(fn ($p) => ['id' => $p->id, 'name' => 'Datasub247']);
+        $providers = $this->providers($type)->map(fn ($p) => ['id' => $p->id, 'name' => 'Service']);
         if ($providers->isEmpty() && $this->supports($type)
             && !CustomApi::where('provider_identifier', 'datasub247')->whereIn('service_type', match ($type) {
                 'vtu_cable_tv' => [$type, 'cable_tv'], 'vtu_electricity' => [$type, 'electricity_bills'], default => [$type],
             })->exists() && app(Datasub247Service::class)->getApiKey()) {
-            $providers->push(['id' => '', 'name' => 'Datasub247']);
+            $providers->push(['id' => '', 'name' => 'Service']);
         }
         return $providers;
     }

@@ -27,7 +27,7 @@
                     <input type="hidden" name="request_id" id="dataRequestId" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
                     <div class="form-group mb-4">
                         <input type="hidden" id="dataBand" name="provider_id" value="{{ $dataProviders->first()?->id }}">
-                        <p class="small text-muted mb-0">Data supplied by Datasub247</p>
+                        <p class="small text-muted mb-0">Instant data delivery.</p>
                         <div id="dataPlanStatus" class="small text-muted mt-2" role="status" aria-live="polite"></div>
                     </div>
                     
@@ -434,22 +434,31 @@
                 let result;
                 try { result = await json(form.action, body); }
                 catch (error) {
-                    if (!error.data) {
+                    if (error.data) {
+                        result = error.data;
+                    } else {
                         status.textContent = 'Connection interrupted. Check transaction history before repeating this purchase. Reference: ' + body.request_id;
                         await message('Awaiting confirmation', status.textContent, 'warning'); return;
                     }
-                    throw error;
                 }
                 if (result.pending) {
                     status.textContent = result.message + ' Reference: ' + result.reference;
                     await message('Awaiting confirmation', status.textContent, 'info'); return;
                 }
                 paying = false;
+                status.textContent = result.message;
                 await message(result.status ? 'Bundle activated' : 'Order failed', result.message, result.status ? 'success' : 'error');
                 if (result.status) {
                     form.elements.request_id.value = globalThis.crypto?.randomUUID?.() || 'DATA-' + Date.now() + '-' + Math.random().toString(36).slice(2); phone.value = '';
                 }
-            } catch (error) { paying = false; await message('Order failed', error.message, 'error'); }
+            } catch (error) {
+                paying = false;
+                status.textContent = error.message;
+                if (error.data?.pending === false) {
+                    form.elements.request_id.value = globalThis.crypto?.randomUUID?.() || 'DATA-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+                }
+                await message('Order failed', error.message, 'error');
+            }
             finally {
                 overlay.style.display = 'none';
                 if (!paying) controls.forEach(([element, disabled]) => { element.disabled = disabled; });

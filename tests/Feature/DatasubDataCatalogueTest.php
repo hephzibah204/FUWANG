@@ -14,6 +14,123 @@ use Illuminate\Support\Facades\Schema;
 
 class DatasubDataCatalogueTest extends VtuPurchaseSafetyTest
 {
+    public function test_customer_balance_failure_is_final_refunded_once_and_hides_api_identity(): void
+    {
+        $user = $this->documentedCustomer();
+        (require base_path('database/migrations/2026_11_17_120000_load_documented_datasub_data_plans.php'))->up();
+        $plan = DB::table('price_list')->where('provider_plan_id', '2')->first();
+        Http::fake(['*' => Http::response(['status' => 'failed', 'message' => 'Insufficient wallet balance', 'provider' => 'Datasub247'], 402)]);
+        $payload = ['network' => 'MTN', 'plan_id' => (string) $plan->id, 'phone' => '07032295411', 'amount' => 410, 'request_id' => 'CUSTOMER-LOW'];
+        $response = $this->postJson(route('services.vtu.data.buy'), $payload)->assertUnprocessable()
+            ->assertJson(['status' => false, 'pending' => false]);
+        $this->assertStringContainsString('System balance is low. Please contact admin.', $response->json('message'));
+        $this->assertStringNotContainsString('Datasub', $response->getContent());
+        $this->assertStringNotContainsString('Awaiting', $response->json('message'));
+        $this->postJson(route('services.vtu.data.buy'), $payload)->assertUnprocessable();
+        $this->assertSame(10000.0, (float) $user->balance->user_balance);
+        $this->assertSame('failed', VtuTransaction::first()->status);
+        $this->assertSame('Datasub247', VtuTransaction::first()->response_payload['provider']);
+        $this->assertSame(1, \App\Models\Transaction::where('transaction_id', 'CUSTOMER-LOW-RF')->count());
+        Http::assertSentCount(1);
+    }
+
+    public function test_customer_unknown_outcomes_are_not_misreported_as_balance_failures(): void
+    {
+        $user = $this->documentedCustomer();
+        Http::fake(['*' => Http::response(['status' => 'pending', 'message' => 'Low balance warning; transaction processing'])]);
+        $this->postJson(route('services.vtu.airtime.buy'), ['network' => 'MTN', 'phone' => '07032295411', 'amount' => 100,
+            'request_id' => 'CUSTOMER-PENDING'])->assertStatus(202)
+            ->assertJsonPath('message', \App\Support\VtuCustomerMessages::PENDING)->assertJsonPath('pending', true);
+        $this->assertSame(9902.0, (float) $user->balance->user_balance);
+        $this->assertSame('pending', VtuTransaction::first()->status);
+    }
+
+    public function test_customer_confirmed_balance_rejections_work_with_http_error_responses(): void
+    {
+        config(['services.datasub247.api_key' => 'configured-test-key']);
+        foreach ([200, 400, 402, 422, 500] as $status) {
+            Http::fake(['*' => Http::response(['status' => 'fail', 'error' => ['message' => 'Insufficient API balance']], $status)]);
+            $result = app(\App\Services\Datasub247Service::class)->purchaseAirtime('MTN', '07032295411', 100, 'VTU', 'LOW-'.$status);
+            $this->assertFalse($result['pending']);
+            $this->assertSame(\App\Support\VtuCustomerMessages::LOW_BALANCE, $result['message']);
+        }
+    }
+
+    public function test_customer_unconfirmed_server_error_never_causes_a_refund(): void
+    {
+        $user = $this->documentedCustomer();
+        Http::fake(['*' => Http::response(['message' => 'Insufficient balance'], 503)]);
+        $this->postJson(route('services.vtu.airtime.buy'), ['network' => 'MTN', 'phone' => '07032295411', 'amount' => 100,
+            'request_id' => 'CUSTOMER-UNCLEAR'])->assertStatus(202)->assertJsonPath('pending', true);
+        $this->assertSame(9902.0, (float) $user->balance->user_balance);
+        $this->assertSame('pending', VtuTransaction::first()->status);
+    }
+
+    public function test_customer_old_pending_balance_rejections_can_be_reconciled_without_another_api_call(): void
+    {
+        $user = $this->documentedCustomer();
+        Http::fake(['*' => Http::response(['status' => 'pending'])]);
+        $this->postJson(route('services.vtu.airtime.buy'), ['network' => 'MTN', 'phone' => '07032295411', 'amount' => 100,
+            'request_id' => 'CUSTOMER-OLD'])->assertStatus(202);
+        $tx = VtuTransaction::first();
+        $tx->update(['response_payload' => ['status' => 'fail', 'message' => 'Insufficient API balance']]);
+        $result = app(\App\Services\VtuHubService::class)->transactionResult($tx->fresh());
+        $this->assertFalse($result['pending']);
+        $this->assertStringContainsString(\App\Support\VtuCustomerMessages::LOW_BALANCE, $result['message']);
+        $this->assertSame(10000.0, (float) $user->balance->user_balance);
+        app(\App\Services\VtuHubService::class)->transactionResult($tx->fresh());
+        $this->assertSame(1, \App\Models\Transaction::where('transaction_id', 'CUSTOMER-OLD-RF')->count());
+        Http::assertSentCount(1);
+    }
+
+    public function test_customer_pages_and_provider_listing_do_not_expose_datasub_branding(): void
+    {
+        $this->documentedCustomer();
+        (require base_path('database/migrations/2026_11_17_120000_load_documented_datasub_data_plans.php'))->up();
+        $listing = $this->getJson(route('services.vtu.providers', ['serviceType' => 'vtu_data']))->assertOk();
+        $this->assertStringNotContainsString('Datasub', $listing->getContent());
+        app('view')->addLocation(base_path('tests/Fixtures/views'));
+        app('view')->share('errors', new \Illuminate\Support\ViewErrorBag());
+        $template = str_replace("@extends('layouts.nexus')", "@extends('vtu-test-layout')", file_get_contents(resource_path('views/services/vtu/data.blade.php')));
+        $data = app(\App\Http\Controllers\Service\VTUController::class)->dataIndex()->getData();
+        $html = \Illuminate\Support\Facades\Blade::render($template, $data);
+        $this->assertStringNotContainsString('Datasub', $html);
+        $directory = storage_path('framework/testing/vtu-ui');
+        if (!is_dir($directory)) mkdir($directory, 0777, true);
+        file_put_contents($directory.'/data-current.html', $html);
+    }
+
+    public function test_remaining_pages_complete_existing_partial_catalogues_without_resetting_prices(): void
+    {
+        $this->documentedSettings();
+        config(['services.datasub247.api_key' => 'configured-test-key']);
+        (require base_path('database/migrations/2026_11_17_120000_load_documented_datasub_data_plans.php'))->up();
+        (require base_path('database/migrations/2026_11_17_121000_load_documented_datasub_cable_and_exam_prices.php'))->up();
+        DB::table('price_list')->whereNotIn('provider_plan_id', ['1', '2', '3', '4', '6'])->delete();
+        DB::table('price_list')->where('provider_plan_id', '1')->update(['amount' => 299.50, 'validate' => '30 DAYS']);
+        DB::table('price_list')->insert(['network' => 'GLO', 'data_plan' => 'Legacy unverified bundle', 'amount' => 370,
+            'provider_plan_id' => '201', 'custom_api_id' => DB::table('price_list')->value('custom_api_id')]);
+        $products = json_decode(DB::table('system_settings')->where('key', 'vtu_product_catalog')->value('value'), true);
+        $products = array_slice($products, 0, 5);
+        $products[0]['amount'] = 4999;
+        DB::table('system_settings')->where('key', 'vtu_product_catalog')->update(['value' => json_encode($products)]);
+        $migration = require base_path('database/migrations/2026_11_17_130000_complete_verified_datasub_catalogues.php');
+        $migration->up();
+        $migration->up();
+        $plans = app(\App\Services\VtuCatalogService::class)->dataPlans();
+        $this->assertCount(41, $plans);
+        $this->assertEqualsCanonicalizing(['MTN' => 10, 'AIRTEL' => 14, 'GLO' => 12, '9MOBILE' => 5], $plans->countBy('network')->all());
+        $this->assertEquals(299.50, $plans->firstWhere('provider_plan_id', '1')->amount);
+        $this->assertSame('7 DAYS', $plans->firstWhere('provider_plan_id', '1')->validate);
+        $this->assertSame('1.0GB COOPERATE GIFTING', $plans->firstWhere('provider_plan_id', '8')->data_plan);
+        $this->assertDatabaseHas('price_list', ['provider_plan_id' => '201', 'custom_api_id' => null, 'amount' => 370]);
+        $cable = app(\App\Services\VtuCatalogService::class)->products('vtu_cable_tv');
+        $this->assertCount(30, $cable);
+        $this->assertEquals(4999, $cable[0]['amount']);
+        $this->assertEqualsCanonicalizing(['dstv' => 11, 'gotv' => 8, 'startimes' => 11], collect($cable)->countBy('service_id')->all());
+        Http::assertNothingSent();
+    }
+
     private function documentedCustomer(): User
     {
         $user = User::create(['email' => 'docs@example.com', 'username' => 'docs', 'password' => 'secret']);
@@ -43,12 +160,12 @@ class DatasubDataCatalogueTest extends VtuPurchaseSafetyTest
         $migration = require base_path('database/migrations/2026_11_17_121000_load_documented_datasub_cable_and_exam_prices.php');
         $migration->up();
         $products = app(\App\Services\VtuCatalogService::class)->products('vtu_cable_tv');
-        $this->assertCount(5, $products);
+        $this->assertCount(30, $products);
         $this->assertSame('dstv', $products[0]['service_id']);
         $products[0]['amount'] = 4999;
         DB::table('system_settings')->where('key', 'vtu_product_catalog')->update(['value' => json_encode($products)]);
         $migration->up();
-        $this->assertCount(5, app(\App\Services\VtuCatalogService::class)->products('vtu_cable_tv'));
+        $this->assertCount(30, app(\App\Services\VtuCatalogService::class)->products('vtu_cable_tv'));
         $this->assertEquals(4999, app(\App\Services\VtuCatalogService::class)->products('vtu_cable_tv')[0]['amount']);
         $this->assertEquals(2000, SystemSetting::get('vtu_neco_price'));
         $this->assertEquals(4000, SystemSetting::get('vtu_waec_price'));
@@ -142,14 +259,14 @@ class DatasubDataCatalogueTest extends VtuPurchaseSafetyTest
         $migration = require base_path('database/migrations/2026_11_17_120000_load_documented_datasub_data_plans.php');
         $migration->up();
         $plans = app(\App\Services\VtuCatalogService::class)->dataPlans();
-        $this->assertCount(5, $plans);
-        $this->assertEqualsCanonicalizing(['1', '2', '3', '4', '6'], $plans->pluck('provider_plan_id')->all());
+        $this->assertCount(41, $plans);
+        $this->assertCount(41, $plans->pluck('provider_plan_id')->unique());
         $this->assertEquals(410, $plans->firstWhere('provider_plan_id', '2')->amount);
         $this->assertSame('7 DAYS', $plans->firstWhere('provider_plan_id', '3')->validate);
         $this->assertSame('30 DAYS', $plans->firstWhere('provider_plan_id', '4')->validate);
         DB::table('price_list')->where('id', $plans->firstWhere('provider_plan_id', '2')->id)->update(['amount' => 499.50]);
         $migration->up();
-        $this->assertSame(5, DB::table('price_list')->count());
+        $this->assertSame(41, DB::table('price_list')->count());
         $this->assertEquals(499.50, app(\App\Services\VtuCatalogService::class)->dataPlans()->firstWhere('provider_plan_id', '2')->amount);
         Http::assertNothingSent();
     }

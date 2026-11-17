@@ -9,6 +9,16 @@ use PHPUnit\Framework\TestCase;
 
 class VtuProviderStatusTest extends TestCase
 {
+    public function test_confirmed_api_balance_rejections_are_recognized_without_guessing_from_balances(): void
+    {
+        foreach (['Insufficient Balance', 'Insufficient wallet balance', 'API balance is low', 'Your balance is insufficient', 'Not enough funds', 'LOW_BALANCE', 'INSUFFICIENT_FUNDS'] as $message) {
+            $this->assertTrue(\App\Support\VtuCustomerMessages::balanceLow(['status' => 'failed', 'message' => $message]), $message);
+        }
+        foreach ([['status' => 'success', 'message' => 'Low balance warning'], ['status' => 'pending', 'message' => 'Insufficient balance'],
+            ['status' => 'failed', 'message' => 'Invalid plan'], ['oldbal' => 0, 'newbal' => 0], []] as $payload) {
+            $this->assertFalse(\App\Support\VtuCustomerMessages::balanceLow($payload));
+        }
+    }
     public function test_only_explicit_final_provider_responses_are_successful(): void
     {
         foreach ([[], ['status' => 'pending'], ['status' => 'processing'], ['hello' => 'world']] as $response) {
@@ -32,6 +42,16 @@ class VtuProviderStatusTest extends TestCase
         foreach (['MTN' => 1, 'GLO' => 3, 'AIRTEL' => 2, '9MOBILE' => 4,
             '01' => 1, '02' => 3, '04' => 2, '03' => 4] as $network => $id) {
             $this->assertSame($id, $adapter->resolveNetworkId($network));
+        }
+    }
+
+    public function test_remaining_documentation_page_confirms_all_eight_electricity_ids(): void
+    {
+        $adapter = (new \ReflectionClass(Datasub247Service::class))->newInstanceWithoutConstructor();
+        foreach (['ikeja-electric' => 1, 'eko-electric' => 2, 'kano-electric' => 3, 'portharcourt-electric' => 4,
+            'jos-electric' => 5, 'ibadan-electric' => 6, 'kaduna-electric' => 7, 'abuja-electric' => 8] as $code => $id) {
+            $this->assertSame($id, $adapter->resolveDiscoId($code));
+            $this->assertSame($id, $adapter->resolveDiscoId($id));
         }
     }
     public function test_unsupported_exam_cannot_be_sold_as_waec(): void

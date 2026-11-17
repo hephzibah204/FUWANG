@@ -35,7 +35,7 @@
 
                     <div class="form-group mb-4" hidden>
                         <select name="provider_id" id="providerSelect" hidden>
-                            <option value="">Datasub247</option>
+                            <option value="">Service</option>
                         </select>
                         <div class="text-muted small mt-2" id="providerMeta"></div>
                     </div>
@@ -162,7 +162,7 @@ $(document).ready(function() {
     const serviceID = $('#serviceID').val();
     const variation = $('#variation_code').val();
     const url = baseProvidersUrl + '?serviceID=' + encodeURIComponent(serviceID || '') + '&variation_code=' + encodeURIComponent(variation || '');
-    $('#providerSelect').empty().append('<option value="">Datasub247</option>');
+    $('#providerSelect').empty().append('<option value="">Service</option>');
     $.get(url).done(function(res) {
       if (!res || !res.status) return;
       providers = res.providers || [];

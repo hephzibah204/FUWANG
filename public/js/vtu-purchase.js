@@ -90,7 +90,7 @@
                 if ([...service.options].some(o => o.value === previous)) service.value = previous;
             }
             populatePlans();
-            notice(plan && !products.length ? 'No Datasub247 packages are configured yet. Please contact support.' : 'Select your service and complete the details below.');
+            notice(plan && !products.length ? 'No packages are configured yet. Please contact support.' : 'Select your service and complete the details below.');
         } catch (error) { if (version === catalogVersion) notice(error.message, 'danger'); }
     }
     function showOutcome(response) {
@@ -162,14 +162,18 @@
             const confirmed = window.Swal ? (await Swal.fire({ title: 'Confirm purchase', text: details, icon: 'question', showCancelButton: true, confirmButtonText: breakdown.direction === 'credit' ? 'Submit conversion' : `Pay ${money(breakdown.total)}` })).isConfirmed : window.confirm(details);
             if (!confirmed) { fieldset.disabled = false; return; }
             submit.textContent = 'Processing purchase…';
-            sessionStorage.setItem(`vtu-pending-${root.dataset.type}`, JSON.stringify({ reference: submitted.request_id }));
             let outcome;
             try { outcome = await api(root.dataset.action, submitted); }
             catch (error) {
                 outcome = error.body || { status: false, pending: true, reference: submitted.request_id, message: 'Connection interrupted. Check this reference before making another purchase.' };
             }
             showOutcome(outcome);
-            if (outcome.pending) { notice('Purchase awaiting confirmation. Use Check status; do not make another payment.', 'warning'); return; }
+            if (outcome.pending) {
+                sessionStorage.setItem(`vtu-pending-${root.dataset.type}`, JSON.stringify({ reference: submitted.request_id }));
+                notice('Purchase awaiting confirmation. Use Check status; do not make another payment.', 'warning');
+                return;
+            }
+            sessionStorage.removeItem(`vtu-pending-${root.dataset.type}`);
             newReference(); fieldset.disabled = false;
             if (outcome.status) { notice('Purchase completed. Your receipt is shown below.', 'success'); }
             else notice(outcome.message || 'The purchase could not be completed.', 'danger');

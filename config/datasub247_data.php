@@ -1,48 +1,47 @@
 <?php
 
-/**
- * Datasub247 Data Catalogue
- * Comprehensive plans across all 4 major Nigerian networks (MTN, GLO, AIRTEL, 9MOBILE).
- * Used for database seeding, catalogue fallback, and automated plan mapping.
- */
+// Verified from every page of the signed-in Datasub247 documentation on 2026-11-17.
+// Documented amounts initialize new entries; existing selling prices are preserved.
 return [
-    // --- MTN DATA BUNDLES ---
-    ['provider_plan_id' => '1', 'network' => 'MTN', 'data_plan' => '500MB SME', 'amount' => 230, 'validate' => '30 DAYS'],
+    ['provider_plan_id' => '1', 'network' => 'MTN', 'data_plan' => '500MB SME', 'amount' => 230, 'validate' => '7 DAYS'],
     ['provider_plan_id' => '2', 'network' => 'MTN', 'data_plan' => '1.0GB SME', 'amount' => 410, 'validate' => '30 DAYS'],
-    ['provider_plan_id' => '3', 'network' => 'MTN', 'data_plan' => '2.0GB SME', 'amount' => 820, 'validate' => '30 DAYS'],
-    ['provider_plan_id' => '4', 'network' => 'MTN', 'data_plan' => '2.0GB SME (Weekly)', 'amount' => 840, 'validate' => '7 DAYS'],
+    ['provider_plan_id' => '3', 'network' => 'MTN', 'data_plan' => '2.0GB SME', 'amount' => 820, 'validate' => '7 DAYS'],
+    ['provider_plan_id' => '4', 'network' => 'MTN', 'data_plan' => '2.0GB SME', 'amount' => 840, 'validate' => '30 DAYS'],
     ['provider_plan_id' => '6', 'network' => 'MTN', 'data_plan' => '3.0GB SME', 'amount' => 1140, 'validate' => '30 DAYS'],
-    ['provider_plan_id' => '7', 'network' => 'MTN', 'data_plan' => '5.0GB SME', 'amount' => 1900, 'validate' => '30 DAYS'],
-    ['provider_plan_id' => '8', 'network' => 'MTN', 'data_plan' => '10.0GB SME', 'amount' => 3800, 'validate' => '30 DAYS'],
-    ['provider_plan_id' => '216', 'network' => 'MTN', 'data_plan' => '500MB Corporate Gifting', 'amount' => 240, 'validate' => '30 DAYS'],
-    ['provider_plan_id' => '217', 'network' => 'MTN', 'data_plan' => '1.0GB Corporate Gifting', 'amount' => 430, 'validate' => '30 DAYS'],
-    ['provider_plan_id' => '218', 'network' => 'MTN', 'data_plan' => '2.0GB Corporate Gifting', 'amount' => 860, 'validate' => '30 DAYS'],
-    ['provider_plan_id' => '219', 'network' => 'MTN', 'data_plan' => '3.0GB Corporate Gifting', 'amount' => 1290, 'validate' => '30 DAYS'],
-    ['provider_plan_id' => '220', 'network' => 'MTN', 'data_plan' => '5.0GB Corporate Gifting', 'amount' => 2150, 'validate' => '30 DAYS'],
-    ['provider_plan_id' => '221', 'network' => 'MTN', 'data_plan' => '10.0GB Corporate Gifting', 'amount' => 4300, 'validate' => '30 DAYS'],
-
-    // --- GLO DATA BUNDLES ---
-    ['provider_plan_id' => '201', 'network' => 'GLO', 'data_plan' => '500MB Corporate Gifting', 'amount' => 220, 'validate' => '30 DAYS'],
-    ['provider_plan_id' => '202', 'network' => 'GLO', 'data_plan' => '1.0GB Corporate Gifting', 'amount' => 370, 'validate' => '30 DAYS'],
-    ['provider_plan_id' => '203', 'network' => 'GLO', 'data_plan' => '2.0GB Corporate Gifting', 'amount' => 740, 'validate' => '30 DAYS'],
-    ['provider_plan_id' => '204', 'network' => 'GLO', 'data_plan' => '3.0GB Corporate Gifting', 'amount' => 1110, 'validate' => '30 DAYS'],
-    ['provider_plan_id' => '205', 'network' => 'GLO', 'data_plan' => '5.0GB Corporate Gifting', 'amount' => 1850, 'validate' => '30 DAYS'],
-    ['provider_plan_id' => '206', 'network' => 'GLO', 'data_plan' => '10.0GB Corporate Gifting', 'amount' => 3700, 'validate' => '30 DAYS'],
-
-    // --- AIRTEL DATA BUNDLES ---
-    ['provider_plan_id' => '222', 'network' => 'AIRTEL', 'data_plan' => '500MB Corporate Gifting', 'amount' => 240, 'validate' => '30 DAYS'],
-    ['provider_plan_id' => '223', 'network' => 'AIRTEL', 'data_plan' => '1.0GB Corporate Gifting', 'amount' => 410, 'validate' => '30 DAYS'],
-    ['provider_plan_id' => '224', 'network' => 'AIRTEL', 'data_plan' => '2.0GB Corporate Gifting', 'amount' => 820, 'validate' => '30 DAYS'],
-    ['provider_plan_id' => '225', 'network' => 'AIRTEL', 'data_plan' => '5.0GB Corporate Gifting', 'amount' => 2050, 'validate' => '30 DAYS'],
-    ['provider_plan_id' => '226', 'network' => 'AIRTEL', 'data_plan' => '10.0GB Corporate Gifting', 'amount' => 4100, 'validate' => '30 DAYS'],
-    ['provider_plan_id' => '227', 'network' => 'AIRTEL', 'data_plan' => '15.0GB Corporate Gifting', 'amount' => 6150, 'validate' => '30 DAYS'],
-    ['provider_plan_id' => '228', 'network' => 'AIRTEL', 'data_plan' => '20.0GB Corporate Gifting', 'amount' => 8200, 'validate' => '30 DAYS'],
-
-    // --- 9MOBILE DATA BUNDLES ---
-    ['provider_plan_id' => '231', 'network' => '9MOBILE', 'data_plan' => '500MB Corporate / SME', 'amount' => 210, 'validate' => '30 DAYS'],
-    ['provider_plan_id' => '232', 'network' => '9MOBILE', 'data_plan' => '1.0GB Corporate / SME', 'amount' => 380, 'validate' => '30 DAYS'],
-    ['provider_plan_id' => '233', 'network' => '9MOBILE', 'data_plan' => '2.0GB Corporate / SME', 'amount' => 760, 'validate' => '30 DAYS'],
-    ['provider_plan_id' => '234', 'network' => '9MOBILE', 'data_plan' => '3.0GB Corporate / SME', 'amount' => 1140, 'validate' => '30 DAYS'],
-    ['provider_plan_id' => '235', 'network' => '9MOBILE', 'data_plan' => '5.0GB Corporate / SME', 'amount' => 1900, 'validate' => '30 DAYS'],
-    ['provider_plan_id' => '236', 'network' => '9MOBILE', 'data_plan' => '10.0GB Corporate / SME', 'amount' => 3800, 'validate' => '30 DAYS'],
+    ['provider_plan_id' => '7', 'network' => 'MTN', 'data_plan' => '5.0GB SME', 'amount' => 1650, 'validate' => '30 DAYS'],
+    ['provider_plan_id' => '8', 'network' => 'MTN', 'data_plan' => '1.0GB COOPERATE GIFTING', 'amount' => 540, 'validate' => '30 DAYS'],
+    ['provider_plan_id' => '9', 'network' => 'MTN', 'data_plan' => '2.0GB COOPERATE GIFTING', 'amount' => 1200, 'validate' => '30 DAYS'],
+    ['provider_plan_id' => '10', 'network' => 'MTN', 'data_plan' => '3.0GB COOPERATE GIFTING', 'amount' => 1750, 'validate' => '30 DAYS'],
+    ['provider_plan_id' => '11', 'network' => 'MTN', 'data_plan' => '5.0GB COOPERATE GIFTING', 'amount' => 2450, 'validate' => '30 DAYS'],
+    ['provider_plan_id' => '55', 'network' => 'AIRTEL', 'data_plan' => '1.5GB GIFTING', 'amount' => 955, 'validate' => '30 days'],
+    ['provider_plan_id' => '56', 'network' => 'AIRTEL', 'data_plan' => '2.0GB GIFTING', 'amount' => 1140, 'validate' => '30 days'],
+    ['provider_plan_id' => '58', 'network' => 'AIRTEL', 'data_plan' => '4.5GB GIFTING', 'amount' => 1905, 'validate' => '30 days'],
+    ['provider_plan_id' => '61', 'network' => 'AIRTEL', 'data_plan' => '11.0GB GIFTING', 'amount' => 3770, 'validate' => '30 days'],
+    ['provider_plan_id' => '69', 'network' => '9MOBILE', 'data_plan' => '500MB COOPERATE GIFTING', 'amount' => 105, 'validate' => '14 Days'],
+    ['provider_plan_id' => '70', 'network' => '9MOBILE', 'data_plan' => '1.0GB COOPERATE GIFTING', 'amount' => 180, 'validate' => '30 days'],
+    ['provider_plan_id' => '71', 'network' => '9MOBILE', 'data_plan' => '2.0GB COOPERATE GIFTING', 'amount' => 360, 'validate' => '30 days'],
+    ['provider_plan_id' => '73', 'network' => '9MOBILE', 'data_plan' => '5.0GB COOPERATE GIFTING', 'amount' => 900, 'validate' => '30 days'],
+    ['provider_plan_id' => '74', 'network' => '9MOBILE', 'data_plan' => '10.0GB COOPERATE GIFTING', 'amount' => 1800, 'validate' => '30 days'],
+    ['provider_plan_id' => '131', 'network' => 'AIRTEL', 'data_plan' => '150MB SME', 'amount' => 65, 'validate' => 'Awoof - Daily'],
+    ['provider_plan_id' => '132', 'network' => 'AIRTEL', 'data_plan' => '1.5GB SME', 'amount' => 490, 'validate' => 'Awoof - 3 days'],
+    ['provider_plan_id' => '133', 'network' => 'AIRTEL', 'data_plan' => '2.0GB SME', 'amount' => 710, 'validate' => 'Awoof - 2 days'],
+    ['provider_plan_id' => '134', 'network' => 'AIRTEL', 'data_plan' => '3.0GB SME', 'amount' => 890, 'validate' => 'Awoof - 2days'],
+    ['provider_plan_id' => '136', 'network' => 'AIRTEL', 'data_plan' => '10.0GB SME', 'amount' => 3320, 'validate' => 'Awoof - 30 Days'],
+    ['provider_plan_id' => '137', 'network' => 'AIRTEL', 'data_plan' => '300MB SME', 'amount' => 130, 'validate' => 'Awoof 2 Days'],
+    ['provider_plan_id' => '138', 'network' => 'AIRTEL', 'data_plan' => '600MB SME', 'amount' => 240, 'validate' => 'Awoof 2 Days'],
+    ['provider_plan_id' => '139', 'network' => 'AIRTEL', 'data_plan' => '1.0GB SME', 'amount' => 320, 'validate' => 'Awoof - 3 days'],
+    ['provider_plan_id' => '140', 'network' => 'AIRTEL', 'data_plan' => '13.0GB SME', 'amount' => 5600, 'validate' => '1 Day'],
+    ['provider_plan_id' => '141', 'network' => 'AIRTEL', 'data_plan' => '35.0GB SME', 'amount' => 10647, 'validate' => '30 Days'],
+    ['provider_plan_id' => '142', 'network' => 'GLO', 'data_plan' => '500MB COOPERATE GIFTING', 'amount' => 215, 'validate' => '14 days'],
+    ['provider_plan_id' => '143', 'network' => 'GLO', 'data_plan' => '1.0GB COOPERATE GIFTING', 'amount' => 375, 'validate' => '3 days'],
+    ['provider_plan_id' => '144', 'network' => 'GLO', 'data_plan' => '1.0GB COOPERATE GIFTING', 'amount' => 485, 'validate' => '7 Days'],
+    ['provider_plan_id' => '145', 'network' => 'GLO', 'data_plan' => '1.0GB COOPERATE GIFTING', 'amount' => 425, 'validate' => '30 Days'],
+    ['provider_plan_id' => '146', 'network' => 'GLO', 'data_plan' => '2.0GB COOPERATE GIFTING', 'amount' => 850, 'validate' => '30 Days'],
+    ['provider_plan_id' => '147', 'network' => 'GLO', 'data_plan' => '3.0GB COOPERATE GIFTING', 'amount' => 1185, 'validate' => '3 Days'],
+    ['provider_plan_id' => '148', 'network' => 'GLO', 'data_plan' => '3.0GB COOPERATE GIFTING', 'amount' => 1160, 'validate' => '7 Days'],
+    ['provider_plan_id' => '149', 'network' => 'GLO', 'data_plan' => '3.0GB COOPERATE GIFTING', 'amount' => 1270, 'validate' => '30 Days'],
+    ['provider_plan_id' => '150', 'network' => 'GLO', 'data_plan' => '5.0GB COOPERATE GIFTING', 'amount' => 1900, 'validate' => '3 Days'],
+    ['provider_plan_id' => '151', 'network' => 'GLO', 'data_plan' => '5.0GB COOPERATE GIFTING', 'amount' => 1975, 'validate' => '7 Days'],
+    ['provider_plan_id' => '152', 'network' => 'GLO', 'data_plan' => '5.0GB COOPERATE GIFTING', 'amount' => 2175, 'validate' => '30 Days'],
+    ['provider_plan_id' => '153', 'network' => 'GLO', 'data_plan' => '10.0GB COOPERATE GIFTING', 'amount' => 4330, 'validate' => '30 Days'],
 ];

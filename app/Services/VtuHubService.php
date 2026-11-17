@@ -266,7 +266,9 @@ class VtuHubService
                 }
                 return $this->transactionResult($existing);
             }
-            return $this->processRequestUnlocked($params);
+            $result = $this->processRequestUnlocked($params);
+            if (isset($result['message'])) $result['message'] = \App\Support\VtuCustomerMessages::publicMessage($result['message']);
+            return $result;
         } catch (\Illuminate\Validation\ValidationException $e) {
             return ['status' => false, 'message' => $e->errors()[array_key_first($e->errors())][0], 'errors' => $e->errors()];
         } finally {
@@ -276,13 +278,25 @@ class VtuHubService
 
     public function transactionResult(VtuTransaction $tx): array
     {
-        $data = (array) $tx->response_payload;
-        return ['status' => $tx->status === 'success', 'pending' => $tx->status === 'pending',
-            'message' => $tx->status === 'success' ? 'Transaction successful.' : ($tx->error_message ?: 'Transaction pending confirmation.'),
-            'data' => $data, 'reference' => $tx->transaction_id,
+        if ($tx->status === 'pending' && \App\Support\VtuCustomerMessages::confirmedBalanceFailure((array) $tx->response_payload)) {
+            $tx = app(VtuSettlementService::class)->settle($tx, 'failed', (array) $tx->response_payload);
+        }
+        $data = \App\Support\VtuCustomerMessages::deliveryData((array) $tx->response_payload);
+        $balanceLow = \App\Support\VtuCustomerMessages::confirmedBalanceFailure((array) $tx->response_payload);
+        $message = $tx->status === 'success'
+            ? 'Transaction successful.'
+            : ($balanceLow ? \App\Support\VtuCustomerMessages::LOW_BALANCE : \App\Support\VtuCustomerMessages::publicMessage($tx->error_message ?: 'Transaction pending confirmation.'));
+
+        return [
+            'status' => $tx->status === 'success',
+            'pending' => $tx->status === 'pending' && !$balanceLow,
+            'message' => $message,
+            'data' => $data,
+            'reference' => $tx->transaction_id,
             'pin' => $data['pin'] ?? data_get($data, 'data.pin'),
             'token' => $data['token'] ?? data_get($data, 'data.token'),
-            'breakdown' => ['amount' => $tx->amount, 'fee' => $tx->fee, 'total' => $tx->total, 'direction' => $tx->direction, 'discount' => $tx->direction === 'debit' ? max(0, round($tx->amount + $tx->fee - $tx->total, 2)) : 0]];
+            'breakdown' => ['amount' => $tx->amount, 'fee' => $tx->fee, 'total' => $tx->total, 'direction' => $tx->direction, 'discount' => $tx->direction === 'debit' ? max(0, round($tx->amount + $tx->fee - $tx->total, 2)) : 0],
+        ];
     }
 
     protected function processRequestUnlocked(array $params)
@@ -563,6 +577,13 @@ class VtuHubService
             if ($isDatasub247) {
                 $apiResult = $this->executeDatasub247($serviceType, $payload, $requestedAmount, $txId, $provider ? $this->datasub247->forProvider($provider) : null);
                 $json = (array) ($apiResult['data'] ?? []);
+
+                if (!($apiResult['pending'] ?? false) && (\App\Support\VtuCustomerMessages::balanceLow($apiResult) || \App\Support\VtuCustomerMessages::balanceLow($json))) {
+                    $json['_failure_code'] = 'system_balance_low';
+                    $settled = app(VtuSettlementService::class)->settle($vtuTx, 'failed', $json, (string) ($json['request-id'] ?? $json['reference'] ?? $txId));
+                    return $this->transactionResult($settled);
+                }
+
                 $state = ($apiResult['pending'] ?? false) ? 'pending' : (($apiResult['status'] ?? false) ? 'success' : 'failed');
                 if ($state === 'success' && in_array($serviceType, ['vtu_data_card', 'vtu_recharge_card'], true) && empty($json['pin']) && empty($json['pins'])) {
                     $state = 'pending';

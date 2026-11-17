@@ -23,62 +23,17 @@ class VtuCatalogService
 
     public function dataPlans(?int $providerId = null): \Illuminate\Support\Collection
     {
-        try {
-            if (!Schema::hasTable('price_list') || !Schema::hasColumn('price_list', 'provider_plan_id')) {
-                return $this->fallbackDataPlans();
-            }
-
-            $hasCustomApiCol = Schema::hasColumn('price_list', 'custom_api_id');
-            $provider = $this->dataProvider($providerId);
-
-            $query = DB::table('price_list')->whereNotNull('provider_plan_id')->orderBy('amount');
-            $plans = $query->get()
-                ->filter(function ($plan) use ($provider, $hasCustomApiCol) {
-                    if (!ctype_digit(trim((string) $plan->provider_plan_id)) || (int) $plan->provider_plan_id <= 0) {
-                        return false;
-                    }
-                    if ((float) $plan->amount < 50) {
-                        return false;
-                    }
-                    if ($hasCustomApiCol && $provider && !empty($plan->custom_api_id)) {
-                        return (int) $plan->custom_api_id === (int) $provider->id;
-                    }
-                    return true;
-                })
-                ->map(function ($plan) {
-                    $plan->network = $this->dataNetwork((string) $plan->network);
-                    return $plan;
-                })->values();
-
-            if ($plans->isEmpty()) {
-                return $this->fallbackDataPlans();
-            }
-
-            return $plans;
-        } catch (\Throwable $e) {
-            return $this->fallbackDataPlans();
-        }
-    }
-
-    public function fallbackDataPlans(): \Illuminate\Support\Collection
-    {
-        $rawPlans = config('datasub247_data', []);
-        if (empty($rawPlans) && file_exists(base_path('config/datasub247_data.php'))) {
-            $rawPlans = require base_path('config/datasub247_data.php');
-        }
-
-        $id = 1;
-        return collect($rawPlans)->map(function ($p) use (&$id) {
-            return (object) [
-                'id' => (int) ($p['id'] ?? $id++),
-                'network' => $this->dataNetwork((string) ($p['network'] ?? 'MTN')),
-                'data_plan' => $p['data_plan'] ?? 'Data Bundle',
-                'amount' => (float) ($p['amount'] ?? 100),
-                'validate' => $p['validate'] ?? '30 DAYS',
-                'provider_plan_id' => (string) ($p['provider_plan_id'] ?? $p['id'] ?? $id),
-                'custom_api_id' => null,
-            ];
-        });
+        if (!Schema::hasTable('price_list') || !Schema::hasColumn('price_list', 'provider_plan_id') || !Schema::hasColumn('price_list', 'custom_api_id')) return collect();
+        $provider = $this->dataProvider($providerId);
+        if (($providerId && !$provider) || (!$provider && CustomApi::where('service_type', 'vtu_data')->where('provider_identifier', 'datasub247')->exists())) return collect();
+        return DB::table('price_list')->whereNotNull('provider_plan_id')->orderBy('amount')->get()
+            ->filter(fn ($plan) => ctype_digit(trim((string) $plan->provider_plan_id)) && (int) $plan->provider_plan_id > 0
+                && (float) $plan->amount >= 50
+                && ($provider ? (int) $plan->custom_api_id === (int) $provider->id : empty($plan->custom_api_id)))
+            ->map(function ($plan) {
+                $plan->network = $this->dataNetwork((string) $plan->network);
+                return $plan;
+            })->values();
     }
 
     private function dataNetwork(string $network): string
@@ -108,7 +63,7 @@ class VtuCatalogService
             $net = $this->dataNetwork((string) ($payload['network'] ?? ''));
             $plan = $this->dataPlans($providerId)->first(function ($p) use ($planId, $net) {
                 if ($p->network !== $net) return false;
-                return (string) $p->id === $planId || (string) ($p->provider_plan_id ?? '') === $planId;
+                return (string) $p->id === $planId;
             });
 
             if (!$plan || $plan->network !== $net) {

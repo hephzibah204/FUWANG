@@ -25,7 +25,7 @@
 
                     <div class="form-group mb-4" hidden>
                         <select name="provider_id" id="providerSelect" hidden>
-                            <option value="">Datasub247</option>
+                            <option value="">Service</option>
                         </select>
                         <div class="text-muted small mt-2" id="providerMeta"></div>
                     </div>

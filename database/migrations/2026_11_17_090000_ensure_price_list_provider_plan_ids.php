@@ -11,12 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (Schema::hasTable('price_list') && Schema::hasColumn('price_list', 'provider_plan_id')) {
-            DB::table('price_list')
-                ->whereNull('provider_plan_id')
-                ->orWhere('provider_plan_id', '')
-                ->update(['provider_plan_id' => DB::raw('id')]);
-        }
+        // Local row IDs are not Datasub plan IDs. The verified catalogue
+        // migrations populate explicit mappings without guessing IDs here.
     }
 
     /**

@@ -21,13 +21,16 @@ class Datasub247Service
     public const NETWORK_AIRTEL = 2;
     public const NETWORK_9MOBILE = 4;
 
-    // Confirmed entries from the supplied account documentation (5 of 8).
+    // All eight entries verified across the account documentation table.
     public const ELECTRICITY_PROVIDERS = [
         'ikeja-electric' => ['id' => 1, 'label' => 'Ikeja Electricity', 'aliases' => ['ikedc', 'ikeja', 'ikeja-electric']],
         'eko-electric' => ['id' => 2, 'label' => 'Eko Electricity', 'aliases' => ['ekedc', 'eko', 'eko-electric']],
         'kano-electric' => ['id' => 3, 'label' => 'Kano Electricity', 'aliases' => ['kedco', 'kano', 'kano-electric']],
         'portharcourt-electric' => ['id' => 4, 'label' => 'Port Harcourt Electricity', 'aliases' => ['phed', 'phedc', 'portharcourt', 'port-harcourt', 'portharcourt-electric']],
         'jos-electric' => ['id' => 5, 'label' => 'Jos Electricity', 'aliases' => ['jed', 'jedc', 'jos', 'joss', 'jos-electric']],
+        'ibadan-electric' => ['id' => 6, 'label' => 'Ibadan Electricity', 'aliases' => ['ibedc', 'ibadan', 'ibadan-electric']],
+        'kaduna-electric' => ['id' => 7, 'label' => 'Kaduna Electric', 'aliases' => ['kaedco', 'kaduna', 'kaduna-electric']],
+        'abuja-electric' => ['id' => 8, 'label' => 'Abuja Electricity', 'aliases' => ['aedc', 'abuja', 'abuja-electric']],
     ];
 
     public const CABLE_GOTV = 1;
@@ -238,11 +241,11 @@ class Datasub247Service
 
             return [
                 'status' => false,
-                'message' => is_array($data) ? ($data['message'] ?? $data['error'] ?? 'Card validation failed.') : 'Unable to validate card at this time.',
+                'message' => is_array($data) ? \App\Support\VtuCustomerMessages::publicMessage((string) ($data['message'] ?? $data['error'] ?? 'Card validation failed.')) : 'Unable to validate card at this time.',
             ];
         } catch (\Throwable $e) {
             Log::error('Datasub247 Cable Validation Error: ' . $e->getMessage());
-            return ['status' => false, 'message' => 'Validation error: ' . $e->getMessage()];
+            return ['status' => false, 'message' => 'Unable to verify this customer. Please try again or contact admin.'];
         }
     }
 
@@ -292,11 +295,11 @@ class Datasub247Service
 
             return [
                 'status' => false,
-                'message' => is_array($data) ? ($data['message'] ?? $data['error'] ?? 'Meter validation failed.') : 'Unable to validate meter at this time.',
+                'message' => is_array($data) ? \App\Support\VtuCustomerMessages::publicMessage((string) ($data['message'] ?? $data['error'] ?? 'Meter validation failed.')) : 'Unable to validate meter at this time.',
             ];
         } catch (\Throwable $e) {
             Log::error('Datasub247 Meter Validation Error: ' . $e->getMessage());
-            return ['status' => false, 'message' => 'Meter validation error: ' . $e->getMessage()];
+            return ['status' => false, 'message' => 'Unable to verify this customer. Please try again or contact admin.'];
         }
     }
 
@@ -445,7 +448,7 @@ class Datasub247Service
         if (!$token) {
             return [
                 'status' => false,
-                'message' => 'Datasub247 API Token is not configured. Please add DATASUB247_API_KEY to your environment.',
+                'message' => 'This service is currently unavailable. Please contact admin.',
             ];
         }
 
@@ -457,20 +460,36 @@ class Datasub247Service
                 ->withHeaders($this->getHeaders())
                 ->post($url, $payload);
 
+            $rawBody = $response->body();
             $json = $response->json();
+            $statusCode = $response->status();
 
-            if (!is_array($json)) {
-                Log::error("Datasub247 Non-JSON Response ($path): " . $response->body());
+            // When upstream responds with a confirmed status code (not 503/504 gateway outage)
+            $isConfirmedError = in_array($statusCode, [200, 400, 401, 402, 422, 500], true);
+            if ($isConfirmedError && (\App\Support\VtuCustomerMessages::balanceLow($json) || (is_string($rawBody) && \App\Support\VtuCustomerMessages::balanceLow($rawBody) && \App\Support\VtuProviderStatus::state($json) !== 'pending'))) {
+                $payloadData = is_array($json) ? $json : ['raw' => $rawBody];
+                $payloadData['_failure_code'] = 'system_balance_low';
+                Log::warning("Datasub247 Low Balance Confirmed ($path): " . $rawBody);
                 return [
                     'status' => false,
-                    'pending' => true,
-                    'message' => 'Awaiting provider confirmation.',
-                    'raw' => $response->body(),
+                    'pending' => false,
+                    'message' => \App\Support\VtuCustomerMessages::LOW_BALANCE,
+                    'data' => $payloadData,
                     'reference' => $requestId,
                 ];
             }
 
-            $statusVal = strtolower((string) ($json['status'] ?? ''));
+            if (!is_array($json)) {
+                Log::error("Datasub247 Non-JSON Response ($path): " . $rawBody);
+                return [
+                    'status' => false,
+                    'pending' => true,
+                    'message' => \App\Support\VtuCustomerMessages::PENDING,
+                    'raw' => $rawBody,
+                    'reference' => $requestId,
+                ];
+            }
+
             $state = \App\Support\VtuProviderStatus::state($json);
             $isSuccess = $state === 'success';
 
@@ -489,16 +508,25 @@ class Datasub247Service
             return [
                 'status' => false,
                 'pending' => !$response->successful() || $state !== 'failed',
-                'message' => $errorMessage,
+                'message' => \App\Support\VtuCustomerMessages::publicMessage($errorMessage),
                 'data' => $json,
                 'reference' => $requestId,
             ];
         } catch (\Throwable $e) {
             Log::error("Datasub247 Request Exception ($path): " . $e->getMessage());
+            if (\App\Support\VtuCustomerMessages::balanceLow($e->getMessage())) {
+                return [
+                    'status' => false,
+                    'pending' => false,
+                    'message' => \App\Support\VtuCustomerMessages::LOW_BALANCE,
+                    'reference' => $requestId,
+                    'data' => ['_failure_code' => 'system_balance_low', 'error' => $e->getMessage()],
+                ];
+            }
             return [
                 'status' => false,
                 'pending' => true,
-                'message' => 'Awaiting provider confirmation.',
+                'message' => \App\Support\VtuCustomerMessages::PENDING,
                 'reference' => $requestId,
             ];
         }

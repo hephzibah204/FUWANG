@@ -22,7 +22,7 @@ return new class extends Migration
             if (!is_array($products) || !array_is_list($products)) throw new RuntimeException('The existing VTU product catalogue must be a JSON array.');
             foreach (require base_path('config/datasub247_cable.php') as $plan) {
                 $exists = collect($products)->contains(fn ($p) => is_array($p) && ($p['service_type'] ?? '') === 'vtu_cable_tv'
-                    && ($p['service_id'] ?? '') === 'dstv' && (string) ($p['provider_plan_id'] ?? '') === $plan['provider_plan_id']
+                    && ($p['service_id'] ?? '') === $plan['service_id'] && (string) ($p['provider_plan_id'] ?? '') === $plan['provider_plan_id']
                     && (int) ($p['provider_id'] ?? 0) === (int) $providerId);
                 if (!$exists) $products[] = $plan + ['provider_id' => $providerId];
             }

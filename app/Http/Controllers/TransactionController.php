@@ -56,7 +56,11 @@ class TransactionController extends Controller
         $vtu = null;
         try {
             if (Schema::hasTable('vtu_transactions')) {
-                $vtu = VtuTransaction::where('transaction_id', $transactionId)->first();
+                $vtu = VtuTransaction::where('transaction_id', $transactionId)->where('user_id', $user->id)->first();
+                if ($vtu && $vtu->status === 'pending' && \App\Support\VtuCustomerMessages::confirmedBalanceFailure((array) $vtu->response_payload)) {
+                    $vtu = app(\App\Services\VtuReconciliationService::class)->reconcile($vtu);
+                    $tx->refresh();
+                }
             }
         } catch (\Throwable $e) {
             $vtu = null;
