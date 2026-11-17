@@ -52,7 +52,8 @@ class AdminVtuPricingController extends Controller
         $providers = app(\App\Services\VtuProviderService::class)->providers('vtu_data');
         $bandNames = \App\Models\CustomApi::where('service_type', 'vtu_data')->pluck('name', 'id');
         $productCatalog = SystemSetting::get('vtu_product_catalog', '[]');
-        return view('admin.vtu.pricing', compact('bundles', 'rates', 'providers', 'productCatalog', 'bandNames'));
+        $catalogueReady = app(\App\Services\VtuCatalogService::class)->schemaReady();
+        return view('admin.vtu.pricing', compact('bundles', 'rates', 'providers', 'productCatalog', 'bandNames', 'catalogueReady'));
     }
 
     /**

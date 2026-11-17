@@ -10,6 +10,12 @@ use Illuminate\Validation\ValidationException;
 
 class VtuCatalogService
 {
+    public function schemaReady(): bool
+    {
+        return Schema::hasTable('price_list') && Schema::hasColumn('price_list', 'provider_plan_id')
+            && Schema::hasColumn('price_list', 'custom_api_id');
+    }
+
     public function dataProviders(): \Illuminate\Support\Collection
     {
         return app(VtuProviderService::class)->providers('vtu_data');
@@ -23,7 +29,7 @@ class VtuCatalogService
 
     public function dataPlans(?int $providerId = null): \Illuminate\Support\Collection
     {
-        if (!Schema::hasTable('price_list') || !Schema::hasColumn('price_list', 'provider_plan_id') || !Schema::hasColumn('price_list', 'custom_api_id')) return collect();
+        if (!$this->schemaReady()) return collect();
         $provider = $this->dataProvider($providerId);
         if (($providerId && !$provider) || (!$provider && CustomApi::where('service_type', 'vtu_data')->where('provider_identifier', 'datasub247')->exists())) return collect();
         return DB::table('price_list')->whereNotNull('provider_plan_id')->orderBy('amount')->get()

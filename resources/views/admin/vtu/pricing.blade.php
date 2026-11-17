@@ -51,6 +51,9 @@
 
     <div class="panel-card p-4 mb-4">
         <h5>Datasub247 data bundles</h5>
+        @if(!($catalogueReady ?? true))
+            <div class="alert alert-warning" role="alert">Data catalogue database setup is incomplete. Run the provider mapping migration and the verified catalogue migrations before adding or selling bundles.</div>
+        @endif
         <p class="text-muted">API credentials do not automatically load data bundles. Add bundles using their actual Datasub247 plan IDs and your selling prices. Bundles without these mappings cannot be purchased.</p>
         <p class="text-muted">Datasub247 is assigned automatically. Use the form below to add bundles or update prices for matching Datasub plan IDs.</p>
         <details {{ old('plans') ? 'open' : '' }}>

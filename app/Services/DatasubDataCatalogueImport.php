@@ -11,6 +11,9 @@ class DatasubDataCatalogueImport
 {
     public function provider(): CustomApi
     {
+        if (!app(VtuCatalogService::class)->schemaReady()) {
+            throw ValidationException::withMessages(['catalogue' => 'Data catalogue setup is incomplete. Run the provider mapping database migration before saving bundles.']);
+        }
         $provider = app(VtuProviderService::class)->providers('vtu_data')->first();
         if ($provider) return $provider;
         if (CustomApi::where('service_type', 'vtu_data')->where('provider_identifier', 'datasub247')->exists()

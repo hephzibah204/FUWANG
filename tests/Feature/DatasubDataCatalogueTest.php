@@ -14,6 +14,21 @@ use Illuminate\Support\Facades\Schema;
 
 class DatasubDataCatalogueTest extends VtuPurchaseSafetyTest
 {
+    public function test_missing_catalogue_columns_return_setup_error_without_creating_provider_records(): void
+    {
+        config(['services.datasub247.api_key' => 'configured-test-key']);
+        Schema::table('price_list', function (Blueprint $table) { $table->dropColumn('custom_api_id'); });
+        $this->assertFalse(app(\App\Services\VtuCatalogService::class)->schemaReady());
+        $response = $this->postJson(route('admin.vtu.pricing.data-catalogue'), ['plans' => [[
+            'network' => 'MTN', 'data_plan' => '500MB SME', 'provider_plan_id' => '1', 'amount' => 230, 'validate' => '7 DAYS',
+        ]]]);
+        $response->assertUnprocessable();
+        $this->assertStringContainsString('database migration', $response->getContent());
+        $this->assertDatabaseCount('custom_apis', 0);
+        $this->assertDatabaseCount('price_list', 0);
+        Http::assertNothingSent();
+    }
+
     public function test_customer_balance_failure_is_final_refunded_once_and_hides_api_identity(): void
     {
         $user = $this->documentedCustomer();
