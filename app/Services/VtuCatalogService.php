@@ -12,17 +12,7 @@ class VtuCatalogService
 {
     public function dataProviders(): \Illuminate\Support\Collection
     {
-        return CustomApi::where('service_type', 'vtu_data')->where('status', true)->get()
-            ->filter(function ($provider) {
-                if ($provider->provider_identifier === 'datasub247') {
-                    return trim((string) $provider->api_key) !== ''
-                        || trim((string) config('services.datasub247.api_key')) !== ''
-                        || (config('services.datasub247.username') && config('services.datasub247.password'));
-                }
-                return trim((string) $provider->api_key) !== '' && trim((string) $provider->endpoint) !== '';
-            })
-            ->sortBy(fn ($provider) => [$provider->provider_identifier === 'datasub247' ? 0 : 1, (int) $provider->priority, (int) $provider->id])
-            ->values();
+        return app(VtuProviderService::class)->providers('vtu_data');
     }
 
     public function dataProvider(?int $providerId): ?CustomApi
@@ -33,23 +23,46 @@ class VtuCatalogService
 
     public function dataPlans(?int $providerId = null): \Illuminate\Support\Collection
     {
-        if (!Schema::hasTable('price_list') || !Schema::hasColumn('price_list', 'provider_plan_id')) {
+        if (!Schema::hasTable('price_list')) {
             return collect();
         }
         $provider = $this->dataProvider($providerId);
-        if (($providerId && !$provider) || (!$provider && CustomApi::where('service_type', 'vtu_data')->exists())) {
+        if (($providerId && !$provider) || (!$provider && CustomApi::where('service_type', 'vtu_data')->where('provider_identifier', 'datasub247')->exists())) {
             return collect();
         }
-        return DB::table('price_list')->whereNotNull('provider_plan_id')->orderBy('amount')->get()
-            ->filter(fn ($plan) => trim((string) $plan->provider_plan_id) !== '' && (float) $plan->amount >= 50
-                && ($provider?->provider_identifier !== 'datasub247' || ctype_digit(trim((string) $plan->provider_plan_id)))
-                && ($provider
-                    ? (int) $plan->custom_api_id === (int) $provider->id
-                    : empty($plan->custom_api_id)))
-            ->map(function ($plan) {
-                $plan->network = $this->dataNetwork((string) $plan->network);
-                return $plan;
-            })->values();
+        $hasProvCol = Schema::hasColumn('price_list', 'provider_plan_id');
+        $hasApiCol = Schema::hasColumn('price_list', 'custom_api_id');
+
+        $query = DB::table('price_list')->orderBy('amount');
+        if ($hasProvCol) {
+            $query->whereNotNull('provider_plan_id');
+        }
+        $rows = $query->get();
+
+        // Check if there are explicit plans assigned to this provider
+        $hasExplicit = $provider && $hasApiCol && $rows->contains(fn ($p) => (int) ($p->custom_api_id ?? 0) === (int) $provider->id);
+
+        return $rows->filter(function ($plan) use ($provider, $hasProvCol, $hasApiCol, $hasExplicit) {
+            if ((float) $plan->amount < 50) {
+                return false;
+            }
+            if ($hasProvCol && $plan->provider_plan_id !== null && trim((string) $plan->provider_plan_id) === '') {
+                return false;
+            }
+            if ($hasExplicit) {
+                return (int) ($plan->custom_api_id ?? 0) === (int) $provider->id;
+            }
+            if ($provider && $hasApiCol && !empty($plan->custom_api_id)) {
+                return (int) $plan->custom_api_id === (int) $provider->id;
+            }
+            return true;
+        })->map(function ($plan) use ($hasProvCol) {
+            $plan->network = $this->dataNetwork((string) $plan->network);
+            if (!$hasProvCol || empty($plan->provider_plan_id)) {
+                $plan->provider_plan_id = (string) $plan->id;
+            }
+            return $plan;
+        })->values();
     }
 
     private function dataNetwork(string $network): string
@@ -66,22 +79,47 @@ class VtuCatalogService
         if (is_string($catalog)) {
             $catalog = json_decode($catalog, true) ?: [];
         }
-        if (!$catalog && in_array($serviceType, ['vtu_data_card', 'vtu_recharge_card'], true) && !app(Datasub247Service::class)->getApiKey()) {
-            return app(ClubkonnectPrintingService::class)->products($serviceType);
-        }
-        return array_values(array_filter((array) $catalog, fn ($p) => is_array($p) && ($p['service_type'] ?? '') === $serviceType && ($p['active'] ?? true)));
+        $providerId = app(VtuProviderService::class)->providers($serviceType)->first()?->id;
+        return array_values(array_filter((array) $catalog, fn ($p) => is_array($p)
+            && ($p['service_type'] ?? '') === $serviceType && ($p['active'] ?? true)
+            && (empty($p['provider_id']) || (int) $p['provider_id'] === (int) $providerId)));
     }
 
     public function price(string $serviceType, array &$payload, ?int $providerId): float
     {
         if ($serviceType === 'vtu_data') {
-            $plan = $this->dataPlans($providerId)->first(fn ($p) => (string) $p->id === (string) ($payload['plan_id'] ?? ''));
-            if (!$plan || $plan->network !== $this->dataNetwork((string) ($payload['network'] ?? ''))) {
+            $planId = (string) ($payload['plan_id'] ?? '');
+            $net = $this->dataNetwork((string) ($payload['network'] ?? ''));
+
+            $plan = $this->dataPlans($providerId)->first(function ($p) use ($planId, $net) {
+                return ((string) $p->id === $planId || (string) ($p->provider_plan_id ?? '') === $planId)
+                    && $p->network === $net;
+            });
+
+            if (!$plan && Schema::hasTable('price_list')) {
+                $candidate = DB::table('price_list')
+                    ->where(function ($q) use ($planId) {
+                        $q->where('id', $planId);
+                        if (Schema::hasColumn('price_list', 'provider_plan_id')) {
+                            $q->orWhere('provider_plan_id', $planId);
+                        }
+                    })->first();
+
+                if ($candidate && $this->dataNetwork((string) $candidate->network) === $net) {
+                    $candidate->network = $net;
+                    if (!isset($candidate->provider_plan_id) || empty($candidate->provider_plan_id)) {
+                        $candidate->provider_plan_id = (string) $candidate->id;
+                    }
+                    $plan = $candidate;
+                }
+            }
+
+            if (!$plan || $plan->network !== $net) {
                 throw ValidationException::withMessages(['plan_id' => 'Select an available data plan for this network and band.']);
             }
             $payload['network'] = $plan->network;
             $payload['catalog_plan_id'] = (string) $plan->id;
-            $payload['plan_id'] = trim((string) $plan->provider_plan_id);
+            $payload['plan_id'] = !empty($plan->provider_plan_id) ? trim((string) $plan->provider_plan_id) : (string) $plan->id;
             return (float) $plan->amount;
         }
         if ($serviceType === 'vtu_epin') {

@@ -38,8 +38,8 @@
                             <label class="vtu-provider-card" data-provider="gotv">
                                 <input type="radio" name="serviceID" value="gotv" checked required>
                                 <div class="provider-box provider-gotv">
-                                    <div class="provider-badge-icon gotv-badge">
-                                        <i class="fa-solid fa-tv"></i>
+                                    <div class="provider-logo-wrap">
+                                        <img src="{{ asset('images/vtu/gotv.png') }}" alt="GOtv" class="provider-logo-img">
                                     </div>
                                     <span class="provider-name">GOtv</span>
                                     <span class="provider-tag">All Bouquets</span>
@@ -51,8 +51,8 @@
                             <label class="vtu-provider-card" data-provider="dstv">
                                 <input type="radio" name="serviceID" value="dstv" required>
                                 <div class="provider-box provider-dstv">
-                                    <div class="provider-badge-icon dstv-badge">
-                                        <i class="fa-solid fa-satellite-dish"></i>
+                                    <div class="provider-logo-wrap">
+                                        <img src="{{ asset('images/vtu/dstv.png') }}" alt="DStv" class="provider-logo-img">
                                     </div>
                                     <span class="provider-name">DStv</span>
                                     <span class="provider-tag">Padi to Premium</span>
@@ -64,8 +64,8 @@
                             <label class="vtu-provider-card" data-provider="startimes">
                                 <input type="radio" name="serviceID" value="startimes" required>
                                 <div class="provider-box provider-startimes">
-                                    <div class="provider-badge-icon startimes-badge">
-                                        <i class="fa-solid fa-tower-broadcast"></i>
+                                    <div class="provider-logo-wrap">
+                                        <img src="{{ asset('images/vtu/startimes.png') }}" alt="StarTimes" class="provider-logo-img">
                                     </div>
                                     <span class="provider-name">StarTimes</span>
                                     <span class="provider-tag">Nova to Super</span>
@@ -275,32 +275,28 @@
         background: rgba(59, 130, 246, 0.12);
         box-shadow: 0 0 0 1px #3b82f6, 0 8px 20px -4px rgba(59, 130, 246, 0.3);
     }
-    .provider-badge-icon {
-        width: 44px;
-        height: 44px;
+    .provider-logo-wrap {
+        width: 48px;
+        height: 48px;
         border-radius: 12px;
+        background: rgba(255, 255, 255, 0.05);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.25rem;
         margin-bottom: 8px;
-        font-weight: 800;
-        letter-spacing: -0.5px;
+        padding: 6px;
+        transition: transform 0.2s ease;
     }
-    .gotv-badge {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        color: #ffffff;
-        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    .provider-logo-img {
+        max-width: 100%;
+        max-height: 100%;
+        width: auto;
+        height: auto;
+        object-fit: contain;
     }
-    .dstv-badge {
-        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
-        color: #ffffff;
-        box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
-    }
-    .startimes-badge {
-        background: linear-gradient(135deg, #f97316 0%, #c2410c 100%);
-        color: #ffffff;
-        box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+    .vtu-provider-card input:checked + .provider-box .provider-logo-wrap {
+        transform: scale(1.08);
+        background: rgba(59, 130, 246, 0.15);
     }
     .provider-name {
         font-size: 0.85rem;

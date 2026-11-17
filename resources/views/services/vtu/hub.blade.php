@@ -185,7 +185,7 @@
 
         <div class="vtu-edu-grid">
             <a href="{{ route('services.education.waec') }}" class="vtu-edu-card text-decoration-none">
-                <img src="{{ asset('vtusite/images/waec.png') }}" alt="WAEC" class="edu-img" onerror="this.onerror=null; this.src='{{ asset('images/waec.png') }}';">
+                <img src="{{ asset('images/vtu/waec.png') }}" alt="WAEC" class="edu-img">
                 <div class="edu-info">
                     <div class="edu-title">WAEC Checker</div>
                     <div class="edu-sub">Result checking PIN</div>
@@ -193,7 +193,7 @@
             </a>
 
             <a href="{{ route('services.education.waec_registration') }}" class="vtu-edu-card text-decoration-none">
-                <img src="{{ asset('vtusite/images/waec.png') }}" alt="WAEC Reg" class="edu-img" onerror="this.onerror=null; this.src='{{ asset('images/waec.png') }}';">
+                <img src="{{ asset('images/vtu/waec.png') }}" alt="WAEC Reg" class="edu-img">
                 <div class="edu-info">
                     <div class="edu-title">WAEC Registration</div>
                     <div class="edu-sub">Candidate registration PIN</div>
@@ -201,7 +201,7 @@
             </a>
 
             <a href="{{ route('services.education.neco') }}" class="vtu-edu-card text-decoration-none">
-                <img src="{{ asset('vtusite/images/neco.png') }}" alt="NECO" class="edu-img" onerror="this.onerror=null; this.src='{{ asset('images/neco.png') }}';">
+                <img src="{{ asset('images/vtu/neco.png') }}" alt="NECO" class="edu-img">
                 <div class="edu-info">
                     <div class="edu-title">NECO Token</div>
                     <div class="edu-sub">Result checker token</div>
@@ -209,7 +209,7 @@
             </a>
 
             <a href="{{ route('services.education.nabteb') }}" class="vtu-edu-card text-decoration-none">
-                <img src="{{ asset('vtusite/images/nabteb.png') }}" alt="NABTEB" class="edu-img" onerror="this.onerror=null; this.src='{{ asset('images/nabteb.png') }}';">
+                <img src="{{ asset('images/vtu/nabteb.png') }}" alt="NABTEB" class="edu-img">
                 <div class="edu-info">
                     <div class="edu-title">NABTEB PIN</div>
                     <div class="edu-sub">Result checker voucher</div>
@@ -217,7 +217,7 @@
             </a>
 
             <a href="{{ route('services.education.jamb') }}" class="vtu-edu-card text-decoration-none">
-                <img src="{{ asset('vtusite/images/jamb.png') }}" alt="JAMB" class="edu-img" onerror="this.onerror=null; this.src='{{ asset('images/jamb.png') }}';">
+                <img src="{{ asset('images/vtu/jamb.png') }}" alt="JAMB" class="edu-img">
                 <div class="edu-info">
                     <div class="edu-title">JAMB ePIN</div>
                     <div class="edu-sub">UTME / DE registration</div>

@@ -23,10 +23,9 @@
                 <form id="internetForm" action="{{ route('services.vtu.internet.buy') }}" method="POST">
                     @csrf
 
-                    <div class="form-group mb-4">
-                        <label class="font-weight-600 mb-2 d-block">Network Band</label>
-                        <select class="form-control" name="provider_id" id="providerSelect">
-                            <option value="">Auto-route (Best Band)</option>
+                    <div class="form-group mb-4" hidden>
+                        <select name="provider_id" id="providerSelect" hidden>
+                            <option value="">Datasub247</option>
                         </select>
                         <div class="text-muted small mt-2" id="providerMeta"></div>
                     </div>

@@ -22,26 +22,15 @@ trait HandlesVtuPurchases
         return in_array($type,['vtu_airtime','vtu_data','vtu_cable_tv','vtu_electricity','vtu_epin','vtu_bulksms','vtu_data_card','vtu_recharge_card'],true);
     }
     private function purchaseProviders(Request $request,string $serviceType) {
-        abort_unless(isset(config('vtu_services.service_types',[])[$serviceType]),404);
-        if($serviceType==='vtu_data'){
-            $providers=app(VtuCatalogService::class)->dataProviders()->map(fn($p,$i)=>['id'=>$p->id,'name'=>($p->provider_identifier==='datasub247'?'Datasub247':'Band '.($i+1)).($i===0?' (Default)':'')]);
-            return response()->json(['status'=>true,'providers'=>$providers]);
-        }
-        $types=$this->providerTypes($serviceType);
-        $providers=CustomApi::whereIn('service_type',$types)->where('status',true)->orderBy('priority')->get()
-            ->filter(fn($p)=>$p->provider_identifier!=='datasub247' || $this->datasubSupports($serviceType))
-            ->values()->map(fn($p,$i)=>['id'=>$p->id,'name'=>'Band '.($i+1)])->values();
-        if($providers->isEmpty() && $this->datasubSupports($serviceType) && !CustomApi::whereIn('service_type',$types)->exists() && $this->vtuHub->getDatasub247()->getApiKey()){
-            $providers->push(['id'=>'','name'=>'Default band']);
-        }
-        if($providers->isEmpty() && !CustomApi::whereIn('service_type',$types)->exists() && in_array($serviceType,['vtu_data_card','vtu_recharge_card'],true) && app(\App\Services\ClubkonnectPrintingService::class)->configured()){
-            $providers->push(['id'=>'','name'=>'Default band']);
-        }
-        return response()->json(['status'=>true,'providers'=>$providers]);
+        abort_unless(isset(config('vtu_services.service_types', [])[$serviceType]), 404);
+        return response()->json(['status' => true, 'providers' => app(\App\Services\VtuProviderService::class)->listing($serviceType)]);
     }
     public function catalog(Request $request,string $serviceType) {
         abort_unless(isset(config('vtu_services.service_types',[])[$serviceType]),404);
-        $id=$request->integer('provider_id');$products=[];
+        $id=$request->integer('provider_id') ?: (int) app(\App\Services\VtuProviderService::class)->providers($serviceType)->first()?->id;$products=[];
+        if ($id && !app(\App\Services\VtuProviderService::class)->providers($serviceType)->contains('id', $id)) {
+            return response()->json(['status' => false, 'message' => 'Only Datasub247 is available.', 'products' => []], 422);
+        }
         if($serviceType==='vtu_data'){
             $products=app(VtuCatalogService::class)->dataPlans($id ?: null)
                 ->map(fn($p)=>['code'=>(string)$p->id,'network'=>$p->network,'label'=>$p->data_plan,'validity'=>$p->validate,'amount'=>(float)$p->amount])->all();

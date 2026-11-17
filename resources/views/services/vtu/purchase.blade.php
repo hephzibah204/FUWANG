@@ -33,9 +33,8 @@
                     @endif
                     <fieldset data-fields disabled>
                         <div class="form-group mb-4">
-                            <label for="vtu-band">Network band</label>
-                            <select id="vtu-band" name="provider_id" class="form-control" required><option value="">Loading bands…</option></select>
-                            <small class="text-muted">Availability and prices depend on the selected band.</small>
+                            <input type="hidden" id="vtu-band" name="provider_id" value="">
+                            <p class="small text-muted">Service supplied by Datasub247</p>
                         </div>
                         @if($networkService)
                             <div class="form-group mb-4">

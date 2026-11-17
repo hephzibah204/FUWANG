@@ -72,7 +72,7 @@
         plan.replaceChildren(new Option(available.length ? 'Choose a package' : 'No matching packages available', ''));
         available.forEach((p, index) => { const option = new Option(`${p.label}${p.validity ? ` · ${p.validity}` : ''} — ${money(p.amount)}`, String(p.code)); option.dataset.product = String(products.indexOf(p)); plan.add(option); });
         plan.disabled = !available.length;
-        root.querySelector('[data-plan-help]').textContent = available.length ? `${available.length} package(s) available. Select a bundle to see its price.` : 'Choose a network/service or adjust your search. If none are available, try another band.';
+        root.querySelector('[data-plan-help]').textContent = available.length ? `${available.length} package(s) available. Select a bundle to see its price.` : 'Choose a network/service or adjust your search. If none are available, contact support.';
         root.querySelector('[data-selection]').textContent = 'No package selected.';
     }
     async function loadCatalog() {
@@ -90,7 +90,7 @@
                 if ([...service.options].some(o => o.value === previous)) service.value = previous;
             }
             populatePlans();
-            notice(plan && !products.length ? 'No packages are configured for this band. Choose another band or contact support.' : 'Select your service and complete the details below.');
+            notice(plan && !products.length ? 'No Datasub247 packages are configured yet. Please contact support.' : 'Select your service and complete the details below.');
         } catch (error) { if (version === catalogVersion) notice(error.message, 'danger'); }
     }
     function showOutcome(response) {
@@ -178,10 +178,9 @@
         try {
             const response = await api(root.dataset.providers);
             const providers = response.providers || [];
-            band.replaceChildren();
-            providers.forEach(p => band.add(new Option(p.name, String(p.id))));
+            band.value = providers.length ? String(providers[0].id) : '';
             if (!providers.length) { notice('This service is currently unavailable. No payment has been taken.', 'warning'); return; }
-            band.required = providers.some(p => String(p.id) !== '');
+
             fieldset.disabled = false;
             await loadCatalog();
             const saved = sessionStorage.getItem(`vtu-pending-${root.dataset.type}`);

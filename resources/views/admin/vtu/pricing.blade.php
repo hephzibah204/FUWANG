@@ -334,12 +334,12 @@
             </div>
             <div class="modal-body">
                 <div class="form-group mb-3">
-                    <label>Data band</label>
-                    <select name="custom_api_id"  class="form-control" required><option value="">Select band</option>@foreach($providers as $provider)<option value="{{ $provider->id }}">{{ $provider->name }}</option>@endforeach</select>
+                    <p class="text-muted">Provider: Datasub247</p>
+                    <input type="hidden" name="custom_api_id"  value="{{ $providers->first()?->id }}">
                 </div>
                 <div class="form-group mb-3">
                     <label>Provider plan ID</label>
-                    <input name="provider_plan_id"  class="form-control" required placeholder="Exact plan ID from the selected provider">
+                    <input name="provider_plan_id"  class="form-control" required placeholder="Exact numeric plan ID from Datasub247">
                 </div>
 
                 <div class="form-group mb-3">
@@ -386,12 +386,12 @@
             </div>
             <div class="modal-body">
                 <div class="form-group mb-3">
-                    <label>Data band</label>
-                    <select name="custom_api_id" id="edit_custom_api_id" class="form-control" required><option value="">Select band</option>@foreach($providers as $provider)<option value="{{ $provider->id }}">{{ $provider->name }}</option>@endforeach</select>
+                    <p class="text-muted">Provider: Datasub247</p>
+                    <input type="hidden" name="custom_api_id" id="edit_custom_api_id" value="{{ $providers->first()?->id }}">
                 </div>
                 <div class="form-group mb-3">
                     <label>Provider plan ID</label>
-                    <input name="provider_plan_id" id="edit_provider_plan_id" class="form-control" required placeholder="Exact plan ID from the selected provider">
+                    <input name="provider_plan_id" id="edit_provider_plan_id" class="form-control" required placeholder="Exact numeric plan ID from Datasub247">
                 </div>
 
                 <div class="form-group mb-3">
@@ -442,7 +442,7 @@
         $('#edit_network').val(plan.network.toUpperCase());
         $('#edit_data_plan').val(plan.data_plan);
         $('#edit_amount').val(plan.amount);
-        $('#edit_custom_api_id').val(plan.custom_api_id || '');
+        $('#edit_custom_api_id').val(@json($providers->first()?->id));
         $('#edit_provider_plan_id').val(plan.provider_plan_id || '');
         $('#edit_validate').val(plan.validate || '30 Days');
         

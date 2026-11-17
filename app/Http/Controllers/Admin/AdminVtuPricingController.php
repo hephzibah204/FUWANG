@@ -37,7 +37,7 @@ class AdminVtuPricingController extends Controller
             'vtu_jamb_price' => (float) SystemSetting::get('vtu_jamb_price', 4700.0),
         ];
 
-        $providers = \App\Models\CustomApi::where('status', true)->where('service_type', 'vtu_data')->orderBy('priority')->get();
+        $providers = app(\App\Services\VtuProviderService::class)->providers('vtu_data');
         $bandNames = \App\Models\CustomApi::where('service_type', 'vtu_data')->pluck('name', 'id');
         $productCatalog = SystemSetting::get('vtu_product_catalog', '[]');
         return view('admin.vtu.pricing', compact('bundles', 'rates', 'providers', 'productCatalog', 'bandNames'));
@@ -108,13 +108,13 @@ class AdminVtuPricingController extends Controller
         $request->validate([
             'network' => 'required|string|in:MTN,GLO,AIRTEL,9MOBILE',
             'data_plan' => 'required|string|max:255',
-            'provider_plan_id' => 'required|string|max:100',
+            'provider_plan_id' => 'required|string|regex:/^[1-9][0-9]*$/|max:100',
             'custom_api_id' => 'required|integer|exists:custom_apis,id',
             'amount' => 'required|numeric|min:50',
             'validate' => 'nullable|string|max:100',
         ]);
 
-        if (!\App\Models\CustomApi::whereKey($request->custom_api_id)->where('service_type', 'vtu_data')->where('status', true)->exists()) {
+        if (!\App\Models\CustomApi::whereKey($request->custom_api_id)->where('service_type', 'vtu_data')->where('provider_identifier', 'datasub247')->where('status', true)->exists()) {
             throw \Illuminate\Validation\ValidationException::withMessages(['custom_api_id' => 'Choose an active data band.']);
         }
         DB::table('price_list')->insert([
@@ -143,13 +143,13 @@ class AdminVtuPricingController extends Controller
         $request->validate([
             'network' => 'required|string|in:MTN,GLO,AIRTEL,9MOBILE',
             'data_plan' => 'required|string|max:255',
-            'provider_plan_id' => 'required|string|max:100',
+            'provider_plan_id' => 'required|string|regex:/^[1-9][0-9]*$/|max:100',
             'custom_api_id' => 'required|integer|exists:custom_apis,id',
             'amount' => 'required|numeric|min:50',
             'validate' => 'nullable|string|max:100',
         ]);
 
-        if (!\App\Models\CustomApi::whereKey($request->custom_api_id)->where('service_type', 'vtu_data')->where('status', true)->exists()) {
+        if (!\App\Models\CustomApi::whereKey($request->custom_api_id)->where('service_type', 'vtu_data')->where('provider_identifier', 'datasub247')->where('status', true)->exists()) {
             throw \Illuminate\Validation\ValidationException::withMessages(['custom_api_id' => 'Choose an active data band.']);
         }
         DB::table('price_list')->where('id', $id)->update([
@@ -193,6 +193,10 @@ class AdminVtuPricingController extends Controller
         }
 
         try {
+            if (Schema::hasColumn('price_list', 'provider_plan_id')) {
+                DB::table('price_list')->whereNull('provider_plan_id')->orWhere('provider_plan_id', '')->update(['provider_plan_id' => DB::raw('id')]);
+            }
+
             if (DB::table('price_list')->count() > 0) {
                 return;
             }
@@ -200,27 +204,27 @@ class AdminVtuPricingController extends Controller
             $now = now();
             $defaults = [
                 // MTN
-                ['network' => 'MTN', 'data_plan' => '500MB SME Data', 'amount' => 145.00, 'validate' => '30 Days'],
-                ['network' => 'MTN', 'data_plan' => '1.0GB SME Data', 'amount' => 290.00, 'validate' => '30 Days'],
-                ['network' => 'MTN', 'data_plan' => '2.0GB SME Data', 'amount' => 580.00, 'validate' => '30 Days'],
-                ['network' => 'MTN', 'data_plan' => '3.0GB SME Data', 'amount' => 870.00, 'validate' => '30 Days'],
-                ['network' => 'MTN', 'data_plan' => '5.0GB SME Data', 'amount' => 1450.00, 'validate' => '30 Days'],
-                ['network' => 'MTN', 'data_plan' => '10.0GB SME Data', 'amount' => 2900.00, 'validate' => '30 Days'],
+                ['network' => 'MTN', 'data_plan' => '500MB SME Data', 'amount' => 145.00, 'validate' => '30 Days', 'provider_plan_id' => '1'],
+                ['network' => 'MTN', 'data_plan' => '1.0GB SME Data', 'amount' => 290.00, 'validate' => '30 Days', 'provider_plan_id' => '2'],
+                ['network' => 'MTN', 'data_plan' => '2.0GB SME Data', 'amount' => 580.00, 'validate' => '30 Days', 'provider_plan_id' => '3'],
+                ['network' => 'MTN', 'data_plan' => '3.0GB SME Data', 'amount' => 870.00, 'validate' => '30 Days', 'provider_plan_id' => '4'],
+                ['network' => 'MTN', 'data_plan' => '5.0GB SME Data', 'amount' => 1450.00, 'validate' => '30 Days', 'provider_plan_id' => '5'],
+                ['network' => 'MTN', 'data_plan' => '10.0GB SME Data', 'amount' => 2900.00, 'validate' => '30 Days', 'provider_plan_id' => '6'],
                 // GLO
-                ['network' => 'GLO', 'data_plan' => '1.0GB Corporate Gifting', 'amount' => 260.00, 'validate' => '30 Days'],
-                ['network' => 'GLO', 'data_plan' => '2.0GB Corporate Gifting', 'amount' => 520.00, 'validate' => '30 Days'],
-                ['network' => 'GLO', 'data_plan' => '3.0GB Corporate Gifting', 'amount' => 780.00, 'validate' => '30 Days'],
-                ['network' => 'GLO', 'data_plan' => '5.0GB Corporate Gifting', 'amount' => 1300.00, 'validate' => '30 Days'],
-                ['network' => 'GLO', 'data_plan' => '10.0GB Corporate Gifting', 'amount' => 2600.00, 'validate' => '30 Days'],
+                ['network' => 'GLO', 'data_plan' => '1.0GB Corporate Gifting', 'amount' => 260.00, 'validate' => '30 Days', 'provider_plan_id' => '7'],
+                ['network' => 'GLO', 'data_plan' => '2.0GB Corporate Gifting', 'amount' => 520.00, 'validate' => '30 Days', 'provider_plan_id' => '8'],
+                ['network' => 'GLO', 'data_plan' => '3.0GB Corporate Gifting', 'amount' => 780.00, 'validate' => '30 Days', 'provider_plan_id' => '9'],
+                ['network' => 'GLO', 'data_plan' => '5.0GB Corporate Gifting', 'amount' => 1300.00, 'validate' => '30 Days', 'provider_plan_id' => '10'],
+                ['network' => 'GLO', 'data_plan' => '10.0GB Corporate Gifting', 'amount' => 2600.00, 'validate' => '30 Days', 'provider_plan_id' => '11'],
                 // AIRTEL
-                ['network' => 'AIRTEL', 'data_plan' => '1.0GB Corporate Gifting', 'amount' => 280.00, 'validate' => '30 Days'],
-                ['network' => 'AIRTEL', 'data_plan' => '2.0GB Corporate Gifting', 'amount' => 560.00, 'validate' => '30 Days'],
-                ['network' => 'AIRTEL', 'data_plan' => '5.0GB Corporate Gifting', 'amount' => 1400.00, 'validate' => '30 Days'],
-                ['network' => 'AIRTEL', 'data_plan' => '10.0GB Corporate Gifting', 'amount' => 2800.00, 'validate' => '30 Days'],
+                ['network' => 'AIRTEL', 'data_plan' => '1.0GB Corporate Gifting', 'amount' => 280.00, 'validate' => '30 Days', 'provider_plan_id' => '12'],
+                ['network' => 'AIRTEL', 'data_plan' => '2.0GB Corporate Gifting', 'amount' => 560.00, 'validate' => '30 Days', 'provider_plan_id' => '13'],
+                ['network' => 'AIRTEL', 'data_plan' => '5.0GB Corporate Gifting', 'amount' => 1400.00, 'validate' => '30 Days', 'provider_plan_id' => '14'],
+                ['network' => 'AIRTEL', 'data_plan' => '10.0GB Corporate Gifting', 'amount' => 2800.00, 'validate' => '30 Days', 'provider_plan_id' => '15'],
                 // 9MOBILE
-                ['network' => '9MOBILE', 'data_plan' => '1.0GB Corporate Gifting', 'amount' => 250.00, 'validate' => '30 Days'],
-                ['network' => '9MOBILE', 'data_plan' => '2.0GB Corporate Gifting', 'amount' => 500.00, 'validate' => '30 Days'],
-                ['network' => '9MOBILE', 'data_plan' => '5.0GB Corporate Gifting', 'amount' => 1250.00, 'validate' => '30 Days'],
+                ['network' => '9MOBILE', 'data_plan' => '1.0GB Corporate Gifting', 'amount' => 250.00, 'validate' => '30 Days', 'provider_plan_id' => '16'],
+                ['network' => '9MOBILE', 'data_plan' => '2.0GB Corporate Gifting', 'amount' => 500.00, 'validate' => '30 Days', 'provider_plan_id' => '17'],
+                ['network' => '9MOBILE', 'data_plan' => '5.0GB Corporate Gifting', 'amount' => 1250.00, 'validate' => '30 Days', 'provider_plan_id' => '18'],
             ];
 
             foreach ($defaults as &$d) {

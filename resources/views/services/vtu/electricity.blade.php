@@ -34,6 +34,24 @@
                         <label for="serviceID" class="font-weight-600 mb-2 text-white d-block">
                             Select Distribution Company (DISCO)
                         </label>
+                        <div class="disco-logos-grid mb-3">
+                            <button type="button" class="disco-logo-btn" data-disco="ibadan-electric" title="Ibadan Electric (IBEDC)">
+                                <div class="disco-img-wrap"><img src="{{ asset('images/vtu/ibedc.png') }}" alt="IBEDC" class="disco-btn-img"></div>
+                                <span class="disco-btn-label">IBEDC</span>
+                            </button>
+                            <button type="button" class="disco-logo-btn" data-disco="eko-electric" title="Eko Electric (EKEDC)">
+                                <div class="disco-img-wrap"><img src="{{ asset('images/vtu/ekedc.png') }}" alt="EKEDC" class="disco-btn-img"></div>
+                                <span class="disco-btn-label">EKEDC</span>
+                            </button>
+                            <button type="button" class="disco-logo-btn" data-disco="abuja-electric" title="Abuja Electric (AEDC)">
+                                <div class="disco-img-wrap"><img src="{{ asset('images/vtu/aedc.png') }}" alt="AEDC" class="disco-btn-img"></div>
+                                <span class="disco-btn-label">AEDC</span>
+                            </button>
+                            <button type="button" class="disco-logo-btn" data-disco="enugu-electric" title="Enugu Electric (EEDC)">
+                                <div class="disco-img-wrap"><img src="{{ asset('images/vtu/eedc.png') }}" alt="EEDC" class="disco-btn-img"></div>
+                                <span class="disco-btn-label">EEDC</span>
+                            </button>
+                        </div>
                         <div class="select-wrap">
                             <select name="serviceID" id="serviceID" class="form-control vtu-input vtu-select" required>
                                 <option value="">-- Choose your electricity provider --</option>
@@ -238,6 +256,50 @@
 @push('styles')
 <style>
     .elect-bg { background: rgba(234, 179, 8, 0.12); color: #facc15; border: 1px solid rgba(234, 179, 8, 0.25); }
+
+    .disco-logos-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+    }
+    .disco-logo-btn {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        padding: 10px 6px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    .disco-logo-btn:hover, .disco-logo-btn.active {
+        background: rgba(234, 179, 8, 0.12);
+        border-color: #eab308;
+        box-shadow: 0 0 0 1px #eab308;
+    }
+    .disco-img-wrap {
+        width: 42px;
+        height: 38px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 4px;
+        padding: 3px;
+    }
+    .disco-btn-img {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+    }
+    .disco-btn-label {
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: #ffffff;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
 
     /* Meter Type Toggle Cards */
     .meter-type-toggle {
@@ -469,8 +531,24 @@
                 });
             });
 
+            // DISCO Quick Logo Selection
+            document.querySelectorAll('.disco-logo-btn').forEach(function(btn) {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const disco = this.getAttribute('data-disco');
+                    discoSelect.value = disco;
+                    document.querySelectorAll('.disco-logo-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    invalidateValidation();
+                    updateSummary();
+                });
+            });
+
             // Input Listeners
             discoSelect.addEventListener('change', function() {
+                document.querySelectorAll('.disco-logo-btn').forEach(b => {
+                    b.classList.toggle('active', b.getAttribute('data-disco') === discoSelect.value);
+                });
                 invalidateValidation();
                 updateSummary();
             });

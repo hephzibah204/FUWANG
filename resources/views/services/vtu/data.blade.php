@@ -26,14 +26,8 @@
                     @csrf
                     <input type="hidden" name="request_id" id="dataRequestId" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
                     <div class="form-group mb-4">
-                        <label for="dataBand" class="font-weight-600 mb-2">Network band</label>
-                        <select id="dataBand" name="provider_id" class="form-control" {{ $dataProviders->isEmpty() && !$defaultDataBandLabel ? 'disabled' : '' }}>
-                            @forelse($dataProviders as $index => $provider)
-                                <option value="{{ $provider->id }}">{{ $provider->provider_identifier === 'datasub247' ? 'Datasub247' : 'Band '.($index + 1) }}{{ $index === 0 ? ' (Default)' : '' }}</option>
-                            @empty
-                                <option value="">{{ $defaultDataBandLabel ?: 'No configured data bands available' }}</option>
-                            @endforelse
-                        </select>
+                        <input type="hidden" id="dataBand" name="provider_id" value="{{ $dataProviders->first()?->id }}">
+                        <p class="small text-muted mb-0">Data supplied by Datasub247</p>
                         <div id="dataPlanStatus" class="small text-muted mt-2" role="status" aria-live="polite"></div>
                     </div>
                     
@@ -48,8 +42,9 @@
                             <label class="nexus-net-option" for="net_MTN" data-net="MTN">
                                 <input type="radio" name="network" id="net_MTN" value="MTN" checked required>
                                 <div class="net-box net-mtn">
-                                    <img src="{{ asset('images/mtn.png') }}" alt="MTN" class="net-logo-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                    <div class="net-badge-icon badge-mtn" style="display:none;">MTN</div>
+                                    <div class="net-logo-wrap">
+                                        <img src="{{ asset('images/vtu/mtn.png') }}" alt="MTN" class="net-logo-img">
+                                    </div>
                                     <span class="net-title">MTN</span>
                                     <span class="net-status-dot"></span>
                                     <i class="fa-solid fa-circle-check net-check"></i>
@@ -60,8 +55,9 @@
                             <label class="nexus-net-option" for="net_GLO" data-net="GLO">
                                 <input type="radio" name="network" id="net_GLO" value="GLO" required>
                                 <div class="net-box net-glo">
-                                    <img src="{{ asset('images/glo.png') }}" alt="GLO" class="net-logo-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                    <div class="net-badge-icon badge-glo" style="display:none;">GLO</div>
+                                    <div class="net-logo-wrap">
+                                        <img src="{{ asset('images/vtu/glo.png') }}" alt="GLO" class="net-logo-img">
+                                    </div>
                                     <span class="net-title">GLO</span>
                                     <span class="net-status-dot"></span>
                                     <i class="fa-solid fa-circle-check net-check"></i>
@@ -72,8 +68,9 @@
                             <label class="nexus-net-option" for="net_AIRTEL" data-net="AIRTEL">
                                 <input type="radio" name="network" id="net_AIRTEL" value="AIRTEL" required>
                                 <div class="net-box net-airtel">
-                                    <img src="{{ asset('images/airtel.png') }}" alt="AIRTEL" class="net-logo-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                    <div class="net-badge-icon badge-airtel" style="display:none;">AIRTEL</div>
+                                    <div class="net-logo-wrap">
+                                        <img src="{{ asset('images/vtu/airtel.png') }}" alt="AIRTEL" class="net-logo-img">
+                                    </div>
                                     <span class="net-title">AIRTEL</span>
                                     <span class="net-status-dot"></span>
                                     <i class="fa-solid fa-circle-check net-check"></i>
@@ -84,8 +81,9 @@
                             <label class="nexus-net-option" for="net_9MOBILE" data-net="9MOBILE">
                                 <input type="radio" name="network" id="net_9MOBILE" value="9MOBILE" required>
                                 <div class="net-box net-9mobile">
-                                    <img src="{{ asset('images/9mobile.png') }}" alt="9MOBILE" class="net-logo-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                    <div class="net-badge-icon badge-9mobile" style="display:none;">9MOB</div>
+                                    <div class="net-logo-wrap">
+                                        <img src="{{ asset('images/vtu/9mobile.png') }}" alt="9MOBILE" class="net-logo-img">
+                                    </div>
                                     <span class="net-title">9MOBILE</span>
                                     <span class="net-status-dot"></span>
                                     <i class="fa-solid fa-circle-check net-check"></i>
@@ -223,7 +221,7 @@
         border: 1px solid rgba(255, 255, 255, 0.08);
         background: rgba(255, 255, 255, 0.03);
         border-radius: 14px;
-        padding: 14px 10px;
+        padding: 12px 8px;
         text-align: center;
         transition: all 0.2s ease;
         position: relative;
@@ -231,49 +229,30 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        min-height: 90px;
+        min-height: 94px;
     }
-    .net-logo-img {
-        height: 28px;
-        width: auto;
-        max-width: 44px;
-        object-fit: contain;
-        margin-bottom: 6px;
-        transition: transform 0.2s ease;
-    }
-    .net-badge-icon {
+    .net-logo-wrap {
         width: 44px;
-        height: 30px;
-        border-radius: 8px;
+        height: 44px;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.05);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-weight: 900;
-        font-size: 0.8rem;
-        letter-spacing: -0.5px;
         margin-bottom: 6px;
+        padding: 5px;
         transition: transform 0.2s ease;
     }
-    .badge-mtn {
-        background: #ffcc00;
-        color: #000000;
-        box-shadow: 0 2px 8px rgba(255, 204, 0, 0.3);
+    .net-logo-img {
+        max-width: 100%;
+        max-height: 100%;
+        width: auto;
+        height: auto;
+        object-fit: contain;
     }
-    .badge-glo {
-        background: #00a859;
-        color: #ffffff;
-        box-shadow: 0 2px 8px rgba(0, 168, 89, 0.3);
-    }
-    .badge-airtel {
-        background: #ed1c24;
-        color: #ffffff;
-        box-shadow: 0 2px 8px rgba(237, 28, 36, 0.3);
-    }
-    .badge-9mobile {
-        background: #00573d;
-        color: #00ea90;
-        border: 1px solid #00ea90;
-        box-shadow: 0 2px 8px rgba(0, 87, 61, 0.3);
+    .nexus-net-option input:checked + .net-box .net-logo-wrap {
+        transform: scale(1.08);
+        background: rgba(59, 130, 246, 0.15);
     }
     .net-title {
         font-size: 0.75rem;
@@ -399,7 +378,7 @@
             });
             plan.disabled = loading || available.length === 0;
             document.getElementById('selectedNetLabel').textContent = 'Selected: ' + network();
-            status.textContent = loading ? 'Loading available bundles...' : (available.length ? 'Select a bundle to see its price.' : 'No bundles are available for this network and band. Try another band.');
+            status.textContent = loading ? 'Loading available bundles...' : (available.length ? 'Select a bundle to see its price.' : 'No Datasub247 bundles are configured for this network yet. Please contact support.');
             summary();
         }
         async function json(url, body) {

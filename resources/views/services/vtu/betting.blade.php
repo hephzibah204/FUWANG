@@ -25,7 +25,7 @@
 
                     <div class="form-group mb-4">
                         <label class="font-weight-600 mb-2 d-block">Select Provider</label>
-                        <select class="form-control" name="provider_id" id="providerSelect">
+                        <select class="form-control" name="provider_id" id="providerSelect" hidden aria-hidden="true">
                             <option value="">Auto-select best provider</option>
                         </select>
                         <div class="text-muted small mt-2" id="providerMeta"></div>

@@ -31,7 +31,8 @@ class Datasub247Service
 
     public function __construct()
     {
-        $this->baseUrl = rtrim((string) config('services.datasub247.base_url', env('DATASUB247_BASE_URL', 'https://datasub247.com')), '/');
+        $raw = (string) config('services.datasub247.base_url', env('DATASUB247_BASE_URL', 'https://datasub247.com'));
+        $this->baseUrl = preg_replace('#/api/?$#i', '', rtrim(trim($raw), '/'));
         $this->apiKey = config('services.datasub247.api_key', env('DATASUB247_API_KEY'));
         $this->username = config('services.datasub247.username', env('DATASUB247_USERNAME'));
         $this->password = config('services.datasub247.password', env('DATASUB247_PASSWORD'));
@@ -40,10 +41,18 @@ class Datasub247Service
     public function forProvider(CustomApi $provider): self
     {
         $adapter = clone $this;
-        $adapter->apiKey = $provider->api_key;
+        $adapter->apiKey = trim((string) $provider->api_key) !== '' ? $provider->api_key : $this->getApiKey();
         $adapter->username = null;
         $adapter->password = null;
-        $adapter->baseUrl = rtrim((string) data_get($provider->config, 'base_url', $this->baseUrl), '/');
+
+        $rawBase = trim((string) data_get($provider->config, 'base_url', ''));
+        if ($rawBase === '' && !empty($provider->endpoint)) {
+            $parsed = parse_url($provider->endpoint);
+            if (!empty($parsed['scheme']) && !empty($parsed['host'])) {
+                $rawBase = $parsed['scheme'] . '://' . $parsed['host'];
+            }
+        }
+        $adapter->baseUrl = $rawBase !== '' ? preg_replace('#/api/?$#i', '', rtrim($rawBase, '/')) : $this->baseUrl;
         return $adapter;
     }
 
@@ -159,7 +168,7 @@ class Datasub247Service
     /**
      * Purchase Airtime (VTU or SNS)
      */
-    public function purchaseAirtime(string $network, string $phone, float $amount, string $planType = 'VTU', ?string $requestId = null, bool $bypass = false): array
+    public function purchaseAirtime(string|int $network, string $phone, float $amount, string $planType = 'VTU', ?string $requestId = null, bool $bypass = false): array
     {
         $networkId = $this->resolveNetworkId($network);
         $requestId = $requestId ?: ('Airtime_' . time() . '_' . Str::random(6));
@@ -168,7 +177,7 @@ class Datasub247Service
             'network' => $networkId,
             'phone' => $phone,
             'plan_type' => strtoupper($planType),
-            'bypass' => $bypass,
+            'bypass' => (bool) $bypass,
             'amount' => (int) round($amount),
             'request-id' => $requestId,
         ];
@@ -179,7 +188,7 @@ class Datasub247Service
     /**
      * Purchase Data Bundle
      */
-    public function purchaseData(string $network, string $phone, int|string $planId, ?string $requestId = null, bool $bypass = false): array
+    public function purchaseData(string|int $network, string $phone, int|string $planId, ?string $requestId = null, bool $bypass = false): array
     {
         $networkId = $this->resolveNetworkId($network);
         $requestId = $requestId ?: ('Data_' . time() . '_' . Str::random(6));
@@ -188,7 +197,7 @@ class Datasub247Service
             'network' => $networkId,
             'phone' => $phone,
             'data_plan' => (int) $planId,
-            'bypass' => $bypass,
+            'bypass' => (bool) $bypass,
             'request-id' => $requestId,
         ];
 

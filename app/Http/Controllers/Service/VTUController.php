@@ -111,54 +111,8 @@ class VTUController extends Controller
 
     public function providers(Request $request, string $serviceType)
     {
-        if ($serviceType === 'vtu_data') {
-            $providers = app(\App\Services\VtuCatalogService::class)->dataProviders()
-                ->map(fn ($provider, $index) => ['id' => $provider->id,
-                    'name' => ($provider->provider_identifier === 'datasub247' ? 'Datasub247' : 'Band '.($index + 1)).($index === 0 ? ' (Default)' : '')]);
-            return response()->json(['status' => true, 'providers' => $providers]);
-        }
-        $catalog = (array) config('vtu_services.service_types', []);
-        if (! isset($catalog[$serviceType])) {
-            return response()->json(['status' => false, 'message' => 'Unknown service type.'], 404);
-        }
-
-        $serviceTypeCandidates = match ($serviceType) {
-            'vtu_cable_tv' => ['vtu_cable_tv', 'cable_tv'],
-            'vtu_electricity' => ['vtu_electricity', 'electricity_bills'],
-            default => [$serviceType],
-        };
-
-        if ($serviceType === 'vtu_epin' && $request->filled('serviceID') && $request->filled('variation_code')) {
-            $p = app(EpinCatalogService::class)->findByService(
-                $request->string('serviceID')->toString(),
-                $request->string('variation_code')->toString()
-            );
-            if ($p && isset($p['provider_service_types']) && is_array($p['provider_service_types']) && ! empty($p['provider_service_types'])) {
-                $serviceTypeCandidates = array_values(array_filter($p['provider_service_types'], fn ($v) => is_string($v) && $v !== ''));
-            }
-        }
-
-        $providers = CustomApi::whereIn('service_type', $serviceTypeCandidates)
-            ->where('status', true)
-            ->orderBy('priority', 'asc')
-            ->get()
-            ->map(function ($p, $index) {
-                $cfg = is_array($p->config) ? $p->config : [];
-                $maskedName = 'Band ' . ($index + 1);
-
-                return [
-                    'id' => $p->id,
-                    'name' => $maskedName,
-                    'fee_type' => $cfg['fee_type'] ?? $cfg['commission_type'] ?? 'flat',
-                    'fee_value' => (float) ($cfg['fee_value'] ?? $cfg['commission_value'] ?? 0),
-                    'min_amount' => isset($cfg['min_amount']) ? (float) $cfg['min_amount'] : null,
-                    'max_amount' => isset($cfg['max_amount']) ? (float) $cfg['max_amount'] : null,
-                    'service_code' => $cfg['service_code'] ?? null,
-                ];
-            })
-            ->values();
-
-        return response()->json(['status' => true, 'providers' => $providers]);
+        abort_unless(isset(config('vtu_services.service_types', [])[$serviceType]), 404);
+        return response()->json(['status' => true, 'providers' => app(\App\Services\VtuProviderService::class)->listing($serviceType)]);
     }
 
     public function airtimeIndex()
@@ -175,17 +129,7 @@ class VTUController extends Controller
     public function dataIndex()
     {
         $dataProviders = app(\App\Services\VtuCatalogService::class)->dataProviders();
-        $defaultDataBandLabel = null;
-        if ($dataProviders->isEmpty() && !CustomApi::where('service_type', 'vtu_data')->exists()) {
-            if ($this->vtuHub->getDatasub247()->getApiKey()) {
-                $defaultDataBandLabel = 'Datasub247 (Default)';
-            } elseif (Schema::hasTable('api_centers')) {
-                $legacy = DB::table('api_centers')->first();
-                if (!empty($legacy->ade_apikey) && !empty($legacy->ade_endpoint_data)) {
-                    $defaultDataBandLabel = 'Default configured band';
-                }
-            }
-        }
+        $defaultDataBandLabel = app(\App\Services\VtuProviderService::class)->listing('vtu_data')->isNotEmpty() ? 'Datasub247' : null;
         $plans = app(\App\Services\VtuCatalogService::class)->dataPlans()->groupBy('network');
         if ($dataProviders->isEmpty() && $defaultDataBandLabel === null) {
             $plans = collect();
@@ -906,17 +850,25 @@ class VTUController extends Controller
     public function buyData(Request $request)
     {
         $request->validate([
-            'network' => 'required|string', 'plan_id' => 'required|string',
-            'amount' => 'required|numeric|min:50', 'phone' => 'required|string|digits:11',
-            'provider_id' => 'nullable|integer|exists:custom_apis,id',
+            'network' => 'required|string',
+            'plan_id' => 'required|string',
+            'amount' => 'required|numeric|min:50',
+            'phone' => 'required|string|digits:11',
+            'provider_id' => 'nullable|integer',
         ]);
         // Keep the local catalogue ID intact. Only VtuCatalogService translates it upstream.
         $result = $this->vtuHub->processRequest([
-            'service_type' => 'vtu_data', 'amount' => (float) $request->amount,
-            'provider_id' => $request->input('provider_id'),
-            'order_type' => 'Data Purchase', 'tx_prefix' => 'DATA',
-            'payload' => ['network' => $request->network, 'plan_id' => $request->plan_id,
-                'amount' => (float) $request->amount, 'phone' => $request->phone],
+            'service_type' => 'vtu_data',
+            'amount' => (float) $request->amount,
+            'provider_id' => $request->filled('provider_id') ? (int) $request->input('provider_id') : null,
+            'order_type' => 'Data Purchase',
+            'tx_prefix' => 'DATA',
+            'payload' => [
+                'network' => $request->network,
+                'plan_id' => $request->plan_id,
+                'amount' => (float) $request->amount,
+                'phone' => $request->phone,
+            ],
         ]);
         if ($request->expectsJson() || $request->ajax()) {
             return response()->json($result, !empty($result['pending']) ? 202 : (!empty($result['status']) ? 200 : 422));

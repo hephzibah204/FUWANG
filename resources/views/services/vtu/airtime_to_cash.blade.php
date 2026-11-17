@@ -25,7 +25,7 @@
 
                     <div class="form-group mb-4">
                         <label class="font-weight-600 mb-2 d-block">Select Provider</label>
-                        <select class="form-control" name="provider_id" id="providerSelect">
+                        <select class="form-control" name="provider_id" id="providerSelect" hidden aria-hidden="true">
                             <option value="">Auto-select best provider</option>
                         </select>
                         <div class="text-muted small mt-2" id="providerMeta"></div>
@@ -38,17 +38,8 @@
                                 <label class="nexus-net-option" for="net_{{ $net }}">
                                     <input type="radio" name="network" id="net_{{ $net }}" value="{{ $net }}" {{ $loop->first ? 'checked' : '' }} required>
                                     <div class="net-box">
-                                        <img src="{{ asset('images/' . strtolower($net) . '.png') }}" alt="{{ $net }}" class="net-logo-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                        <div class="net-badge-icon badge-{{ strtolower($net) }}" style="display:none;">
-                                            @if($net === 'MTN')
-                                                <i class="fa-solid fa-bolt"></i>
-                                            @elseif($net === 'GLO')
-                                                <i class="fa-solid fa-globe"></i>
-                                            @elseif($net === 'AIRTEL')
-                                                <i class="fa-solid fa-tower-cell"></i>
-                                            @else
-                                                <i class="fa-solid fa-signal"></i>
-                                            @endif
+                                        <div class="net-logo-wrap">
+                                            <img src="{{ asset('images/vtu/' . strtolower($net) . '.png') }}" alt="{{ $net }}" class="net-logo-img">
                                         </div>
                                         <span>{{ $net }}</span>
                                     </div>
