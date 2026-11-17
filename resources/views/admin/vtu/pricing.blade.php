@@ -178,7 +178,7 @@
         <div class="d-flex align-items-center justify-content-between mb-4 border-bottom border-white-5 pb-3 flex-wrap" style="gap: 12px;">
             <div>
                 <h5 class="text-white mb-1 fw-bold"><i class="fa-solid fa-wifi text-primary mr-2"></i> Data Bundles Catalog (Price List)</h5>
-                <p class="text-muted small mb-0">Manage broadband bundles, prices, and validities across MTN, GLO, Airtel, and 9mobile.</p>
+                <p class="text-muted small mb-0">Set independent bundle prices for each API band. Customers see only the selected band's configured plans and prices.</p>
             </div>
             
             <ul class="nav nav-pills" id="networkPills" role="tablist">
@@ -193,6 +193,14 @@
             </ul>
         </div>
 
+        <div class="form-group mb-3">
+            <label for="pricingBandFilter">Filter prices by API band</label>
+            <select id="pricingBandFilter" class="form-control">
+                <option value="all">All bands</option>
+                @foreach($bandNames as $bandId => $bandName)<option value="{{ $bandId }}">{{ $bandName }}</option>@endforeach
+                <option value="unassigned">Unassigned plans (not available for configured bands)</option>
+            </select>
+        </div>
         <div class="tab-content" id="networkPillsContent">
             <!-- All Networks Tab -->
             <div class="tab-pane fade show active" id="pill-all" role="tabpanel">
@@ -200,6 +208,7 @@
                     <table class="table table-hover align-middle mb-0 text-white">
                         <thead class="text-muted small text-uppercase" style="border-color: rgba(255,255,255,0.08);">
                             <tr>
+                                <th>API band</th>
                                 <th>Network</th>
                                 <th>Data Bundle Plan</th>
                                 <th>Validity</th>
@@ -212,7 +221,8 @@
                             @foreach($bundles as $net => $plans)
                                 @foreach($plans as $plan)
                                     @php $hasAny = true; @endphp
-                                    <tr>
+                                    <tr data-pricing-band="{{ $plan->custom_api_id ?: 'unassigned' }}">
+                                        <td>{{ $bandNames->get($plan->custom_api_id, 'Unassigned') }}</td>
                                         <td>
                                             @php
                                                 $netBadge = match($net) {
@@ -225,7 +235,7 @@
                                             @endphp
                                             <span class="badge {{ $netBadge }} px-2 py-1 font-weight-bold">{{ $net }}</span>
                                         </td>
-                                        <td class="font-weight-600">{{ $plan->data_plan }}</td>
+                                        <td class="font-weight-600">{{ $plan->data_plan }}<small class="d-block text-muted">Provider plan ID: {{ $plan->provider_plan_id ?: 'Not mapped' }}</small></td>
                                         <td><span class="badge badge-dark border border-white-10 text-muted">{{ $plan->validate ?: '30 Days' }}</span></td>
                                         <td class="text-right font-weight-bold text-primary font-mono" style="font-size: 1.05rem;">
                                             ₦{{ number_format((float) $plan->amount, 2) }}
@@ -243,7 +253,7 @@
                             @endforeach
                             @if(!$hasAny)
                                 <tr>
-                                    <td colspan="5" class="text-center py-4 text-muted">No data bundles configured yet. Click "Add Data Bundle" to begin.</td>
+                                    <td colspan="6" class="text-center py-4 text-muted">No data bundles configured yet. Click "Add Data Bundle" to begin.</td>
                                 </tr>
                             @endif
                         </tbody>
@@ -258,7 +268,8 @@
                         <table class="table table-hover align-middle mb-0 text-white">
                             <thead class="text-muted small text-uppercase" style="border-color: rgba(255,255,255,0.08);">
                                 <tr>
-                                    <th>Network</th>
+                                    <th>API band</th>
+                                <th>Network</th>
                                     <th>Data Bundle Plan</th>
                                     <th>Validity</th>
                                     <th class="text-right">Price (₦)</th>
@@ -268,7 +279,8 @@
                             <tbody>
                                 @php $netPlans = $bundles->get($net, collect()); @endphp
                                 @forelse($netPlans as $plan)
-                                    <tr>
+                                    <tr data-pricing-band="{{ $plan->custom_api_id ?: 'unassigned' }}">
+                                        <td>{{ $bandNames->get($plan->custom_api_id, 'Unassigned') }}</td>
                                         <td>
                                             @php
                                                 $netBadge = match($net) {
@@ -281,7 +293,7 @@
                                             @endphp
                                             <span class="badge {{ $netBadge }} px-2 py-1 font-weight-bold">{{ $net }}</span>
                                         </td>
-                                        <td class="font-weight-600">{{ $plan->data_plan }}</td>
+                                        <td class="font-weight-600">{{ $plan->data_plan }}<small class="d-block text-muted">Provider plan ID: {{ $plan->provider_plan_id ?: 'Not mapped' }}</small></td>
                                         <td><span class="badge badge-dark border border-white-10 text-muted">{{ $plan->validate ?: '30 Days' }}</span></td>
                                         <td class="text-right font-weight-bold text-primary font-mono" style="font-size: 1.05rem;">
                                             ₦{{ number_format((float) $plan->amount, 2) }}
@@ -297,7 +309,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="5" class="text-center py-4 text-muted">No {{ $net }} bundles configured. Click "Add Data Bundle" to create one.</td>
+                                        <td colspan="6" class="text-center py-4 text-muted">No {{ $net }} bundles configured. Click "Add Data Bundle" to create one.</td>
                                     </tr>
                                 @endforelse
                             </tbody>
@@ -421,6 +433,9 @@
 
 @push('scripts')
 <script>
+    document.getElementById('pricingBandFilter').addEventListener('change', function () {
+        document.querySelectorAll('[data-pricing-band]').forEach(row => { row.hidden = this.value !== 'all' && row.dataset.pricingBand !== this.value; });
+    });
     function openEditModal(plan) {
         let updateUrl = "{{ url(config('app.admin_path', 'admin').'/vtu/pricing/bundle') }}/" + plan.id;
         $('#editBundleForm').attr('action', updateUrl);

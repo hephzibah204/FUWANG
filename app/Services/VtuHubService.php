@@ -321,19 +321,26 @@ class VtuHubService
             $serviceTypeCandidates = array_values(array_filter($params['provider_service_types'], fn ($v) => is_string($v) && $v !== ''));
         }
         $provider = null;
-        if ($providerId) {
-            $provider = CustomApi::where('id', $providerId)
-                ->whereIn('service_type', $serviceTypeCandidates)
-                ->where('status', true)
-                ->first();
+        if ($serviceType === 'vtu_data') {
+            $provider = app(VtuCatalogService::class)->dataProvider($providerId);
+            if ($providerId && !$provider) {
+                return ['status' => false, 'message' => 'Selected data band is not configured or is unavailable.'];
+            }
+        } else {
+            if ($providerId) {
+                $provider = CustomApi::where('id', $providerId)
+                    ->whereIn('service_type', $serviceTypeCandidates)
+                    ->where('status', true)
+                    ->first();
+            }
+            if ($providerId && !$provider) {
+                return ['status' => false, 'message' => 'Selected band is unavailable. Please choose another band.'];
+            }
+            if (!$provider) {
+                $provider = CustomApi::whereIn('service_type', $serviceTypeCandidates)->where('status', true)->orderBy('priority', 'asc')->first();
+            }
         }
-        if ($providerId && !$provider) {
-            return ['status' => false, 'message' => 'Selected band is unavailable. Please choose another band.'];
-        }
-        if (!$provider) {
-            $provider = CustomApi::whereIn('service_type', $serviceTypeCandidates)->where('status', true)->orderBy('priority', 'asc')->first();
-        }
-        
+
         $apiKey = null;
         $endpoint = null;
         $headers = ['Content-Type' => 'application/json'];
@@ -364,7 +371,10 @@ class VtuHubService
         }
 
         if ($isDatasub247 && $provider && empty($provider->api_key)) {
-            return ['status' => false, 'message' => 'Selected band credentials are not configured.'];
+            $provider->api_key = $this->datasub247->getApiKey();
+            if (empty($provider->api_key)) {
+                return ['status' => false, 'message' => 'Selected band credentials are not configured.'];
+            }
         }
         $isClubkonnect = !$provider && !$isDatasub247 && in_array($serviceType, ['vtu_data_card', 'vtu_recharge_card'], true) && app(ClubkonnectPrintingService::class)->configured();
         if (!$isDatasub247 && !$isClubkonnect && (!$apiKey || !$endpoint)) {

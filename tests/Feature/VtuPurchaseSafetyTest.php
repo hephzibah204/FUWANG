@@ -150,6 +150,131 @@ class VtuPurchaseSafetyTest extends VtuEndpointsTest
         $this->assertSame(0, Transaction::count()); Http::assertNothingSent();
     }
 
+    public function test_data_checkout_preserves_catalogue_id_and_explicit_band(): void
+    {
+        $user = $this->customer();
+        $first = $this->provider('vtu_data');
+        $chosen = $this->provider('vtu_data');
+        $chosen->update(['endpoint' => 'https://chosen-band.test/data', 'priority' => 9]);
+        DB::table('price_list')->insert([
+            ['id' => 7, 'network' => 'MTN', 'data_plan' => 'MTN 1 GB', 'amount' => 500, 'provider_plan_id' => '812', 'custom_api_id' => $chosen->id],
+            ['id' => 812, 'network' => 'GLO', 'data_plan' => 'Unrelated GLO plan', 'amount' => 900, 'provider_plan_id' => '999', 'custom_api_id' => $first->id],
+        ]);
+        Http::fake(['https://chosen-band.test/data' => Http::response(['status' => 'success'])]);
+        $this->postJson('/services/vtu/data/buy', ['network' => 'MTN', 'plan_id' => '7', 'amount' => 50,
+            'phone' => '08123456789', 'provider_id' => $chosen->id, 'request_id' => 'DATA-CATALOGUE-IDENTITY'])
+            ->assertOk()->assertJson(['status' => true]);
+        Http::assertSentCount(1);
+        Http::assertSent(fn ($r) => $r->url() === 'https://chosen-band.test/data' && $r['plan_id'] === '812' && (float) $r['amount'] === 500.0);
+        $this->assertSame(1500.0, (float) $user->balance->user_balance);
+        $this->assertSame('7', VtuTransaction::first()->request_payload['plan_id']);
+    }
+
+    public function test_data_display_and_checkout_use_the_same_default_band_catalogue(): void
+    {
+        $this->customer(); $default = $this->provider('vtu_data'); $other = $this->provider('vtu_data');
+        DB::table('price_list')->insert([
+            ['id' => 1, 'network' => ' mtn ', 'data_plan' => 'Configured default plan', 'amount' => 500, 'provider_plan_id' => '812', 'custom_api_id' => $default->id],
+            ['id' => 2, 'network' => 'MTN', 'data_plan' => 'Other band plan', 'amount' => 600, 'provider_plan_id' => '900', 'custom_api_id' => $other->id],
+            ['id' => 3, 'network' => 'MTN', 'data_plan' => 'Unconfigured sample plan', 'amount' => 145, 'provider_plan_id' => null, 'custom_api_id' => null],
+        ]);
+        $this->getJson('/services/vtu/catalog/vtu_data')->assertOk()
+            ->assertJsonCount(1, 'products')->assertJsonPath('products.0.code', '1')->assertJsonPath('products.0.network', 'MTN');
+        $this->getJson('/services/vtu/catalog/vtu_data?provider_id='.$other->id)->assertOk()
+            ->assertJsonCount(1, 'products')->assertJsonPath('products.0.code', '2');
+        $view = app(\App\Http\Controllers\Service\VTUController::class)->dataIndex();
+        $this->assertSame([1], $view->getData()['plans']->get('MTN')->pluck('id')->all());
+        Http::assertNothingSent();
+    }
+
+    public function test_data_bands_exclude_unconfigured_apis_and_default_to_datasub247(): void
+    {
+        $this->customer();
+        $generic = $this->provider('vtu_data');
+        $datasub = $this->provider('vtu_data', [], 'datasub247'); $datasub->update(['priority' => 99]);
+        $noKey = $this->provider('vtu_data'); $noKey->update(['api_key' => null]);
+        $noEndpoint = $this->provider('vtu_data'); $noEndpoint->update(['endpoint' => null]);
+        $disabled = $this->provider('vtu_data'); $disabled->update(['status' => false]);
+        $this->getJson('/services/vtu/providers/vtu_data')->assertOk()->assertJsonCount(2, 'providers')
+            ->assertJsonPath('providers.0.id', $datasub->id)->assertJsonPath('providers.0.name', 'Datasub247 (Default)')
+            ->assertJsonPath('providers.1.id', $generic->id);
+        $view = app(\App\Http\Controllers\Service\VTUController::class)->dataIndex();
+        $this->assertSame([$datasub->id, $generic->id], $view->getData()['dataProviders']->pluck('id')->all());
+        Http::assertNothingSent();
+    }
+
+    public function test_data_default_checkout_uses_datasub247_even_when_another_band_has_higher_priority(): void
+    {
+        $this->customer(); $generic = $this->provider('vtu_data');
+        $datasub = $this->provider('vtu_data', [], 'datasub247'); $datasub->update(['priority' => 99]);
+        DB::table('price_list')->insert(['id' => 17, 'network' => 'MTN', 'data_plan' => 'Datasub 1 GB', 'amount' => 500,
+            'provider_plan_id' => '812', 'custom_api_id' => $datasub->id]);
+        Http::fake(['https://datasub247.com/api/data' => Http::response(['status' => 'success'])]);
+        $this->postJson('/services/vtu/data/buy', ['network' => 'MTN', 'plan_id' => '17', 'amount' => 500, 'phone' => '08123456789'])
+            ->assertOk()->assertJson(['status' => true]);
+        Http::assertSent(fn ($r) => $r->url() === 'https://datasub247.com/api/data' && $r['data_plan'] === 812);
+        $this->assertSame($datasub->id, VtuTransaction::first()->custom_api_id);
+    }
+
+    public function test_unconfigured_explicit_data_band_is_rejected_before_debit(): void
+    {
+        $this->customer(); $provider = $this->provider('vtu_data'); $provider->update(['api_key' => null]);
+        $this->postJson('/services/vtu/data/buy', ['network' => 'MTN', 'plan_id' => '7', 'amount' => 500,
+            'phone' => '08123456789', 'provider_id' => $provider->id])->assertStatus(422);
+        Http::assertNothingSent(); $this->assertSame(0, Transaction::count());
+    }
+
+    public function test_admin_configures_independent_bundle_prices_for_each_data_band(): void
+    {
+        $user = $this->customer(); $first = $this->provider('vtu_data'); $second = $this->provider('vtu_data');
+        $controller = app(\App\Http\Controllers\Admin\AdminVtuPricingController::class);
+        foreach ([[$first, '812', 500], [$second, '900', 700]] as [$provider, $code, $price]) {
+            $request = \Illuminate\Http\Request::create('/admin/vtu/pricing/bundle', 'POST', [
+                'network' => 'MTN', 'data_plan' => '1 GB', 'provider_plan_id' => $code,
+                'custom_api_id' => $provider->id, 'amount' => $price, 'validate' => '30 Days',
+            ]);
+            $request->headers->set('Accept', 'application/json');
+            $this->assertTrue($controller->storeBundle($request)->getData(true)['status']);
+        }
+        $this->getJson('/services/vtu/catalog/vtu_data?provider_id='.$first->id)->assertJsonCount(1, 'products')->assertJsonPath('products.0.amount', 500);
+        $this->getJson('/services/vtu/catalog/vtu_data?provider_id='.$second->id)->assertJsonCount(1, 'products')->assertJsonPath('products.0.amount', 700);
+        $id = DB::table('price_list')->where('custom_api_id', $second->id)->value('id');
+        Http::fake(['*' => Http::response(['status' => 'success'])]);
+        $this->postJson('/services/vtu/data/buy', ['network' => 'MTN', 'plan_id' => (string) $id, 'amount' => 50,
+            'phone' => '08123456789', 'provider_id' => $second->id])->assertOk()->assertJsonPath('breakdown.total', 700);
+        $this->assertSame(1300.0, (float) $user->balance->user_balance);
+        $this->assertSame(500.0, (float) DB::table('price_list')->where('custom_api_id', $first->id)->value('amount'));
+    }
+
+    public function test_unassigned_data_prices_are_not_shared_between_configured_bands(): void
+    {
+        $this->customer(); $provider = $this->provider('vtu_data');
+        DB::table('price_list')->insert(['id' => 7, 'network' => 'MTN', 'data_plan' => 'Unassigned 1 GB', 'amount' => 500,
+            'provider_plan_id' => '812', 'custom_api_id' => null]);
+        $this->getJson('/services/vtu/catalog/vtu_data?provider_id='.$provider->id)->assertOk()->assertJsonCount(0, 'products');
+        $this->postJson('/services/vtu/data/buy', ['network' => 'MTN', 'plan_id' => '7', 'amount' => 500,
+            'phone' => '08123456789', 'provider_id' => $provider->id])->assertStatus(422);
+        Http::assertNothingSent(); $this->assertSame(0, Transaction::count());
+    }
+
+    public function test_data_screen_renders_real_bands_without_sample_purchase_options(): void
+    {
+        $this->customer(); $provider = $this->provider('vtu_data', [], 'datasub247');
+        $this->provider('vtu_data');
+        DB::table('price_list')->insert(['id' => 7, 'network' => 'MTN', 'data_plan' => 'Configured 1 GB', 'amount' => 500, 'provider_plan_id' => '812', 'custom_api_id' => $provider->id]);
+        app('view')->addLocation(base_path('tests/Fixtures/views'));
+        app('view')->share('errors', new \Illuminate\Support\ViewErrorBag());
+        $template = str_replace("@extends('layouts.nexus')", "@extends('vtu-test-layout')", file_get_contents(resource_path('views/services/vtu/data.blade.php')));
+        $data = app(\App\Http\Controllers\Service\VTUController::class)->dataIndex()->getData();
+        $html = \Illuminate\Support\Facades\Blade::render($template, $data);
+        $this->assertStringContainsString('id="dataBand"', $html);
+        $this->assertStringNotContainsString('defaultPlans', $html);
+        $this->assertStringContainsString('Configured 1 GB', $html);
+        $directory = storage_path('framework/testing/vtu-ui');
+        if (!is_dir($directory)) { mkdir($directory, 0777, true); }
+        file_put_contents($directory.'/data-current.html', $html);
+    }
+
     public function test_quote_does_not_debit_or_send_purchase(): void
     {
         $this->customer(); $this->provider('vtu_airtime');

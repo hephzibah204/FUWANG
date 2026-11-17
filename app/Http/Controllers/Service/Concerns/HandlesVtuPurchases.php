@@ -23,6 +23,10 @@ trait HandlesVtuPurchases
     }
     private function purchaseProviders(Request $request,string $serviceType) {
         abort_unless(isset(config('vtu_services.service_types',[])[$serviceType]),404);
+        if($serviceType==='vtu_data'){
+            $providers=app(VtuCatalogService::class)->dataProviders()->map(fn($p,$i)=>['id'=>$p->id,'name'=>($p->provider_identifier==='datasub247'?'Datasub247':'Band '.($i+1)).($i===0?' (Default)':'')]);
+            return response()->json(['status'=>true,'providers'=>$providers]);
+        }
         $types=$this->providerTypes($serviceType);
         $providers=CustomApi::whereIn('service_type',$types)->where('status',true)->orderBy('priority')->get()
             ->filter(fn($p)=>$p->provider_identifier!=='datasub247' || $this->datasubSupports($serviceType))
@@ -38,10 +42,9 @@ trait HandlesVtuPurchases
     public function catalog(Request $request,string $serviceType) {
         abort_unless(isset(config('vtu_services.service_types',[])[$serviceType]),404);
         $id=$request->integer('provider_id');$products=[];
-        if($serviceType==='vtu_data' && Schema::hasTable('price_list') && Schema::hasColumn('price_list','provider_plan_id')){
-            $products=DB::table('price_list')->whereNotNull('provider_plan_id')->where('provider_plan_id','!=','')->orderBy('amount')->get()
-                ->filter(fn($p)=>!$p->custom_api_id || (int)$p->custom_api_id===$id)
-                ->map(fn($p)=>['code'=>(string)$p->id,'network'=>strtoupper($p->network),'label'=>$p->data_plan,'validity'=>$p->validate,'amount'=>(float)$p->amount])->values()->all();
+        if($serviceType==='vtu_data'){
+            $products=app(VtuCatalogService::class)->dataPlans($id ?: null)
+                ->map(fn($p)=>['code'=>(string)$p->id,'network'=>$p->network,'label'=>$p->data_plan,'validity'=>$p->validate,'amount'=>(float)$p->amount])->all();
         }elseif($serviceType==='vtu_epin'){
             $provider=$id?CustomApi::find($id):null;
             $datasub=$provider?->provider_identifier==='datasub247' || (!$provider && $this->vtuHub->getDatasub247()->getApiKey());

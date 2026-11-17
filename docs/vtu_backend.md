@@ -30,6 +30,15 @@ Legacy compatibility:
 - `vtu_electricity` also matches providers configured as `electricity_bills`
 
 ## Transaction Processing
+
+### Data bands and selling prices
+
+- Configure each data API in Custom APIs with service type `vtu_data`. Customers can select only active bands with credentials; generic providers also require an endpoint. Configured Datasub247 is the default.
+- In Admin → VTU & Utility Pricing, assign every bundle to its API band, enter the provider's actual plan ID, and set that band's selling price. Use the band filter to review prices independently.
+- Unassigned bundles and bundles without a provider plan ID are unavailable for configured bands. Do not populate these fields with guessed IDs.
+- The purchase page, catalogue endpoint, quote and checkout all use `VtuCatalogService` to resolve the same band-specific catalogue. Switching bands clears the previous selection and price.
+- The browser submits the local catalogue row ID. Only the billing service maps it to the provider plan ID, and the server determines the price regardless of the submitted amount.
+
 All VTU transactions run through [VtuHubService.php](file:///c:/Users/User/Documents/gsoft_verify_V2/app/Services/VtuHubService.php):
 - Validates payload using the catalog rules
 - Selects a provider (or falls back to legacy `ApiCenter` endpoints)

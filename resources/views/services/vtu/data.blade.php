@@ -24,6 +24,18 @@
                 
                 <form id="dataForm" action="{{ route('services.vtu.data.buy') }}" method="POST" class="vtu-form">
                     @csrf
+                    <input type="hidden" name="request_id" id="dataRequestId" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
+                    <div class="form-group mb-4">
+                        <label for="dataBand" class="font-weight-600 mb-2">Network band</label>
+                        <select id="dataBand" name="provider_id" class="form-control" {{ $dataProviders->isEmpty() && !$defaultDataBandLabel ? 'disabled' : '' }}>
+                            @forelse($dataProviders as $index => $provider)
+                                <option value="{{ $provider->id }}">{{ $provider->provider_identifier === 'datasub247' ? 'Datasub247' : 'Band '.($index + 1) }}{{ $index === 0 ? ' (Default)' : '' }}</option>
+                            @empty
+                                <option value="">{{ $defaultDataBandLabel ?: 'No configured data bands available' }}</option>
+                            @endforelse
+                        </select>
+                        <div id="dataPlanStatus" class="small text-muted mt-2" role="status" aria-live="polite"></div>
+                    </div>
                     
                     <!-- 1. Select Network Provider -->
                     <div class="form-group mb-4">
@@ -358,235 +370,106 @@
 
 @push('scripts')
 <script>
-(function() {
-    // Pure, reliable execution independent of external script loaders
+(function () {
     function initDataBundlePage() {
-        const serverPlans = @json($plans ?? []);
-        const defaultPlans = {
-            'MTN': [
-                { id: '1', data_plan: '500MB SME Data', amount: 150, validate: '30 Days' },
-                { id: '2', data_plan: '1.0GB SME Data', amount: 290, validate: '30 Days' },
-                { id: '3', data_plan: '2.0GB SME Data', amount: 580, validate: '30 Days' },
-                { id: '4', data_plan: '3.0GB SME Data', amount: 870, validate: '30 Days' },
-                { id: '5', data_plan: '5.0GB SME Data', amount: 1450, validate: '30 Days' },
-                { id: '6', data_plan: '10.0GB SME Data', amount: 2900, validate: '30 Days' }
-            ],
-            'GLO': [
-                { id: '1', data_plan: '1.0GB Corporate Gifting', amount: 270, validate: '30 Days' },
-                { id: '2', data_plan: '2.0GB Corporate Gifting', amount: 540, validate: '30 Days' },
-                { id: '3', data_plan: '3.0GB Corporate Gifting', amount: 810, validate: '30 Days' },
-                { id: '5', data_plan: '5.0GB Corporate Gifting', amount: 1350, validate: '30 Days' },
-                { id: '10', data_plan: '10.0GB Corporate Gifting', amount: 2700, validate: '30 Days' }
-            ],
-            'AIRTEL': [
-                { id: '1', data_plan: '1.0GB Corporate Gifting', amount: 280, validate: '30 Days' },
-                { id: '2', data_plan: '2.0GB Corporate Gifting', amount: 560, validate: '30 Days' },
-                { id: '5', data_plan: '5.0GB Corporate Gifting', amount: 1400, validate: '30 Days' },
-                { id: '10', data_plan: '10.0GB Corporate Gifting', amount: 2800, validate: '30 Days' }
-            ],
-            '9MOBILE': [
-                { id: '1', data_plan: '1.0GB Corporate Gifting', amount: 250, validate: '30 Days' },
-                { id: '2', data_plan: '2.0GB Corporate Gifting', amount: 500, validate: '30 Days' },
-                { id: '5', data_plan: '5.0GB Corporate Gifting', amount: 1250, validate: '30 Days' }
-            ]
-        };
-
-        const planSelect = document.getElementById('planSelect');
-        const amountInput = document.getElementById('amountInput');
-        const selectedNetLabel = document.getElementById('selectedNetLabel');
-        const sumNetworkBadge = document.getElementById('sumNetworkBadge');
-        const sumPlanName = document.getElementById('sumPlanName');
-        const sumAmountDisplay = document.getElementById('sumAmountDisplay');
-        const networkRadios = document.querySelectorAll('input[name="network"]');
-        const dataForm = document.getElementById('dataForm');
-        const buyBtn = document.getElementById('buy-btn');
-        const loaderOverlay = document.getElementById('loaderOverlay');
-        const btnUseMyPhone = document.getElementById('btnUseMyPhone');
-        const phoneInput = document.getElementById('phone');
-
-        // Shortcut: Use user's own phone
-        if (btnUseMyPhone && phoneInput) {
-            btnUseMyPhone.addEventListener('click', function() {
-                phoneInput.value = this.getAttribute('data-phone') || '';
-                phoneInput.focus();
-            });
+        let grouped = @json($plans ?? []), loading = false, paying = false, catalogVersion = 0;
+        const form = document.getElementById('dataForm'), band = document.getElementById('dataBand');
+        const plan = document.getElementById('planSelect'), amount = document.getElementById('amountInput');
+        const button = document.getElementById('buy-btn'), status = document.getElementById('dataPlanStatus');
+        const phone = document.getElementById('phone'), overlay = document.getElementById('loaderOverlay');
+        const money = n => new Intl.NumberFormat('en-NG', {style: 'currency', currency: 'NGN'}).format(Number(n || 0));
+        const network = () => form.querySelector('[name="network"]:checked')?.value || '';
+        const catalogUrl = @json(route('services.vtu.catalog', ['serviceType' => 'vtu_data']));
+        const quoteUrl = @json(route('services.vtu.quote', ['serviceType' => 'vtu_data']));
+        function summary() {
+            const option = plan.selectedOptions[0], valid = !!option?.value && !loading;
+            amount.value = valid ? option.dataset.price : '';
+            document.getElementById('sumNetworkBadge').textContent = network() + ' DATA';
+            document.getElementById('sumPlanName').textContent = valid ? option.dataset.label : 'Select an available bundle';
+            document.getElementById('sumAmountDisplay').textContent = valid ? money(amount.value) : money(0);
+            button.disabled = !valid || paying;
         }
-
-        function getActiveNetwork() {
-            let active = 'MTN';
-            networkRadios.forEach(function(radio) {
-                if (radio.checked) {
-                    active = radio.value;
+        function populate() {
+            const available = grouped[network()] || [];
+            plan.replaceChildren(new Option(loading ? 'Loading bundles...' : (available.length ? 'Choose a data bundle' : 'No bundles available for this network and band'), ''));
+            if (!loading) available.forEach(p => {
+                const label = p.data_plan || p.label;
+                const option = new Option(label + (p.validate ? ' (' + p.validate + ')' : '') + ' - ' + money(p.amount), String(p.id));
+                option.dataset.price = p.amount; option.dataset.label = label; plan.add(option);
+            });
+            plan.disabled = loading || available.length === 0;
+            document.getElementById('selectedNetLabel').textContent = 'Selected: ' + network();
+            status.textContent = loading ? 'Loading available bundles...' : (available.length ? 'Select a bundle to see its price.' : 'No bundles are available for this network and band. Try another band.');
+            summary();
+        }
+        async function json(url, body) {
+            const response = await fetch(url, {method: body ? 'POST' : 'GET', credentials: 'same-origin',
+                headers: {Accept: 'application/json', ...(body ? {'Content-Type':'application/json', 'X-CSRF-TOKEN': form.elements._token.value} : {})},
+                ...(body ? {body: JSON.stringify(body)} : {})});
+            const data = await response.json();
+            if (!response.ok) { const error = new Error(data.message || 'Request could not be completed.'); error.data = data; throw error; }
+            return data;
+        }
+        band.addEventListener('change', async () => {
+            const version = ++catalogVersion; loading = true; grouped = {}; populate();
+            try {
+                const data = await json(catalogUrl + '?provider_id=' + encodeURIComponent(band.value));
+                if (version !== catalogVersion) return;
+                for (const p of data.products || []) {
+                    (grouped[p.network] ||= []).push({id: p.code, data_plan: p.label, validate: p.validity, amount: p.amount});
                 }
-            });
-            return active;
-        }
-
-        function populatePlans(network) {
-            if (!planSelect) return;
-            planSelect.innerHTML = '<option value="">-- Choose Data Bundle --</option>';
-
-            let plans = [];
-            if (serverPlans && serverPlans[network] && serverPlans[network].length > 0) {
-                plans = serverPlans[network];
-            } else if (defaultPlans[network]) {
-                plans = defaultPlans[network];
-            }
-
-            plans.forEach(function(p) {
-                const opt = document.createElement('option');
-                opt.value = p.id;
-                const price = Number(p.amount || 0);
-                opt.setAttribute('data-price', price);
-                const title = p.data_plan || p.name || 'Data Plan';
-                const validity = p.validate ? ' (' + p.validate + ')' : '';
-                opt.textContent = `${title}${validity} — ₦${price.toLocaleString()}`;
-                planSelect.appendChild(opt);
-            });
-
-            // Update UI Labels
-            if (selectedNetLabel) {
-                selectedNetLabel.innerHTML = 'Selected: <strong class="text-warning">' + network + '</strong>';
-            }
-            if (sumNetworkBadge) {
-                sumNetworkBadge.textContent = network + ' DATA';
-            }
-
-            // Auto-select first bundle if available
-            if (plans.length > 0) {
-                planSelect.selectedIndex = 1;
-                updateSummary();
-            } else {
-                updateSummary();
-            }
-        }
-
-        function updateSummary() {
-            if (!planSelect) return;
-            const selectedOpt = planSelect.options[planSelect.selectedIndex];
-            if (selectedOpt && selectedOpt.value) {
-                const price = Number(selectedOpt.getAttribute('data-price') || 0);
-                if (amountInput) amountInput.value = price;
-                if (sumPlanName) sumPlanName.textContent = selectedOpt.textContent.split('—')[0].trim();
-                if (sumAmountDisplay) sumAmountDisplay.textContent = '₦' + price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            } else {
-                if (amountInput) amountInput.value = 0;
-                if (sumPlanName) sumPlanName.textContent = 'Select a plan above';
-                if (sumAmountDisplay) sumAmountDisplay.textContent = '₦0.00';
-            }
-        }
-
-        // Direct option card click handling for instantaneous selection across all browsers
-        document.querySelectorAll('.nexus-net-option').forEach(function(opt) {
-            opt.addEventListener('click', function(e) {
-                const radio = this.querySelector('input[type="radio"]');
-                if (radio) {
-                    radio.checked = true;
-                    populatePlans(radio.value);
-                    radio.dispatchEvent(new Event('change', { bubbles: true }));
-                }
-            });
+            } catch (error) { if (version === catalogVersion) status.textContent = error.message; }
+            finally { if (version === catalogVersion) { loading = false; populate(); } }
         });
-
-        // Network radio change listener
-        networkRadios.forEach(function(radio) {
-            radio.addEventListener('change', function() {
-                populatePlans(this.value);
-            });
-        });
-
-        // Plan change listener
-        if (planSelect) {
-            planSelect.addEventListener('change', updateSummary);
+        form.querySelectorAll('[name="network"]').forEach(radio => radio.addEventListener('change', populate));
+        plan.addEventListener('change', summary);
+        document.getElementById('btnUseMyPhone')?.addEventListener('click', event => { phone.value = event.currentTarget.dataset.phone || ''; phone.focus(); });
+        async function message(title, text, icon) {
+            if (window.Swal) return Swal.fire({title, text, icon});
+            window.alert(title + '\n' + text);
         }
-
-        // Initial setup on page load
-        const initialNet = getActiveNetwork();
-        populatePlans(initialNet);
-
-        // Form Submission with progressive enhancement
-        if (dataForm) {
-            dataForm.addEventListener('submit', function(e) {
-                if (!window.jQuery) {
-                    // Standard POST submission with formatted HTML response
-                    return true;
-                }
-
-                e.preventDefault();
-                if (loaderOverlay) loaderOverlay.style.display = 'block';
-                if (buyBtn) {
-                    buyBtn.disabled = true;
-                    buyBtn.innerHTML = '<i class="fa fa-spinner fa-spin mr-2"></i> Activating Bundle...';
-                }
-
-                const formData = $(dataForm).serialize();
-                $.ajax({
-                    url: dataForm.action,
-                    method: 'POST',
-                    data: formData,
-                    success: function(resp) {
-                        if (loaderOverlay) loaderOverlay.style.display = 'none';
-                        if (resp && resp.status) {
-                            if (window.Swal) {
-                                Swal.fire({
-                                    title: 'Bundle Activated!',
-                                    text: resp.message || 'Data purchase completed successfully.',
-                                    icon: 'success',
-                                    background: '#0a0a0f',
-                                    color: '#fff'
-                                });
-                            } else {
-                                alert(resp.message || 'Data purchase completed successfully.');
-                            }
-                            if (phoneInput) phoneInput.value = '';
-                        } else {
-                            const msg = (resp && resp.message) ? resp.message : 'Transaction could not be completed.';
-                            if (window.Swal) {
-                                Swal.fire({
-                                    title: 'Transaction Failed',
-                                    text: msg,
-                                    icon: 'error',
-                                    background: '#0a0a0f',
-                                    color: '#fff'
-                                });
-                            } else {
-                                alert(msg);
-                            }
-                        }
-                        if (buyBtn) {
-                            buyBtn.disabled = false;
-                            buyBtn.innerHTML = '<i class="fa-solid fa-cloud-arrow-down mr-2"></i> Activate Bundle';
-                        }
-                    },
-                    error: function(xhr) {
-                        if (loaderOverlay) loaderOverlay.style.display = 'none';
-                        const errMsg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Network error communicating with gateway.';
-                        if (window.Swal) {
-                            Swal.fire({
-                                title: 'Order Failed',
-                                text: errMsg,
-                                icon: 'error',
-                                background: '#0a0a0f',
-                                color: '#fff'
-                            });
-                        } else {
-                            alert(errMsg);
-                        }
-                        if (buyBtn) {
-                            buyBtn.disabled = false;
-                            buyBtn.innerHTML = '<i class="fa-solid fa-cloud-arrow-down mr-2"></i> Activate Bundle';
-                        }
+        form.addEventListener('submit', async event => {
+            event.preventDefault(); if (paying || loading || !plan.value || !form.reportValidity()) return;
+            const body = Object.fromEntries(new FormData(form));
+            const controls = Array.from(form.elements).map(element => [element, element.disabled]);
+            paying = true; summary();
+            controls.forEach(([element]) => { element.disabled = true; });
+            try {
+                const quote = await json(quoteUrl, body);
+                document.getElementById('sumAmountDisplay').textContent = money(quote.breakdown.total);
+                const details = plan.selectedOptions[0].dataset.label + '\nRecipient: ' + body.phone + '\nTotal debit: ' + money(quote.breakdown.total);
+                const confirmed = window.Swal ? (await Swal.fire({title: 'Confirm data purchase', text: details, icon: 'question', showCancelButton:true, confirmButtonText:'Pay ' + money(quote.breakdown.total)})).isConfirmed : window.confirm(details);
+                if (!confirmed) { paying = false; return; }
+                overlay.style.display = 'block'; band.disabled = true; plan.disabled = true;
+                let result;
+                try { result = await json(form.action, body); }
+                catch (error) {
+                    if (!error.data) {
+                        status.textContent = 'Connection interrupted. Check transaction history before repeating this purchase. Reference: ' + body.request_id;
+                        await message('Awaiting confirmation', status.textContent, 'warning'); return;
                     }
-                });
-            });
-        }
+                    throw error;
+                }
+                if (result.pending) {
+                    status.textContent = result.message + ' Reference: ' + result.reference;
+                    await message('Awaiting confirmation', status.textContent, 'info'); return;
+                }
+                paying = false;
+                await message(result.status ? 'Bundle activated' : 'Order failed', result.message, result.status ? 'success' : 'error');
+                if (result.status) {
+                    form.elements.request_id.value = globalThis.crypto?.randomUUID?.() || 'DATA-' + Date.now() + '-' + Math.random().toString(36).slice(2); phone.value = '';
+                }
+            } catch (error) { paying = false; await message('Order failed', error.message, 'error'); }
+            finally {
+                overlay.style.display = 'none';
+                if (!paying) controls.forEach(([element, disabled]) => { element.disabled = disabled; });
+                summary();
+            }
+        });
+        populate();
     }
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initDataBundlePage);
-    } else {
-        initDataBundlePage();
-    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initDataBundlePage);
+    else initDataBundlePage();
 })();
 </script>
 @endpush

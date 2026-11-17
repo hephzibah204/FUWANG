@@ -38,8 +38,9 @@ class AdminVtuPricingController extends Controller
         ];
 
         $providers = \App\Models\CustomApi::where('status', true)->where('service_type', 'vtu_data')->orderBy('priority')->get();
+        $bandNames = \App\Models\CustomApi::where('service_type', 'vtu_data')->pluck('name', 'id');
         $productCatalog = SystemSetting::get('vtu_product_catalog', '[]');
-        return view('admin.vtu.pricing', compact('bundles', 'rates', 'providers', 'productCatalog'));
+        return view('admin.vtu.pricing', compact('bundles', 'rates', 'providers', 'productCatalog', 'bandNames'));
     }
 
     /**
@@ -109,7 +110,7 @@ class AdminVtuPricingController extends Controller
             'data_plan' => 'required|string|max:255',
             'provider_plan_id' => 'required|string|max:100',
             'custom_api_id' => 'required|integer|exists:custom_apis,id',
-            'amount' => 'required|numeric|min:1',
+            'amount' => 'required|numeric|min:50',
             'validate' => 'nullable|string|max:100',
         ]);
 
@@ -144,7 +145,7 @@ class AdminVtuPricingController extends Controller
             'data_plan' => 'required|string|max:255',
             'provider_plan_id' => 'required|string|max:100',
             'custom_api_id' => 'required|integer|exists:custom_apis,id',
-            'amount' => 'required|numeric|min:1',
+            'amount' => 'required|numeric|min:50',
             'validate' => 'nullable|string|max:100',
         ]);
 

@@ -3,12 +3,63 @@
 namespace App\Services;
 
 use App\Models\SystemSetting;
+use App\Models\CustomApi;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 class VtuCatalogService
 {
+    public function dataProviders(): \Illuminate\Support\Collection
+    {
+        return CustomApi::where('service_type', 'vtu_data')->where('status', true)->get()
+            ->filter(function ($provider) {
+                if ($provider->provider_identifier === 'datasub247') {
+                    return trim((string) $provider->api_key) !== ''
+                        || trim((string) config('services.datasub247.api_key')) !== ''
+                        || (config('services.datasub247.username') && config('services.datasub247.password'));
+                }
+                return trim((string) $provider->api_key) !== '' && trim((string) $provider->endpoint) !== '';
+            })
+            ->sortBy(fn ($provider) => [$provider->provider_identifier === 'datasub247' ? 0 : 1, (int) $provider->priority, (int) $provider->id])
+            ->values();
+    }
+
+    public function dataProvider(?int $providerId): ?CustomApi
+    {
+        $providers = $this->dataProviders();
+        return $providerId ? $providers->firstWhere('id', $providerId) : $providers->first();
+    }
+
+    public function dataPlans(?int $providerId = null): \Illuminate\Support\Collection
+    {
+        if (!Schema::hasTable('price_list') || !Schema::hasColumn('price_list', 'provider_plan_id')) {
+            return collect();
+        }
+        $provider = $this->dataProvider($providerId);
+        if (($providerId && !$provider) || (!$provider && CustomApi::where('service_type', 'vtu_data')->exists())) {
+            return collect();
+        }
+        return DB::table('price_list')->whereNotNull('provider_plan_id')->orderBy('amount')->get()
+            ->filter(fn ($plan) => trim((string) $plan->provider_plan_id) !== '' && (float) $plan->amount >= 50
+                && ($provider?->provider_identifier !== 'datasub247' || ctype_digit(trim((string) $plan->provider_plan_id)))
+                && ($provider
+                    ? (int) $plan->custom_api_id === (int) $provider->id
+                    : empty($plan->custom_api_id)))
+            ->map(function ($plan) {
+                $plan->network = $this->dataNetwork((string) $plan->network);
+                return $plan;
+            })->values();
+    }
+
+    private function dataNetwork(string $network): string
+    {
+        return match (strtoupper(trim($network))) {
+            '1', '01', 'MTN' => 'MTN', '2', '02', 'GLO' => 'GLO',
+            '3', '04', 'AIRTEL' => 'AIRTEL', '4', '03', 'ETISALAT', '9MOBILE' => '9MOBILE',
+            default => strtoupper(trim($network)),
+        };
+    }
     public function products(string $serviceType): array
     {
         $catalog = SystemSetting::get('vtu_product_catalog', config('vtu_services.products', []));
@@ -24,13 +75,13 @@ class VtuCatalogService
     public function price(string $serviceType, array &$payload, ?int $providerId): float
     {
         if ($serviceType === 'vtu_data') {
-            $plan = Schema::hasTable('price_list') ? DB::table('price_list')->where('id', $payload['plan_id'] ?? '')->first() : null;
-            if (!$plan || strtoupper($plan->network) !== strtoupper($payload['network'] ?? '') || empty($plan->provider_plan_id)
-                || (!empty($plan->custom_api_id) && (int) $plan->custom_api_id !== $providerId)) {
+            $plan = $this->dataPlans($providerId)->first(fn ($p) => (string) $p->id === (string) ($payload['plan_id'] ?? ''));
+            if (!$plan || $plan->network !== $this->dataNetwork((string) ($payload['network'] ?? ''))) {
                 throw ValidationException::withMessages(['plan_id' => 'Select an available data plan for this network and band.']);
             }
+            $payload['network'] = $plan->network;
             $payload['catalog_plan_id'] = (string) $plan->id;
-            $payload['plan_id'] = (string) $plan->provider_plan_id;
+            $payload['plan_id'] = trim((string) $plan->provider_plan_id);
             return (float) $plan->amount;
         }
         if ($serviceType === 'vtu_epin') {
