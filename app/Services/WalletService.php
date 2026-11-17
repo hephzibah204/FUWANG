@@ -21,6 +21,9 @@ class WalletService
 {
     public function debit(User $user, float $amount, string $orderType, ?string $txIdPrefix = null, ?string $transactionId = null): array
     {
+        if (!is_finite($amount) || $amount <= 0) {
+            return ['ok' => false, 'message' => 'Amount must be greater than zero.'];
+        }
         // Enforcement of KYC Tiers for non-admin actions
         if (!str_starts_with($orderType, 'Admin')) {
             $kycCheck = app(KycService::class)->canTransact($user, $amount);
@@ -73,6 +76,9 @@ class WalletService
             }
 
             $oldBalance = round((float) $balance->user_balance, 2);
+            if ($transactionId && Transaction::where('transaction_id', $transactionId)->exists()) {
+                return ['ok' => false, 'message' => 'This transaction has already been submitted.'];
+            }
             if ($oldBalance < $amount) {
                 return ['ok' => false, 'message' => 'Insufficient balance. Please fund your wallet.'];
             }
@@ -129,6 +135,9 @@ class WalletService
 
     public function credit(User $user, float $amount, string $orderType, string $transactionId): array
     {
+        if (!is_finite($amount) || $amount <= 0) {
+            return ['ok' => false, 'message' => 'Amount must be greater than zero.'];
+        }
         return DB::transaction(function () use ($user, $amount, $orderType, $transactionId) {
             $balance = AccountBalance::query()
                 ->where('user_id', $user->id)
@@ -169,6 +178,12 @@ class WalletService
             }
 
             $oldBalance = round((float) $balance->user_balance, 2);
+            // The balance row lock serializes credits for this wallet, including callback retries.
+            $existing = Transaction::where('transaction_id', $transactionId)->first();
+            if ($existing) {
+                return ['ok' => $existing->user_email === $user->email, 'duplicate' => true,
+                    'oldBalance' => $oldBalance, 'newBalance' => $oldBalance];
+            }
             $newBalance = round($oldBalance + $amount, 2);
             $balance->user_balance = $newBalance;
             $balance->save();
@@ -226,13 +241,24 @@ class WalletService
         $tx->save();
     }
 
-    public function failAndRefund(User $user, float $amount, string $orderType, string $transactionId): void
+    public function failAndRefund(User $user, float $amount, string $orderType, string $transactionId): bool
     {
         $creditId = $transactionId . '-RF';
         $creditType = 'Refund – ' . $orderType;
 
         try {
-            DB::transaction(function () use ($user, $amount, $creditType, $creditId, $transactionId) {
+            $applied = DB::transaction(function () use ($user, $amount, $creditType, $creditId, $transactionId) {
+                $original = Transaction::where('transaction_id', $transactionId)->lockForUpdate()->first();
+                if (!$original || $original->user_email !== $user->email) {
+                    throw new \RuntimeException('Original debit not found.');
+                }
+                if ($original->status === 'refunded') {
+                    return false;
+                }
+                $debited = round((float) $original->balance_before - (float) $original->balance_after, 2);
+                if ($debited <= 0 || abs($debited - $amount) > 0.005) {
+                    throw new \RuntimeException('Refund does not match original debit.');
+                }
                 $result = $this->credit($user, $amount, $creditType, $creditId);
                 if (!($result['ok'] ?? false)) {
                     throw new \RuntimeException($result['message'] ?? 'Credit failed');
@@ -242,8 +268,10 @@ class WalletService
                     $tx->status = 'refunded';
                     $tx->save();
                 }
+                return true;
             });
-            $this->notifyWalletRefund($user, $amount, $creditType, $creditId);
+            if ($applied) $this->notifyWalletRefund($user, $amount, $creditType, $creditId);
+            return true;
         } catch (\Throwable $e) {
             Log::error('failAndRefund failed', [
                 'user_id' => $user->id,
@@ -251,6 +279,7 @@ class WalletService
                 'amount' => $amount,
                 'error' => $e->getMessage(),
             ]);
+            return false;
         }
     }
 

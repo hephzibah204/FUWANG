@@ -32,8 +32,18 @@
                     </div>
 
                     <div class="form-group mb-4">
-                        <label class="font-weight-600 mb-2">Betting Platform Code</label>
-                        <input type="text" name="serviceID" class="form-control" placeholder="e.g., sportybet, bet9ja" required>
+                        <label class="font-weight-600 mb-2 text-white">Betting Bookmaker / Platform</label>
+                        <select name="serviceID" class="form-control" required>
+                            <option value="">-- Choose a betting platform --</option>
+                            <option value="sportybet">SportyBet</option>
+                            <option value="bet9ja">Bet9ja</option>
+                            <option value="1xbet">1xBet</option>
+                            <option value="betway">Betway</option>
+                            <option value="bangbet">BangBet</option>
+                            <option value="merrybet">MerryBet</option>
+                            <option value="naijabet">NaijaBet</option>
+                            <option value="accessbet">AccessBET</option>
+                        </select>
                     </div>
 
                     <div class="form-group mb-4">

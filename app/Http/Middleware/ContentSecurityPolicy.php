@@ -23,9 +23,9 @@ class ContentSecurityPolicy
         $viteScript = $viteDev ? ' http://127.0.0.1:5173 http://localhost:5173' : '';
         $viteConnect = $viteDev ? ' http://127.0.0.1:5173 http://localhost:5173 ws://127.0.0.1:5173 ws://localhost:5173' : '';
 
-        // Allow CDNs used by Nexus (fonts, payments, Chart.js), admin GrapesJS (unpkg), and canvas assets.
+        // Allow CDNs used by Nexus (fonts, payments, Chart.js, jQuery, SweetAlert), admin GrapesJS (unpkg), and canvas assets.
         $csp = "default-src 'self'; " .
-               "script-src 'self' 'unsafe-inline' https://unpkg.com https://cdn.jsdelivr.net https://js.paystack.co https://checkout.flutterwave.com https://sdk.monnify.com{$viteScript}; " .
+               "script-src 'self' 'unsafe-inline' https://code.jquery.com https://unpkg.com https://cdn.jsdelivr.net https://js.paystack.co https://checkout.flutterwave.com https://sdk.monnify.com{$viteScript}; " .
                "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://stackpath.bootstrapcdn.com https://paystack.com{$viteScript}; " .
                "img-src 'self' data: https: blob:; " .
                "font-src 'self' data: https://fonts.gstatic.com; " .

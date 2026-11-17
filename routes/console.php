@@ -12,6 +12,7 @@ Schedule::command('app:aggregate-metrics')->everyTenMinutes();
 Schedule::command('agent:retry-pending-nin')->everyFifteenMinutes();
 Schedule::command('auction:process-status')->everyMinute();
 Schedule::command('bvn:poll-retrievals')->everyFifteenMinutes();
+Schedule::command('vtu:reconcile')->everyFiveMinutes()->withoutOverlapping();
 
 Artisan::command('payments:reprocess-webhooks {--limit=50}', function () {
     $limit = (int) $this->option('limit');

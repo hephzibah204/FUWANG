@@ -16,7 +16,7 @@ class AdminVtuPricingController extends Controller
     public function index()
     {
         // Ensure price_list table exists and seed defaults if empty
-        $this->ensureDefaultPriceList();
+        // Products are configured explicitly; opening this page must not recreate deleted plans.
 
         $bundles = DB::table('price_list')
             ->orderBy('network')
@@ -37,7 +37,9 @@ class AdminVtuPricingController extends Controller
             'vtu_jamb_price' => (float) SystemSetting::get('vtu_jamb_price', 4700.0),
         ];
 
-        return view('admin.vtu.pricing', compact('bundles', 'rates'));
+        $providers = \App\Models\CustomApi::where('status', true)->where('service_type', 'vtu_data')->orderBy('priority')->get();
+        $productCatalog = SystemSetting::get('vtu_product_catalog', '[]');
+        return view('admin.vtu.pricing', compact('bundles', 'rates', 'providers', 'productCatalog'));
     }
 
     /**
@@ -46,7 +48,8 @@ class AdminVtuPricingController extends Controller
     public function updateRates(Request $request)
     {
         $request->validate([
-            'vtu_airtime_discount_percent' => 'required|numeric|min:0|max:100',
+            'vtu_airtime_discount_percent' => 'required|numeric|min:0|max:99',
+            'product_catalog' => 'nullable|json',
             'vtu_bulk_sms_rate' => 'required|numeric|min:0.5',
             'vtu_electricity_fee' => 'required|numeric|min:0',
             'vtu_waec_price' => 'required|numeric|min:100',
@@ -56,6 +59,24 @@ class AdminVtuPricingController extends Controller
             'vtu_jamb_price' => 'required|numeric|min:100',
         ]);
 
+        if ($request->filled('product_catalog')) {
+            $products = json_decode($request->product_catalog, true);
+            \Illuminate\Support\Facades\Validator::make(['products' => $products], [
+                'products' => 'array', 'products.*.service_type' => 'required|in:vtu_cable_tv,vtu_internet,vtu_betting,vtu_data_card,vtu_recharge_card',
+                'products.*.label' => 'required|string|max:150', 'products.*.code' => 'required|string|max:100',
+                'products.*.amount' => 'required|numeric|min:1|max:500000', 'products.*.provider_plan_id' => 'nullable|string|max:100',
+                'products.*.service_id' => 'nullable|string|max:100', 'products.*.network' => 'nullable|in:MTN,GLO,AIRTEL,9MOBILE',
+                'products.*.provider_id' => 'required|integer|exists:custom_apis,id',
+            ])->validate();
+            foreach ($products as $product) {
+                $provider = \App\Models\CustomApi::findOrFail($product['provider_id']);
+                $aliases = ['vtu_cable_tv' => 'cable_tv'];
+                if (!in_array($provider->service_type, [$product['service_type'], $aliases[$product['service_type']] ?? ''], true)) {
+                    throw \Illuminate\Validation\ValidationException::withMessages(['product_catalog' => 'Product band does not support its service.']);
+                }
+            }
+            SystemSetting::set('vtu_product_catalog', $products, 'vtu_pricing');
+        }
         $keys = [
             'vtu_airtime_discount_percent',
             'vtu_bulk_sms_rate',
@@ -86,13 +107,20 @@ class AdminVtuPricingController extends Controller
         $request->validate([
             'network' => 'required|string|in:MTN,GLO,AIRTEL,9MOBILE',
             'data_plan' => 'required|string|max:255',
+            'provider_plan_id' => 'required|string|max:100',
+            'custom_api_id' => 'required|integer|exists:custom_apis,id',
             'amount' => 'required|numeric|min:1',
             'validate' => 'nullable|string|max:100',
         ]);
 
+        if (!\App\Models\CustomApi::whereKey($request->custom_api_id)->where('service_type', 'vtu_data')->where('status', true)->exists()) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['custom_api_id' => 'Choose an active data band.']);
+        }
         DB::table('price_list')->insert([
             'network' => strtoupper($request->network),
             'data_plan' => trim($request->data_plan),
+            'provider_plan_id' => trim($request->provider_plan_id),
+            'custom_api_id' => (int) $request->custom_api_id,
             'amount' => (float) $request->amount,
             'validate' => trim((string) ($request->validate ?: '30 Days')),
             'created_at' => now(),
@@ -114,13 +142,20 @@ class AdminVtuPricingController extends Controller
         $request->validate([
             'network' => 'required|string|in:MTN,GLO,AIRTEL,9MOBILE',
             'data_plan' => 'required|string|max:255',
+            'provider_plan_id' => 'required|string|max:100',
+            'custom_api_id' => 'required|integer|exists:custom_apis,id',
             'amount' => 'required|numeric|min:1',
             'validate' => 'nullable|string|max:100',
         ]);
 
+        if (!\App\Models\CustomApi::whereKey($request->custom_api_id)->where('service_type', 'vtu_data')->where('status', true)->exists()) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['custom_api_id' => 'Choose an active data band.']);
+        }
         DB::table('price_list')->where('id', $id)->update([
             'network' => strtoupper($request->network),
             'data_plan' => trim($request->data_plan),
+            'provider_plan_id' => trim($request->provider_plan_id),
+            'custom_api_id' => (int) $request->custom_api_id,
             'amount' => (float) $request->amount,
             'validate' => trim((string) ($request->validate ?: '30 Days')),
             'updated_at' => now(),

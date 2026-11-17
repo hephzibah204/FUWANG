@@ -35,10 +35,21 @@
                         <label class="font-weight-600 mb-2 d-block">Network</label>
                         <div class="network-grid">
                             @foreach(['MTN', 'GLO', 'AIRTEL', '9MOBILE'] as $net)
-                                <label class="nexus-net-option">
-                                    <input type="radio" name="network" value="{{ $net }}" required>
+                                <label class="nexus-net-option" for="net_{{ $net }}">
+                                    <input type="radio" name="network" id="net_{{ $net }}" value="{{ $net }}" {{ $loop->first ? 'checked' : '' }} required>
                                     <div class="net-box">
-                                        <img src="{{ asset('images/' . strtolower($net) . '.png') }}" alt="{{ $net }}" onerror="this.onerror=null; this.src='{{ asset('vtusite/images/' . strtolower($net) . '.png') }}';">
+                                        <img src="{{ asset('images/' . strtolower($net) . '.png') }}" alt="{{ $net }}" class="net-logo-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                        <div class="net-badge-icon badge-{{ strtolower($net) }}" style="display:none;">
+                                            @if($net === 'MTN')
+                                                <i class="fa-solid fa-bolt"></i>
+                                            @elseif($net === 'GLO')
+                                                <i class="fa-solid fa-globe"></i>
+                                            @elseif($net === 'AIRTEL')
+                                                <i class="fa-solid fa-tower-cell"></i>
+                                            @else
+                                                <i class="fa-solid fa-signal"></i>
+                                            @endif
+                                        </div>
                                         <span>{{ $net }}</span>
                                     </div>
                                 </label>
@@ -118,10 +129,15 @@
 <style>
     .a2c-bg { background: rgba(16, 185, 129, 0.10); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.20); }
     .network-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-    .nexus-net-option { cursor: pointer; }
-    .nexus-net-option input { display: none; }
-    .net-box { border: var(--border-glass); background: rgba(255,255,255,0.03); border-radius: 14px; padding: 12px; text-align: center; transition: all 0.2s; }
-    .net-box img { max-height: 25px; margin-bottom: 8px; display: block; margin-left: auto; margin-right: auto; }
+    .nexus-net-option { cursor: pointer; position: relative; user-select: none; }
+    .nexus-net-option input[type="radio"] { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+    .net-box { border: var(--border-glass); background: rgba(255,255,255,0.03); border-radius: 14px; padding: 12px; text-align: center; transition: all 0.2s; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80px; }
+    .net-logo-img { height: 26px; width: auto; max-width: 40px; object-fit: contain; margin-bottom: 6px; }
+    .net-badge-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1rem; margin-bottom: 6px; }
+    .badge-mtn { background: #ffcc00; color: #000; }
+    .badge-glo { background: #00a859; color: #fff; }
+    .badge-airtel { background: #ed1c24; color: #fff; }
+    .badge-9mobile { background: #00573d; color: #99cc33; }
     .net-box span { font-size: 0.7rem; font-weight: 700; color: var(--clr-text-muted); }
     .nexus-net-option input:checked + .net-box { border-color: var(--clr-primary); background: rgba(59, 130, 246, 0.1); }
     .nexus-net-option input:checked + .net-box span { color: #fff; }
@@ -189,6 +205,16 @@ $(document).ready(function() {
       $('#providerSelect').append(`<option value="${p.id}">${p.name}</option>`);
     });
   }).always(renderMeta);
+
+  document.querySelectorAll('.nexus-net-option').forEach(function(opt) {
+    opt.addEventListener('click', function() {
+      const radio = this.querySelector('input[type="radio"]');
+      if (radio) {
+        radio.checked = true;
+        radio.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    });
+  });
 
   $('#providerSelect').on('change', renderMeta);
   $('#amount').on('input', renderMeta);

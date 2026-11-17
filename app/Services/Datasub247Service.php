@@ -37,6 +37,16 @@ class Datasub247Service
         $this->password = config('services.datasub247.password', env('DATASUB247_PASSWORD'));
     }
 
+    public function forProvider(CustomApi $provider): self
+    {
+        $adapter = clone $this;
+        $adapter->apiKey = $provider->api_key;
+        $adapter->username = null;
+        $adapter->password = null;
+        $adapter->baseUrl = rtrim((string) data_get($provider->config, 'base_url', $this->baseUrl), '/');
+        return $adapter;
+    }
+
     /**
      * Resolve the active API token (from config, CustomApi model, or basic auth exchange).
      */
@@ -49,6 +59,8 @@ class Datasub247Service
         // Check if there is an active CustomApi configured for datasub247
         try {
             $customApi = CustomApi::where('provider_identifier', 'datasub247')
+                ->where('status', true)
+                ->orderBy('priority')
                 ->whereNotNull('api_key')
                 ->where('api_key', '!=', '')
                 ->first();
@@ -383,41 +395,23 @@ class Datasub247Service
     public function handleWebhook(array $payload): array
     {
         $requestId = $payload['request-id'] ?? $payload['request_id'] ?? null;
-        $status = strtolower((string) ($payload['status'] ?? ''));
-        $responseMsg = (string) ($payload['response'] ?? $payload['message'] ?? '');
-
-        if (!$requestId) {
-            return ['status' => false, 'message' => 'Missing request-id.'];
+        if (!is_string($requestId) || $requestId === '') {
+            return ['status' => false, 'message' => 'Missing request reference.'];
         }
-
-        $vtuTx = VtuTransaction::where('transaction_id', $requestId)->first();
-        if ($vtuTx) {
-            if (in_array($status, ['success', 'successful', 'true', '1'], true)) {
-                $vtuTx->status = 'success';
-                $vtuTx->response_payload = array_merge((array) $vtuTx->response_payload, $payload);
-                $vtuTx->save();
-
-                app(WalletService::class)->markTransactionSuccess($requestId);
-            } elseif (in_array($status, ['failed', 'failure', 'rejected'], true)) {
-                $vtuTx->status = 'failed';
-                $vtuTx->error_message = $responseMsg ?: 'Transaction failed at provider.';
-                $vtuTx->response_payload = array_merge((array) $vtuTx->response_payload, $payload);
-                $vtuTx->save();
-
-                if ($vtuTx->direction === 'debit' && $vtuTx->user) {
-                    app(WalletService::class)->failAndRefund(
-                        $vtuTx->user,
-                        (float) $vtuTx->total,
-                        'VTU Failed (Webhook)',
-                        $requestId
-                    );
-                }
+        $tx = VtuTransaction::where('transaction_id', $requestId)->first();
+        if (!$tx) { return ['status' => false, 'message' => 'Transaction not found.']; }
+        if (($tx->response_payload['_provider'] ?? '') === 'clubkonnect') {
+            return ['status' => false, 'message' => 'Provider mismatch.'];
+        }
+        if ($tx->custom_api_id) {
+            $provider = CustomApi::find($tx->custom_api_id);
+            if (!$provider || $provider->provider_identifier !== 'datasub247') {
+                return ['status' => false, 'message' => 'Provider mismatch.'];
             }
-
-            return ['status' => true, 'message' => 'Transaction updated successfully.'];
         }
-
-        return ['status' => false, 'message' => 'Transaction not found for reference: ' . $requestId];
+        $state = \App\Support\VtuProviderStatus::state($payload);
+        app(VtuSettlementService::class)->settle($tx, $state, $payload, (string) ($payload['reference'] ?? $requestId));
+        return ['status' => true, 'message' => 'Notification processed.'];
     }
 
     /**
@@ -433,6 +427,7 @@ class Datasub247Service
             ];
         }
 
+        $payload['request-id'] = $requestId;
         $url = $this->baseUrl . $path;
 
         try {
@@ -446,14 +441,16 @@ class Datasub247Service
                 Log::error("Datasub247 Non-JSON Response ($path): " . $response->body());
                 return [
                     'status' => false,
-                    'message' => 'Invalid response from Datasub247.',
+                    'pending' => true,
+                    'message' => 'Awaiting provider confirmation.',
                     'raw' => $response->body(),
                     'reference' => $requestId,
                 ];
             }
 
             $statusVal = strtolower((string) ($json['status'] ?? ''));
-            $isSuccess = in_array($statusVal, ['success', 'successful', 'true', '1'], true);
+            $state = \App\Support\VtuProviderStatus::state($json);
+            $isSuccess = $state === 'success';
 
             if ($response->successful() && $isSuccess) {
                 return [
@@ -469,6 +466,7 @@ class Datasub247Service
 
             return [
                 'status' => false,
+                'pending' => !$response->successful() || $state !== 'failed',
                 'message' => $errorMessage,
                 'data' => $json,
                 'reference' => $requestId,
@@ -477,7 +475,8 @@ class Datasub247Service
             Log::error("Datasub247 Request Exception ($path): " . $e->getMessage());
             return [
                 'status' => false,
-                'message' => 'Connection error: ' . $e->getMessage(),
+                'pending' => true,
+                'message' => 'Awaiting provider confirmation.',
                 'reference' => $requestId,
             ];
         }
@@ -497,6 +496,9 @@ class Datasub247Service
      */
     public function resolveNetworkId(string|int $network): int
     {
+        if (is_string($network) && in_array($network, ['01', '02', '03', '04'], true)) {
+            return ['01' => 1, '02' => 2, '03' => 4, '04' => 3][$network];
+        }
         if (is_numeric($network) && in_array((int)$network, [1, 2, 3, 4], true)) {
             return (int) $network;
         }
@@ -507,7 +509,7 @@ class Datasub247Service
             'GLO', '02' => self::NETWORK_GLO,
             'AIRTEL', '04' => self::NETWORK_AIRTEL,
             '9MOBILE', 'ETISALAT', '03' => self::NETWORK_9MOBILE,
-            default => self::NETWORK_MTN,
+            default => throw new \InvalidArgumentException('Unsupported network.'),
         };
     }
 
@@ -525,7 +527,7 @@ class Datasub247Service
             'gotv' => self::CABLE_GOTV,
             'dstv' => self::CABLE_DSTV,
             'startimes', 'startime' => self::CABLE_STARTIMES,
-            default => self::CABLE_GOTV,
+            default => throw new \InvalidArgumentException('Unsupported cable provider.'),
         };
     }
 
@@ -540,10 +542,10 @@ class Datasub247Service
 
         $e = strtolower(trim((string) $exam));
         return match ($e) {
-            'waec', 'waecdirect', 'waec-registration' => self::EXAM_WAEC,
+            'waec', 'waecdirect' => self::EXAM_WAEC,
             'neco', 'neco-direct' => self::EXAM_NECO,
             'nabteb', 'nabteb-direct' => self::EXAM_NABTEB,
-            default => self::EXAM_WAEC,
+            default => throw new \InvalidArgumentException('Unsupported exam product.'),
         };
     }
 
@@ -569,7 +571,7 @@ class Datasub247Service
             'ibadan-electric', 'ibedc' => 9,
             'benin-electric', 'bedc' => 10,
             'yola-electric', 'yedc' => 11,
-            default => 1,
+            default => throw new \InvalidArgumentException('Unsupported electricity provider.'),
         };
     }
 }

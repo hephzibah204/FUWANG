@@ -113,6 +113,8 @@ return [
     ],
 
     'datasub247' => [
+        'webhook_secret' => env('DATASUB247_WEBHOOK_SECRET'),
+        'status_endpoint' => env('DATASUB247_STATUS_ENDPOINT'),
         'base_url' => env('DATASUB247_BASE_URL', 'https://datasub247.com'),
         'api_key' => env('DATASUB247_API_KEY'),
         'username' => env('DATASUB247_USERNAME'),

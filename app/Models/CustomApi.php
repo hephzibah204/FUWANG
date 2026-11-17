@@ -47,6 +47,25 @@ class CustomApi extends Model
         'priority' => 'integer',
     ];
 
+    public function getConfigAttribute($value): array
+    {
+        return $this->decodeArrayAttribute($value);
+    }
+
+    public function getHeadersAttribute($value): array
+    {
+        return $this->decodeArrayAttribute($value);
+    }
+
+    private function decodeArrayAttribute($value): array
+    {
+        // Older forms stored JSON strings through Eloquent's JSON cast twice.
+        for ($depth = 0; $depth < 2 && is_string($value); $depth++) {
+            $value = json_decode($value, true);
+        }
+        return is_array($value) ? $value : [];
+    }
+
     public function verificationTypes()
     {
         return $this->hasMany(CustomApiVerificationType::class);

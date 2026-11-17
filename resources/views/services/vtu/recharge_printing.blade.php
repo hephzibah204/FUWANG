@@ -37,28 +37,36 @@
                                 <label class="col-3 p-1 m-0 network-label">
                                     <input type="radio" name="network" value="01" class="d-none" required checked>
                                     <div class="network-card text-center p-2 rounded" style="border: 1px solid rgba(255,255,255,0.1); cursor: pointer; transition: 0.3s;">
-                                        <img src="{{ asset('vtusite/images/mtn.png') }}" class="img-fluid rounded mb-1" style="height: 30px;">
+                                        <div class="d-flex justify-content-center mb-1">
+                                            <span style="display:inline-block; width:28px; height:28px; line-height:28px; border-radius:8px; background:#ffcc00; color:#000; font-weight:800; font-size:12px;">M</span>
+                                        </div>
                                         <div class="x-small text-white">MTN</div>
                                     </div>
                                 </label>
                                 <label class="col-3 p-1 m-0 network-label">
                                     <input type="radio" name="network" value="04" class="d-none">
                                     <div class="network-card text-center p-2 rounded" style="border: 1px solid rgba(255,255,255,0.1); cursor: pointer; transition: 0.3s;">
-                                        <img src="{{ asset('vtusite/images/airtel.png') }}" class="img-fluid rounded mb-1" style="height: 30px;">
+                                        <div class="d-flex justify-content-center mb-1">
+                                            <span style="display:inline-block; width:28px; height:28px; line-height:28px; border-radius:8px; background:#ed1c24; color:#fff; font-weight:800; font-size:12px;">A</span>
+                                        </div>
                                         <div class="x-small text-white">Airtel</div>
                                     </div>
                                 </label>
                                 <label class="col-3 p-1 m-0 network-label">
                                     <input type="radio" name="network" value="02" class="d-none">
                                     <div class="network-card text-center p-2 rounded" style="border: 1px solid rgba(255,255,255,0.1); cursor: pointer; transition: 0.3s;">
-                                        <img src="{{ asset('vtusite/images/glo.png') }}" class="img-fluid rounded mb-1" style="height: 30px;">
+                                        <div class="d-flex justify-content-center mb-1">
+                                            <span style="display:inline-block; width:28px; height:28px; line-height:28px; border-radius:8px; background:#00a859; color:#fff; font-weight:800; font-size:12px;">G</span>
+                                        </div>
                                         <div class="x-small text-white">Glo</div>
                                     </div>
                                 </label>
                                 <label class="col-3 p-1 m-0 network-label">
                                     <input type="radio" name="network" value="03" class="d-none">
                                     <div class="network-card text-center p-2 rounded" style="border: 1px solid rgba(255,255,255,0.1); cursor: pointer; transition: 0.3s;">
-                                        <img src="{{ asset('vtusite/images/9mobile.png') }}" class="img-fluid rounded mb-1" style="height: 30px;">
+                                        <div class="d-flex justify-content-center mb-1">
+                                            <span style="display:inline-block; width:28px; height:28px; line-height:28px; border-radius:8px; background:#00573d; color:#99cc33; font-weight:800; font-size:12px;">9</span>
+                                        </div>
                                         <div class="x-small text-white">9mobile</div>
                                     </div>
                                 </label>

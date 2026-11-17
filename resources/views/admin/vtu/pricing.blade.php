@@ -61,6 +61,12 @@
 
         <form action="{{ route('admin.vtu.pricing.rates') }}" method="POST" id="ratesForm">
             @csrf
+            <div class="form-group mb-4">
+                <label for="product-catalog" class="font-weight-bold">Cable, internet, betting and printing products</label>
+                <p class="text-muted small">Configure real provider product codes and selling prices. Each product needs service_type, provider_id, label, code and amount; include service_id for cable/internet/betting or network for printing. provider_plan_id maps your product code to the provider code.</p>
+                <textarea id="product-catalog" name="product_catalog" class="form-control" rows="7" spellcheck="false">{{ old('product_catalog', is_string($productCatalog) ? $productCatalog : json_encode($productCatalog, JSON_PRETTY_PRINT)) }}</textarea>
+                <small class="text-muted">Use a JSON array. Supported service types: vtu_cable_tv, vtu_internet, vtu_betting, vtu_data_card, vtu_recharge_card. Unconfigured products are unavailable for purchase.</small>
+            </div>
             <div class="row">
                 <!-- Airtime Discount -->
                 <div class="col-md-3 mb-4">
@@ -316,6 +322,15 @@
             </div>
             <div class="modal-body">
                 <div class="form-group mb-3">
+                    <label>Data band</label>
+                    <select name="custom_api_id"  class="form-control" required><option value="">Select band</option>@foreach($providers as $provider)<option value="{{ $provider->id }}">{{ $provider->name }}</option>@endforeach</select>
+                </div>
+                <div class="form-group mb-3">
+                    <label>Provider plan ID</label>
+                    <input name="provider_plan_id"  class="form-control" required placeholder="Exact plan ID from the selected provider">
+                </div>
+
+                <div class="form-group mb-3">
                     <label class="text-white-50 small mb-1">Network Provider</label>
                     <select name="network" class="form-control text-white" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);" required>
                         <option value="MTN">MTN</option>
@@ -359,6 +374,15 @@
             </div>
             <div class="modal-body">
                 <div class="form-group mb-3">
+                    <label>Data band</label>
+                    <select name="custom_api_id" id="edit_custom_api_id" class="form-control" required><option value="">Select band</option>@foreach($providers as $provider)<option value="{{ $provider->id }}">{{ $provider->name }}</option>@endforeach</select>
+                </div>
+                <div class="form-group mb-3">
+                    <label>Provider plan ID</label>
+                    <input name="provider_plan_id" id="edit_provider_plan_id" class="form-control" required placeholder="Exact plan ID from the selected provider">
+                </div>
+
+                <div class="form-group mb-3">
                     <label class="text-white-50 small mb-1">Network Provider</label>
                     <select id="edit_network" name="network" class="form-control text-white" style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);" required>
                         <option value="MTN">MTN</option>
@@ -398,11 +422,13 @@
 @push('scripts')
 <script>
     function openEditModal(plan) {
-        let updateUrl = "{{ url('/admin/vtu/pricing/bundle') }}/" + plan.id;
+        let updateUrl = "{{ url(config('app.admin_path', 'admin').'/vtu/pricing/bundle') }}/" + plan.id;
         $('#editBundleForm').attr('action', updateUrl);
         $('#edit_network').val(plan.network.toUpperCase());
         $('#edit_data_plan').val(plan.data_plan);
         $('#edit_amount').val(plan.amount);
+        $('#edit_custom_api_id').val(plan.custom_api_id || '');
+        $('#edit_provider_plan_id').val(plan.provider_plan_id || '');
         $('#edit_validate').val(plan.validate || '30 Days');
         
         let modalEl = document.getElementById('editBundleModal');

@@ -19,6 +19,8 @@ class VtuHubServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        \App\Models\SystemSetting::clearLocalCache();
+        config(['vtu_services.products' => [['service_type' => 'vtu_internet', 'service_id' => 'isp', 'code' => 'plan', 'label' => 'Test plan', 'amount' => 200]]]);
 
         if (!Schema::hasTable('sessions')) {
             Schema::create('sessions', function (Blueprint $table) {

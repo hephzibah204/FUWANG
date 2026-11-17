@@ -365,6 +365,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // â”€â”€ VTU Services (Airtime, Data, Cable, Electricity, Education) â”€â”€â”€â”€â”€â”€â”€
     Route::middleware('feature:vtu_services')->group(function () {
+        Route::get('/services/vtu/catalog/{serviceType}', [App\Http\Controllers\Service\VtuPurchaseController::class, 'catalog'])->name('services.vtu.catalog');
+        Route::post('/services/vtu/quote/{serviceType}', [App\Http\Controllers\Service\VtuPurchaseController::class, 'quote'])->name('services.vtu.quote');
         Route::get('/services/vtu',            [App\Http\Controllers\Service\VTUController::class, 'hubIndex'])->name('services.vtu.hub');
         Route::get('/services/vtu/providers/{serviceType}', [App\Http\Controllers\Service\VTUController::class, 'providers'])->name('services.vtu.providers');
 

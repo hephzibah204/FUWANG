@@ -453,7 +453,7 @@ class DeveloperApiApplicationAndCustomPricingTest extends TestCase
         ]);
 
         $response = $this->withHeader('Authorization', 'Bearer ' . $bearer)
-            ->postJson('/api/v1/vtu/airtime', [
+            ->withHeader('Idempotency-Key', 'VIP-AIRTIME-1')->postJson('/api/v1/vtu/airtime', [
                 'network' => 'MTN',
                 'amount' => 1000,
                 'phone' => '08012345678',

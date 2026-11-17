@@ -9,7 +9,7 @@ Route::prefix('whatsapp-widget')->group(function () {
 });
 
 // VTU Webhooks (No auth, direct callback from providers)
-Route::post('/vtu/webhook/datasub247', [\App\Http\Controllers\Service\VTUController::class, 'webhookDatasub']);
+Route::post('/vtu/webhook/datasub247', [\App\Http\Controllers\Service\VtuPurchaseController::class, 'webhookDatasub']);
 
 Route::prefix('v1')->group(function () {
     Route::post('/auth/token', [\App\Http\Controllers\Api\AuthController::class, 'createToken'])->middleware('throttle:5,1');
@@ -78,7 +78,10 @@ Route::prefix('v1')->group(function () {
         Route::get('/legal/catalog/{documentType}', [\App\Http\Controllers\Api\LegalCatalogController::class, 'show']);
         Route::get('/legal/pricing/{documentType}', [\App\Http\Controllers\Api\LegalCatalogController::class, 'pricing']);
 
-        Route::prefix('vtu')->middleware('kyc.enforce')->group(function () {
+        Route::prefix('vtu')->middleware(['feature:vtu_services', 'kyc.enforce'])->group(function () {
+            Route::post('/electricity/validate', [\App\Http\Controllers\Api\VtuApiController::class, 'validateElectricity']);
+            Route::post('/cable/validate', [\App\Http\Controllers\Api\VtuApiController::class, 'validateCable']);
+            Route::get('/catalog/{serviceType}', [\App\Http\Controllers\Service\VtuPurchaseController::class, 'catalog']);
             Route::post('/airtime', [\App\Http\Controllers\Api\VtuApiController::class, 'airtime']);
             Route::post('/data', [\App\Http\Controllers\Api\VtuApiController::class, 'data']);
             Route::post('/cable', [\App\Http\Controllers\Api\VtuApiController::class, 'cable']);

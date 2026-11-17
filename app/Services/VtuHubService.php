@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Cache;
+use App\Support\VtuProviderStatus;
 
 class VtuHubService
 {
@@ -72,6 +74,9 @@ class VtuHubService
                 ->where('status', true)
                 ->first();
         }
+        if ($providerId && !$provider) {
+            return ['status' => false, 'message' => 'Selected band is unavailable. Please choose another band.'];
+        }
         if (!$provider) {
             $provider = CustomApi::whereIn('service_type', $serviceTypeCandidates)
                 ->where('status', true)
@@ -79,15 +84,20 @@ class VtuHubService
                 ->first();
         }
 
+        if (!$provider && CustomApi::whereIn('service_type', $serviceTypeCandidates)->exists()) {
+            return ['status' => false, 'message' => 'All bands for this service are disabled.'];
+        }
+
         $isDatasub247 = ($provider && $provider->provider_identifier === 'datasub247')
             || (!$provider && !empty($this->datasub247->getApiKey()));
 
         if ($isDatasub247) {
+            $adapter = $provider ? $this->datasub247->forProvider($provider) : $this->datasub247;
             if ($serviceType === 'vtu_electricity' || in_array('electricity_bills', $serviceTypeCandidates, true)) {
                 $disco = $payload['serviceID'] ?? $payload['disco'] ?? 1;
                 $meterNum = $payload['meter_number'] ?? '';
                 $meterType = $payload['variation_code'] ?? $payload['meter_type'] ?? 'prepaid';
-                $valRes = $this->datasub247->validateMeter($disco, $meterNum, $meterType);
+                $valRes = $adapter->validateMeter($disco, $meterNum, $meterType);
                 if ($valRes['status']) {
                     return [
                         'status' => true,
@@ -105,7 +115,7 @@ class VtuHubService
             if ($serviceType === 'vtu_cable_tv' || in_array('cable_tv', $serviceTypeCandidates, true)) {
                 $cable = $payload['serviceID'] ?? $payload['cable'] ?? 1;
                 $iuc = $payload['smart_card_number'] ?? $payload['iuc'] ?? '';
-                $valRes = $this->datasub247->validateCable($cable, $iuc);
+                $valRes = $adapter->validateCable($cable, $iuc);
                 if ($valRes['status']) {
                     return [
                         'status' => true,
@@ -172,18 +182,22 @@ class VtuHubService
         ]))->timeout($timeout);
 
         $method = strtoupper((string) ($providerConfig['validate_method'] ?? 'POST'));
+        try {
         $response = match ($method) {
             'GET' => $http->get($url, $payloadToSend),
             default => $http->post($url, $payloadToSend),
         };
+        } catch (\Throwable $e) {
+            return ['status' => false, 'message' => 'Unable to contact validation provider. Please try again.'];
+        }
 
         if (!$response->successful()) {
             return ['status' => false, 'message' => 'Unable to validate meter at this time.'];
         }
 
         $json = $response->json();
-        if (!is_array($json)) {
-            return ['status' => false, 'message' => 'Invalid validation response.'];
+        if (VtuProviderStatus::state($json) !== 'success') {
+            return ['status' => false, 'message' => 'Customer could not be verified.'];
         }
 
         $dataPath = isset($providerConfig['validate_data_path']) ? (string) $providerConfig['validate_data_path'] : '';
@@ -192,9 +206,12 @@ class VtuHubService
         $name = $this->extractStringFromResponse($data, (string) ($providerConfig['validate_customer_name_path'] ?? 'data.name'));
         $address = $this->extractStringFromResponse($data, (string) ($providerConfig['validate_customer_address_path'] ?? 'data.address'));
 
+        if ($name === '') {
+            return ['status' => false, 'message' => 'Provider did not return a customer name.'];
+        }
         return [
             'status' => true,
-            'message' => 'Meter validated.',
+            'message' => 'Customer verified.',
             'data' => $json,
             'customer' => [
                 'name' => $name ?: null,
@@ -209,8 +226,55 @@ class VtuHubService
     public function processRequest(array $params)
     {
         $user = $params['user'] ?? Auth::user();
+        if (!$user) { return ['status' => false, 'message' => 'Unauthenticated user.']; }
+        $key = (string) ($params['request_id'] ?? request()->header('Idempotency-Key') ?? request()->input('request_id', ''));
+        if ($key === '') {
+            $fingerprint = hash('sha256', json_encode([$user->id, $params['service_type'] ?? '', $params['provider_id'] ?? null, $params['payload'] ?? []]));
+            $key = Cache::remember('vtu-retry:'.$fingerprint, 120, fn () => 'VTU-'.bin2hex(random_bytes(12)));
+        }
+        if (strlen($key) > 100 || !preg_match('/^[A-Za-z0-9_-]+$/', $key)) {
+            return ['status' => false, 'message' => 'Invalid request reference.'];
+        }
+        $params['request_id'] = $key;
+        $lock = Cache::lock('vtu-request:'.hash('sha256', $key), 180);
+        if (!$lock->get()) {
+            return ['status' => false, 'pending' => true, 'reference' => $key, 'message' => 'This request is already processing. Do not repeat the purchase.'];
+        }
+        try {
+            $existing = VtuTransaction::where('transaction_id', $key)->first();
+            if ($existing) {
+                if ((int) $existing->user_id !== (int) $user->id || $existing->service_type !== ($params['service_type'] ?? '')
+                    || (!empty($params['provider_id']) && (int) $existing->custom_api_id !== (int) $params['provider_id'])
+                    || $existing->request_payload !== (array) ($params['payload'] ?? [])) {
+                    return ['status' => false, 'message' => 'Reference already used for another request.'];
+                }
+                return $this->transactionResult($existing);
+            }
+            return $this->processRequestUnlocked($params);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return ['status' => false, 'message' => $e->errors()[array_key_first($e->errors())][0], 'errors' => $e->errors()];
+        } finally {
+            $lock->release();
+        }
+    }
+
+    public function transactionResult(VtuTransaction $tx): array
+    {
+        $data = (array) $tx->response_payload;
+        return ['status' => $tx->status === 'success', 'pending' => $tx->status === 'pending',
+            'message' => $tx->status === 'success' ? 'Transaction successful.' : ($tx->error_message ?: 'Transaction pending confirmation.'),
+            'data' => $data, 'reference' => $tx->transaction_id,
+            'pin' => $data['pin'] ?? data_get($data, 'data.pin'),
+            'token' => $data['token'] ?? data_get($data, 'data.token'),
+            'breakdown' => ['amount' => $tx->amount, 'fee' => $tx->fee, 'total' => $tx->total, 'direction' => $tx->direction, 'discount' => $tx->direction === 'debit' ? max(0, round($tx->amount + $tx->fee - $tx->total, 2)) : 0]];
+    }
+
+    protected function processRequestUnlocked(array $params)
+    {
+        $user = $params['user'] ?? Auth::user();
         $serviceType = (string) ($params['service_type'] ?? '');
         $payload = (array) ($params['payload'] ?? []);
+        $originalPayload = $payload;
         $requestedAmount = isset($params['amount']) ? (float) $params['amount'] : (float) ($payload['amount'] ?? 0);
 
         $catalog = (array) config('vtu_services.service_types', []);
@@ -236,7 +300,7 @@ class VtuHubService
         $limits = (array) ($def['limits'] ?? []);
         $min = isset($limits['min']) ? (float) $limits['min'] : 0;
         $max = isset($limits['max']) ? (float) $limits['max'] : 0;
-        if ($requestedAmount <= 0) {
+        if (!is_finite($requestedAmount) || $requestedAmount <= 0) {
             return ['status' => false, 'message' => 'Amount is required.'];
         }
         if ($min > 0 && $requestedAmount < $min) {
@@ -263,6 +327,9 @@ class VtuHubService
                 ->where('status', true)
                 ->first();
         }
+        if ($providerId && !$provider) {
+            return ['status' => false, 'message' => 'Selected band is unavailable. Please choose another band.'];
+        }
         if (!$provider) {
             $provider = CustomApi::whereIn('service_type', $serviceTypeCandidates)->where('status', true)->orderBy('priority', 'asc')->first();
         }
@@ -282,7 +349,7 @@ class VtuHubService
             $providerConfig = is_array($provider->config) ? $provider->config : [];
         } else {
             // Fallback to legacy ApiCenter
-            $apiCenter = ApiCenter::first();
+            $apiCenter = \Illuminate\Support\Facades\Schema::hasTable('api_centers') ? ApiCenter::first() : null;
             if ($apiCenter && $apiCenter->ade_apikey) {
                 $apiKey = $apiCenter->ade_apikey;
                 $endpoint = $this->getLegacyEndpoint($apiCenter, $serviceType);
@@ -290,13 +357,52 @@ class VtuHubService
         }
 
         $isDatasub247 = ($provider && $provider->provider_identifier === 'datasub247')
-            || (!$provider && !empty($this->datasub247->getApiKey()))
-            || ($provider && empty($endpoint) && !empty($this->datasub247->getApiKey()));
+            || (!$provider && !empty($this->datasub247->getApiKey()));
 
-        if (!$isDatasub247 && (!$apiKey || !$endpoint)) {
+        if (!$provider && CustomApi::whereIn('service_type', $serviceTypeCandidates)->exists()) {
+            return ['status' => false, 'message' => 'All bands for this service are disabled.'];
+        }
+
+        if ($isDatasub247 && $provider && empty($provider->api_key)) {
+            return ['status' => false, 'message' => 'Selected band credentials are not configured.'];
+        }
+        $isClubkonnect = !$provider && !$isDatasub247 && in_array($serviceType, ['vtu_data_card', 'vtu_recharge_card'], true) && app(ClubkonnectPrintingService::class)->configured();
+        if (!$isDatasub247 && !$isClubkonnect && (!$apiKey || !$endpoint)) {
             return ['status' => false, 'message' => 'Service currently unavailable. Please try again later.'];
         }
 
+        if ($isDatasub247 && !in_array($serviceType, ['vtu_airtime', 'vtu_data', 'vtu_cable_tv', 'vtu_electricity', 'vtu_epin', 'vtu_bulksms', 'vtu_data_card', 'vtu_recharge_card'], true)) {
+            return ['status' => false, 'message' => 'This service needs a compatible band configured by the administrator.'];
+        }
+        if ($isDatasub247 && $serviceType === 'vtu_epin' && !in_array(strtolower((string) ($payload['serviceID'] ?? '')), ['waec', 'neco', 'nabteb'], true)) {
+            return ['status' => false, 'message' => 'This exam product is not supported by the selected band.'];
+        }
+        if (in_array($serviceType, ['vtu_data', 'vtu_cable_tv', 'vtu_internet', 'vtu_epin', 'vtu_data_card', 'vtu_recharge_card'], true)) {
+            $requestedAmount = app(VtuCatalogService::class)->price($serviceType, $payload, $provider?->id);
+            $payload['amount'] = $requestedAmount;
+            if (!is_finite($requestedAmount) || $requestedAmount <= 0 || ($min > 0 && $requestedAmount < $min) || ($max > 0 && $requestedAmount > $max)) {
+                return ['status' => false, 'message' => 'Product price is outside the allowed transaction limits.'];
+            }
+        }
+        if ($serviceType === 'vtu_bulksms') {
+            $numbers = \App\Support\SmsSegments::recipients($payload['recipients']);
+            $payload['recipients'] = implode(',', $numbers);
+            $rate = (float) \App\Models\SystemSetting::get('vtu_bulk_sms_rate', 4);
+            $requestedAmount = round(count($numbers) * \App\Support\SmsSegments::count($payload['message']) * $rate, 2);
+            $payload['amount'] = $requestedAmount;
+            if (!is_finite($requestedAmount) || $requestedAmount <= 0 || $requestedAmount > $max) {
+                return ['status' => false, 'message' => 'SMS total is outside transaction limits.'];
+            }
+        }
+        if ($isDatasub247) {
+            $id = match ($serviceType) {
+                'vtu_data' => $payload['plan_id'], 'vtu_cable_tv' => $payload['variation_code'],
+                'vtu_data_card', 'vtu_recharge_card' => $payload['plan_type'], default => null,
+            };
+            if ($id !== null && (!ctype_digit((string) $id) || (int) $id < 1)) {
+                return ['status' => false, 'message' => 'This product needs a valid provider plan mapping.'];
+            }
+        }
         $minOverride = isset($providerConfig['min_amount']) ? (float) $providerConfig['min_amount'] : null;
         $maxOverride = isset($providerConfig['max_amount']) ? (float) $providerConfig['max_amount'] : null;
         if ($minOverride !== null && $minOverride > 0 && $requestedAmount < $minOverride) {
@@ -316,8 +422,11 @@ class VtuHubService
             }
         }
 
+        if ($serviceType === 'vtu_electricity') {
+            $fee += max(0, (float) \App\Models\SystemSetting::get('vtu_electricity_fee', 0));
+        }
         $discount = 0.0;
-        $isDeveloper = ($params['is_developer_api'] ?? false)
+        $isDeveloper = ($params['is_developer_api'] ?? request()->is('api/*'))
             || ($user?->api_access_status === 'approved')
             || ($user?->hasCustomApiPricing() ?? false);
 
@@ -341,23 +450,25 @@ class VtuHubService
             }
         }
 
+        if ($serviceType === 'vtu_airtime' && !$isDeveloper) {
+            $rate = max(0, min(99, (float) \App\Models\SystemSetting::get('vtu_airtime_discount_percent', 2)));
+            $discount = round($requestedAmount * $rate / 100, 2);
+        }
+        if ($discount < 0 || $discount >= $requestedAmount || $fee < 0) {
+            return ['status' => false, 'message' => 'Invalid pricing configuration.'];
+        }
         $total = $direction === 'credit'
             ? max(0, $requestedAmount - $fee)
             : max(0, ($requestedAmount - $discount) + $fee);
 
-        $txId = (string) ($params['request_id'] ?? '');
-        if ($txId !== '') {
-            $existing = VtuTransaction::where('transaction_id', $txId)->first();
-            if ($existing) {
-                return [
-                    'status' => $existing->status === 'success',
-                    'message' => $existing->status === 'success' ? 'Transaction successful!' : ($existing->error_message ?: 'Transaction pending/failed.'),
-                    'data' => $existing->response_payload,
-                    'reference' => $existing->transaction_id,
-                ];
-            }
+        if (!is_finite($total) || $total <= 0) {
+            return ['status' => false, 'message' => 'Invalid total. Please contact support.'];
+        }
+        if ($params['quote_only'] ?? false) {
+            return ['status' => true, 'breakdown' => compact('direction', 'requestedAmount', 'discount', 'fee', 'total') + ['amount' => $requestedAmount]];
         }
 
+        $txId = (string) ($params['request_id'] ?? '');
         $txId = $txId !== '' ? $txId : ($txPrefix . '-' . strtoupper(bin2hex(random_bytes(4))));
 
         $vtuTx = VtuTransaction::create([
@@ -370,7 +481,8 @@ class VtuHubService
             'total' => $total,
             'transaction_id' => $txId,
             'status' => 'pending',
-            'request_payload' => $payload,
+            'request_payload' => $originalPayload,
+            'response_payload' => $isClubkonnect ? ['_provider' => 'clubkonnect'] : null,
         ]);
 
         if ($direction === 'debit') {
@@ -380,7 +492,12 @@ class VtuHubService
                 $vtuTx->save();
                 return ['status' => false, 'message' => 'Unauthenticated user.'];
             }
-            $debit = $this->wallet->debit($user, $total, $orderType, $txPrefix, $txId);
+            try {
+                $debit = $this->wallet->debit($user, $total, $orderType, $txPrefix, $txId);
+            } catch (\Throwable $e) {
+                $vtuTx->update(['status' => 'failed', 'error_message' => 'Wallet transaction could not be started.']);
+                throw $e;
+            }
             if (!$debit['ok']) {
                 $vtuTx->status = 'failed';
                 $vtuTx->error_message = (string) ($debit['message'] ?? 'Unable to debit wallet.');
@@ -391,38 +508,20 @@ class VtuHubService
 
         // 3. Call API
         try {
+            if ($isClubkonnect) {
+                $result = app(ClubkonnectPrintingService::class)->purchase($serviceType, $payload, $txId);
+                $state = ($result['pending'] ?? false) ? 'pending' : (($result['status'] ?? false) ? 'success' : 'failed');
+                return $this->transactionResult(app(VtuSettlementService::class)->settle($vtuTx, $state, $result['data'] ?? [], $result['reference'] ?? $txId));
+            }
             if ($isDatasub247) {
-                $apiResult = $this->executeDatasub247($serviceType, $payload, $requestedAmount, $txId);
-                if (!$apiResult['status']) {
-                    $errMsg = $apiResult['message'] ?? 'Transaction failed at Datasub247';
-                    throw new \Exception($errMsg);
+                $apiResult = $this->executeDatasub247($serviceType, $payload, $requestedAmount, $txId, $provider ? $this->datasub247->forProvider($provider) : null);
+                $json = (array) ($apiResult['data'] ?? []);
+                $state = ($apiResult['pending'] ?? false) ? 'pending' : (($apiResult['status'] ?? false) ? 'success' : 'failed');
+                if ($state === 'success' && in_array($serviceType, ['vtu_data_card', 'vtu_recharge_card'], true) && empty($json['pin']) && empty($json['pins'])) {
+                    $state = 'pending';
                 }
-
-                $json = $apiResult['data'] ?? [];
-                $providerRef = (string) ($json['request-id'] ?? $json['reference'] ?? $txId);
-
-                $this->wallet->markTransactionSuccess($txId);
-
-                $vtuTx->status = 'success';
-                $vtuTx->response_payload = $json;
-                $vtuTx->provider_reference = $providerRef ?: null;
-                $vtuTx->save();
-
-                return [
-                    'status' => true,
-                    'message' => $apiResult['message'] ?? 'Transaction successful!',
-                    'data' => $json,
-                    'reference' => $txId,
-                    'pin' => $apiResult['pin'] ?? $json['pin'] ?? null,
-                    'token' => $apiResult['token'] ?? $json['token'] ?? null,
-                    'breakdown' => [
-                        'direction' => $direction,
-                        'amount' => $requestedAmount,
-                        'discount' => $discount,
-                        'fee' => $fee,
-                        'total' => $total,
-                    ],
-                ];
+                $settled = app(VtuSettlementService::class)->settle($vtuTx, $state, $json, (string) ($json['request-id'] ?? $json['reference'] ?? $txId));
+                return $this->transactionResult($settled);
             }
 
             $basePayload = $payload;
@@ -457,86 +556,40 @@ class VtuHubService
             }
 
             $timeout = $provider?->timeout_seconds ?? 60;
-            $tries = max(1, ((int) ($provider?->retry_count ?? 0)) + 1);
-            $delayMs = max(0, (int) ($provider?->retry_delay_ms ?? 0));
-
-            $http = Http::withHeaders(array_merge($headers, [
-                'Authorization' => 'Bearer ' . $apiKey,
-            ]))->timeout($timeout);
-
             $method = strtoupper((string) ($providerConfig['method'] ?? 'POST'));
             
             $response = Http::withHeaders(array_merge($headers, [
                 'Authorization' => 'Bearer ' . $apiKey,
             ]))
             ->timeout($timeout)
-            ->retry($tries, $delayMs)
             ->send($method, $url, [
-                'json' => $payloadToSend,
+                $method === 'GET' ? 'query' : 'json' => $payloadToSend,
             ]);
 
-            if ($response->successful()) {
-                $json = $response->json();
-                if (!$this->isPayloadSuccessful($json)) {
-                    $msg = is_array($json) ? ($json['message'] ?? $json['msg'] ?? $json['error'] ?? 'Upstream provider returned transaction failure') : 'Upstream provider error';
-                    throw new \Exception($msg);
-                }
-                $providerRef = is_array($json) ? (string) ($json['reference'] ?? $json['transaction_id'] ?? $json['data']['reference'] ?? '') : '';
-
-                if ($direction === 'credit') {
-                    $creditAmount = $this->extractAmountFromResponse($json, (string) ($providerConfig['credit_amount_path'] ?? 'data.amount'));
-                    if ($creditAmount <= 0) {
-                        $creditAmount = $total;
-                    }
-                    $creditAmount = max(0, $creditAmount);
-                    $credit = $this->wallet->credit($user, $creditAmount, $orderType, $txId);
-                    if (!$credit['ok']) {
-                        $vtuTx->status = 'failed';
-                        $vtuTx->error_message = 'Unable to credit wallet.';
-                        $vtuTx->response_payload = $json;
-                        $vtuTx->provider_reference = $providerRef ?: null;
-                        $vtuTx->save();
-                        return ['status' => false, 'message' => $vtuTx->error_message];
-                    }
-                } else {
-                    $this->wallet->markTransactionSuccess($txId);
-                }
-
-                $vtuTx->status = 'success';
-                $vtuTx->response_payload = $json;
-                $vtuTx->provider_reference = $providerRef ?: null;
-                $vtuTx->save();
-                return [
-                    'status' => true, 
-                    'message' => 'Transaction successful!',
-                    'data' => $json,
-                    'reference' => $txId,
-                    'breakdown' => [
-                        'direction' => $direction,
-                        'amount' => $requestedAmount,
-                        'discount' => $discount,
-                        'fee' => $fee,
-                        'total' => $total,
-                    ],
-                ];
-            } else {
-                Log::error("VTU API Error ($serviceType): ", [
-                    'status' => $response->status(),
-                    'body' => $response->body(),
-                    'endpoint' => $endpoint
-                ]);
-                throw new \Exception('Upstream Service Error');
+            $json = $response->json();
+            $json = is_array($json) ? $this->normalizeResponse($json, $providerConfig) : $json;
+            $state = $response->successful() ? VtuProviderStatus::state($json, $providerConfig) : 'pending';
+            $json = is_array($json) ? $json : [];
+            if ($direction === 'credit' && $state === 'success') {
+                $creditAmount = $this->extractAmountFromResponse($json, (string) ($providerConfig['credit_amount_path'] ?? 'data.amount'));
+                data_set($json, 'data.amount', $creditAmount);
             }
-        } catch (\Exception $e) {
-            // 4. Refund on Failure
-            if ($direction === 'debit') {
-                $this->wallet->failAndRefund($user, $total, $orderType, $txId);
-            }
-            $vtuTx->status = 'failed';
-            $vtuTx->error_message = 'Transaction failed. ' . ($direction === 'debit' ? 'Your wallet has been refunded.' : '');
-            $vtuTx->save();
-            return ['status' => false, 'message' => $vtuTx->error_message, 'reference' => $txId];
+            $providerRef = (string) ($json['reference'] ?? $json['transaction_id'] ?? data_get($json, 'data.reference', ''));
+            return $this->transactionResult(app(VtuSettlementService::class)->settle($vtuTx, $state, $json, $providerRef));
+        } catch (\Throwable $e) {
+            Log::warning('VTU requires reconciliation', ['reference' => $txId, 'error' => $e->getMessage()]);
+            return $this->transactionResult(app(VtuSettlementService::class)->settle($vtuTx, 'pending'));
         }
+    }
+
+    public function normalizeResponse(array $json, array $config = []): array
+    {
+        foreach (['pin', 'pins', 'token'] as $key) {
+            if (!empty($config[$key.'_path'])) {
+                $json[$key] = data_get($json, $config[$key.'_path']);
+            }
+        }
+        return $json;
     }
 
     protected function getLegacyEndpoint($apiCenter, $serviceType)
@@ -614,50 +667,17 @@ class VtuHubService
 
     protected function isPayloadSuccessful(mixed $json): bool
     {
-        if (!is_array($json)) {
-            return false;
-        }
-
-        if (array_key_exists('status', $json)) {
-            $val = $json['status'];
-            if ($val === false || $val === 0 || $val === '0') {
-                return false;
-            }
-            if (is_string($val)) {
-                $lower = strtolower(trim($val));
-                if (in_array($lower, ['failed', 'failure', 'error', 'declined', 'cancelled', 'rejected'])) {
-                    return false;
-                }
-            }
-        }
-
-        if (array_key_exists('Status', $json)) {
-            $val = $json['Status'];
-            if ($val === false || $val === 0 || $val === '0') {
-                return false;
-            }
-            if (is_string($val)) {
-                $lower = strtolower(trim($val));
-                if (in_array($lower, ['failed', 'failure', 'error', 'declined', 'cancelled', 'rejected'])) {
-                    return false;
-                }
-            }
-        }
-
-        if (array_key_exists('success', $json) && $json['success'] === false) {
-            return false;
-        }
-
-        return true;
+        return VtuProviderStatus::state($json) === 'success';
     }
 
     /**
      * Dispatch transaction to Datasub247 service
      */
-    public function executeDatasub247(string $serviceType, array $payload, float $amount, string $txId): array
+    public function executeDatasub247(string $serviceType, array $payload, float $amount, string $txId, ?Datasub247Service $adapter = null): array
     {
+        $adapter ??= $this->datasub247;
         return match ($serviceType) {
-            'vtu_airtime' => $this->datasub247->purchaseAirtime(
+            'vtu_airtime' => $adapter->purchaseAirtime(
                 (string) ($payload['network'] ?? 1),
                 (string) ($payload['phone'] ?? ''),
                 $amount,
@@ -665,21 +685,21 @@ class VtuHubService
                 $txId,
                 (bool) ($payload['bypass'] ?? false)
             ),
-            'vtu_data' => $this->datasub247->purchaseData(
+            'vtu_data' => $adapter->purchaseData(
                 (string) ($payload['network'] ?? 1),
                 (string) ($payload['phone'] ?? ''),
                 $payload['plan_id'] ?? $payload['data_plan'] ?? 1,
                 $txId,
                 (bool) ($payload['bypass'] ?? false)
             ),
-            'vtu_cable_tv' => $this->datasub247->purchaseCable(
+            'vtu_cable_tv' => $adapter->purchaseCable(
                 $payload['serviceID'] ?? $payload['cable'] ?? 1,
                 (string) ($payload['smart_card_number'] ?? $payload['iuc'] ?? ''),
                 $payload['variation_code'] ?? $payload['cable_plan'] ?? 1,
                 $txId,
                 (bool) ($payload['bypass'] ?? false)
             ),
-            'vtu_electricity' => $this->datasub247->purchaseElectricity(
+            'vtu_electricity' => $adapter->purchaseElectricity(
                 $payload['serviceID'] ?? $payload['disco'] ?? 1,
                 (string) ($payload['meter_number'] ?? ''),
                 (string) ($payload['variation_code'] ?? $payload['meter_type'] ?? 'prepaid'),
@@ -687,25 +707,25 @@ class VtuHubService
                 $txId,
                 (bool) ($payload['bypass'] ?? false)
             ),
-            'vtu_epin', 'education_waec', 'education_neco', 'education_nabteb', 'education_jamb' => $this->datasub247->purchaseExamPin(
+            'vtu_epin', 'education_waec', 'education_neco', 'education_nabteb', 'education_jamb' => $adapter->purchaseExamPin(
                 $payload['serviceID'] ?? $payload['exam'] ?? 'waec',
                 (int) ($payload['quantity'] ?? 1),
                 $txId
             ),
-            'vtu_bulksms' => $this->datasub247->sendBulkSms(
+            'vtu_bulksms' => $adapter->sendBulkSms(
                 (string) ($payload['sender'] ?? 'FUWA'),
                 $payload['recipients'] ?? $payload['number'] ?? $payload['phone'] ?? '',
                 (string) ($payload['message'] ?? ''),
                 $txId
             ),
-            'vtu_data_card' => $this->datasub247->purchaseDataCard(
+            'vtu_data_card' => $adapter->purchaseDataCard(
                 $payload['network'] ?? 1,
                 (int) ($payload['plan_type'] ?? 1),
                 (int) ($payload['quantity'] ?? 1),
                 (string) ($payload['card_name'] ?? 'Fuwa.NG'),
                 $txId
             ),
-            'vtu_recharge_card' => $this->datasub247->purchaseRechargeCard(
+            'vtu_recharge_card' => $adapter->purchaseRechargeCard(
                 $payload['network'] ?? 1,
                 (int) ($payload['plan_type'] ?? 1),
                 (int) ($payload['quantity'] ?? 1),

@@ -9,7 +9,7 @@ return [
             'tx_prefix' => 'VTU',
             'limits' => ['min' => 50, 'max' => 50000],
             'rules' => [
-                'network' => ['required', 'string'],
+                'network' => ['required', 'string', 'in:MTN,GLO,AIRTEL,9MOBILE,1,2,3,4,01,02,03,04'],
                 'amount' => ['required', 'numeric', 'min:50'],
                 'phone' => ['required', 'string', 'digits:11'],
             ],
@@ -21,13 +21,17 @@ return [
             'tx_prefix' => 'DATA',
             'limits' => ['min' => 50, 'max' => 500000],
             'rules' => [
-                'network' => ['required', 'string'],
+                'network' => ['required', 'string', 'in:MTN,GLO,AIRTEL,9MOBILE,1,2,3,4,01,02,03,04'],
                 'plan_id' => ['required', 'string'],
                 'amount' => ['required', 'numeric', 'min:50'],
                 'phone' => ['required', 'string', 'digits:11'],
             ],
         ],
         'vtu_cable_tv' => [
+            'validation_rules' => [
+                'serviceID' => ['required', 'string'],
+                'smart_card_number' => ['required', 'string'],
+            ],
             'label' => 'Cable TV',
             'direction' => 'debit',
             'order_type' => 'Cable TV Subscription',
@@ -67,7 +71,7 @@ return [
             'tx_prefix' => 'A2C',
             'limits' => ['min' => 200, 'max' => 200000],
             'rules' => [
-                'network' => ['required', 'string'],
+                'network' => ['required', 'string', 'in:MTN,GLO,AIRTEL,9MOBILE,1,2,3,4,01,02,03,04'],
                 'amount' => ['required', 'numeric', 'min:200'],
                 'phone' => ['required', 'string', 'digits:11'],
                 'bank_code' => ['required', 'string'],
@@ -121,11 +125,11 @@ return [
             'direction' => 'debit',
             'order_type' => 'Bulk SMS Transmission',
             'tx_prefix' => 'SMS',
-            'limits' => ['min' => 4, 'max' => 500000],
+            'limits' => ['min' => 0.5, 'max' => 500000],
             'rules' => [
                 'sender' => ['required', 'string', 'max:11'],
                 'recipients' => ['required', 'string'],
-                'message' => ['required', 'string'],
+                'message' => ['required', 'string', 'max:5000'],
             ],
         ],
         'vtu_data_card' => [
@@ -135,10 +139,10 @@ return [
             'tx_prefix' => 'DCP',
             'limits' => ['min' => 100, 'max' => 500000],
             'rules' => [
-                'network' => ['required'],
-                'plan_type' => ['required', 'integer'],
+                'network' => ['required', 'string', 'in:MTN,GLO,AIRTEL,9MOBILE,1,2,3,4,01,02,03,04'],
+                'plan_type' => ['required', 'string'],
                 'quantity' => ['required', 'integer', 'min:1', 'max:100'],
-                'card_name' => ['required', 'string', 'max:50'],
+                'card_name' => ['required', 'string', 'max:100'],
             ],
         ],
         'vtu_recharge_card' => [
@@ -148,10 +152,10 @@ return [
             'tx_prefix' => 'RCP',
             'limits' => ['min' => 100, 'max' => 500000],
             'rules' => [
-                'network' => ['required'],
-                'plan_type' => ['required', 'integer'],
+                'network' => ['required', 'string', 'in:MTN,GLO,AIRTEL,9MOBILE,1,2,3,4,01,02,03,04'],
+                'plan_type' => ['required', 'string'],
                 'quantity' => ['required', 'integer', 'min:1', 'max:100'],
-                'card_name' => ['required', 'string', 'max:50'],
+                'card_name' => ['required', 'string', 'max:100'],
             ],
         ],
     ],

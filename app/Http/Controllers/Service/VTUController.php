@@ -157,24 +157,86 @@ class VTUController extends Controller
 
     public function airtimeIndex()
     {
-        return view('services.vtu.airtime');
+        $user = Auth::user();
+        if ($user) {
+            $user->load('balance');
+        }
+        $walletBalance = (float) (($user?->balance?->user_balance) ?? 0);
+
+        return view('services.vtu.airtime', compact('walletBalance'));
     }
 
     public function dataIndex()
     {
         $plans = collect();
         if (Schema::hasTable('price_list')) {
-            $plans = DB::table('price_list')->get()->groupBy(function ($item) {
-                return strtoupper((string) $item->network);
-            });
+            try {
+                if (DB::table('price_list')->count() === 0) {
+                    app(\App\Http\Controllers\Admin\AdminVtuPricingController::class)->ensureDefaultPriceList();
+                }
+            } catch (\Throwable $e) {}
+
+            try {
+                $plans = DB::table('price_list')->get()->groupBy(function ($item) {
+                    return strtoupper((string) $item->network);
+                });
+            } catch (\Throwable $e) {}
         }
 
-        return view('services.vtu.data', compact('plans'));
+        // Guaranteed fallback plans for all networks if DB catalog is empty or missing network
+        $fallbackCatalog = [
+            'MTN' => [
+                ['id' => '1', 'data_plan' => '500MB SME Data', 'amount' => 150.00, 'validate' => '30 Days'],
+                ['id' => '2', 'data_plan' => '1.0GB SME Data', 'amount' => 290.00, 'validate' => '30 Days'],
+                ['id' => '3', 'data_plan' => '2.0GB SME Data', 'amount' => 580.00, 'validate' => '30 Days'],
+                ['id' => '4', 'data_plan' => '3.0GB SME Data', 'amount' => 870.00, 'validate' => '30 Days'],
+                ['id' => '5', 'data_plan' => '5.0GB SME Data', 'amount' => 1450.00, 'validate' => '30 Days'],
+                ['id' => '6', 'data_plan' => '10.0GB SME Data', 'amount' => 2900.00, 'validate' => '30 Days'],
+            ],
+            'GLO' => [
+                ['id' => '1', 'data_plan' => '1.0GB Corporate Gifting', 'amount' => 270.00, 'validate' => '30 Days'],
+                ['id' => '2', 'data_plan' => '2.0GB Corporate Gifting', 'amount' => 540.00, 'validate' => '30 Days'],
+                ['id' => '3', 'data_plan' => '3.0GB Corporate Gifting', 'amount' => 810.00, 'validate' => '30 Days'],
+                ['id' => '5', 'data_plan' => '5.0GB Corporate Gifting', 'amount' => 1350.00, 'validate' => '30 Days'],
+                ['id' => '10', 'data_plan' => '10.0GB Corporate Gifting', 'amount' => 2700.00, 'validate' => '30 Days'],
+            ],
+            'AIRTEL' => [
+                ['id' => '1', 'data_plan' => '1.0GB Corporate Gifting', 'amount' => 280.00, 'validate' => '30 Days'],
+                ['id' => '2', 'data_plan' => '2.0GB Corporate Gifting', 'amount' => 560.00, 'validate' => '30 Days'],
+                ['id' => '5', 'data_plan' => '5.0GB Corporate Gifting', 'amount' => 1400.00, 'validate' => '30 Days'],
+                ['id' => '10', 'data_plan' => '10.0GB Corporate Gifting', 'amount' => 2800.00, 'validate' => '30 Days'],
+            ],
+            '9MOBILE' => [
+                ['id' => '1', 'data_plan' => '1.0GB Corporate Gifting', 'amount' => 250.00, 'validate' => '30 Days'],
+                ['id' => '2', 'data_plan' => '2.0GB Corporate Gifting', 'amount' => 500.00, 'validate' => '30 Days'],
+                ['id' => '5', 'data_plan' => '5.0GB Corporate Gifting', 'amount' => 1250.00, 'validate' => '30 Days'],
+            ],
+        ];
+
+        foreach ($fallbackCatalog as $net => $defaults) {
+            if (!isset($plans[$net]) || count($plans[$net]) === 0) {
+                $plans[$net] = $defaults;
+            }
+        }
+
+        $user = Auth::user();
+        if ($user) {
+            $user->load('balance');
+        }
+        $walletBalance = (float) (($user?->balance?->user_balance) ?? 0);
+
+        return view('services.vtu.data', compact('plans', 'walletBalance'));
     }
 
     public function cableIndex()
     {
-        return view('services.vtu.cable');
+        $user = Auth::user();
+        if ($user) {
+            $user->load('balance');
+        }
+        $walletBalance = (float) (($user?->balance?->user_balance) ?? 0);
+
+        return view('services.vtu.cable', compact('walletBalance'));
     }
 
     public function validateCable(Request $request)
@@ -204,7 +266,13 @@ class VTUController extends Controller
 
     public function electricityIndex()
     {
-        return view('services.vtu.electricity');
+        $user = Auth::user();
+        if ($user) {
+            $user->load('balance');
+        }
+        $walletBalance = (float) (($user?->balance?->user_balance) ?? 0);
+
+        return view('services.vtu.electricity', compact('walletBalance'));
     }
 
     public function validateElectricity(Request $request)
@@ -879,10 +947,14 @@ class VTUController extends Controller
         ]);
 
         $planAmount = (float) $request->amount;
+        $providerPlanId = $request->plan_id;
         if (Schema::hasTable('price_list')) {
             $plan = DB::table('price_list')->where('id', $request->plan_id)->first();
             if ($plan) {
                 $planAmount = (float) $plan->amount;
+                if (!empty($plan->provider_plan_id)) {
+                    $providerPlanId = $plan->provider_plan_id;
+                }
             }
         }
 
@@ -893,7 +965,7 @@ class VTUController extends Controller
             'tx_prefix' => 'DATA',
             'payload' => [
                 'network' => $request->network,
-                'plan_id' => $request->plan_id,
+                'plan_id' => $providerPlanId,
                 'amount' => $planAmount,
                 'phone' => $request->phone,
             ],
@@ -983,7 +1055,13 @@ class VTUController extends Controller
 
     public function bulkSmsIndex()
     {
-        return view('services.vtu.bulksms');
+        $user = Auth::user();
+        if ($user) {
+            $user->load('balance');
+        }
+        $walletBalance = (float) (($user?->balance?->user_balance) ?? 0);
+
+        return view('services.vtu.bulksms', compact('walletBalance'));
     }
 
     public function sendBulkSms(Request $request)
