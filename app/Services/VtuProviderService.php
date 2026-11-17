@@ -10,7 +10,16 @@ class VtuProviderService
 {
     public function supports(string $type): bool
     {
-        return in_array($type, ['vtu_airtime', 'vtu_data', 'vtu_cable_tv', 'vtu_electricity', 'vtu_epin', 'vtu_bulksms', 'vtu_data_card', 'vtu_recharge_card'], true);
+        return in_array($type, [
+            'vtu_airtime', 'vtu_data', 'vtu_cable_tv', 'vtu_electricity',
+            'vtu_epin', 'vtu_bulksms', 'vtu_data_card', 'vtu_recharge_card',
+            'vtu_internet', 'vtu_airtime_to_cash', 'vtu_betting',
+            'education_waec', 'education_neco', 'education_nabteb', 'education_jamb'
+        ], true) || CustomApi::whereIn('service_type', match ($type) {
+            'vtu_cable_tv' => [$type, 'cable_tv'],
+            'vtu_electricity' => [$type, 'electricity_bills'],
+            default => [$type],
+        })->where('status', true)->exists();
     }
 
     public function providers(string $type): Collection

@@ -71,12 +71,12 @@ class VtuHubService
         if (!app(VtuProviderService::class)->supports($serviceType)) {
             return ['status' => false, 'message' => 'This service is not available through Datasub247 yet.'];
         }
-        if ($providerId && !CustomApi::whereKey($providerId)->where('provider_identifier', 'datasub247')->where('status', true)->exists()) {
-            return ['status' => false, 'message' => 'Only Datasub247 is available.'];
+        if ($providerId && !CustomApi::whereKey($providerId)->where('status', true)->exists()) {
+            return ['status' => false, 'message' => 'Selected band is unavailable. Please choose another band.'];
         }
         $provider = null;
         if ($providerId) {
-            $provider = CustomApi::where('provider_identifier', 'datasub247')->where('id', $providerId)
+            $provider = CustomApi::where('id', $providerId)
                 ->whereIn('service_type', $serviceTypeCandidates)
                 ->where('status', true)
                 ->first();
@@ -90,15 +90,21 @@ class VtuHubService
                 ->orderBy('priority', 'asc')
                 ->first();
         }
+        if (!$provider) {
+            $provider = CustomApi::whereIn('service_type', $serviceTypeCandidates)
+                ->where('status', true)
+                ->orderBy('priority', 'asc')
+                ->first();
+        }
 
-        if (!$provider && CustomApi::where('provider_identifier', 'datasub247')->whereIn('service_type', $serviceTypeCandidates)->exists()) {
+        if (!$provider && CustomApi::whereIn('service_type', $serviceTypeCandidates)->exists()) {
             return ['status' => false, 'message' => 'All bands for this service are disabled.'];
         }
 
         $isDatasub247 = ($provider && $provider->provider_identifier === 'datasub247')
             || (!$provider && !empty($this->datasub247->getApiKey()));
 
-        if (!$isDatasub247) {
+        if (!$isDatasub247 && !$provider) {
             return ['status' => false, 'message' => 'Datasub247 is not configured for this service.'];
         }
         if ($isDatasub247) {
@@ -325,8 +331,8 @@ class VtuHubService
         if (!app(VtuProviderService::class)->supports($serviceType)) {
             return ['status' => false, 'message' => 'This service is not available through Datasub247 yet.'];
         }
-        if ($providerId && !CustomApi::whereKey($providerId)->where('provider_identifier', 'datasub247')->where('status', true)->exists()) {
-            return ['status' => false, 'message' => 'Only Datasub247 is available.'];
+        if ($providerId && !CustomApi::whereKey($providerId)->where('status', true)->exists()) {
+            return ['status' => false, 'message' => 'Selected band is unavailable. Please choose another band.'];
         }
 
         $serviceTypeCandidates = match ($serviceType) {
@@ -345,7 +351,7 @@ class VtuHubService
             }
         } else {
             if ($providerId) {
-                $provider = CustomApi::where('provider_identifier', 'datasub247')->where('id', $providerId)
+                $provider = CustomApi::where('id', $providerId)
                     ->whereIn('service_type', $serviceTypeCandidates)
                     ->where('status', true)
                     ->first();
@@ -355,6 +361,9 @@ class VtuHubService
             }
             if (!$provider) {
                 $provider = CustomApi::where('provider_identifier', 'datasub247')->whereIn('service_type', $serviceTypeCandidates)->where('status', true)->orderBy('priority', 'asc')->first();
+            }
+            if (!$provider) {
+                $provider = CustomApi::whereIn('service_type', $serviceTypeCandidates)->where('status', true)->orderBy('priority', 'asc')->first();
             }
         }
 
