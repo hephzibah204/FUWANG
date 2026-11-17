@@ -376,13 +376,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/services/vtu/data',        [App\Http\Controllers\Service\VTUController::class, 'dataIndex'])->name('services.vtu.data');
         Route::post('/services/vtu/data/buy',    [App\Http\Controllers\Service\VTUController::class, 'buyData'])->middleware('kyc.enforce')->name('services.vtu.data.buy');
 
-        Route::get('/services/vtu/cable',       [App\Http\Controllers\Service\VTUController::class, 'cableIndex'])->name('services.vtu.cable');
-        Route::post('/services/vtu/cable/validate', [App\Http\Controllers\Service\VTUController::class, 'validateCable'])->name('services.vtu.cable.validate');
-        Route::post('/services/vtu/cable/buy',   [App\Http\Controllers\Service\VTUController::class, 'buyCable'])->middleware('kyc.enforce')->name('services.vtu.cable.buy');
+        Route::get('/services/vtu/cable',       [App\Http\Controllers\Service\VtuPurchaseController::class, 'cableIndex'])->name('services.vtu.cable');
+        Route::post('/services/vtu/cable/validate', [App\Http\Controllers\Service\VtuPurchaseController::class, 'validateCable'])->name('services.vtu.cable.validate');
+        Route::post('/services/vtu/cable/buy',   [App\Http\Controllers\Service\VtuPurchaseController::class, 'buyCable'])->middleware('kyc.enforce')->name('services.vtu.cable.buy');
 
-        Route::get('/services/vtu/electricity', [App\Http\Controllers\Service\VTUController::class, 'electricityIndex'])->name('services.vtu.electricity');
-        Route::post('/services/vtu/electricity/validate', [App\Http\Controllers\Service\VTUController::class, 'validateElectricity'])->name('services.vtu.electricity.validate');
-        Route::post('/services/vtu/electricity/buy', [App\Http\Controllers\Service\VTUController::class, 'buyElectricity'])->middleware('kyc.enforce')->name('services.vtu.electricity.buy');
+        Route::get('/services/vtu/electricity', [App\Http\Controllers\Service\VtuPurchaseController::class, 'electricityIndex'])->name('services.vtu.electricity');
+        Route::post('/services/vtu/electricity/validate', [App\Http\Controllers\Service\VtuPurchaseController::class, 'validateElectricity'])->name('services.vtu.electricity.validate');
+        Route::post('/services/vtu/electricity/buy', [App\Http\Controllers\Service\VtuPurchaseController::class, 'buyElectricity'])->middleware('kyc.enforce')->name('services.vtu.electricity.buy');
 
         Route::get('/services/vtu/airtime-to-cash', [App\Http\Controllers\Service\VTUController::class, 'airtimeToCashIndex'])->name('services.vtu.airtime_to_cash');
         Route::post('/services/vtu/airtime-to-cash/submit', [App\Http\Controllers\Service\VTUController::class, 'submitAirtimeToCash'])->middleware('kyc.enforce')->name('services.vtu.airtime_to_cash.submit');
@@ -393,17 +393,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/services/vtu/betting', [App\Http\Controllers\Service\VTUController::class, 'bettingIndex'])->name('services.vtu.betting');
         Route::post('/services/vtu/betting/fund', [App\Http\Controllers\Service\VTUController::class, 'fundBetting'])->middleware('kyc.enforce')->name('services.vtu.betting.fund');
 
-        Route::get('/services/vtu/epins', [App\Http\Controllers\Service\VTUController::class, 'epinIndex'])->name('services.vtu.epin');
-        Route::post('/services/vtu/epins/buy', [App\Http\Controllers\Service\VTUController::class, 'buyEpin'])->middleware('kyc.enforce')->name('services.vtu.epin.buy');
+        Route::get('/services/vtu/epins', [App\Http\Controllers\Service\VtuPurchaseController::class, 'epinIndex'])->name('services.vtu.epin');
+        Route::post('/services/vtu/epins/buy', [App\Http\Controllers\Service\VtuPurchaseController::class, 'buyEpin'])->middleware('kyc.enforce')->name('services.vtu.epin.buy');
 
-        Route::get('/services/vtu/recharge-printing', [App\Http\Controllers\Service\VTUController::class, 'rechargePrintingIndex'])->name('services.vtu.recharge_printing');
-        Route::post('/services/vtu/recharge-printing/generate', [App\Http\Controllers\Service\VTUController::class, 'generateRechargePins'])->middleware('kyc.enforce')->name('services.vtu.recharge_printing.generate');
-        Route::get('/services/vtu/recharge-printing/query', [App\Http\Controllers\Service\VTUController::class, 'queryRechargeOrder'])->name('services.vtu.recharge_printing.query');
-        Route::get('/services/vtu/recharge-printing/data-plans', [App\Http\Controllers\Service\VTUController::class, 'fetchDatabundlePlans'])->name('services.vtu.recharge_printing.data_plans');
+        Route::get('/services/vtu/recharge-printing', [App\Http\Controllers\Service\VtuPurchaseController::class, 'rechargePrintingIndex'])->name('services.vtu.recharge_printing');
+        Route::post('/services/vtu/recharge-printing/generate', [App\Http\Controllers\Service\VtuPurchaseController::class, 'generateRechargePins'])->middleware('kyc.enforce')->name('services.vtu.recharge_printing.generate');
+        Route::get('/services/vtu/recharge-printing/query', [App\Http\Controllers\Service\VtuPurchaseController::class, 'queryRechargeOrder'])->name('services.vtu.recharge_printing.query');
+        Route::get('/services/vtu/recharge-printing/data-plans', [App\Http\Controllers\Service\VtuPurchaseController::class, 'fetchDatabundlePlans'])->name('services.vtu.recharge_printing.data_plans');
 
         // Bulk SMS
-        Route::get('/services/vtu/bulksms', [App\Http\Controllers\Service\VTUController::class, 'bulkSmsIndex'])->name('services.vtu.bulksms');
-        Route::post('/services/vtu/bulksms/send', [App\Http\Controllers\Service\VTUController::class, 'sendBulkSms'])->middleware('kyc.enforce')->name('services.vtu.bulksms.send');
+        Route::get('/services/vtu/bulksms', [App\Http\Controllers\Service\VtuPurchaseController::class, 'bulkSmsIndex'])->name('services.vtu.bulksms');
+        Route::post('/services/vtu/bulksms/send', [App\Http\Controllers\Service\VtuPurchaseController::class, 'sendBulkSms'])->middleware('kyc.enforce')->name('services.vtu.bulksms.send');
 
         // Education Hub under VTU Hub
         Route::get('/services/vtu/education/waec',       [App\Http\Controllers\Service\VTUController::class, 'waecIndex'])->name('services.education.waec');
@@ -578,6 +578,7 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
             Route::prefix('vtu/pricing')->name('vtu.pricing')->group(function () {
                 Route::get('/', [App\Http\Controllers\Admin\AdminVtuPricingController::class, 'index']);
                 Route::post('/rates', [App\Http\Controllers\Admin\AdminVtuPricingController::class, 'updateRates'])->name('.rates');
+                Route::post('/data-catalogue', [App\Http\Controllers\Admin\AdminVtuPricingController::class, 'importDataCatalogue'])->name('.data-catalogue');
                 Route::post('/bundle', [App\Http\Controllers\Admin\AdminVtuPricingController::class, 'storeBundle'])->name('.bundle.store');
                 Route::put('/bundle/{id}', [App\Http\Controllers\Admin\AdminVtuPricingController::class, 'updateBundle'])->name('.bundle.update');
                 Route::delete('/bundle/{id}', [App\Http\Controllers\Admin\AdminVtuPricingController::class, 'deleteBundle'])->name('.bundle.delete');

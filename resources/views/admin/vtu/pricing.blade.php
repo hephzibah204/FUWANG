@@ -49,6 +49,41 @@
         </div>
     @endif
 
+    <div class="panel-card p-4 mb-4">
+        <h5>Datasub247 data bundles</h5>
+        <p class="text-muted">API credentials do not automatically load data bundles. Add bundles using their actual Datasub247 plan IDs and your selling prices. Bundles without these mappings cannot be purchased.</p>
+        <p class="text-muted">Datasub247 is assigned automatically. Use the form below to add bundles or update prices for matching Datasub plan IDs.</p>
+        <details {{ old('plans') ? 'open' : '' }}>
+            <summary class="mb-3">Add or update several bundles</summary>
+            <form action="{{ route('admin.vtu.pricing.data-catalogue') }}" method="POST" data-data-catalogue>
+                @csrf
+                <div data-catalogue-rows>
+                    @foreach(old('plans', [[]]) as $index => $plan)
+                        <div class="row mb-3" data-catalogue-row>
+                            <label class="col-md-2">Network
+                                <select name="plans[{{ $index }}][network]" class="form-control" required>
+                                    @foreach(['MTN', 'GLO', 'AIRTEL', '9MOBILE'] as $network)
+                                        <option @selected(($plan['network'] ?? 'MTN') === $network)>{{ $network }}</option>
+                                    @endforeach
+                                </select>
+                            </label>
+                            <label class="col-md-3">Bundle name<input name="plans[{{ $index }}][data_plan]" class="form-control" required maxlength="255" value="{{ $plan['data_plan'] ?? '' }}" placeholder="e.g. 1 GB SME"></label>
+                            <label class="col-md-2">Datasub plan ID<input name="plans[{{ $index }}][provider_plan_id]" class="form-control" required pattern="[1-9][0-9]*" inputmode="numeric" maxlength="100" value="{{ $plan['provider_plan_id'] ?? '' }}"></label>
+                            <label class="col-md-2">Selling price (₦)<input name="plans[{{ $index }}][amount]" class="form-control" type="number" min="50" max="500000" step="0.01" required value="{{ $plan['amount'] ?? '' }}"></label>
+                            <label class="col-md-2">Validity<input name="plans[{{ $index }}][validate]" class="form-control" required maxlength="100" value="{{ $plan['validate'] ?? '' }}" placeholder="e.g. 30 Days"></label>
+                            <div class="col-md-1"><button type="button" class="btn btn-outline-danger mt-4" data-remove-plan aria-label="Remove bundle">×</button></div>
+                        </div>
+                    @endforeach
+                </div>
+                <button class="btn btn-outline-primary mb-2" type="button" data-add-plan>Add another bundle</button>
+                <button class="btn btn-primary mb-2" type="submit">Save Datasub247 bundles</button>
+            </form>
+        </details>
+    </div>
+    @push('scripts')
+        <script src="{{ asset('js/vtu-data-catalogue.js') }}" defer></script>
+    @endpush
+
     <!-- Global VTU Service Rates & PINs Card -->
     <div class="panel-card p-4 mb-4" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px;">
         <div class="d-flex align-items-center justify-content-between mb-4 border-bottom border-white-5 pb-3">
@@ -56,7 +91,7 @@
                 <h5 class="text-white mb-1 fw-bold"><i class="fa-solid fa-sliders text-primary mr-2"></i> Global VTU Rates & Exam Tokens</h5>
                 <p class="text-muted small mb-0">Prices and discount percentages applied to user checkouts across VTU services.</p>
             </div>
-            <span class="badge badge-success px-3 py-2"><i class="fa-solid fa-bolt mr-1"></i> Live Applied</span>
+            <span class="badge badge-success px-3 py-2"><i class="fa-solid fa-bolt mr-1"></i> Saved configuration</span>
         </div>
 
         <form action="{{ route('admin.vtu.pricing.rates') }}" method="POST" id="ratesForm">
@@ -72,7 +107,7 @@
                 <div class="col-md-3 mb-4">
                     <label class="text-white-50 small mb-2 fw-semibold">Airtime Discount Rate (%)</label>
                     <div class="input-group">
-                        <input type="number" step="0.1" name="vtu_airtime_discount_percent" class="form-control text-white" value="{{ $rates['vtu_airtime_discount_percent'] ?? 2.0 }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12);" required>
+                        <input type="number" step="0.01" name="vtu_airtime_discount_percent" class="form-control text-white" value="{{ old('vtu_airtime_discount_percent', $rates['vtu_airtime_discount_percent'] ?? 2.0) }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12);" required>
                         <div class="input-group-append">
                             <span class="input-group-text bg-dark text-white border-secondary">%</span>
                         </div>
@@ -87,7 +122,7 @@
                         <div class="input-group-prepend">
                             <span class="input-group-text bg-dark text-white border-secondary">₦</span>
                         </div>
-                        <input type="number" step="0.1" name="vtu_bulk_sms_rate" class="form-control text-white" value="{{ $rates['vtu_bulk_sms_rate'] ?? 4.00 }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12);" required>
+                        <input type="number" step="0.01" name="vtu_bulk_sms_rate" class="form-control text-white" value="{{ old('vtu_bulk_sms_rate', $rates['vtu_bulk_sms_rate'] ?? 4.00) }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12);" required>
                     </div>
                     <small class="text-muted mt-1 d-block">Charged per page per recipient</small>
                 </div>
@@ -99,7 +134,7 @@
                         <div class="input-group-prepend">
                             <span class="input-group-text bg-dark text-white border-secondary">₦</span>
                         </div>
-                        <input type="number" step="1" name="vtu_electricity_fee" class="form-control text-white" value="{{ $rates['vtu_electricity_fee'] ?? 0.0 }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12);" required>
+                        <input type="number" step="0.01" name="vtu_electricity_fee" class="form-control text-white" value="{{ old('vtu_electricity_fee', $rates['vtu_electricity_fee'] ?? 0.0) }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12);" required>
                     </div>
                     <small class="text-muted mt-1 d-block">Platform service fee (0 for free)</small>
                 </div>
@@ -111,7 +146,7 @@
                         <div class="input-group-prepend">
                             <span class="input-group-text bg-dark text-white border-secondary">₦</span>
                         </div>
-                        <input type="number" step="50" name="vtu_waec_price" class="form-control text-white" value="{{ $rates['vtu_waec_price'] ?? 3800.0 }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12);" required>
+                        <input type="number" step="0.01" name="vtu_waec_price" class="form-control text-white" value="{{ old('vtu_waec_price', $rates['vtu_waec_price'] ?? 4000.0) }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12);" required>
                     </div>
                     <small class="text-muted mt-1 d-block">WASSCE result verification</small>
                 </div>
@@ -123,7 +158,7 @@
                         <div class="input-group-prepend">
                             <span class="input-group-text bg-dark text-white border-secondary">₦</span>
                         </div>
-                        <input type="number" step="100" name="vtu_waec_reg_price" class="form-control text-white" value="{{ $rates['vtu_waec_reg_price'] ?? 18500.0 }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12);" required>
+                        <input type="number" step="0.01" name="vtu_waec_reg_price" class="form-control text-white" value="{{ old('vtu_waec_reg_price', $rates['vtu_waec_reg_price'] ?? 18500.0) }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12);" required>
                     </div>
                     <small class="text-muted mt-1 d-block">WASSCE candidate card</small>
                 </div>
@@ -135,7 +170,7 @@
                         <div class="input-group-prepend">
                             <span class="input-group-text bg-dark text-white border-secondary">₦</span>
                         </div>
-                        <input type="number" step="50" name="vtu_neco_price" class="form-control text-white" value="{{ $rates['vtu_neco_price'] ?? 1500.0 }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12);" required>
+                        <input type="number" step="0.01" name="vtu_neco_price" class="form-control text-white" value="{{ old('vtu_neco_price', $rates['vtu_neco_price'] ?? 1450.0) }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12);" required>
                     </div>
                     <small class="text-muted mt-1 d-block">NECO result checking</small>
                 </div>
@@ -147,7 +182,7 @@
                         <div class="input-group-prepend">
                             <span class="input-group-text bg-dark text-white border-secondary">₦</span>
                         </div>
-                        <input type="number" step="50" name="vtu_nabteb_price" class="form-control text-white" value="{{ $rates['vtu_nabteb_price'] ?? 1200.0 }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12);" required>
+                        <input type="number" step="0.01" name="vtu_nabteb_price" class="form-control text-white" value="{{ old('vtu_nabteb_price', $rates['vtu_nabteb_price'] ?? 1100.0) }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12);" required>
                     </div>
                     <small class="text-muted mt-1 d-block">NABTEB voucher card</small>
                 </div>
@@ -159,7 +194,7 @@
                         <div class="input-group-prepend">
                             <span class="input-group-text bg-dark text-white border-secondary">₦</span>
                         </div>
-                        <input type="number" step="50" name="vtu_jamb_price" class="form-control text-white" value="{{ $rates['vtu_jamb_price'] ?? 4700.0 }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12);" required>
+                        <input type="number" step="0.01" name="vtu_jamb_price" class="form-control text-white" value="{{ old('vtu_jamb_price', $rates['vtu_jamb_price'] ?? 4700.0) }}" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12);" required>
                     </div>
                     <small class="text-muted mt-1 d-block">Candidate profile e-PIN</small>
                 </div>

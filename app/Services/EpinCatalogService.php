@@ -8,8 +8,8 @@ class EpinCatalogService
     {
         $products = config('epin_products.products', []);
         if (!is_array($products)) { return []; }
-        $rates = ['waec_result_checker' => ['vtu_waec_price', 3800], 'waec_registration_pin' => ['vtu_waec_reg_price', 18500],
-            'neco_result_checker' => ['vtu_neco_price', 1500], 'nabteb_result_checker' => ['vtu_nabteb_price', 1200], 'jamb_profile_pin' => ['vtu_jamb_price', 4700]];
+        $rates = ['waec_result_checker' => ['vtu_waec_price', 4000], 'waec_registration_pin' => ['vtu_waec_reg_price', 18500],
+            'neco_result_checker' => ['vtu_neco_price', 1450], 'nabteb_result_checker' => ['vtu_nabteb_price', 1100], 'jamb_profile_pin' => ['vtu_jamb_price', 4700]];
         foreach ($rates as $key => [$setting, $default]) {
             if (isset($products[$key])) { $products[$key]['amount'] = (float) \App\Models\SystemSetting::get($setting, $default); }
         }

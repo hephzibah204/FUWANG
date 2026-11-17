@@ -17,9 +17,18 @@ class Datasub247Service
     protected ?string $password;
 
     public const NETWORK_MTN = 1;
-    public const NETWORK_GLO = 2;
-    public const NETWORK_AIRTEL = 3;
+    public const NETWORK_GLO = 3;
+    public const NETWORK_AIRTEL = 2;
     public const NETWORK_9MOBILE = 4;
+
+    // Confirmed entries from the supplied account documentation (5 of 8).
+    public const ELECTRICITY_PROVIDERS = [
+        'ikeja-electric' => ['id' => 1, 'label' => 'Ikeja Electricity', 'aliases' => ['ikedc', 'ikeja', 'ikeja-electric']],
+        'eko-electric' => ['id' => 2, 'label' => 'Eko Electricity', 'aliases' => ['ekedc', 'eko', 'eko-electric']],
+        'kano-electric' => ['id' => 3, 'label' => 'Kano Electricity', 'aliases' => ['kedco', 'kano', 'kano-electric']],
+        'portharcourt-electric' => ['id' => 4, 'label' => 'Port Harcourt Electricity', 'aliases' => ['phed', 'phedc', 'portharcourt', 'port-harcourt', 'portharcourt-electric']],
+        'jos-electric' => ['id' => 5, 'label' => 'Jos Electricity', 'aliases' => ['jed', 'jedc', 'jos', 'joss', 'jos-electric']],
+    ];
 
     public const CABLE_GOTV = 1;
     public const CABLE_DSTV = 2;
@@ -209,9 +218,8 @@ class Datasub247Service
      */
     public function validateCable(string|int $cable, string $iuc): array
     {
-        $cableId = $this->resolveCableId($cable);
-
         try {
+            $cableId = $this->resolveCableId($cable);
             $response = Http::timeout(30)
                 ->withHeaders($this->getHeaders())
                 ->get($this->baseUrl . '/api/cable/cable-validation', [
@@ -220,7 +228,7 @@ class Datasub247Service
                 ]);
 
             $data = $response->json();
-            if (is_array($data) && strtolower((string) ($data['status'] ?? '')) === 'success') {
+            if ($response->successful() && is_array($data) && strtolower((string) ($data['status'] ?? '')) === 'success' && trim((string) ($data['name'] ?? '')) !== '') {
                 return [
                     'status' => true,
                     'name' => $data['name'] ?? 'Verified Customer',
@@ -262,9 +270,8 @@ class Datasub247Service
      */
     public function validateMeter(string|int $disco, string $meterNumber, string $meterType = 'prepaid'): array
     {
-        $discoId = $this->resolveDiscoId($disco);
-
         try {
+            $discoId = $this->resolveDiscoId($disco);
             $response = Http::timeout(30)
                 ->withHeaders($this->getHeaders())
                 ->get($this->baseUrl . '/api/bill/bill-validation', [
@@ -274,7 +281,7 @@ class Datasub247Service
                 ]);
 
             $data = $response->json();
-            if (is_array($data) && strtolower((string) ($data['status'] ?? '')) === 'success') {
+            if ($response->successful() && is_array($data) && strtolower((string) ($data['status'] ?? '')) === 'success' && trim((string) ($data['name'] ?? '')) !== '') {
                 return [
                     'status' => true,
                     'name' => $data['name'] ?? 'Verified Customer',
@@ -339,7 +346,13 @@ class Datasub247Service
         $res = $this->postJson('/api/exam', $payload, $requestId);
 
         if ($res['status'] && isset($res['data']['pin'])) {
-            $res['pin'] = $res['data']['pin'];
+            $rawPin = trim((string) $res['data']['pin']);
+            $res['pin'] = $rawPin;
+            if (str_contains($rawPin, '<=>')) {
+                [$pinVal, $serialVal] = explode('<=>', $rawPin, 2);
+                $res['pin'] = trim($pinVal);
+                $res['serial'] = trim($serialVal);
+            }
         }
 
         return $res;
@@ -501,12 +514,13 @@ class Datasub247Service
     }
 
     /**
-     * Map network name or string to Datasub247 integer ID (1: MTN, 2: GLO, 3: AIRTEL, 4: 9MOBILE)
+     * Datasub IDs: MTN=1, AIRTEL=2, GLO=3, 9MOBILE=4.
+     * Zero-padded codes retain Fuwa's legacy meanings (02=GLO, 04=AIRTEL).
      */
     public function resolveNetworkId(string|int $network): int
     {
         if (is_string($network) && in_array($network, ['01', '02', '03', '04'], true)) {
-            return ['01' => 1, '02' => 2, '03' => 4, '04' => 3][$network];
+            return ['01' => 1, '02' => 3, '03' => 4, '04' => 2][$network];
         }
         if (is_numeric($network) && in_array((int)$network, [1, 2, 3, 4], true)) {
             return (int) $network;
@@ -563,24 +577,17 @@ class Datasub247Service
      */
     public function resolveDiscoId(string|int $disco): int
     {
-        if (is_numeric($disco)) {
+        if (is_numeric($disco) && (int) $disco >= 1 && (int) $disco <= 15) {
             return (int) $disco;
         }
 
         $d = strtolower(trim((string) $disco));
-        return match ($d) {
-            'ikeja-electric', 'ikedc' => 1,
-            'eko-electric', 'ekedc' => 2,
-            'abuja-electric', 'aedc' => 3,
-            'kano-electric', 'kedco' => 4,
-            'portharcourt-electric', 'phed' => 5,
-            'jos-electric', 'jed' => 6,
-            'kaduna-electric', 'kaedco' => 7,
-            'enugu-electric', 'eedc' => 8,
-            'ibadan-electric', 'ibedc' => 9,
-            'benin-electric', 'bedc' => 10,
-            'yola-electric', 'yedc' => 11,
-            default => throw new \InvalidArgumentException('Unsupported electricity provider.'),
-        };
+        foreach (self::ELECTRICITY_PROVIDERS as $code => $provider) {
+            $aliases = $provider['aliases'] ?? [$provider['alias'] ?? ''];
+            if ($d === $code || in_array($d, $aliases, true)) {
+                return $provider['id'];
+            }
+        }
+        throw new \InvalidArgumentException('This electricity provider has no confirmed Datasub247 mapping yet.');
     }
 }

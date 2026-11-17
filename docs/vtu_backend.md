@@ -31,17 +31,26 @@ Legacy compatibility:
 
 ## Transaction Processing
 
-### Data bands and selling prices
+### Datasub247 catalogue and pricing
 
-- Configure each data API in Custom APIs with service type `vtu_data`. Customers can select only active bands with credentials; generic providers also require an endpoint. Configured Datasub247 is the default.
-- In Admin → VTU & Utility Pricing, assign every bundle to its API band, enter the provider's actual plan ID, and set that band's selling price. Use the band filter to review prices independently.
-- Unassigned bundles and bundles without a provider plan ID are unavailable for configured bands. Do not populate these fields with guessed IDs.
-- The purchase page, catalogue endpoint, quote and checkout all use `VtuCatalogService` to resolve the same band-specific catalogue. Switching bands clears the previous selection and price.
-- The browser submits the local catalogue row ID. Only the billing service maps it to the provider plan ID, and the server determines the price regardless of the submitted amount.
+Datasub247 is the sole enabled purchase provider. Other API records remain saved for future use. Provider selection is hidden and requests cannot use another provider.
+
+Run migrations 2026_11_17_120000 and 2026_11_17_121000 during deployment. They add the five MTN data plans and five DSTV plans supplied from the account documentation. These are partial catalogues (5 of 41 data plans and 5 of 30 cable plans). Existing prices are preserved. New entries start with the documented amounts; set selling prices in Admin VTU Pricing. No API credentials are embedded in the catalogue.
+
+- Data provider IDs: 1 (500MB / 7 days / NGN230), 2 (1GB / 30 days / NGN410), 3 (2GB / 7 days / NGN820), 4 (2GB / 30 days / NGN840), 6 (3GB / 30 days / NGN1140).
+- Network IDs: MTN=1, GLO=3, AIRTEL=2, 9MOBILE=4. Legacy Fuwa codes 02=GLO, 04=AIRTEL and 03=9MOBILE retain their original meanings.
+- Confirmed electricity IDs: Ikeja=1, Eko=2, Kano=3, Port Harcourt=4, Jos=5. Further DISCOs require confirmed IDs before selection is enabled.
+- Browser data plan IDs identify local catalogue rows. VtuCatalogService translates them to provider IDs exactly once. Unmapped rows are unavailable; local IDs must never be guessed as provider IDs.
+- Bulk bundle entry assigns Datasub automatically and validates every row before saving any row. A valid API token alone does not import plans. Empty printing plan tables are not seeded with guessed products.
+- Global prices and product settings save in one database transaction. Cache invalidation follows commit; failed saves retain entered figures and return an error.
+
+### Callbacks
+
+Set DATASUB247_WEBHOOK_SECRET to an independently generated secret. Configure the Datasub dashboard callback URL as https://fuwa.ng/webhooks/vtu/datasub247?token=YOUR_WEBHOOK_SECRET (substitute the configured secret). The endpoint also accepts X-Webhook-Secret or a bearer token. It rejects unauthenticated calls and stores only the JSON body, never the URL credential. The documented parent keys request-id, status and response are supported; fail and failed both settle as failure. Replayed callbacks cannot refund twice. Prepaid electricity and PIN purchases remain pending until their delivery token or PIN is available.
 
 All VTU transactions run through [VtuHubService.php](file:///c:/Users/User/Documents/gsoft_verify_V2/app/Services/VtuHubService.php):
 - Validates payload using the catalog rules
-- Selects a provider (or falls back to legacy `ApiCenter` endpoints)
+- Routes purchases through configured Datasub247 credentials
 - Applies commission/fee and enforces min/max limits
 - Executes the upstream call with consistent error handling
 - Uses wallet debit/credit and refund on failures

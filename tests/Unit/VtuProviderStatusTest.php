@@ -25,6 +25,15 @@ class VtuProviderStatusTest extends TestCase
         $this->assertSame($adapter->resolveNetworkId('AIRTEL'), $adapter->resolveNetworkId('04'));
         $this->assertSame($adapter->resolveNetworkId('9MOBILE'), $adapter->resolveNetworkId('03'));
     }
+
+    public function test_documented_datasub_network_ids_match_airtime_and_data_documentation(): void
+    {
+        $adapter = (new \ReflectionClass(Datasub247Service::class))->newInstanceWithoutConstructor();
+        foreach (['MTN' => 1, 'GLO' => 3, 'AIRTEL' => 2, '9MOBILE' => 4,
+            '01' => 1, '02' => 3, '04' => 2, '03' => 4] as $network => $id) {
+            $this->assertSame($id, $adapter->resolveNetworkId($network));
+        }
+    }
     public function test_unsupported_exam_cannot_be_sold_as_waec(): void
     {
         $adapter = (new \ReflectionClass(Datasub247Service::class))->newInstanceWithoutConstructor();

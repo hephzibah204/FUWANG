@@ -76,7 +76,7 @@ class VtuHubService
         }
         $provider = null;
         if ($providerId) {
-            $provider = CustomApi::where('id', $providerId)
+            $provider = CustomApi::where('provider_identifier', 'datasub247')->where('id', $providerId)
                 ->whereIn('service_type', $serviceTypeCandidates)
                 ->where('status', true)
                 ->first();
@@ -91,20 +91,20 @@ class VtuHubService
                 ->first();
         }
         if (!$provider) {
-            $provider = CustomApi::whereIn('service_type', $serviceTypeCandidates)
+            $provider = CustomApi::where('provider_identifier', 'datasub247')->whereIn('service_type', $serviceTypeCandidates)
                 ->where('status', true)
                 ->orderBy('priority', 'asc')
                 ->first();
         }
 
-        if (!$provider && CustomApi::whereIn('service_type', $serviceTypeCandidates)->exists()) {
+        if (!$provider && CustomApi::where('provider_identifier', 'datasub247')->whereIn('service_type', $serviceTypeCandidates)->exists()) {
             return ['status' => false, 'message' => 'All bands for this service are disabled.'];
         }
 
         $isDatasub247 = ($provider && $provider->provider_identifier === 'datasub247')
             || (!$provider && !empty($this->datasub247->getApiKey()));
 
-        if (!$isDatasub247 && !$provider) {
+        if (!$isDatasub247) {
             return ['status' => false, 'message' => 'Datasub247 is not configured for this service.'];
         }
         if ($isDatasub247) {
@@ -347,11 +347,11 @@ class VtuHubService
         if ($serviceType === 'vtu_data') {
             $provider = app(VtuCatalogService::class)->dataProvider($providerId);
             if ($providerId && !$provider) {
-                $provider = app(VtuCatalogService::class)->dataProvider(null);
+                return ['status' => false, 'message' => 'Only configured Datasub247 data plans are available.'];
             }
         } else {
             if ($providerId) {
-                $provider = CustomApi::where('id', $providerId)
+                $provider = CustomApi::where('provider_identifier', 'datasub247')->where('id', $providerId)
                     ->whereIn('service_type', $serviceTypeCandidates)
                     ->where('status', true)
                     ->first();
@@ -363,7 +363,7 @@ class VtuHubService
                 $provider = CustomApi::where('provider_identifier', 'datasub247')->whereIn('service_type', $serviceTypeCandidates)->where('status', true)->orderBy('priority', 'asc')->first();
             }
             if (!$provider) {
-                $provider = CustomApi::whereIn('service_type', $serviceTypeCandidates)->where('status', true)->orderBy('priority', 'asc')->first();
+                $provider = CustomApi::where('provider_identifier', 'datasub247')->whereIn('service_type', $serviceTypeCandidates)->where('status', true)->orderBy('priority', 'asc')->first();
             }
         }
 
@@ -403,12 +403,21 @@ class VtuHubService
             }
         }
         $isClubkonnect = false;
-        if (!$isDatasub247 && !$endpoint) {
+        if (!$isDatasub247) {
             return ['status' => false, 'message' => 'Service currently unavailable. Please try again later.'];
         }
 
         if ($isDatasub247 && !in_array($serviceType, ['vtu_airtime', 'vtu_data', 'vtu_cable_tv', 'vtu_electricity', 'vtu_epin', 'vtu_bulksms', 'vtu_data_card', 'vtu_recharge_card'], true)) {
             return ['status' => false, 'message' => 'This service needs a compatible band configured by the administrator.'];
+        }
+        if ($isDatasub247) {
+            try {
+                if ($serviceType === 'vtu_electricity') $this->datasub247->resolveDiscoId($payload['serviceID'] ?? '');
+                if ($serviceType === 'vtu_cable_tv') $this->datasub247->resolveCableId($payload['serviceID'] ?? '');
+                if (in_array($serviceType, ['vtu_airtime', 'vtu_data', 'vtu_data_card', 'vtu_recharge_card'], true)) $this->datasub247->resolveNetworkId($payload['network'] ?? '');
+            } catch (\InvalidArgumentException $e) {
+                return ['status' => false, 'message' => $e->getMessage()];
+            }
         }
         if ($isDatasub247 && $serviceType === 'vtu_epin' && !in_array(strtolower((string) ($payload['serviceID'] ?? '')), ['waec', 'neco', 'nabteb'], true)) {
             return ['status' => false, 'message' => 'This exam product is not supported by the selected band.'];
@@ -437,12 +446,6 @@ class VtuHubService
                 'vtu_data_card', 'vtu_recharge_card' => $payload['plan_type'] ?? null,
                 default => null,
             };
-            if ($serviceType === 'vtu_data' && (!ctype_digit((string) $id) || (int) $id < 1)) {
-                if (!empty($payload['catalog_plan_id']) && ctype_digit((string) $payload['catalog_plan_id'])) {
-                    $payload['plan_id'] = $payload['catalog_plan_id'];
-                    $id = $payload['plan_id'];
-                }
-            }
             if ($id !== null && (!ctype_digit((string) $id) || (int) $id < 1)) {
                 return ['status' => false, 'message' => 'This product needs a valid provider plan mapping.'];
             }

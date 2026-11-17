@@ -83,8 +83,7 @@ trait HandlesVtuPurchases
         return response()->json($this->vtuHub->transactionResult($tx));
     }
     private function purchaseWebhook(Request $request){
-        $secret=(string)config('services.datasub247.webhook_secret');$provided=(string)($request->header('X-Webhook-Secret')?:$request->bearerToken());
-        if($secret==='' || !hash_equals($secret,$provided))return response()->json(['status'=>false,'message'=>'Invalid webhook credentials.'],401);
-        $result=$this->vtuHub->getDatasub247()->handleWebhook($request->all());return response()->json($result,($result['status']??false)?200:400);
+        if(!\App\Support\DatasubWebhookAuth::valid($request))return response()->json(['status'=>false,'message'=>'Invalid webhook credentials.'],401);
+        $result=$this->vtuHub->getDatasub247()->handleWebhook($request->json()->all());return response()->json($result,($result['status']??false)?200:400);
     }
 }

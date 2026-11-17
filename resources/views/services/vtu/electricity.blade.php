@@ -34,41 +34,11 @@
                         <label for="serviceID" class="font-weight-600 mb-2 text-white d-block">
                             Select Distribution Company (DISCO)
                         </label>
-                        <div class="disco-logos-grid mb-3">
-                            <button type="button" class="disco-logo-btn" data-disco="ibadan-electric" title="Ibadan Electric (IBEDC)">
-                                <div class="disco-img-wrap"><img src="{{ asset('images/vtu/ibedc.png') }}" alt="IBEDC" class="disco-btn-img"></div>
-                                <span class="disco-btn-label">IBEDC</span>
-                            </button>
-                            <button type="button" class="disco-logo-btn" data-disco="eko-electric" title="Eko Electric (EKEDC)">
-                                <div class="disco-img-wrap"><img src="{{ asset('images/vtu/ekedc.png') }}" alt="EKEDC" class="disco-btn-img"></div>
-                                <span class="disco-btn-label">EKEDC</span>
-                            </button>
-                            <button type="button" class="disco-logo-btn" data-disco="abuja-electric" title="Abuja Electric (AEDC)">
-                                <div class="disco-img-wrap"><img src="{{ asset('images/vtu/aedc.png') }}" alt="AEDC" class="disco-btn-img"></div>
-                                <span class="disco-btn-label">AEDC</span>
-                            </button>
-                            <button type="button" class="disco-logo-btn" data-disco="enugu-electric" title="Enugu Electric (EEDC)">
-                                <div class="disco-img-wrap"><img src="{{ asset('images/vtu/eedc.png') }}" alt="EEDC" class="disco-btn-img"></div>
-                                <span class="disco-btn-label">EEDC</span>
-                            </button>
-                        </div>
                         <div class="select-wrap">
                             <select name="serviceID" id="serviceID" class="form-control vtu-input vtu-select" required>
                                 <option value="">-- Choose your electricity provider --</option>
-                                @foreach((config('discos.electricity') ?? [
-                                    ['key' => 'ikeja-electric', 'label' => 'Ikeja Electric (IKEDC)'],
-                                    ['key' => 'eko-electric', 'label' => 'Eko Electric (EKEDC)'],
-                                    ['key' => 'abuja-electric', 'label' => 'Abuja Electric (AEDC)'],
-                                    ['key' => 'kano-electric', 'label' => 'Kano Electric (KEDCO)'],
-                                    ['key' => 'portharcourt-electric', 'label' => 'Port Harcourt (PHED)'],
-                                    ['key' => 'jos-electric', 'label' => 'Jos Electric (JED)'],
-                                    ['key' => 'kaduna-electric', 'label' => 'Kaduna Electric (KAEDCO)'],
-                                    ['key' => 'enugu-electric', 'label' => 'Enugu Electric (EEDC)'],
-                                    ['key' => 'ibadan-electric', 'label' => 'Ibadan Electric (IBEDC)'],
-                                    ['key' => 'benin-electric', 'label' => 'Benin Electric (BEDC)'],
-                                    ['key' => 'yola-electric', 'label' => 'Yola Electric (YEDC)'],
-                                ]) as $d)
-                                    <option value="{{ $d['key'] }}">{{ $d['label'] }}</option>
+                                @foreach(\App\Services\Datasub247Service::ELECTRICITY_PROVIDERS as $code => $d)
+                                    <option value="{{ $code }}">{{ $d['label'] }}</option>
                                 @endforeach
                             </select>
                         </div>

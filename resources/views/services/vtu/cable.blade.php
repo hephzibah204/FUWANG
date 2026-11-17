@@ -39,7 +39,7 @@
                                 <input type="radio" name="serviceID" value="gotv" checked required>
                                 <div class="provider-box provider-gotv">
                                     <div class="provider-logo-wrap">
-                                        <img src="{{ asset('images/vtu/gotv.png') }}" alt="GOtv" class="provider-logo-img">
+                                        <img src="{{ asset('images/vtu/gotv.png') }}" alt="GOtv" class="provider-logo-img" onerror="if(this.src.indexOf('/vtu/')!==-1){this.src='{{ asset('images/gotv.png') }}';}">
                                     </div>
                                     <span class="provider-name">GOtv</span>
                                     <span class="provider-tag">All Bouquets</span>
@@ -52,7 +52,7 @@
                                 <input type="radio" name="serviceID" value="dstv" required>
                                 <div class="provider-box provider-dstv">
                                     <div class="provider-logo-wrap">
-                                        <img src="{{ asset('images/vtu/dstv.png') }}" alt="DStv" class="provider-logo-img">
+                                        <img src="{{ asset('images/vtu/dstv.png') }}" alt="DStv" class="provider-logo-img" onerror="if(this.src.indexOf('/vtu/')!==-1){this.src='{{ asset('images/dstv.png') }}';}">
                                     </div>
                                     <span class="provider-name">DStv</span>
                                     <span class="provider-tag">Padi to Premium</span>
@@ -65,7 +65,7 @@
                                 <input type="radio" name="serviceID" value="startimes" required>
                                 <div class="provider-box provider-startimes">
                                     <div class="provider-logo-wrap">
-                                        <img src="{{ asset('images/vtu/startimes.png') }}" alt="StarTimes" class="provider-logo-img">
+                                        <img src="{{ asset('images/vtu/startimes.png') }}" alt="StarTimes" class="provider-logo-img" onerror="if(this.src.indexOf('/vtu/')!==-1){this.src='{{ asset('images/startimes.png') }}';}">
                                     </div>
                                     <span class="provider-name">StarTimes</span>
                                     <span class="provider-tag">Nova to Super</span>

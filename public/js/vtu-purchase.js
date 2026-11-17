@@ -101,7 +101,9 @@
         const data = response.data || {};
         const token = response.token || data.token || data.data?.token;
         const pins = response.pin || data.pins || data.pin || data.data?.pins || data.data?.pin || data.TXN_EPIN || data.TXN_EPIN_DATABUNDLE;
-        for (const [label, value] of [['Electricity token', token], ['Purchased PINs', pins]]) {
+        for (const [label, value] of [['Electricity token', token], ['Purchased PINs', pins],
+            ['Serial numbers', data.serial || data.data?.serial], ['How to load', data.load_pin || data.data?.load_pin],
+            ['Check balance', data.check_balance || data.data?.check_balance]]) {
             if (!value) continue;
             const title = document.createElement('strong'); title.textContent = label; result.append(title);
             const pre = document.createElement('pre'); pre.style.whiteSpace = 'pre-wrap'; pre.style.overflowWrap = 'anywhere'; pre.textContent = typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value); result.append(pre);

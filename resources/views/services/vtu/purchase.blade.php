@@ -57,8 +57,8 @@
                                             <option value="{{ $code }}">{{ $label }}</option>
                                         @endforeach
                                     @elseif($type === 'vtu_electricity')
-                                        @foreach(['ikeja' => 'Ikeja', 'eko' => 'Eko', 'abuja' => 'Abuja', 'kano' => 'Kano', 'portharcourt' => 'Port Harcourt', 'jos' => 'Jos', 'kaduna' => 'Kaduna', 'enugu' => 'Enugu', 'ibadan' => 'Ibadan', 'benin' => 'Benin', 'yola' => 'Yola'] as $code => $label)
-                                            <option value="{{ $code }}-electric">{{ $label }} Electricity</option>
+                                        @foreach(\App\Services\Datasub247Service::ELECTRICITY_PROVIDERS as $code => $disco)
+                                            <option value="{{ $code }}">{{ $disco['label'] }}</option>
                                         @endforeach
                                     @endif
                                 </select>

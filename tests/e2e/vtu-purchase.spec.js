@@ -114,3 +114,20 @@ test('late electricity validation cannot verify a changed meter', async ({ page 
     await expect(page.locator('input[name="validation_token"]')).toHaveValue('');
     expect(requests).toHaveLength(0);
 });
+
+test('configured Datasub cable plan can be verified and purchased without provider selection', async ({ page }) => {
+    const requests = await setup(page, { type: 'vtu_cable_tv', bands: [{ id: 1, name: 'Datasub247' }],
+        catalogue: [{ code: 'datasub-dstv-1', service_id: 'dstv', label: 'DSTV PADI', amount: 4400 }] });
+    await expect(page.locator('#vtu-band')).toHaveAttribute('type', 'hidden');
+    await page.locator('#vtu-service').selectOption('dstv');
+    await page.locator('#vtu-plan').selectOption('datasub-dstv-1');
+    await page.locator('#vtu-customer').fill('0701339708866');
+    await page.locator('#vtu-phone').fill('07032295411');
+    await page.locator('[data-verify-customer]').click();
+    await expect(page.locator('[data-customer-result]')).toContainText('Test Customer');
+    await page.locator('[data-submit]').click();
+    await expect(page.locator('[data-result]')).toContainText('Purchase completed');
+    expect(requests).toHaveLength(1);
+    expect(requests[0].variation_code).toBe('datasub-dstv-1');
+    expect(requests[0].validation_token).toBe('verified-token');
+});

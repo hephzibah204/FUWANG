@@ -53,7 +53,7 @@
                                 <input type="radio" name="network" id="net_airtime_MTN" value="MTN" checked required>
                                 <div class="net-box net-mtn">
                                     <div class="net-logo-wrap">
-                                        <img src="{{ asset('images/vtu/mtn.png') }}" alt="MTN" class="net-logo-img">
+                                        <img src="{{ asset('images/vtu/mtn.png') }}" alt="MTN" class="net-logo-img" onerror="if(this.src.indexOf('/vtu/')!==-1){this.src='{{ asset('images/mtn.png') }}';}">
                                     </div>
                                     <span class="net-title">MTN</span>
                                     <span class="net-status-dot"></span>
@@ -66,7 +66,7 @@
                                 <input type="radio" name="network" id="net_airtime_GLO" value="GLO" required>
                                 <div class="net-box net-glo">
                                     <div class="net-logo-wrap">
-                                        <img src="{{ asset('images/vtu/glo.png') }}" alt="GLO" class="net-logo-img">
+                                        <img src="{{ asset('images/vtu/glo.png') }}" alt="GLO" class="net-logo-img" onerror="if(this.src.indexOf('/vtu/')!==-1){this.src='{{ asset('images/glo.png') }}';}">
                                     </div>
                                     <span class="net-title">GLO</span>
                                     <span class="net-status-dot"></span>
@@ -79,7 +79,7 @@
                                 <input type="radio" name="network" id="net_airtime_AIRTEL" value="AIRTEL" required>
                                 <div class="net-box net-airtel">
                                     <div class="net-logo-wrap">
-                                        <img src="{{ asset('images/vtu/airtel.png') }}" alt="AIRTEL" class="net-logo-img">
+                                        <img src="{{ asset('images/vtu/airtel.png') }}" alt="AIRTEL" class="net-logo-img" onerror="if(this.src.indexOf('/vtu/')!==-1){this.src='{{ asset('images/airtel.png') }}';}">
                                     </div>
                                     <span class="net-title">AIRTEL</span>
                                     <span class="net-status-dot"></span>
@@ -92,7 +92,7 @@
                                 <input type="radio" name="network" id="net_airtime_9MOBILE" value="9MOBILE" required>
                                 <div class="net-box net-9mobile">
                                     <div class="net-logo-wrap">
-                                        <img src="{{ asset('images/vtu/9mobile.png') }}" alt="9MOBILE" class="net-logo-img">
+                                        <img src="{{ asset('images/vtu/9mobile.png') }}" alt="9MOBILE" class="net-logo-img" onerror="if(this.src.indexOf('/vtu/')!==-1){this.src='{{ asset('images/9mobile.png') }}';}">
                                     </div>
                                     <span class="net-title">9MOBILE</span>
                                     <span class="net-status-dot"></span>

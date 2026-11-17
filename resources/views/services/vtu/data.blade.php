@@ -43,7 +43,7 @@
                                 <input type="radio" name="network" id="net_MTN" value="MTN" checked required>
                                 <div class="net-box net-mtn">
                                     <div class="net-logo-wrap">
-                                        <img src="{{ asset('images/vtu/mtn.png') }}" alt="MTN" class="net-logo-img">
+                                        <img src="{{ asset('images/vtu/mtn.png') }}" alt="MTN" class="net-logo-img" onerror="if(this.src.indexOf('/vtu/')!==-1){this.src='{{ asset('images/mtn.png') }}';}">
                                     </div>
                                     <span class="net-title">MTN</span>
                                     <span class="net-status-dot"></span>
@@ -56,7 +56,7 @@
                                 <input type="radio" name="network" id="net_GLO" value="GLO" required>
                                 <div class="net-box net-glo">
                                     <div class="net-logo-wrap">
-                                        <img src="{{ asset('images/vtu/glo.png') }}" alt="GLO" class="net-logo-img">
+                                        <img src="{{ asset('images/vtu/glo.png') }}" alt="GLO" class="net-logo-img" onerror="if(this.src.indexOf('/vtu/')!==-1){this.src='{{ asset('images/glo.png') }}';}">
                                     </div>
                                     <span class="net-title">GLO</span>
                                     <span class="net-status-dot"></span>
@@ -69,7 +69,7 @@
                                 <input type="radio" name="network" id="net_AIRTEL" value="AIRTEL" required>
                                 <div class="net-box net-airtel">
                                     <div class="net-logo-wrap">
-                                        <img src="{{ asset('images/vtu/airtel.png') }}" alt="AIRTEL" class="net-logo-img">
+                                        <img src="{{ asset('images/vtu/airtel.png') }}" alt="AIRTEL" class="net-logo-img" onerror="if(this.src.indexOf('/vtu/')!==-1){this.src='{{ asset('images/airtel.png') }}';}">
                                     </div>
                                     <span class="net-title">AIRTEL</span>
                                     <span class="net-status-dot"></span>
@@ -82,7 +82,7 @@
                                 <input type="radio" name="network" id="net_9MOBILE" value="9MOBILE" required>
                                 <div class="net-box net-9mobile">
                                     <div class="net-logo-wrap">
-                                        <img src="{{ asset('images/vtu/9mobile.png') }}" alt="9MOBILE" class="net-logo-img">
+                                        <img src="{{ asset('images/vtu/9mobile.png') }}" alt="9MOBILE" class="net-logo-img" onerror="if(this.src.indexOf('/vtu/')!==-1){this.src='{{ asset('images/9mobile.png') }}';}">
                                     </div>
                                     <span class="net-title">9MOBILE</span>
                                     <span class="net-status-dot"></span>
@@ -369,16 +369,18 @@
             button.disabled = !valid || paying;
         }
         function populate() {
-            const available = grouped[network()] || [];
-            plan.replaceChildren(new Option(loading ? 'Loading bundles...' : (available.length ? 'Choose a data bundle' : 'No bundles available for this network and band'), ''));
+            const net = network();
+            const available = grouped[net] || grouped[net.toUpperCase()] || grouped[net.toLowerCase()] || [];
+            plan.replaceChildren(new Option(loading ? 'Loading bundles...' : (available.length ? 'Choose a data bundle' : 'No bundles configured for ' + net), ''));
             if (!loading) available.forEach(p => {
                 const label = p.data_plan || p.label;
                 const option = new Option(label + (p.validate ? ' (' + p.validate + ')' : '') + ' - ' + money(p.amount), String(p.id));
                 option.dataset.price = p.amount; option.dataset.label = label; plan.add(option);
             });
             plan.disabled = loading || available.length === 0;
-            document.getElementById('selectedNetLabel').textContent = 'Selected: ' + network();
-            status.textContent = loading ? 'Loading available bundles...' : (available.length ? 'Select a bundle to see its price.' : 'No Datasub247 bundles are configured for this network yet. Please contact support.');
+            const netLabel = document.getElementById('selectedNetLabel');
+            if (netLabel) netLabel.innerHTML = 'Selected: <strong class="text-warning">' + net + '</strong>';
+            if (status) status.textContent = loading ? 'Loading available bundles...' : (available.length ? 'Select a bundle to see its price.' : 'No bundles configured for ' + net + ' yet.');
             summary();
         }
         async function json(url, body) {
@@ -401,6 +403,15 @@
             finally { if (version === catalogVersion) { loading = false; populate(); } }
         });
         form.querySelectorAll('[name="network"]').forEach(radio => radio.addEventListener('change', populate));
+        document.querySelectorAll('.nexus-net-option').forEach(option => {
+            option.addEventListener('click', function () {
+                const radio = this.querySelector('input[type="radio"]');
+                if (radio && !radio.checked) {
+                    radio.checked = true;
+                    populate();
+                }
+            });
+        });
         plan.addEventListener('change', summary);
         document.getElementById('btnUseMyPhone')?.addEventListener('click', event => { phone.value = event.currentTarget.dataset.phone || ''; phone.focus(); });
         async function message(title, text, icon) {

@@ -7,9 +7,21 @@ use App\Models\SystemSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Cache;
 
 class AdminVtuPricingController extends Controller
 {
+    public function importDataCatalogue(Request $request)
+    {
+        $request->validate(['data_catalogue' => 'nullable|json|max:500000', 'plans' => 'required_without:data_catalogue|array|max:1000']);
+        $plans = $request->filled('data_catalogue') ? json_decode($request->input('data_catalogue'), true) : $request->input('plans');
+        \Illuminate\Support\Facades\Validator::make(['plans' => $plans], ['plans' => 'required|array'])->validate();
+        $count = app(\App\Services\DatasubDataCatalogueImport::class)->import($plans);
+        $message = "$count Datasub247 bundles saved. They are now available on the data purchase page.";
+        if ($request->expectsJson()) return response()->json(['status' => true, 'message' => $message, 'count' => $count]);
+        return back()->with('success', $message);
+    }
+
     /**
      * Display the VTU pricing and data bundle management dashboard.
      */
@@ -30,10 +42,10 @@ class AdminVtuPricingController extends Controller
             'vtu_airtime_discount_percent' => (float) SystemSetting::get('vtu_airtime_discount_percent', 2.0),
             'vtu_bulk_sms_rate' => (float) SystemSetting::get('vtu_bulk_sms_rate', 4.00),
             'vtu_electricity_fee' => (float) SystemSetting::get('vtu_electricity_fee', 0.0),
-            'vtu_waec_price' => (float) SystemSetting::get('vtu_waec_price', 3800.0),
+            'vtu_waec_price' => (float) SystemSetting::get('vtu_waec_price', 4000.0),
             'vtu_waec_reg_price' => (float) SystemSetting::get('vtu_waec_reg_price', 18500.0),
-            'vtu_neco_price' => (float) SystemSetting::get('vtu_neco_price', 1500.0),
-            'vtu_nabteb_price' => (float) SystemSetting::get('vtu_nabteb_price', 1200.0),
+            'vtu_neco_price' => (float) SystemSetting::get('vtu_neco_price', 1450.0),
+            'vtu_nabteb_price' => (float) SystemSetting::get('vtu_nabteb_price', 1100.0),
             'vtu_jamb_price' => (float) SystemSetting::get('vtu_jamb_price', 4700.0),
         ];
 
@@ -60,6 +72,7 @@ class AdminVtuPricingController extends Controller
             'vtu_jamb_price' => 'required|numeric|min:100',
         ]);
 
+        $settings = [];
         if ($request->filled('product_catalog')) {
             $products = json_decode($request->product_catalog, true);
             \Illuminate\Support\Facades\Validator::make(['products' => $products], [
@@ -76,7 +89,7 @@ class AdminVtuPricingController extends Controller
                     throw \Illuminate\Validation\ValidationException::withMessages(['product_catalog' => 'Product band does not support its service.']);
                 }
             }
-            SystemSetting::set('vtu_product_catalog', $products, 'vtu_pricing');
+            $settings['vtu_product_catalog'] = json_encode($products, JSON_THROW_ON_ERROR);
         }
         $keys = [
             'vtu_airtime_discount_percent',
@@ -90,7 +103,33 @@ class AdminVtuPricingController extends Controller
         ];
 
         foreach ($keys as $key) {
-            SystemSetting::set($key, (float) $request->input($key), 'vtu_pricing');
+            $settings[$key] = (string) $request->input($key);
+        }
+
+        try {
+            // SystemSetting::set intentionally swallows storage errors. Pricing must
+            // persist every value, or fail without reporting a successful save.
+            DB::transaction(function () use ($settings) {
+                foreach ($settings as $key => $value) {
+                    SystemSetting::query()->updateOrCreate(['key' => $key], [
+                        'value' => $value, 'group' => 'vtu_pricing',
+                    ]);
+                }
+                DB::afterCommit(function () use ($settings) {
+                    Cache::forget('system_settings_all');
+                    foreach (array_keys($settings) as $key) {
+                        Cache::forget('system_setting:'.$key);
+                    }
+                    SystemSetting::clearLocalCache();
+                });
+            });
+        } catch (\Throwable $e) {
+            report($e);
+            $message = 'Pricing could not be saved. Please try again. Your entered figures have been retained.';
+            if ($request->expectsJson()) {
+                return response()->json(['status' => false, 'message' => $message], 503);
+            }
+            return back()->withErrors(['pricing' => $message])->withInput();
         }
 
         if ($request->wantsJson()) {
@@ -105,6 +144,7 @@ class AdminVtuPricingController extends Controller
      */
     public function storeBundle(Request $request)
     {
+        $request->merge(['custom_api_id' => app(\App\Services\DatasubDataCatalogueImport::class)->provider()->id]);
         $request->validate([
             'network' => 'required|string|in:MTN,GLO,AIRTEL,9MOBILE',
             'data_plan' => 'required|string|max:255',
@@ -140,6 +180,8 @@ class AdminVtuPricingController extends Controller
      */
     public function updateBundle(Request $request, $id)
     {
+        abort_unless(DB::table('price_list')->where('id', $id)->exists(), 404);
+        $request->merge(['custom_api_id' => app(\App\Services\DatasubDataCatalogueImport::class)->provider()->id]);
         $request->validate([
             'network' => 'required|string|in:MTN,GLO,AIRTEL,9MOBILE',
             'data_plan' => 'required|string|max:255',

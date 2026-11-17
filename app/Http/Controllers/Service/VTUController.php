@@ -35,7 +35,7 @@ class VTUController extends Controller
     protected function respondWithVtuResult(Request $request, $result, ?string $fallbackRoute = null, int $statusHttp = 200)
     {
         if ($request->wantsJson() || $request->ajax()) {
-            $code = (is_array($result) && !empty($result['status'])) ? $statusHttp : ($statusHttp >= 400 ? $statusHttp : 400);
+            $code = !empty($result['pending']) ? 202 : ((is_array($result) && !empty($result['status'])) ? $statusHttp : ($statusHttp >= 400 ? $statusHttp : 422));
             return response()->json($result, $code);
         }
 
@@ -129,11 +129,8 @@ class VTUController extends Controller
     public function dataIndex()
     {
         $dataProviders = app(\App\Services\VtuCatalogService::class)->dataProviders();
-        $defaultDataBandLabel = app(\App\Services\VtuProviderService::class)->listing('vtu_data')->isNotEmpty() ? 'Datasub247' : null;
+        $defaultDataBandLabel = app(\App\Services\VtuProviderService::class)->listing('vtu_data')->isNotEmpty() ? 'Datasub247' : 'Network Band';
         $plans = app(\App\Services\VtuCatalogService::class)->dataPlans()->groupBy('network');
-        if ($dataProviders->isEmpty() && $defaultDataBandLabel === null) {
-            $plans = collect();
-        }
         $walletBalance = (float) (Auth::user()?->balance?->user_balance ?? 0);
         return view('services.vtu.data', compact('plans', 'dataProviders', 'walletBalance', 'defaultDataBandLabel'));
     }
@@ -353,7 +350,7 @@ class VTUController extends Controller
         $product = app(EpinCatalogService::class)->findByService($serviceID, $variation);
 
         $amount = $product ? (float) ($product['amount'] ?? $request->amount) : (float) $request->amount;
-        $quantity = $product ? (int) ($product['quantity'] ?? $request->quantity) : (int) $request->quantity;
+        $quantity = (int) $request->quantity;
         $orderType = $product ? (string) ($product['order_type'] ?? 'ePIN Purchase') : 'ePIN Purchase';
         $txPrefix = $product ? (string) ($product['tx_prefix'] ?? 'EPIN') : 'EPIN';
         $providerServiceTypes = $product && is_array($product['provider_service_types'] ?? null) ? $product['provider_service_types'] : ['vtu_epin'];
@@ -633,7 +630,7 @@ class VTUController extends Controller
     public function waecIndex()
     {
         $waecProviders = CustomApi::where('service_type', 'education_waec')->where('status', true)->get();
-        $price = (float) SystemSetting::get('vtu_waec_price', 3800);
+        $price = (float) SystemSetting::get('vtu_waec_price', 4000);
 
         return view('services.education.waec', compact('waecProviders', 'price'));
     }
@@ -647,7 +644,7 @@ class VTUController extends Controller
             'provider_id' => ['nullable', 'integer', 'exists:custom_apis,id'],
         ]);
 
-        $amount = (float) SystemSetting::get('vtu_waec_price', 3800);
+        $amount = (float) SystemSetting::get('vtu_waec_price', 4000);
         $result = $this->vtuHub->processRequest([
             'service_type' => 'vtu_epin',
             'amount' => $amount,
@@ -707,7 +704,7 @@ class VTUController extends Controller
     public function necoIndex()
     {
         $providers = CustomApi::where('service_type', 'education_neco')->where('status', true)->get();
-        $price = (float) SystemSetting::get('vtu_neco_price', 1500);
+        $price = (float) SystemSetting::get('vtu_neco_price', 1450);
 
         return view('services.education.neco', compact('providers', 'price'));
     }
@@ -721,7 +718,7 @@ class VTUController extends Controller
             'provider_id' => ['nullable', 'integer', 'exists:custom_apis,id'],
         ]);
 
-        $amount = (float) SystemSetting::get('vtu_neco_price', 1500);
+        $amount = (float) SystemSetting::get('vtu_neco_price', 1450);
         $result = $this->vtuHub->processRequest([
             'service_type' => 'vtu_epin',
             'amount' => $amount,
@@ -744,7 +741,7 @@ class VTUController extends Controller
     public function nabtebIndex()
     {
         $providers = CustomApi::where('service_type', 'education_nabteb')->where('status', true)->get();
-        $price = (float) SystemSetting::get('vtu_nabteb_price', 1200);
+        $price = (float) SystemSetting::get('vtu_nabteb_price', 1100);
 
         return view('services.education.nabteb', compact('providers', 'price'));
     }
@@ -758,7 +755,7 @@ class VTUController extends Controller
             'provider_id' => ['nullable', 'integer', 'exists:custom_apis,id'],
         ]);
 
-        $amount = (float) SystemSetting::get('vtu_nabteb_price', 1200);
+        $amount = (float) SystemSetting::get('vtu_nabteb_price', 1100);
         $result = $this->vtuHub->processRequest([
             'service_type' => 'vtu_epin',
             'amount' => $amount,
@@ -825,21 +822,14 @@ class VTUController extends Controller
             'phone' => 'required|string|digits:11',
         ]);
 
-        $discount = (float) SystemSetting::get('vtu_airtime_discount_percent', 2.0);
-        $chargedAmount = $discount > 0 
-            ? max(1, round($request->amount * (1 - ($discount / 100)), 2))
-            : (float) $request->amount;
-
         $result = $this->vtuHub->processRequest([
             'service_type' => 'vtu_airtime',
-            'amount' => $chargedAmount,
+            'amount' => (float) $request->amount,
             'order_type' => 'Airtime Purchase',
             'tx_prefix' => 'VTU',
             'payload' => [
                 'network' => $request->network,
                 'amount' => $request->amount,
-                'charged_amount' => $chargedAmount,
-                'discount_percent' => $discount,
                 'phone' => $request->phone,
             ],
         ]);
@@ -1012,8 +1002,10 @@ class VTUController extends Controller
 
     public function webhookDatasub(Request $request)
     {
-        \Illuminate\Support\Facades\Log::info('Datasub247 Webhook Payload: ', $request->all());
-        $res = app(\App\Services\Datasub247Service::class)->handleWebhook($request->all());
+        if (!\App\Support\DatasubWebhookAuth::valid($request)) {
+            return response()->json(['status' => false, 'message' => 'Invalid webhook credentials.'], 401);
+        }
+        $res = app(\App\Services\Datasub247Service::class)->handleWebhook($request->json()->all());
         return response()->json($res, ($res['status'] ?? false) ? 200 : 400);
     }
 }
