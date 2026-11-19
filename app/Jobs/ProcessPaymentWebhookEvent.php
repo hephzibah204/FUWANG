@@ -110,6 +110,16 @@ class ProcessPaymentWebhookEvent implements ShouldQueue
 
     private function markSucceeded(PaymentWebhookEvent $event): void
     {
+        $current = PaymentWebhookEvent::query()->where('id', $event->id)->first();
+        $error = (string) ($current?->processing_error ?? '');
+        if (str_contains($error, 'Resolved via existing manual credit')) {
+            PaymentWebhookEvent::query()->where('id', $event->id)->update([
+                'processing_status' => 'succeeded',
+                'processed_at' => now(),
+            ]);
+            return;
+        }
+
         PaymentWebhookEvent::query()->where('id', $event->id)->update([
             'processing_status' => 'succeeded',
             'processing_error' => null,
@@ -126,10 +136,152 @@ class ProcessPaymentWebhookEvent implements ShouldQueue
         ]);
     }
 
-    private function creditWallet(User $user, float $amount, string $reference, string $label): void
+    public function findExistingManualCredit(User $user, float $amount, ?PaymentWebhookEvent $event = null): ?object
+    {
+        if (!$event) {
+            return null;
+        }
+
+        // 1. Direct match by transaction reference in fundings or transactions
+        if (Schema::hasTable('fundings')) {
+            $exactFunding = DB::table('fundings')
+                ->where('email', $user->email)
+                ->where(function ($q) use ($event) {
+                    $q->where('reference', $event->reference)
+                      ->orWhere('description', 'like', "%{$event->reference}%");
+                })
+                ->first();
+            if ($exactFunding) {
+                return (object)[
+                    'type' => 'funding_exact_ref',
+                    'reference' => $exactFunding->reference,
+                    'amount' => (float)$exactFunding->amount,
+                    'created_at' => $exactFunding->created_at,
+                ];
+            }
+        }
+
+        if (Schema::hasTable('transactions')) {
+            $exactTx = DB::table('transactions')
+                ->where('user_email', $user->email)
+                ->where(function ($q) use ($event) {
+                    $q->where('transaction_id', $event->reference)
+                      ->orWhere('order_type', 'like', "%{$event->reference}%");
+                })
+                ->first();
+            if ($exactTx) {
+                return (object)[
+                    'type' => 'transaction_exact_ref',
+                    'reference' => $exactTx->transaction_id,
+                    'amount' => (float)($exactTx->balance_after - $exactTx->balance_before),
+                    'created_at' => $exactTx->created_at,
+                ];
+            }
+        }
+
+        // 2. Gather already claimed manual credit references so one manual credit does not match multiple webhooks
+        $alreadyClaimedRefs = PaymentWebhookEvent::query()
+            ->where('id', '!=', $event->id)
+            ->whereNotNull('processing_error')
+            ->where('processing_error', 'like', '%Resolved via existing manual credit%')
+            ->pluck('processing_error')
+            ->all();
+
+        // 3. Match by recent manual credit (Admin Credit / Manual Funding) for same user & matching amount
+        $minAmount = max(0.01, round($amount * 0.95, 2));
+        $maxAmount = round($amount * 1.05 + 65, 2);
+
+        $eventDate = $event->created_at ?? now();
+        $startTime = $eventDate->copy()->subHours(72);
+
+        if (Schema::hasTable('fundings')) {
+            $fundings = DB::table('fundings')
+                ->where('email', $user->email)
+                ->where(function ($q) {
+                    $q->whereIn('funding_type', ['Admin Credit', 'Manual Funding', 'Manual Credit'])
+                      ->orWhere('description', 'like', '%Admin Credit%')
+                      ->orWhere('description', 'like', '%Manual%')
+                      ->orWhere('description', 'like', '%Reconciliation%');
+                })
+                ->where('created_at', '>=', $startTime)
+                ->whereBetween('amount', [$minAmount, $maxAmount])
+                ->orderByDesc('id')
+                ->get();
+
+            foreach ($fundings as $f) {
+                $isClaimed = false;
+                foreach ($alreadyClaimedRefs as $claim) {
+                    if (str_contains($claim, (string)$f->reference)) {
+                        $isClaimed = true;
+                        break;
+                    }
+                }
+                if (!$isClaimed) {
+                    return (object)[
+                        'type' => 'funding_manual',
+                        'reference' => $f->reference,
+                        'amount' => (float)$f->amount,
+                        'created_at' => $f->created_at,
+                    ];
+                }
+            }
+        }
+
+        if (Schema::hasTable('transactions')) {
+            $txs = DB::table('transactions')
+                ->where('user_email', $user->email)
+                ->where(function ($q) {
+                    $q->where('order_type', 'like', 'Admin Credit%')
+                      ->orWhere('order_type', 'like', 'Manual%')
+                      ->orWhere('order_type', 'like', '%Admin Override%');
+                })
+                ->where('created_at', '>=', $startTime)
+                ->orderByDesc('id')
+                ->get();
+
+            foreach ($txs as $tx) {
+                $txAmt = round((float)($tx->balance_after - $tx->balance_before), 2);
+                if ($txAmt >= $minAmount && $txAmt <= $maxAmount) {
+                    $isClaimed = false;
+                    foreach ($alreadyClaimedRefs as $claim) {
+                        if (str_contains($claim, (string)$tx->transaction_id)) {
+                            $isClaimed = true;
+                            break;
+                        }
+                    }
+                    if (!$isClaimed) {
+                        return (object)[
+                            'type' => 'transaction_manual',
+                            'reference' => $tx->transaction_id,
+                            'amount' => $txAmt,
+                            'created_at' => $tx->created_at,
+                        ];
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function creditWallet(User $user, float $amount, string $reference, string $label, ?PaymentWebhookEvent $event = null): bool
     {
         if ($this->alreadyProcessed($reference)) {
-            return;
+            return false;
+        }
+
+        // Safeguard against double-crediting if user was already credited manually
+        if ($event) {
+            $existingManual = $this->findExistingManualCredit($user, $amount, $event);
+            if ($existingManual) {
+                Log::info("Skipping wallet credit for webhook event #{$event->id}: user {$user->email} was already credited manually (Ref: {$existingManual->reference}, Amount: {$existingManual->amount}).");
+                PaymentWebhookEvent::query()->where('id', $event->id)->update([
+                    'processing_status' => 'succeeded',
+                    'processing_error' => "Resolved via existing manual credit (Ref: {$existingManual->reference}, Amount: NGN " . number_format($existingManual->amount, 2) . ")",
+                    'processed_at' => now(),
+                ]);
+                return false;
+            }
         }
 
         app(WalletService::class)->credit($user, $amount, $label, $reference);
@@ -153,9 +305,11 @@ class ProcessPaymentWebhookEvent implements ShouldQueue
         } catch (\Throwable $e) {
             Log::warning('Referral funding handler failed', ['error' => $e->getMessage()]);
         }
+
+        return true;
     }
 
-    private function findUserForPayment(
+    public function findUserForPayment(
         ?string $email,
         ?string $accountNumber = null,
         ?string $accountReference = null,
@@ -346,7 +500,7 @@ class ProcessPaymentWebhookEvent implements ShouldQueue
             return;
         }
 
-        DB::transaction(function () use ($email, $amount, $reference) {
+        DB::transaction(function () use ($email, $amount, $reference, $event) {
             $user = $this->findUserForPayment($email, null, $reference);
             if (!$user) {
                 throw new \RuntimeException("User not found for Paystack payment (email: '{$email}')");
@@ -357,7 +511,7 @@ class ProcessPaymentWebhookEvent implements ShouldQueue
                 throw new \RuntimeException('Amount mismatch');
             }
 
-            $this->creditWallet($user, (float) $amount, $reference, 'Wallet Funding – Paystack');
+            $this->creditWallet($user, (float) $amount, $reference, 'Wallet Funding – Paystack', $event);
             $this->updateIntent($reference, 'paystack');
         });
 
@@ -410,7 +564,7 @@ class ProcessPaymentWebhookEvent implements ShouldQueue
             return;
         }
 
-        DB::transaction(function () use ($email, $amount, $reference) {
+        DB::transaction(function () use ($email, $amount, $reference, $event) {
             $user = $this->findUserForPayment($email, null, $reference);
             if (!$user) {
                 throw new \RuntimeException("User not found for Flutterwave payment (email: '{$email}')");
@@ -421,7 +575,7 @@ class ProcessPaymentWebhookEvent implements ShouldQueue
                 throw new \RuntimeException('Amount mismatch');
             }
 
-            $this->creditWallet($user, (float) $amount, $reference, 'Wallet Funding – Flutterwave');
+            $this->creditWallet($user, (float) $amount, $reference, 'Wallet Funding – Flutterwave', $event);
             $this->updateIntent($reference, 'flutterwave');
         });
 
@@ -485,7 +639,7 @@ class ProcessPaymentWebhookEvent implements ShouldQueue
             return;
         }
 
-        DB::transaction(function () use ($email, $accountNumber, $accountReference, $settlementAmount, $reference) {
+        DB::transaction(function () use ($email, $accountNumber, $accountReference, $settlementAmount, $reference, $event) {
             $user = $this->findUserForPayment($email, $accountNumber, $accountReference);
             if (!$user) {
                 throw new \RuntimeException("User not found for PayVessel payment (email: '{$email}', acct: '{$accountNumber}')");
@@ -510,9 +664,9 @@ class ProcessPaymentWebhookEvent implements ShouldQueue
                 $netAmount = round($settlementAmount, 2);
             }
 
-            $this->creditWallet($user, (float) $netAmount, $reference, 'Wallet Funding – Automatic Funding');
+            $credited = $this->creditWallet($user, (float) $netAmount, $reference, 'Wallet Funding – Automatic Funding', $event);
 
-            if (Schema::hasTable('fundings')) {
+            if ($credited && Schema::hasTable('fundings')) {
                 DB::table('fundings')->where('reference', $reference)->update([
                     'fullname' => 'From 9PSB Bank',
                     'funding_type' => 'Automatic Funding',
@@ -584,7 +738,7 @@ class ProcessPaymentWebhookEvent implements ShouldQueue
             return;
         }
 
-        DB::transaction(function () use ($email, $accountNumber, $phone, $settlementAmount, $reference) {
+        DB::transaction(function () use ($email, $accountNumber, $phone, $settlementAmount, $reference, $event) {
             $user = $this->findUserForPayment($email, $accountNumber, null, $phone);
             if (!$user) {
                 throw new \RuntimeException("User not found for PalmPay payment (email: '{$email}', acct: '{$accountNumber}')");
@@ -596,9 +750,9 @@ class ProcessPaymentWebhookEvent implements ShouldQueue
                 $netAmount = round((float) $settlementAmount, 2);
             }
 
-            $this->creditWallet($user, (float) $netAmount, $reference, 'Wallet Funding – Automatic Funding');
+            $credited = $this->creditWallet($user, (float) $netAmount, $reference, 'Wallet Funding – Automatic Funding', $event);
 
-            if (Schema::hasTable('fundings')) {
+            if ($credited && Schema::hasTable('fundings')) {
                 DB::table('fundings')->where('reference', $reference)->update([
                     'fullname' => 'PalmPay',
                     'funding_type' => 'Automatic Funding',
@@ -654,15 +808,15 @@ class ProcessPaymentWebhookEvent implements ShouldQueue
             return;
         }
 
-        DB::transaction(function () use ($email, $accountNumber, $accountReference, $amount, $reference) {
+        DB::transaction(function () use ($email, $accountNumber, $accountReference, $amount, $reference, $event) {
             $user = $this->findUserForPayment($email, $accountNumber, $accountReference);
             if (!$user) {
                 throw new \RuntimeException("User not found for Monnify payment (email: '{$email}', acct: '{$accountNumber}')");
             }
 
-            $this->creditWallet($user, (float) $amount, $reference, 'Wallet Funding – Monnify');
+            $credited = $this->creditWallet($user, (float) $amount, $reference, 'Wallet Funding – Monnify', $event);
 
-            if (Schema::hasTable('fundings')) {
+            if ($credited && Schema::hasTable('fundings')) {
                 DB::table('fundings')->where('reference', $reference)->update([
                     'funding_type' => 'Automatic Funding',
                     'fullname' => 'Monnify',

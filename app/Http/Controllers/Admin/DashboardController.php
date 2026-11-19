@@ -432,7 +432,8 @@ class DashboardController extends Controller
             ->limit($limit)
             ->get();
 
-        $success = 0;
+        $credited = 0;
+        $skippedManual = 0;
         $failed = 0;
         $details = [];
 
@@ -441,7 +442,11 @@ class DashboardController extends Controller
                 \App\Jobs\ProcessPaymentWebhookEvent::dispatchSync($event->id);
                 $event->refresh();
                 if ($event->processing_status === 'succeeded') {
-                    $success++;
+                    if (str_contains((string) $event->processing_error, 'Resolved via existing manual credit')) {
+                        $skippedManual++;
+                    } else {
+                        $credited++;
+                    }
                 } else {
                     $failed++;
                 }
@@ -464,14 +469,21 @@ class DashboardController extends Controller
             }
         }
 
-        $msg = "Reprocessed {$events->count()} webhooks: {$success} succeeded, {$failed} uncredited/failed.";
+        $parts = [];
+        if ($credited > 0) $parts[] = "{$credited} credited to wallet";
+        if ($skippedManual > 0) $parts[] = "{$skippedManual} skipped (already credited manually)";
+        if ($failed > 0) $parts[] = "{$failed} uncredited/failed";
+
+        $summary = !empty($parts) ? implode(', ', $parts) : "No changes applied";
+        $msg = "Reprocessed {$events->count()} webhooks: {$summary}.";
 
         if ($request->wantsJson()) {
             return response()->json([
                 'status' => true,
                 'message' => $msg,
                 'total' => $events->count(),
-                'success' => $success,
+                'credited' => $credited,
+                'skipped_manual' => $skippedManual,
                 'failed' => $failed,
                 'items' => $details,
             ]);

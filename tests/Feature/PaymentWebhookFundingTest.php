@@ -341,4 +341,73 @@ class PaymentWebhookFundingTest extends TestCase
         $balance = AccountBalance::where('email', $this->user->email)->first();
         $this->assertEquals(0.00, (float) $balance->user_balance);
     }
+
+    #[Test]
+    public function it_does_not_double_credit_user_who_was_already_manually_credited()
+    {
+        BankDetail::create([
+            'email' => $this->user->email,
+            'psb9' => '9988776655',
+            'account_name' => 'Fuwa / Adebayo Test',
+        ]);
+
+        // Simulate admin manually crediting the user earlier
+        $manualRef = (string) \Illuminate\Support\Str::uuid();
+        app(\App\Services\WalletService::class)->credit(
+            $this->user,
+            4950.00,
+            'Admin Credit: Manual funding for failed webhook',
+            $manualRef
+        );
+
+        DB::table('fundings')->insert([
+            'email' => $this->user->email,
+            'amount' => 4950.00,
+            'reference' => $manualRef,
+            'description' => 'Manual funding for failed webhook',
+            'funding_type' => 'Admin Credit',
+            'fullname' => 'admin@fuwa.ng',
+            'created_at' => now()->subMinutes(15),
+            'updated_at' => now()->subMinutes(15),
+        ]);
+
+        $balanceBefore = AccountBalance::where('email', $this->user->email)->first();
+        $this->assertEquals(4950.00, (float) $balanceBefore->user_balance);
+
+        // Webhook event was pending in database
+        $event = PaymentWebhookEvent::create([
+            'provider' => 'payvessel',
+            'event_type' => 'transfer.success',
+            'reference' => 'PV_REF_MANUAL_PROTECTED',
+            'email' => $this->user->email,
+            'amount' => 5000.00,
+            'signature_valid' => true,
+            'payload' => [
+                'order' => [
+                    'settlement_amount' => 5000.00,
+                    'bank_account' => '9988776655',
+                ],
+                'customer' => [
+                    'email' => $this->user->email,
+                ],
+                'transaction' => [
+                    'reference' => 'PV_REF_MANUAL_PROTECTED',
+                ],
+            ],
+            'processing_status' => 'pending',
+            'created_at' => now()->subMinutes(20),
+        ]);
+
+        // Run the processor job
+        \App\Jobs\ProcessPaymentWebhookEvent::dispatchSync($event->id);
+
+        // Check user balance: MUST STILL BE 4950.00, NOT 9900.00!
+        $balanceAfter = AccountBalance::where('email', $this->user->email)->first();
+        $this->assertEquals(4950.00, (float) $balanceAfter->user_balance);
+
+        // Event should be marked succeeded with manual credit note
+        $event->refresh();
+        $this->assertEquals('succeeded', $event->processing_status);
+        $this->assertStringContainsString('Resolved via existing manual credit', (string) $event->processing_error);
+    }
 }
