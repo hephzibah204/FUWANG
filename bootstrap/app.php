@@ -14,8 +14,8 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withCommands()
     ->withMiddleware(function (Middleware $middleware) {
-        $trustedProxiesRaw = (string) (env('TRUSTED_PROXIES') ?? '');
-        $trustedProxies = null;
+        $trustedProxiesRaw = (string) (env('TRUSTED_PROXIES') ?? '*');
+        $trustedProxies = '*';
         if (trim($trustedProxiesRaw) !== '') {
             $parts = array_values(array_filter(array_map('trim', explode(',', $trustedProxiesRaw))));
             $trustedProxies = count($parts) === 1 ? $parts[0] : $parts;
@@ -37,6 +37,10 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->validateCsrfTokens(except: [
             'webhooks/*',
+            'webhook/*',
+            'api/webhooks/*',
+            'api/webhook/*',
+            'api/vtu/webhook/*',
             'payvessel_webhook.php',
             'palmpay_webhook.php',
             'agent/send-claim-otp',

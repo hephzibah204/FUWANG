@@ -410,6 +410,10 @@ CALL fuwa_add_index_if_not_exists('custom_apis', 'custom_apis_status_index', '`s
 -- Migration [42]: 2026_04_17_000007_create_system_settings_table
 -- ------------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `system_settings` (`id` bigint unsigned not null auto_increment primary key, `key` varchar(255) not null, `value` longtext null, `type` varchar(50) null, `group` varchar(80) null, `label` varchar(255) null, `created_at` timestamp null, `updated_at` timestamp null) default character set utf8mb4 collate 'utf8mb4_unicode_ci';
+CALL fuwa_add_column_if_not_exists('system_settings', 'value', 'LONGTEXT NULL');
+CALL fuwa_add_column_if_not_exists('system_settings', 'type', 'VARCHAR(50) NULL AFTER `value`');
+CALL fuwa_add_column_if_not_exists('system_settings', 'group', 'VARCHAR(80) NULL AFTER `type`');
+CALL fuwa_add_column_if_not_exists('system_settings', 'label', 'VARCHAR(255) NULL AFTER `group`');
 CALL fuwa_add_unique_if_not_exists('system_settings', 'system_settings_key_unique', '`key`');
 CALL fuwa_add_index_if_not_exists('system_settings', 'system_settings_group_index', '`group`');
 

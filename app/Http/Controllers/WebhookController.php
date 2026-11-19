@@ -184,13 +184,67 @@ class WebhookController extends Controller
         }
     }
 
+    private function resolveUserEmailFromAccount(?string $accountNumber): ?string
+    {
+        if (!$accountNumber) {
+            return null;
+        }
+
+        $raw = trim((string) $accountNumber);
+        $clean = preg_replace('/\D/', '', $raw);
+        $variants = array_unique(array_filter([
+            $raw,
+            $clean,
+            ltrim($clean, '0'),
+            str_pad($clean, 10, '0', STR_PAD_LEFT),
+        ]));
+
+        if (Schema::hasTable('virtual_accounts')) {
+            $userId = DB::table('virtual_accounts')
+                ->whereIn('account_number', $variants)
+                ->value('user_id');
+            if ($userId) {
+                $email = DB::table('users')->where('id', $userId)->value('email');
+                if ($email) {
+                    return $email;
+                }
+            }
+        }
+
+        if (Schema::hasTable('bank_details')) {
+            $email = DB::table('bank_details')
+                ->where(function ($q) use ($variants) {
+                    $q->whereIn('psb9', $variants)
+                      ->orWhereIn('palmpay', $variants)
+                      ->orWhereIn('Wema_account', $variants)
+                      ->orWhereIn('Sterling_account', $variants)
+                      ->orWhereIn('Moniepoint_account', $variants)
+                      ->orWhereIn('GTBank_account', $variants);
+                })
+                ->value('email');
+            if ($email) {
+                return $email;
+            }
+        }
+
+        return null;
+    }
+
     public function handlePayvessel(Request $request)
     {
+        if ($request->isMethod('GET')) {
+            return response()->json(['status' => true, 'message' => 'PayVessel webhook endpoint active'], 200);
+        }
+
         $payload = $request->getContent();
         $signature = $this->getHeaderValue($request, 'PAYVESSEL_HTTP_SIGNATURE')
             ?: $this->getHeaderValue($request, 'payvessel-http-signature')
+            ?: $this->getHeaderValue($request, 'payvessel-signature')
+            ?: $this->getHeaderValue($request, 'x-payvessel-signature')
             ?: $request->header('payvessel-http-signature')
-            ?: $request->header('PAYVESSEL_HTTP_SIGNATURE');
+            ?: $request->header('PAYVESSEL_HTTP_SIGNATURE')
+            ?: $request->header('payvessel-signature')
+            ?: $request->header('x-payvessel-signature');
 
         $apiCenter = ApiCenter::first();
         $pv = PaymentProviderCredentials::payvessel($apiCenter);
@@ -198,31 +252,61 @@ class WebhookController extends Controller
         if (!$secret && Schema::hasTable('payvessel_details')) {
             $secret = DB::table('payvessel_details')->value('payvessel_secret_key');
         }
+        $apiKey = $pv['api_key'] ?? ($apiCenter?->payvessel_api_key ?: config('services.payvessel.api_key'));
 
-        if (!$secret) {
+        if (!$secret && !$apiKey) {
             Log::error('Payvessel credentials not found in ApiCenter or services config');
             return response()->json(['message' => 'API credentials not found'], 400);
         }
 
-        $hash = hash_hmac('sha512', $payload, $secret);
-        $signatureValid = $signature && hash_equals(strtolower((string) $hash), strtolower((string) $signature));
+        $hashSecret = $secret ? hash_hmac('sha512', $payload, (string) $secret) : null;
+        $hashApi = $apiKey ? hash_hmac('sha512', $payload, (string) $apiKey) : null;
+        $signatureValid = ($signature && $hashSecret && hash_equals(strtolower((string) $hashSecret), strtolower((string) $signature)))
+            || ($signature && $hashApi && hash_equals(strtolower((string) $hashApi), strtolower((string) $signature)));
 
         if (!$signatureValid) {
             Log::warning('Payvessel signature validation failed', [
-                'expected' => $hash,
+                'expected_secret_hash' => $hashSecret,
                 'received' => $signature,
             ]);
             return response()->json(['message' => 'Permission denied'], 403);
         }
 
         $data = json_decode($payload, true) ?: [];
-        $reference = $data['transaction']['reference'] ?? $data['reference'] ?? null;
-        $settlementAmount = floatval($data['order']['settlement_amount'] ?? $data['transaction']['amount'] ?? $data['order']['amount'] ?? $data['amount'] ?? 0);
-        $email = $data['customer']['email'] ?? $data['email'] ?? null;
-        $accountNumber = $data['order']['bank_account'] ?? $data['order']['account_number'] ?? $data['transaction']['bank_account'] ?? $data['bank_account'] ?? null;
+        $reference = $data['transaction']['reference'] 
+            ?? $data['reference'] 
+            ?? $data['order']['reference'] 
+            ?? $data['order']['tracking_reference'] 
+            ?? $data['transaction']['id'] 
+            ?? null;
 
-        if (!$email && $accountNumber && Schema::hasTable('bank_details')) {
-            $email = DB::table('bank_details')->where('psb9', $accountNumber)->value('email');
+        $settlementAmount = floatval(
+            $data['order']['settlement_amount'] 
+            ?? $data['transaction']['amount'] 
+            ?? $data['order']['amount'] 
+            ?? $data['data']['order']['settlement_amount'] 
+            ?? $data['data']['transaction']['amount'] 
+            ?? $data['amount'] 
+            ?? 0
+        );
+
+        $accountNumber = $data['order']['bank_account'] 
+            ?? $data['order']['account_number'] 
+            ?? $data['virtual_account']['account_number'] 
+            ?? $data['virtual_account_number'] 
+            ?? $data['transaction']['bank_account'] 
+            ?? $data['transaction']['account_number'] 
+            ?? $data['data']['order']['bank_account'] 
+            ?? $data['data']['order']['account_number'] 
+            ?? $data['data']['bank_account'] 
+            ?? $data['data']['account_number'] 
+            ?? $data['bank_account'] 
+            ?? $data['account_number'] 
+            ?? null;
+
+        $email = $data['customer']['email'] ?? $data['email'] ?? $data['data']['customer']['email'] ?? null;
+        if (!$email && $accountNumber) {
+            $email = $this->resolveUserEmailFromAccount($accountNumber);
         }
 
         if (!$reference) {
@@ -251,11 +335,23 @@ class WebhookController extends Controller
 
     private function handlePaymentpointLike(Request $request, string $provider)
     {
+        if ($request->isMethod('GET')) {
+            return response()->json(['status' => true, 'message' => ucfirst($provider) . ' webhook endpoint active'], 200);
+        }
+
         $payload = $request->getContent();
         $signature = $this->getHeaderValue($request, 'PAYMENTPOINT_SIGNATURE')
             ?: $this->getHeaderValue($request, 'paymentpoint-signature')
+            ?: $this->getHeaderValue($request, 'palmpay-signature')
+            ?: $this->getHeaderValue($request, 'PALMPAY_SIGNATURE')
+            ?: $this->getHeaderValue($request, 'HTTP_PALMPAY_SIGNATURE')
+            ?: $this->getHeaderValue($request, 'HTTP_PAYMENTPOINT_SIGNATURE')
             ?: $request->header('paymentpoint-signature')
-            ?: $request->header('PAYMENTPOINT_SIGNATURE');
+            ?: $request->header('PAYMENTPOINT_SIGNATURE')
+            ?: $request->header('palmpay-signature')
+            ?: $request->header('PALMPAY_SIGNATURE')
+            ?: $request->header('x-palmpay-signature')
+            ?: $request->header('x-paymentpoint-signature');
         
         $apiCenter = ApiCenter::first();
         $secret = $apiCenter?->paypoint_secret_key;
@@ -276,14 +372,19 @@ class WebhookController extends Controller
         }
 
         $data = json_decode($payload, true) ?: [];
-        $reference = $data['transaction_id'] ?? $data['reference'] ?? null;
-        $settlementAmount = floatval($data['settlement_amount'] ?? $data['amount'] ?? 0);
-        $email = $data['customer']['email'] ?? $data['email'] ?? null;
-        $status = $data['transaction_status'] ?? $data['status'] ?? null;
-        $accountNumber = $data['account_number'] ?? $data['bank_account_number'] ?? $data['recipient_account_number'] ?? null;
+        $reference = $data['transaction_id'] ?? $data['reference'] ?? $data['data']['transaction_id'] ?? null;
+        $settlementAmount = floatval($data['settlement_amount'] ?? $data['amount'] ?? $data['data']['settlement_amount'] ?? $data['data']['amount'] ?? 0);
+        $email = $data['customer']['email'] ?? $data['email'] ?? $data['data']['customer']['email'] ?? null;
+        $status = $data['transaction_status'] ?? $data['status'] ?? $data['data']['status'] ?? null;
+        $accountNumber = $data['account_number'] 
+            ?? $data['bank_account_number'] 
+            ?? $data['recipient_account_number'] 
+            ?? $data['virtual_account_number'] 
+            ?? $data['data']['account_number'] 
+            ?? null;
 
-        if (!$email && $accountNumber && Schema::hasTable('bank_details')) {
-            $email = DB::table('bank_details')->where('palmpay', $accountNumber)->value('email');
+        if (!$email && $accountNumber) {
+            $email = $this->resolveUserEmailFromAccount($accountNumber);
         }
 
         if (!$reference) {

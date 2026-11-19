@@ -44,12 +44,17 @@ class ProcessPaymentWebhookEvent implements ShouldQueue
             return;
         }
 
-        $lockKey = "webhook_process_{$event->provider}_{$event->provider_event_id}_{$event->reference}";
-        $lock = Cache::lock($lockKey, 30); // 30s lock
-
-        if (!$lock->get()) {
-            // Already being processed elsewhere
-            return;
+        $lock = null;
+        try {
+            $lockKey = "webhook_process_{$event->provider}_{$event->provider_event_id}_{$event->reference}";
+            $lock = Cache::lock($lockKey, 30); // 30s lock
+            if (!$lock->get()) {
+                // Already being processed elsewhere
+                return;
+            }
+        } catch (\BadMethodCallException|\Throwable $e) {
+            // Cache driver does not support atomic locks; proceed with database transaction-level safety
+            $lock = null;
         }
 
         try {
@@ -82,7 +87,13 @@ class ProcessPaymentWebhookEvent implements ShouldQueue
             Log::error('Webhook processing failed: ' . $msg);
             throw $e;
         } finally {
-            $lock->release();
+            if ($lock) {
+                try {
+                    $lock->release();
+                } catch (\Throwable $e) {
+                    // Ignore release errors
+                }
+            }
         }
     }
 
@@ -150,24 +161,37 @@ class ProcessPaymentWebhookEvent implements ShouldQueue
         ?string $accountReference = null,
         ?string $phone = null
     ): ?User {
-        $email = trim((string) $email);
-        if ($email !== '') {
-            $user = User::query()->whereRaw('LOWER(email) = ?', [strtolower($email)])->first();
-            if ($user) {
-                return $user;
-            }
-        }
+        // 1. Primary Priority: Dedicated Virtual Account Number matching
+        $rawAcct = trim((string) $accountNumber);
+        if ($rawAcct !== '') {
+            $cleanAcct = preg_replace('/\D/', '', $rawAcct);
+            $acctVariants = array_values(array_unique(array_filter([
+                $rawAcct,
+                $cleanAcct,
+                ltrim($cleanAcct, '0'),
+                str_pad($cleanAcct, 10, '0', STR_PAD_LEFT),
+            ])));
 
-        $accountNumber = trim((string) $accountNumber);
-        if ($accountNumber !== '') {
+            if (Schema::hasTable('virtual_accounts')) {
+                $va = VirtualAccount::query()->whereIn('account_number', $acctVariants)->first();
+                if ($va && $va->user_id) {
+                    $user = User::query()->find($va->user_id);
+                    if ($user) {
+                        return $user;
+                    }
+                }
+            }
+
             if (Schema::hasTable('bank_details')) {
                 $detail = BankDetail::query()
-                    ->where('psb9', $accountNumber)
-                    ->orWhere('palmpay', $accountNumber)
-                    ->orWhere('Wema_account', $accountNumber)
-                    ->orWhere('Moniepoint_account', $accountNumber)
-                    ->orWhere('Sterling_account', $accountNumber)
-                    ->orWhere('GTBank_account', $accountNumber)
+                    ->where(function ($q) use ($acctVariants) {
+                        $q->whereIn('psb9', $acctVariants)
+                          ->orWhereIn('palmpay', $acctVariants)
+                          ->orWhereIn('Wema_account', $acctVariants)
+                          ->orWhereIn('Moniepoint_account', $acctVariants)
+                          ->orWhereIn('Sterling_account', $acctVariants)
+                          ->orWhereIn('GTBank_account', $acctVariants);
+                    })
                     ->first();
 
                 if ($detail && !empty($detail->email)) {
@@ -177,30 +201,11 @@ class ProcessPaymentWebhookEvent implements ShouldQueue
                     }
                 }
             }
-
-            if (Schema::hasTable('virtual_accounts')) {
-                $va = VirtualAccount::query()->where('account_number', $accountNumber)->first();
-                if ($va && $va->user_id) {
-                    $user = User::query()->find($va->user_id);
-                    if ($user) {
-                        return $user;
-                    }
-                }
-            }
         }
 
+        // 2. Secondary Priority: Account Reference
         $accountReference = trim((string) $accountReference);
         if ($accountReference !== '') {
-            if (Schema::hasTable('bank_details')) {
-                $detail = BankDetail::query()->where('account_reference', $accountReference)->first();
-                if ($detail && !empty($detail->email)) {
-                    $user = User::query()->whereRaw('LOWER(email) = ?', [strtolower($detail->email)])->first();
-                    if ($user) {
-                        return $user;
-                    }
-                }
-            }
-
             if (Schema::hasTable('virtual_accounts')) {
                 $va = VirtualAccount::query()
                     ->where('reference', $accountReference)
@@ -213,8 +218,28 @@ class ProcessPaymentWebhookEvent implements ShouldQueue
                     }
                 }
             }
+
+            if (Schema::hasTable('bank_details')) {
+                $detail = BankDetail::query()->where('account_reference', $accountReference)->first();
+                if ($detail && !empty($detail->email)) {
+                    $user = User::query()->whereRaw('LOWER(email) = ?', [strtolower($detail->email)])->first();
+                    if ($user) {
+                        return $user;
+                    }
+                }
+            }
         }
 
+        // 3. Third Priority: User Email (for direct card checkouts e.g. Paystack / Flutterwave)
+        $email = trim((string) $email);
+        if ($email !== '') {
+            $user = User::query()->whereRaw('LOWER(email) = ?', [strtolower($email)])->first();
+            if ($user) {
+                return $user;
+            }
+        }
+
+        // 4. Fourth Priority: User Phone number
         $phone = trim((string) $phone);
         if ($phone !== '') {
             $digits = preg_replace('/\D/', '', $phone);
@@ -411,7 +436,14 @@ class ProcessPaymentWebhookEvent implements ShouldQueue
         }
 
         $payload = (array) $event->payload;
-        $reference = trim((string) ($payload['transaction']['reference'] ?? $payload['reference'] ?? ''));
+        $reference = trim((string) (
+            $payload['transaction']['reference'] 
+            ?? $payload['order']['reference'] 
+            ?? $payload['reference'] 
+            ?? $payload['transaction']['id'] 
+            ?? $payload['id'] 
+            ?? ''
+        ));
         $settlementAmount = (float) (
             $payload['order']['settlement_amount']
             ?? $payload['transaction']['amount']
@@ -419,12 +451,27 @@ class ProcessPaymentWebhookEvent implements ShouldQueue
             ?? $payload['amount']
             ?? 0
         );
-        $email = Str::lower(trim((string) ($payload['customer']['email'] ?? $payload['email'] ?? '')));
+        $email = Str::lower(trim((string) (
+            $payload['customer']['email'] 
+            ?? $payload['email'] 
+            ?? $payload['order']['email'] 
+            ?? ''
+        )));
         $accountNumber = trim((string) (
             $payload['order']['bank_account']
             ?? $payload['order']['account_number']
+            ?? $payload['order']['virtual_account_number']
+            ?? $payload['virtual_account']['account_number']
             ?? $payload['transaction']['bank_account']
+            ?? $payload['transaction']['account_number']
+            ?? $payload['account_number']
             ?? $payload['bank_account']
+            ?? ''
+        ));
+        $accountReference = trim((string) (
+            $payload['order']['account_reference'] 
+            ?? $payload['account_reference'] 
+            ?? $payload['virtual_account']['reference'] 
             ?? ''
         ));
 
@@ -438,8 +485,8 @@ class ProcessPaymentWebhookEvent implements ShouldQueue
             return;
         }
 
-        DB::transaction(function () use ($email, $accountNumber, $settlementAmount, $reference) {
-            $user = $this->findUserForPayment($email, $accountNumber, $reference);
+        DB::transaction(function () use ($email, $accountNumber, $accountReference, $settlementAmount, $reference) {
+            $user = $this->findUserForPayment($email, $accountNumber, $accountReference);
             if (!$user) {
                 throw new \RuntimeException("User not found for PayVessel payment (email: '{$email}', acct: '{$accountNumber}')");
             }
@@ -484,16 +531,42 @@ class ProcessPaymentWebhookEvent implements ShouldQueue
         }
 
         $payload = (array) $event->payload;
-        $reference = trim((string) ($payload['transaction_id'] ?? $payload['reference'] ?? ''));
-        $settlementAmount = (float) ($payload['settlement_amount'] ?? $payload['amount'] ?? 0);
-        $email = Str::lower(trim((string) ($payload['customer']['email'] ?? $payload['email'] ?? '')));
+        $reference = trim((string) (
+            $payload['transaction_id'] 
+            ?? $payload['reference'] 
+            ?? $payload['order_id'] 
+            ?? $payload['data']['reference'] 
+            ?? $payload['data']['transaction_id'] 
+            ?? ''
+        ));
+        $settlementAmount = (float) (
+            $payload['settlement_amount'] 
+            ?? $payload['amount'] 
+            ?? $payload['data']['settlement_amount'] 
+            ?? $payload['data']['amount'] 
+            ?? 0
+        );
+        $email = Str::lower(trim((string) (
+            $payload['customer']['email'] 
+            ?? $payload['email'] 
+            ?? $payload['data']['customer']['email'] 
+            ?? ''
+        )));
         $accountNumber = trim((string) (
             $payload['account_number']
             ?? $payload['bank_account_number']
             ?? $payload['recipient_account_number']
+            ?? $payload['destination_account_number']
+            ?? $payload['data']['account_number']
+            ?? $payload['order']['account_number']
             ?? ''
         ));
-        $phone = trim((string) ($payload['customer']['phone'] ?? $payload['phone'] ?? ''));
+        $phone = trim((string) (
+            $payload['customer']['phone'] 
+            ?? $payload['phone'] 
+            ?? $payload['data']['customer']['phone'] 
+            ?? ''
+        ));
         $status = (string) ($payload['transaction_status'] ?? $payload['status'] ?? '');
 
         if ($status !== '' && !in_array(strtolower($status), ['success', 'successful', 'completed'], true)) {
@@ -557,6 +630,8 @@ class ProcessPaymentWebhookEvent implements ShouldQueue
         $accountNumber = trim((string) (
             $data['destinationAccountInformation']['accountNumber']
             ?? $data['accountDetails']['accountNumber']
+            ?? $data['destinationAccountNumber']
+            ?? $data['accountNumber']
             ?? ''
         ));
         $accountReference = trim((string) ($data['accountReference'] ?? ''));

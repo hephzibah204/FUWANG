@@ -23,6 +23,85 @@ class SystemSetting extends Model
         'value' => 'string', // Handle based on type if needed
     ];
 
+    protected static function booted(): void
+    {
+        static::creating(function (SystemSetting $setting) {
+            if (empty($setting->id)) {
+                try {
+                    $maxId = (int) (static::query()->max('id') ?? 0);
+                    $setting->id = $maxId + 1;
+                } catch (\Throwable) {
+                    $setting->id = (int) (hrtime(true) % 2147483647);
+                }
+            }
+        });
+    }
+
+    /**
+     * Override insertAndSetId to support legacy tables lacking AUTO_INCREMENT
+     */
+    protected function insertAndSetId(\Illuminate\Database\Eloquent\Builder $query, $attributes)
+    {
+        $keyName = $this->getKeyName();
+        $assignedId = $attributes[$keyName] ?? $this->getAttribute($keyName);
+
+        try {
+            $id = $query->insertGetId($attributes, $keyName);
+        } catch (\Throwable $e) {
+            if (empty($attributes[$keyName])) {
+                $maxId = (int) (static::query()->max($keyName) ?? 0);
+                $attributes[$keyName] = $maxId + 1;
+            }
+            $query->insert($attributes);
+            $id = $attributes[$keyName];
+        }
+
+        $finalId = (!empty($id) && (int) $id > 0) ? $id : $assignedId;
+        $this->setAttribute($keyName, $finalId);
+    }
+
+    public static function ensureTableExists(): void
+    {
+        if (app()->environment('testing')) {
+            return;
+        }
+
+        try {
+            if (!Schema::hasTable('system_settings')) {
+                Schema::create('system_settings', function (\Illuminate\Database\Schema\Blueprint $table) {
+                    $table->id();
+                    $table->string('key')->unique();
+                    $table->longText('value')->nullable();
+                    $table->string('type', 50)->nullable();
+                    $table->string('group', 80)->nullable()->index();
+                    $table->string('label')->nullable();
+                    $table->timestamps();
+                });
+            } else {
+                $hasGroup = Schema::hasColumn('system_settings', 'group');
+                $hasType = Schema::hasColumn('system_settings', 'type');
+                $hasLabel = Schema::hasColumn('system_settings', 'label');
+
+                if (!$hasGroup || !$hasType || !$hasLabel) {
+                    Schema::table('system_settings', function (\Illuminate\Database\Schema\Blueprint $table) use ($hasGroup, $hasType, $hasLabel) {
+                        if (!$hasGroup) {
+                            $table->string('group', 80)->nullable()->index();
+                        }
+                        if (!$hasType) {
+                            $table->string('type', 50)->nullable();
+                        }
+                        if (!$hasLabel) {
+                            $table->string('label')->nullable();
+                        }
+                    });
+                }
+            }
+            static::$hasTableCache = true;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('SystemSetting::ensureTableExists notice: ' . $e->getMessage());
+        }
+    }
+
     public static function clearLocalCache(): void
     {
         static::$hasTableCache = null;
@@ -74,6 +153,8 @@ class SystemSetting extends Model
 
     public static function put(string $key, mixed $value, ?string $group = null, ?string $type = null, ?string $label = null): self
     {
+        static::ensureTableExists();
+
         if (static::$hasTableCache === null) {
             try {
                 static::$hasTableCache = Schema::hasTable((new static())->getTable());
@@ -96,20 +177,34 @@ class SystemSetting extends Model
             'value' => is_scalar($value) ? (string) $value : json_encode($value),
         ];
 
-        if ($group !== null) {
+        $hasGroup = false;
+        $hasType = false;
+        $hasLabel = false;
+        try {
+            $hasGroup = Schema::hasColumn('system_settings', 'group');
+            $hasType = Schema::hasColumn('system_settings', 'type');
+            $hasLabel = Schema::hasColumn('system_settings', 'label');
+        } catch (\Throwable) {}
+
+        if ($group !== null && $hasGroup) {
             $payload['group'] = $group;
         }
-        if ($type !== null) {
+        if ($type !== null && $hasType) {
             $payload['type'] = $type;
         }
-        if ($label !== null) {
+        if ($label !== null && $hasLabel) {
             $payload['label'] = $label;
         }
 
         try {
             return static::query()->updateOrCreate(['key' => $key], $payload);
         } catch (\Throwable) {
-            return new static();
+            try {
+                $simplePayload = ['value' => is_scalar($value) ? (string) $value : json_encode($value)];
+                return static::query()->updateOrCreate(['key' => $key], $simplePayload);
+            } catch (\Throwable) {
+                return new static();
+            }
         }
     }
 

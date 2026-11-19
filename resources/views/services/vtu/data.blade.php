@@ -208,14 +208,13 @@
     .nexus-net-option input[type="radio"] {
         position: absolute;
         opacity: 0;
-        width: 1px;
-        height: 1px;
-        margin: -1px;
-        padding: 0;
-        border: 0;
-        clip: rect(0 0 0 0);
-        overflow: hidden;
-        pointer-events: none;
+        width: 100%;
+        height: 100%;
+        top: 0;
+        left: 0;
+        margin: 0;
+        cursor: pointer;
+        z-index: 5;
     }
     .net-box {
         border: 1px solid rgba(255, 255, 255, 0.08);
@@ -406,9 +405,10 @@
         document.querySelectorAll('.nexus-net-option').forEach(option => {
             option.addEventListener('click', function () {
                 const radio = this.querySelector('input[type="radio"]');
-                if (radio && !radio.checked) {
+                if (radio) {
                     radio.checked = true;
                     populate();
+                    radio.dispatchEvent(new Event('change', { bubbles: true }));
                 }
             });
         });

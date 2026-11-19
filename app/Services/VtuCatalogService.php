@@ -31,11 +31,12 @@ class VtuCatalogService
     {
         if (!$this->schemaReady()) return collect();
         $provider = $this->dataProvider($providerId);
-        if (($providerId && !$provider) || (!$provider && CustomApi::where('service_type', 'vtu_data')->where('provider_identifier', 'datasub247')->exists())) return collect();
+        if ($providerId && !$provider) return collect();
+
         return DB::table('price_list')->whereNotNull('provider_plan_id')->orderBy('amount')->get()
             ->filter(fn ($plan) => ctype_digit(trim((string) $plan->provider_plan_id)) && (int) $plan->provider_plan_id > 0
                 && (float) $plan->amount >= 50
-                && ($provider ? (int) $plan->custom_api_id === (int) $provider->id : empty($plan->custom_api_id)))
+                && ($provider ? ((int) $plan->custom_api_id === (int) $provider->id || empty($plan->custom_api_id)) : true))
             ->map(function ($plan) {
                 $plan->network = $this->dataNetwork((string) $plan->network);
                 return $plan;
@@ -44,11 +45,20 @@ class VtuCatalogService
 
     private function dataNetwork(string $network): string
     {
-        return match (strtoupper(trim($network))) {
-            '1', '01', 'MTN' => 'MTN', '3', '02', 'GLO' => 'GLO',
-            '2', '04', 'AIRTEL' => 'AIRTEL', '4', '03', 'ETISALAT', '9MOBILE' => '9MOBILE',
-            default => strtoupper(trim($network)),
-        };
+        $raw = strtoupper(trim($network));
+        if (str_contains($raw, 'MTN') || in_array($raw, ['1', '01'], true)) {
+            return 'MTN';
+        }
+        if (str_contains($raw, 'GLO') || in_array($raw, ['3', '02'], true)) {
+            return 'GLO';
+        }
+        if (str_contains($raw, 'AIRTEL') || in_array($raw, ['2', '04'], true)) {
+            return 'AIRTEL';
+        }
+        if (str_contains($raw, '9MOBILE') || str_contains($raw, 'ETISALAT') || in_array($raw, ['4', '03'], true)) {
+            return '9MOBILE';
+        }
+        return $raw;
     }
     public function products(string $serviceType): array
     {

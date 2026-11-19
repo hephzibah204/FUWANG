@@ -48,6 +48,21 @@ class Datasub247Service
         $this->apiKey = config('services.datasub247.api_key', env('DATASUB247_API_KEY'));
         $this->username = config('services.datasub247.username', env('DATASUB247_USERNAME'));
         $this->password = config('services.datasub247.password', env('DATASUB247_PASSWORD'));
+
+        try {
+            if (empty($this->username)) {
+                $this->username = \App\Models\SystemSetting::get('datasub247_username', 'fuwang');
+            }
+            if (empty($this->password)) {
+                $this->password = \App\Models\SystemSetting::get('datasub247_password', 'Fuwa.com123');
+            }
+            if (empty($this->apiKey)) {
+                $settingKey = \App\Models\SystemSetting::get('datasub247_api_key');
+                if (!empty($settingKey)) {
+                    $this->apiKey = (string) $settingKey;
+                }
+            }
+        } catch (\Throwable $e) {}
     }
 
     public function forProvider(CustomApi $provider): self
@@ -122,12 +137,22 @@ class Datasub247Service
                 $data = $response->json();
                 if (is_array($data) && ($data['status'] ?? '') === 'success') {
                     if (!empty($data['AccessToken'])) {
-                        $this->apiKey = $data['AccessToken'];
+                        $this->apiKey = (string) $data['AccessToken'];
+                        try {
+                            \App\Models\SystemSetting::put('datasub247_api_key', (string) $data['AccessToken'], 'string', 'api', 'DataSub247 API Access Token');
+                        } catch (\Throwable $ignored) {}
                     }
+
+                    $rawBal = $data['balance'] ?? null;
+                    $cleanBal = $rawBal !== null
+                        ? (is_numeric($rawBal) ? (float) $rawBal : (float) str_replace([',', ' '], '', (string) $rawBal))
+                        : null;
+
                     return [
                         'status' => true,
                         'AccessToken' => $data['AccessToken'] ?? null,
-                        'balance' => $data['balance'] ?? null,
+                        'balance' => $cleanBal !== null ? number_format($cleanBal, 2, '.', '') : null,
+                        'balance_float' => $cleanBal ?? 0.0,
                         'username' => $data['username'] ?? null,
                         'raw' => $data,
                     ];
@@ -147,13 +172,15 @@ class Datasub247Service
      */
     public function getUserInfo(): array
     {
-        $token = $this->getApiKey();
-        if (!$token && !empty($this->username) && !empty($this->password)) {
+        // DataSub247's /api/user endpoint accepts Basic Auth.
+        // If username and password are provided, always use basic auth directly.
+        if (!empty($this->username) && !empty($this->password)) {
             return $this->authenticateWithCredentials($this->username, $this->password);
         }
 
+        $token = $this->getApiKey();
         if (!$token) {
-            return ['status' => false, 'message' => 'Datasub247 API Key not configured.'];
+            return ['status' => false, 'message' => 'Datasub247 credentials or API Key not configured.'];
         }
 
         try {
@@ -163,15 +190,30 @@ class Datasub247Service
 
             if ($response->successful()) {
                 $data = $response->json();
-                return [
-                    'status' => true,
-                    'balance' => $data['balance'] ?? 0,
-                    'username' => $data['username'] ?? '',
-                    'data' => $data,
-                ];
+                if (is_array($data) && ($data['status'] ?? '') === 'success') {
+                    $rawBal = $data['balance'] ?? null;
+                    $cleanBal = $rawBal !== null
+                        ? (is_numeric($rawBal) ? (float) $rawBal : (float) str_replace([',', ' '], '', (string) $rawBal))
+                        : null;
+
+                    return [
+                        'status' => true,
+                        'AccessToken' => $data['AccessToken'] ?? $token,
+                        'balance' => $cleanBal !== null ? number_format($cleanBal, 2, '.', '') : null,
+                        'balance_float' => $cleanBal ?? 0.0,
+                        'username' => $data['username'] ?? '',
+                        'data' => $data,
+                    ];
+                }
+                return ['status' => false, 'message' => $data['message'] ?? 'Could not retrieve user info.'];
             }
 
-            return ['status' => false, 'message' => 'Unable to fetch user info: ' . $response->body()];
+            // If token auth failed with 401/403 and we have credentials, fallback to basic auth
+            if (in_array($response->status(), [401, 403], true) && !empty($this->username) && !empty($this->password)) {
+                return $this->authenticateWithCredentials($this->username, $this->password);
+            }
+
+            return ['status' => false, 'message' => 'Datasub247 returned HTTP ' . $response->status()];
         } catch (\Throwable $e) {
             return ['status' => false, 'message' => $e->getMessage()];
         }

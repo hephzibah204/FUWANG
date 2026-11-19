@@ -43,6 +43,14 @@ class AppServiceProvider extends ServiceProvider
     {
         View::share('exceptionAsMarkdown', false);
 
+        if (str_starts_with((string) config('app.url'), 'https://')
+            || app()->environment('production')
+            || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')
+            || (isset($_SERVER['HTTPS']) && ($_SERVER['HTTPS'] === 'on' || $_SERVER['HTTPS'] === '1'))
+        ) {
+            \Illuminate\Support\Facades\URL::forceScheme('https');
+        }
+
         if (app()->runningInConsole() && !app()->environment('testing')) {
             try {
                 \App\Http\Controllers\Admin\SystemDeploymentController::repairMigrationsTable();

@@ -27,8 +27,7 @@ class AdminVtuPricingController extends Controller
      */
     public function index()
     {
-        // Ensure price_list table exists and seed defaults if empty
-        // Products are configured explicitly; opening this page must not recreate deleted plans.
+        SystemSetting::ensureTableExists();
 
         $bundles = DB::table('price_list')
             ->orderBy('network')
@@ -108,14 +107,43 @@ class AdminVtuPricingController extends Controller
         }
 
         try {
-            // SystemSetting::set intentionally swallows storage errors. Pricing must
-            // persist every value, or fail without reporting a successful save.
-            DB::transaction(function () use ($settings) {
+            SystemSetting::ensureTableExists();
+
+            $hasGroup = false;
+            try {
+                $hasGroup = Schema::hasTable('system_settings') && Schema::hasColumn('system_settings', 'group');
+            } catch (\Throwable) {}
+
+            DB::transaction(function () use ($settings, $hasGroup) {
                 foreach ($settings as $key => $value) {
-                    SystemSetting::query()->updateOrCreate(['key' => $key], [
-                        'value' => $value, 'group' => 'vtu_pricing',
-                    ]);
+                    $payload = ['value' => (string) $value];
+                    if ($hasGroup) {
+                        $payload['group'] = 'vtu_pricing';
+                    }
+
+                    try {
+                        SystemSetting::query()->updateOrCreate(['key' => $key], $payload);
+                    } catch (\Throwable $err) {
+                        unset($payload['group']);
+                        try {
+                            SystemSetting::query()->updateOrCreate(['key' => $key], $payload);
+                        } catch (\Throwable $err2) {
+                            $existing = DB::table('system_settings')->where('key', $key)->first();
+                            if ($existing) {
+                                DB::table('system_settings')->where('key', $key)->update(array_merge($payload, ['updated_at' => now()]));
+                            } else {
+                                $maxId = (int) (DB::table('system_settings')->max('id') ?? 0);
+                                DB::table('system_settings')->insert(array_merge($payload, [
+                                    'id' => $maxId + 1,
+                                    'key' => $key,
+                                    'created_at' => now(),
+                                    'updated_at' => now(),
+                                ]));
+                            }
+                        }
+                    }
                 }
+
                 DB::afterCommit(function () use ($settings) {
                     Cache::forget('system_settings_all');
                     foreach (array_keys($settings) as $key) {
@@ -124,8 +152,17 @@ class AdminVtuPricingController extends Controller
                     SystemSetting::clearLocalCache();
                 });
             });
+
+            Cache::forget('system_settings_all');
+            foreach (array_keys($settings) as $key) {
+                Cache::forget('system_setting:'.$key);
+            }
+            SystemSetting::clearLocalCache();
         } catch (\Throwable $e) {
             report($e);
+            \Illuminate\Support\Facades\Log::error('VTU Pricing updateRates failed: ' . $e->getMessage(), [
+                'exception' => $e,
+            ]);
             $message = 'Pricing could not be saved. Please try again. Your entered figures have been retained.';
             if ($request->expectsJson()) {
                 return response()->json(['status' => false, 'message' => $message], 503);

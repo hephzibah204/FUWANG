@@ -538,6 +538,7 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
             Route::get('/provider-balances',           [App\Http\Controllers\Admin\DashboardController::class, 'providerBalances'])->name('provider_balances');
             Route::post('/capital-investment',         [App\Http\Controllers\Admin\DashboardController::class, 'updateCapitalInvestment'])->name('capital_investment.update');
             Route::post('/api-credentials',            [App\Http\Controllers\Admin\DashboardController::class, 'updateApiCredentials'])->name('api_credentials.update');
+            Route::match(['GET', 'POST'], '/webhooks/reprocess', [App\Http\Controllers\Admin\DashboardController::class, 'reprocessWebhooks'])->name('webhooks.reprocess');
 
             Route::get('/chatbot/metrics',             [App\Http\Controllers\Admin\ChatbotAdminController::class, 'dashboardMetrics'])
                 ->middleware('super_admin')
@@ -859,18 +860,24 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
 
 // ── Payment & Integration Webhooks (no auth guard, CSRF exempt) ─────────
 Route::withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class])->group(function () {
-    Route::post('/webhooks/payvessel', [App\Http\Controllers\WebhookController::class, 'handlePayvessel'])->name('webhooks.payvessel');
-    Route::post('/webhooks/palmpay',   [App\Http\Controllers\WebhookController::class, 'handlePalmpay'])->name('webhooks.palmpay');
-    Route::post('/webhooks/paymentpoint', [App\Http\Controllers\WebhookController::class, 'handlePaymentpoint'])->name('webhooks.paymentpoint');
-    Route::post('/webhooks/monnify',  [App\Http\Controllers\WebhookController::class, 'handleMonnify'])->name('webhooks.monnify');
-    Route::post('/webhooks/paystack',  [App\Http\Controllers\WebhookController::class, 'handlePaystack'])->name('webhooks.paystack');
-    Route::post('/webhooks/flutterwave',  [App\Http\Controllers\WebhookController::class, 'handleFlutterwave'])->name('webhooks.flutterwave');
-    Route::post('/webhooks/flutterwave/card', [App\Http\Controllers\WebhookController::class, 'handleFlutterwaveCard'])->name('webhooks.flutterwave.card');
-    Route::post('/webhook/flutterwave/card',  [App\Http\Controllers\WebhookController::class, 'handleFlutterwaveCard'])->name('webhook.flutterwave.card');
-    Route::post('/payvessel_webhook.php', [App\Http\Controllers\WebhookController::class, 'handlePayvessel']);
-    Route::post('/palmpay_webhook.php',   [App\Http\Controllers\WebhookController::class, 'handlePalmpay']);
-    Route::post('/webhooks/vtu/datasub247', [App\Http\Controllers\Service\VTUController::class, 'webhookDatasub'])->name('webhooks.vtu.datasub247');
-    Route::post('/api/vtu/webhook/datasub247', [App\Http\Controllers\Service\VTUController::class, 'webhookDatasub'])->name('api.vtu.webhook.datasub247');
+    Route::match(['GET', 'POST'], '/webhooks/payvessel', [App\Http\Controllers\WebhookController::class, 'handlePayvessel'])->name('webhooks.payvessel');
+    Route::match(['GET', 'POST'], '/webhook/payvessel',  [App\Http\Controllers\WebhookController::class, 'handlePayvessel'])->name('webhook.payvessel');
+    Route::match(['GET', 'POST'], '/webhooks/palmpay',   [App\Http\Controllers\WebhookController::class, 'handlePalmpay'])->name('webhooks.palmpay');
+    Route::match(['GET', 'POST'], '/webhook/palmpay',    [App\Http\Controllers\WebhookController::class, 'handlePalmpay'])->name('webhook.palmpay');
+    Route::match(['GET', 'POST'], '/webhooks/paymentpoint', [App\Http\Controllers\WebhookController::class, 'handlePaymentpoint'])->name('webhooks.paymentpoint');
+    Route::match(['GET', 'POST'], '/webhook/paymentpoint',  [App\Http\Controllers\WebhookController::class, 'handlePaymentpoint'])->name('webhook.paymentpoint');
+    Route::match(['GET', 'POST'], '/webhooks/monnify',  [App\Http\Controllers\WebhookController::class, 'handleMonnify'])->name('webhooks.monnify');
+    Route::match(['GET', 'POST'], '/webhook/monnify',   [App\Http\Controllers\WebhookController::class, 'handleMonnify'])->name('webhook.monnify');
+    Route::match(['GET', 'POST'], '/webhooks/paystack',  [App\Http\Controllers\WebhookController::class, 'handlePaystack'])->name('webhooks.paystack');
+    Route::match(['GET', 'POST'], '/webhook/paystack',   [App\Http\Controllers\WebhookController::class, 'handlePaystack'])->name('webhook.paystack');
+    Route::match(['GET', 'POST'], '/webhooks/flutterwave',  [App\Http\Controllers\WebhookController::class, 'handleFlutterwave'])->name('webhooks.flutterwave');
+    Route::match(['GET', 'POST'], '/webhook/flutterwave',   [App\Http\Controllers\WebhookController::class, 'handleFlutterwave'])->name('webhook.flutterwave');
+    Route::match(['GET', 'POST'], '/webhooks/flutterwave/card', [App\Http\Controllers\WebhookController::class, 'handleFlutterwaveCard'])->name('webhooks.flutterwave.card');
+    Route::match(['GET', 'POST'], '/webhook/flutterwave/card',  [App\Http\Controllers\WebhookController::class, 'handleFlutterwaveCard'])->name('webhook.flutterwave.card');
+    Route::match(['GET', 'POST'], '/payvessel_webhook.php', [App\Http\Controllers\WebhookController::class, 'handlePayvessel']);
+    Route::match(['GET', 'POST'], '/palmpay_webhook.php',   [App\Http\Controllers\WebhookController::class, 'handlePalmpay']);
+    Route::match(['GET', 'POST'], '/webhooks/vtu/datasub247', [App\Http\Controllers\Service\VTUController::class, 'webhookDatasub'])->name('webhooks.vtu.datasub247');
+    Route::match(['GET', 'POST'], '/api/vtu/webhook/datasub247', [App\Http\Controllers\Service\VTUController::class, 'webhookDatasub'])->name('api.vtu.webhook.datasub247');
 });
 
 

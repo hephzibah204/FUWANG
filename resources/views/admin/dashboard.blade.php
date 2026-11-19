@@ -88,6 +88,15 @@
                 </svg>
                 <span>Check Live Balances</span>
             </button>
+            <form method="POST" action="{{ route('admin.webhooks.reprocess') }}" class="d-inline" onsubmit="return confirm('Reprocess all pending or uncredited webhook payments now?');">
+                @csrf
+                <button type="submit" class="btn btn-sm btn-outline-warning d-inline-flex align-items-center gap-1 shadow-sm" title="Reprocess uncredited virtual account payments">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    <span>Reprocess Webhooks</span>
+                </button>
+            </form>
             <button type="button" class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1 shadow-sm" data-bs-toggle="modal" data-bs-target="#editApiKeysModal" data-toggle="modal" data-target="#editApiKeysModal">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
@@ -219,7 +228,7 @@
                         <span id="datasub-msg" class="text-truncate me-2" style="max-width: 65%;">{{ $providerBalances['datasub247']['message'] ?? '' }}</span>
                         <div class="d-flex align-items-center gap-2 flex-shrink-0">
                             @if(empty($providerBalances['datasub247']['configured']) || ($providerBalances['datasub247']['status'] ?? '') === 'error')
-                                <a href="{{ route('admin.custom_apis.index') }}" class="btn btn-xs btn-outline-primary py-0 px-2" style="font-size: 11px;">Configure</a>
+                                <button type="button" class="btn btn-xs btn-outline-primary py-0 px-2" style="font-size: 11px;" data-bs-toggle="modal" data-bs-target="#editApiKeysModal" data-toggle="modal" data-target="#editApiKeysModal">Configure</button>
                             @endif
                             <a href="https://datasub247.com" target="_blank" rel="noopener" class="bi-link">Top Up &nearr;</a>
                         </div>
@@ -487,6 +496,25 @@
                         <label class="form-label small fw-semibold text-white">VUVAA Base Endpoint</label>
                         <input type="text" name="vuvaa_endpoint" class="form-control font-monospace bg-dark border-secondary text-white" value="{{ \App\Models\SystemSetting::get('vuvaa_endpoint', 'https://premiere.vuvaa.com/demo/NIN_Validation_LIVE') }}" placeholder="https://premiere.vuvaa.com/demo/NIN_Validation_LIVE">
                         <div class="form-text text-muted small">Default demo endpoint: <code>https://premiere.vuvaa.com/demo/NIN_Validation_LIVE</code></div>
+                    </div>
+                    <div class="col-12 pt-2 border-top border-white-10">
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <span class="fw-bold small text-white">DataSub247 Credentials</span>
+                            <span class="badge bg-secondary-subtle text-secondary small">VTU & Bill Payments</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold text-white">DataSub247 Username</label>
+                        <input type="text" name="datasub247_username" class="form-control font-monospace bg-dark border-secondary text-white" value="{{ \App\Models\SystemSetting::get('datasub247_username', config('services.datasub247.username', env('DATASUB247_USERNAME', 'fuwang'))) }}" placeholder="fuwang">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold text-white">DataSub247 Password</label>
+                        <input type="password" name="datasub247_password" class="form-control font-monospace bg-dark border-secondary text-white" value="{{ \App\Models\SystemSetting::get('datasub247_password', config('services.datasub247.password', env('DATASUB247_PASSWORD', 'Fuwa.com123'))) }}" placeholder="••••••••">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label small fw-semibold text-white">DataSub247 API Token (Optional / Auto-generated)</label>
+                        <input type="text" name="datasub247_api_key" class="form-control font-monospace bg-dark border-secondary text-white" value="{{ \App\Models\SystemSetting::get('datasub247_api_key', '') }}" placeholder="Leave blank to auto-generate from username/password">
+                        <div class="form-text text-muted small">When username and password are provided, the API AccessToken is automatically retrieved and refreshed.</div>
                     </div>
                 </div>
             </div>
@@ -883,6 +911,9 @@
         border-radius: 14px;
         padding: 16px;
         transition: border-color 0.2s ease, transform 0.2s ease;
+        position: relative;
+        overflow: hidden;
+        min-width: 0;
     }
 
     .bi-provider-card:hover {
@@ -959,15 +990,18 @@
         display: inline-flex;
         align-items: center;
         gap: 5px;
-        font-size: 0.72rem;
+        font-size: 0.70rem;
         font-weight: 600;
         padding: 3px 8px;
         border-radius: 9999px;
-        line-height: 1.3;
+        line-height: 1.25;
         white-space: nowrap;
         flex-shrink: 0;
         border: 1px solid transparent;
         margin: 0;
+        max-width: 100%;
+        text-overflow: ellipsis;
+        overflow: hidden;
     }
 
     .bi-status-dot {

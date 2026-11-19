@@ -13,17 +13,24 @@ Schedule::command('agent:retry-pending-nin')->everyFifteenMinutes();
 Schedule::command('auction:process-status')->everyMinute();
 Schedule::command('bvn:poll-retrievals')->everyFifteenMinutes();
 Schedule::command('vtu:reconcile')->everyFiveMinutes()->withoutOverlapping();
+Schedule::command('payments:reprocess-webhooks --limit=100')->everyFiveMinutes()->withoutOverlapping();
 
-Artisan::command('payments:reprocess-webhooks {--limit=50}', function () {
+Artisan::command('payments:reprocess-webhooks {--limit=50} {--all : Reprocess all pending and failed webhook events}', function () {
     $limit = (int) $this->option('limit');
+    $all = (bool) $this->option('all');
     if (!\Illuminate\Support\Facades\Schema::hasTable('payment_webhook_events')) {
         $this->error('payment_webhook_events table does not exist.');
         return 1;
     }
 
-    $events = \App\Models\PaymentWebhookEvent::whereIn('processing_status', ['pending', 'failed'])
-        ->limit($limit)
-        ->get();
+    $query = \App\Models\PaymentWebhookEvent::whereIn('processing_status', ['pending', 'failed'])
+        ->orderBy('id', 'asc');
+
+    if (!$all && $limit > 0) {
+        $query->limit($limit);
+    }
+
+    $events = $query->get();
 
     if ($events->isEmpty()) {
         $this->info('No pending or failed webhook events to process.');

@@ -345,6 +345,9 @@ class DashboardController extends Controller
             'vuvaa_username' => ['nullable', 'string', 'max:500'],
             'vuvaa_password' => ['nullable', 'string', 'max:500'],
             'vuvaa_endpoint' => ['nullable', 'string', 'max:500'],
+            'datasub247_username' => ['nullable', 'string', 'max:255'],
+            'datasub247_password' => ['nullable', 'string', 'max:255'],
+            'datasub247_api_key' => ['nullable', 'string', 'max:500'],
         ]);
 
         $apiCenterFields = [
@@ -374,6 +377,19 @@ class DashboardController extends Controller
             }
         }
 
+        foreach (['datasub247_username', 'datasub247_password', 'datasub247_api_key'] as $datasubField) {
+            if ($request->filled($datasubField)) {
+                SystemSetting::put($datasubField, $request->input($datasubField), 'string', 'api', ucwords(str_replace('_', ' ', $datasubField)));
+            }
+        }
+
+        if ($request->filled('datasub247_api_key')) {
+            try {
+                \App\Models\CustomApi::where('provider_identifier', 'datasub247')
+                    ->update(['api_key' => $request->input('datasub247_api_key')]);
+            } catch (\Throwable $ignored) {}
+        }
+
         Cache::forget('admin_dashboard_bi_v1');
         Cache::forget('admin_provider_balances_v1');
 
@@ -397,6 +413,71 @@ class DashboardController extends Controller
         Cache::forget('admin_dashboard_bi_v1');
 
         return back()->with('success', 'Capital investment updated to NGN ' . number_format((float) $validated['amount'], 2) . '.');
+    }
+
+    public function reprocessWebhooks(Request $request)
+    {
+        $limit = max(1, min((int) $request->input('limit', 100), 500));
+        
+        if (!Schema::hasTable('payment_webhook_events')) {
+            if ($request->wantsJson()) {
+                return response()->json(['status' => false, 'message' => 'Table does not exist.']);
+            }
+            return back()->with('error', 'payment_webhook_events table does not exist.');
+        }
+
+        $events = PaymentWebhookEvent::query()
+            ->whereIn('processing_status', ['pending', 'failed'])
+            ->orderBy('id', 'asc')
+            ->limit($limit)
+            ->get();
+
+        $success = 0;
+        $failed = 0;
+        $details = [];
+
+        foreach ($events as $event) {
+            try {
+                \App\Jobs\ProcessPaymentWebhookEvent::dispatchSync($event->id);
+                $event->refresh();
+                if ($event->processing_status === 'succeeded') {
+                    $success++;
+                } else {
+                    $failed++;
+                }
+                $details[] = [
+                    'id' => $event->id,
+                    'provider' => $event->provider,
+                    'reference' => $event->reference,
+                    'status' => $event->processing_status,
+                    'error' => $event->processing_error,
+                ];
+            } catch (\Throwable $e) {
+                $failed++;
+                $details[] = [
+                    'id' => $event->id,
+                    'provider' => $event->provider,
+                    'reference' => $event->reference,
+                    'status' => 'failed',
+                    'error' => $e->getMessage(),
+                ];
+            }
+        }
+
+        $msg = "Reprocessed {$events->count()} webhooks: {$success} succeeded, {$failed} uncredited/failed.";
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'status' => true,
+                'message' => $msg,
+                'total' => $events->count(),
+                'success' => $success,
+                'failed' => $failed,
+                'items' => $details,
+            ]);
+        }
+
+        return back()->with('success', $msg);
     }
 
     public function providerBalances(Request $request)
@@ -727,7 +808,7 @@ class DashboardController extends Controller
                         $vuvaa['formatted'] = number_format($unitsVal) . ' Units';
                         if ($unitsVal < 10) {
                             $vuvaa['status'] = 'low';
-                            $vuvaa['status_label'] = 'Low Units (< 10)';
+                            $vuvaa['status_label'] = 'Low Units';
                             $vuvaa['badge_class'] = 'bg-warning text-dark';
                         } else {
                             $vuvaa['status'] = 'ok';
@@ -794,14 +875,16 @@ class DashboardController extends Controller
                     ? $datasubService->authenticateWithCredentials($datasubUser, $datasubPass)
                     : $datasubService->getUserInfo();
 
-                if (!empty($info['status']) && isset($info['balance'])) {
-                    $balFloat = (float) $info['balance'];
+                if (!empty($info['status']) && (isset($info['balance']) || isset($info['balance_float']))) {
+                    $rawBal = $info['balance_float'] ?? $info['balance'] ?? 0;
+                    $cleanBal = is_string($rawBal) ? str_replace([',', ' '], '', $rawBal) : $rawBal;
+                    $balFloat = is_numeric($cleanBal) ? (float) $cleanBal : 0.0;
                     $datasub['balance'] = $balFloat;
                     $datasub['formatted'] = 'NGN ' . number_format($balFloat, 2);
 
                     if ($balFloat < 2000) {
                         $datasub['status'] = 'low';
-                        $datasub['status_label'] = 'Low Balance (< ₦2,000)';
+                        $datasub['status_label'] = 'Low Balance';
                         $datasub['badge_class'] = 'bg-warning text-dark';
                     } else {
                         $datasub['status'] = 'ok';
