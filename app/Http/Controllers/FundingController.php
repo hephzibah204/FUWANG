@@ -45,7 +45,7 @@ class FundingController extends Controller
             $publicConfig = [];
 
             if ($gateway->name === 'paystack') {
-                $publicConfig['public_key'] = $apiCenter?->paystack_public_key ?? $config['public_key'] ?? null;
+                $publicConfig['public_key'] = PaymentProviderCredentials::paystack($apiCenter)['public_key'];
             } elseif ($gateway->name === 'flutterwave') {
                 $publicConfig['public_key'] = $flw['public_key'] ?? $config['public_key'] ?? null;
             } elseif ($gateway->name === 'monnify') {
@@ -97,7 +97,8 @@ class FundingController extends Controller
         $isConfigured = false;
 
         if ($name === 'paystack') {
-            $isConfigured = (bool) ($apiCenter?->paystack_public_key && $apiCenter?->paystack_secret_key);
+            $keys = PaymentProviderCredentials::paystack($apiCenter);
+            $isConfigured = (bool) ($keys['public_key'] && $keys['secret_key']);
         } elseif ($name === 'flutterwave') {
             $flw = PaymentProviderCredentials::flutterwave($apiCenter);
             $isConfigured = (bool) ($flw['public_key'] && $flw['secret_key']);

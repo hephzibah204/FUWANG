@@ -431,7 +431,7 @@ class WebhookController extends Controller
         $sig = (string) $request->header('x-paystack-signature', '');
 
         $apiCenter = ApiCenter::first();
-        $secret = $apiCenter->paystack_secret_key ?? null;
+        $secret = PaymentProviderCredentials::paystack($apiCenter)['secret_key'];
         if (!$secret) {
             return response()->json(['message' => 'API credentials not found'], 400);
         }
@@ -456,6 +456,22 @@ class WebhookController extends Controller
         $email = (string) ($obj['customer']['email'] ?? '');
 
         $amount = round($amountKobo / 100, 2);
+
+        // A previous delivery may have been recorded before its wallet transaction failed.
+        $this->ensureWebhookEventsTable();
+        $retry = PaymentWebhookEvent::query()
+            ->where('provider', 'paystack')
+            ->where('event_type', 'charge.success')
+            ->where('signature_valid', true)
+            ->where('provider_event_id', (string) ($obj['id'] ?? $reference))
+            ->where('reference', $reference)
+            ->whereIn('processing_status', ['pending', 'failed'])
+            ->oldest('id')
+            ->first();
+        if ($retry) {
+            $this->enqueueEvent($retry);
+            return response()->json(['message' => 'Accepted'], 200);
+        }
 
         $event = $this->storeEvent(
             'paystack',

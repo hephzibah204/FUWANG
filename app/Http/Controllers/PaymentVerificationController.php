@@ -16,11 +16,22 @@ class PaymentVerificationController extends Controller
 {
     private function alreadyProcessed(string $reference): bool
     {
+        $reference = trim($reference);
+        if ($reference === '') {
+            return false;
+        }
         if (DB::table('fundings')->where('reference', $reference)->exists()) {
             return true;
         }
         if (DB::getSchemaBuilder()->hasTable('payment_transactions')) {
-            return DB::table('payment_transactions')->where('reference', $reference)->exists();
+            if (DB::table('payment_transactions')->where('reference', $reference)->exists()) {
+                return true;
+            }
+        }
+        if (DB::getSchemaBuilder()->hasTable('transactions')) {
+            if (DB::table('transactions')->where('transaction_id', $reference)->exists()) {
+                return true;
+            }
         }
         return false;
     }
@@ -42,7 +53,7 @@ class PaymentVerificationController extends Controller
         }
 
         $apiCenter = ApiCenter::first();
-        $secretKey = $apiCenter?->paystack_secret_key;
+        $secretKey = PaymentProviderCredentials::paystack($apiCenter)['secret_key'];
         if (!$secretKey) {
             return response()->json(['status' => false, 'message' => 'Paystack is not configured.'], 422);
         }
@@ -68,9 +79,22 @@ class PaymentVerificationController extends Controller
             return response()->json(['status' => false, 'message' => 'Unsupported currency.'], 422);
         }
 
-        $paidEmail = Str::lower((string) ($data['customer']['email'] ?? ''));
-        if (!$paidEmail || Str::lower((string) $user->email) !== $paidEmail) {
-            return response()->json(['status' => false, 'message' => 'Payment email mismatch.'], 422);
+        $paidEmail = Str::lower(trim((string) ($data['customer']['email'] ?? '')));
+        $userEmail = Str::lower(trim((string) $user->email));
+
+        $intent = PaymentIntent::where('reference', $reference)->first();
+        if (!$intent && !empty($data['reference'])) {
+            $intent = PaymentIntent::where('reference', trim((string) $data['reference']))->first();
+        }
+
+        $emailMatches = ($paidEmail !== '' && $userEmail === $paidEmail);
+        $intentMatches = ($intent && (int) $intent->user_id === (int) $user->id);
+
+        if (!$emailMatches && !$intentMatches) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Payment verification mismatch. This transaction does not belong to your account.'
+            ], 422);
         }
 
         $amountKobo = (int) ($data['amount'] ?? 0);
@@ -79,18 +103,21 @@ class PaymentVerificationController extends Controller
             return response()->json(['status' => false, 'message' => 'Invalid payment amount.'], 422);
         }
 
-        $intent = PaymentIntent::where('reference', $reference)->first();
-        if ($intent && $intent->amount_expected !== null && (float) $intent->amount_expected != (float) $amount) {
+        if ($intent && $intent->amount_expected !== null && abs((float) $intent->amount_expected - (float) $amount) > 0.01) {
             return response()->json(['status' => false, 'message' => 'Amount mismatch.'], 422);
         }
 
         try {
             DB::transaction(function () use ($user, $amount, $reference) {
+                $intent = PaymentIntent::where('reference', $reference)->lockForUpdate()->first();
                 if ($this->alreadyProcessed($reference)) {
                     return;
                 }
 
-                app(WalletService::class)->credit($user, $amount, 'Wallet Funding – Paystack', $reference);
+                $credit = app(WalletService::class)->credit($user, $amount, 'Wallet Funding - Paystack', $reference);
+                if (!$credit['ok']) {
+                    throw new \RuntimeException('Wallet credit was declined.');
+                }
 
                 // Handle referral logic
                 try {
@@ -99,7 +126,6 @@ class PaymentVerificationController extends Controller
                     \Illuminate\Support\Facades\Log::warning('Referral funding handler failed', ['error' => $e->getMessage()]);
                 }
 
-                $intent = PaymentIntent::where('reference', $reference)->lockForUpdate()->first();
                 if ($intent) {
                     $intent->gateway = 'paystack';
                     $intent->status = 'succeeded';
@@ -124,7 +150,7 @@ class PaymentVerificationController extends Controller
                 'reference' => $reference,
                 'user_id' => $user->id
             ]);
-            return response()->json(['status' => false, 'message' => 'Unable to apply wallet credit: ' . $e->getMessage()], 500);
+            return response()->json(['status' => false, 'message' => 'Wallet credit could not be confirmed. Keep your payment reference and contact support.', 'reference' => $reference], 500);
         }
 
         return response()->json(['status' => true, 'message' => 'Wallet funded successfully', 'reference' => $reference, 'amount' => $amount]);
@@ -187,10 +213,18 @@ class PaymentVerificationController extends Controller
         }
 
         $amount = (float) ($data['amountPaid'] ?? 0);
-        $paidEmail = Str::lower((string) ($data['customer']['email'] ?? ''));
+        $paidEmail = Str::lower(trim((string) ($data['customer']['email'] ?? '')));
+        $userEmail = Str::lower(trim((string) $user->email));
 
-        if (Str::lower((string) $user->email) !== $paidEmail) {
-            return response()->json(['status' => false, 'message' => 'Payment email mismatch.'], 422);
+        $intent = PaymentIntent::where('reference', $reference)->first();
+        $emailMatches = ($paidEmail !== '' && $userEmail === $paidEmail);
+        $intentMatches = ($intent && (int) $intent->user_id === (int) $user->id);
+
+        if (!$emailMatches && !$intentMatches) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Payment verification mismatch. This transaction does not belong to your account.'
+            ], 422);
         }
 
         try {
@@ -354,15 +388,21 @@ class PaymentVerificationController extends Controller
             return response()->json(['status' => false, 'message' => 'Unsupported currency.'], 422);
         }
 
-        $paidEmail = Str::lower((string) ($data['customer']['email'] ?? ''));
-        if (!$paidEmail || Str::lower((string) $user->email) !== $paidEmail) {
-            return response()->json(['status' => false, 'message' => 'Payment email mismatch.'], 422);
-        }
+        $paidEmail = Str::lower(trim((string) ($data['customer']['email'] ?? '')));
+        $userEmail = Str::lower(trim((string) $user->email));
 
         $reference = (string) ($data['tx_ref'] ?? $txRef ?: $transactionId);
         $reference = trim($reference);
         if ($reference === '') {
             return response()->json(['status' => false, 'message' => 'Invalid transaction reference.'], 422);
+        }
+
+        $intent = PaymentIntent::where('reference', $reference)->first();
+        $emailMatches = ($paidEmail !== '' && $userEmail === $paidEmail);
+        $intentMatches = ($intent && (int) $intent->user_id === (int) $user->id);
+
+        if (!$emailMatches && !$intentMatches) {
+            return response()->json(['status' => false, 'message' => 'Payment verification mismatch. This transaction does not belong to your account.'], 422);
         }
 
         if ($this->alreadyProcessed($reference)) {

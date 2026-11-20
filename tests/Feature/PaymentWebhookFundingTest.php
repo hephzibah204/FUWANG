@@ -55,6 +55,40 @@ class PaymentWebhookFundingTest extends TestCase
     }
 
     #[Test]
+    public function paystack_credits_once_with_the_configured_service_key(): void
+    {
+        config(['services.paystack.secret' => 'test-paystack-secret']);
+        $payload = [
+            'event' => 'charge.success',
+            'data' => [
+                'id' => 101,
+                'reference' => 'NXS-TESTCARD',
+                'status' => 'success',
+                'currency' => 'NGN',
+                'amount' => 50000,
+                'customer' => ['email' => $this->user->email],
+            ],
+        ];
+        $signature = hash_hmac('sha512', json_encode($payload), 'test-paystack-secret');
+        $failed = PaymentWebhookEvent::create([
+            'provider' => 'paystack',
+            'event_type' => 'charge.success',
+            'provider_event_id' => '101',
+            'reference' => 'NXS-TESTCARD',
+            'signature_valid' => true,
+            'payload' => $payload,
+            'processing_status' => 'failed',
+        ]);
+        for ($delivery = 0; $delivery < 2; $delivery++) {
+            $this->postJson('/webhooks/paystack', $payload, ['x-paystack-signature' => $signature])
+                ->assertOk();
+        }
+        $this->assertEquals(500, AccountBalance::where('user_id', $this->user->id)->value('user_balance'));
+        $this->assertSame('succeeded', $failed->refresh()->processing_status);
+        $this->assertSame(1, DB::table('fundings')->where('reference', 'NXS-TESTCARD')->count());
+    }
+
+    #[Test]
     public function it_successfully_credits_wallet_on_payvessel_webhook()
     {
         BankDetail::create([

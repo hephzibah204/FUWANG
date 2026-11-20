@@ -284,7 +284,10 @@ class ProcessPaymentWebhookEvent implements ShouldQueue
             }
         }
 
-        app(WalletService::class)->credit($user, $amount, $label, $reference);
+        $credit = app(WalletService::class)->credit($user, $amount, $label, $reference);
+        if (!$credit['ok']) {
+            throw new \RuntimeException('Wallet credit was declined.');
+        }
 
         if (Schema::hasTable('fundings')) {
             DB::table('fundings')->insert([
@@ -357,9 +360,19 @@ class ProcessPaymentWebhookEvent implements ShouldQueue
             }
         }
 
-        // 2. Secondary Priority: Account Reference
+        // 2. Secondary Priority: Payment Intent or Account Reference
         $accountReference = trim((string) $accountReference);
         if ($accountReference !== '') {
+            if (Schema::hasTable('payment_intents')) {
+                $intent = PaymentIntent::query()->where('reference', $accountReference)->first();
+                if ($intent && $intent->user_id) {
+                    $user = User::query()->find($intent->user_id);
+                    if ($user) {
+                        return $user;
+                    }
+                }
+            }
+
             if (Schema::hasTable('virtual_accounts')) {
                 $va = VirtualAccount::query()
                     ->where('reference', $accountReference)
@@ -455,6 +468,13 @@ class ProcessPaymentWebhookEvent implements ShouldQueue
         }
 
         $metadata = (array) ($obj['metadata'] ?? []);
+        $altRef = trim((string) ($metadata['intent_reference'] ?? $metadata['reference'] ?? $obj['trxref'] ?? ''));
+        if ($altRef !== '' && Schema::hasTable('payment_intents')) {
+            if (!PaymentIntent::where('reference', $reference)->exists() && PaymentIntent::where('reference', $altRef)->exists()) {
+                $reference = $altRef;
+            }
+        }
+
         $paymentType = (string) ($metadata['payment_type'] ?? '');
         $isAgentLicense = ($paymentType === 'agent_license') || str_starts_with($reference, 'LIC-');
 
@@ -507,7 +527,7 @@ class ProcessPaymentWebhookEvent implements ShouldQueue
             }
 
             $intent = PaymentIntent::query()->where('reference', $reference)->lockForUpdate()->first();
-            if ($intent && $intent->amount_expected !== null && (float) $intent->amount_expected != (float) $amount) {
+            if ($intent && $intent->amount_expected !== null && abs((float) $intent->amount_expected - (float) $amount) > 0.01) {
                 throw new \RuntimeException('Amount mismatch');
             }
 
