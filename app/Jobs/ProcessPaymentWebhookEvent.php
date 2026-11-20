@@ -591,7 +591,7 @@ class ProcessPaymentWebhookEvent implements ShouldQueue
             }
 
             $intent = PaymentIntent::query()->where('reference', $reference)->lockForUpdate()->first();
-            if ($intent && $intent->amount_expected !== null && (float) $intent->amount_expected != (float) $amount) {
+            if ($intent && $intent->amount_expected !== null && abs((float) $intent->amount_expected - (float) $amount) > 0.01) {
                 throw new \RuntimeException('Amount mismatch');
             }
 

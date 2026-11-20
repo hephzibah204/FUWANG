@@ -407,14 +407,23 @@
                 amount: Math.round(amount * 100),
                 currency: 'NGN',
                 ref: intentRef,
+                metadata: {
+                  custom_fields: [
+                    { display_name: "Intent Reference", variable_name: "intent_reference", value: intentRef },
+                    { display_name: "User Email", variable_name: "user_email", value: email }
+                  ],
+                  intent_reference: intentRef,
+                  user_email: email
+                },
                 callback: function (response) {
                   // Payment completed — verify with server
                   btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Verifying…`;
                   btn.disabled = true;
-                  verifyOnServer('/payment/verify/paystack', { reference: response.reference || intentRef })
+                  const paymentRef = (response && (response.reference || response.trxref)) ? (response.reference || response.trxref) : intentRef;
+                  verifyOnServer('/payment/verify/paystack', { reference: paymentRef })
                     .then(function (vRes) {
                       if (vRes && vRes.status) {
-                        handleSuccess(response.reference || intentRef, 'Paystack');
+                        handleSuccess(paymentRef, 'Paystack');
                         document.querySelectorAll('.pay-panel').forEach(p => p.classList.remove('active'));
                         const suc = document.getElementById('pm-success');
                         if (suc) suc.classList.add('active');
@@ -422,8 +431,9 @@
                         showToast('Verification Failed', (vRes && vRes.message) ? vRes.message : 'Could not verify payment. Contact support.', 'error');
                       }
                     })
-                    .catch(function () {
-                      showToast('Error', 'Unable to verify payment. Please contact support.', 'error');
+                    .catch(function (err) {
+                      const msg = (err && err.message) ? err.message : 'Unable to verify payment. Please contact support.';
+                      showToast('Verification Error', msg, 'error');
                     })
                     .finally(function () {
                       btn.innerHTML = orig;
