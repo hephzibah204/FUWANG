@@ -89,7 +89,17 @@ class ErrorHandler
         // Avoid logging sensitive information
         $safeLogData = static::sanitizeLogData($logData);
 
-        Log::log($severity, $e->getMessage(), $safeLogData);
+        // Resolve the logger from the container instead of the Log facade:
+        // when an exception is reported during console bootstrap or
+        // teardown, the facade root is not set and a facade call here
+        // throws "A facade root has not been set", masking the real
+        // exception and killing the artisan command. The reporter must
+        // never take the process down, so failures fall back to error_log.
+        try {
+            app('log')->log($severity, $e->getMessage(), $safeLogData);
+        } catch (Throwable) {
+            error_log('ErrorHandler fallback: ' . get_class($e) . ': ' . $e->getMessage());
+        }
     }
 
     /**
