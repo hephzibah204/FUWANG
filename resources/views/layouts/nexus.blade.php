@@ -951,6 +951,7 @@
                                 </a>
                             </div>
                         </li>
+                        <li class="nav-item mx-2"><a class="nav-link text-white small font-weight-bold {{ Request::is('vtu*') ? 'text-primary' : '' }}" href="{{ url('/vtu') }}">VTU Hub</a></li>
                         <li class="nav-item mx-2"><a class="nav-link text-white small font-weight-bold {{ Request::routeIs('agent.*') ? 'text-primary' : '' }}" href="{{ route('agent.landing') }}">Enrollment Agent</a></li>
                         <li class="nav-item mx-2"><a class="nav-link text-white small font-weight-bold {{ Request::routeIs('webinars.*') ? 'text-primary' : '' }}" href="{{ route('webinars.index') }}">Webinars</a></li>
                         <li class="nav-item mx-2"><a class="nav-link text-white small font-weight-bold {{ Request::routeIs('logistics.*') ? 'text-primary' : '' }}" href="{{ route('logistics.home') }}">Logistics</a></li>
