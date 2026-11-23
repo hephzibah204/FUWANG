@@ -37,6 +37,11 @@ class LoginController extends Controller
         if (! app()->environment(['local', 'testing'])) {
             if (Schema::hasTable('login_attempts')) {
                 $attempts = DB::table('login_attempts')->where('ip_address', $ipAddress)->first();
+                if ($attempts && (int) $attempts->attempts >= 6 && $attempts->last_login && now()->diffInMinutes($attempts->last_login) >= 15) {
+                    // Lock window has expired: wipe the stale counter so the slate is clean.
+                    DB::table('login_attempts')->where('ip_address', $ipAddress)->delete();
+                    $attempts = null;
+                }
                 if ($attempts && (int) $attempts->attempts >= 6 && $attempts->last_login && now()->diffInMinutes($attempts->last_login) < 15) {
                     $payload = [
                         'status' => 'error',
@@ -160,6 +165,12 @@ class LoginController extends Controller
 
         // Handle failed login
         if (Schema::hasTable('login_attempts')) {
+            $existing = DB::table('login_attempts')->where('ip_address', $ipAddress)->first();
+            if ($existing && $existing->last_login && now()->diffInMinutes($existing->last_login) >= 15) {
+                // Previous failures are outside the lock window: start fresh.
+                DB::table('login_attempts')->where('ip_address', $ipAddress)->delete();
+            }
+
             $updated = DB::table('login_attempts')
                 ->where('ip_address', $ipAddress)
                 ->increment('attempts', 1, ['last_login' => now(), 'updated_at' => now()]);
