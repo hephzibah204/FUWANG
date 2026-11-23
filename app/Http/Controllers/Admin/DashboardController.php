@@ -111,6 +111,8 @@ class DashboardController extends Controller
                 'total_revenue' => $totalRevenue,
                 'total_transactions' => Transaction::count(),
                 'total_users' => User::count(),
+                'verified_users' => User::whereNotNull('email_verified_at')->count(),
+                'new_users_today' => User::where('created_at', '>=', $today)->count(),
                 'total_verifications' => VerificationResult::count(),
                 'total_auctions' => AuctionLot::count(),
                 'daily_verifications' => VerificationResult::where('created_at', '>=', $today)->count(),

@@ -555,7 +555,7 @@
                 <a href="{{ route('admin.users.index') }}" class="bi-link">Manage &rarr;</a>
             </div>
             <div class="bi-value text-white">{{ number_format($stats['total_users'] ?? 0) }}</div>
-            <div class="text-muted small mt-1">Registered user accounts</div>
+            <div class="text-muted small mt-1">{{ number_format($stats['verified_users'] ?? 0) }} verified &middot; {{ number_format($stats['new_users_today'] ?? 0) }} joined today</div>
         </div>
     </div>
     <div class="col-lg-3 col-sm-6">
