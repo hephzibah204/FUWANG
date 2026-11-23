@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cheap Data, Airtime, Bulk SMS, Cable &amp; Electricity — Fuwa.NG VTU Hub</title>
+<meta name="description" content="Nigeria's sharp-rate VTU hub: cheap SME data for MTN, Glo, Airtel & 9mobile, instant airtime, bulk SMS with your own sender ID, DStv/GOtv/StarTimes, electricity tokens and exam PINs. Fund once, buy everything, delivered in seconds.">
+<style>
+  :root{
+    --bg:#070a14; --panel:rgba(255,255,255,.03); --panel-border:rgba(255,255,255,.09);
+    --text:#eef1f8; --muted:#9aa5bd; --blue:#2563eb; --blue2:#3b82f6; --teal:#2dc4af; --gold:#e8b74c; --green:#22c55e;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth;overflow-x:clip}
+  .glowwrap{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:0}
+  .logoimg{height:38px;width:auto;display:block;background:#0D1B34;border-radius:9px;padding:4px 9px}
+  .herologo{text-align:center;margin-bottom:22px}
+  .herologo img{height:58px;width:auto;background:#0D1B34;border-radius:12px;padding:7px 15px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+  body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;line-height:1.6;font-size:16px;overflow-x:hidden}
+  a{color:#7db4ff;text-decoration:none}
+  a:hover{text-decoration:underline}
+  .wrap{max-width:1060px;margin:0 auto;padding:0 20px 70px;position:relative;z-index:1}
+  .glow{position:absolute;border-radius:50%;filter:blur(110px);opacity:.5;pointer-events:none;z-index:0}
+  .glow.b{width:520px;height:520px;background:#1d4ed8;top:-160px;right:-120px}
+  .glow.t{width:420px;height:420px;background:#0f766e;top:340px;left:-180px;opacity:.35}
+  /* top bar */
+  .topbar{position:sticky;top:0;z-index:20;background:rgba(7,10,20,.88);backdrop-filter:blur(10px);border-bottom:1px solid var(--panel-border)}
+  .topbar .in{max-width:1060px;margin:0 auto;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .logo{font-weight:800;font-size:19px;color:var(--text)}
+  .logo span{color:var(--teal)}
+  .topbar .btn{padding:9px 20px;font-size:14.5px;margin:0}
+  /* hero */
+  header.hero{padding:64px 0 8px;text-align:center;position:relative}
+  .badge{display:inline-block;background:rgba(45,196,175,.12);color:#7ce8d8;border:1px solid rgba(45,196,175,.45);padding:5px 16px;border-radius:999px;font-size:13px;font-weight:700;letter-spacing:.6px;text-transform:uppercase}
+  h1{font-size:47px;line-height:1.13;margin:20px auto 14px;font-weight:900;max-width:820px}
+  h1 .grad{background:linear-gradient(92deg,#60a5fa,#2dc4af 55%,#e8b74c);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero p.sub{color:var(--muted);font-size:18.5px;max-width:720px;margin:0 auto}
+  .cta-row{margin:26px 0 8px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+  .btn{display:inline-block;background:linear-gradient(180deg,var(--blue2),var(--blue));color:#fff !important;font-weight:800;padding:14px 30px;border-radius:999px;font-size:16.5px;box-shadow:0 8px 24px rgba(37,99,235,.35)}
+  .btn.ghost{background:transparent;border:1px solid var(--panel-border);color:var(--text) !important;box-shadow:none}
+  .btn.wa{background:#25d366;color:#08240f !important;box-shadow:0 8px 24px rgba(37,211,102,.25)}
+  .btn:hover{text-decoration:none;opacity:.93}
+  .micro{color:var(--muted);font-size:13.5px;margin-top:6px}
+  .nets{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:26px 0 4px}
+  .net{border:1px solid var(--panel-border);background:var(--panel);border-radius:999px;padding:7px 18px;font-weight:800;font-size:14.5px;letter-spacing:.3px}
+  .net.mtn{color:#ffd53d}.net.glo{color:#4ade80}.net.airtel{color:#f87171}.net.nine{color:#a3e635}
+  figure.shot{margin:26px 0;border:1px solid var(--panel-border);border-radius:16px;overflow:hidden;background:rgba(255,255,255,.02);box-shadow:0 24px 60px rgba(0,0,0,.45)}
+  figure.shot img{display:block;width:100%;height:auto}
+  figure.shot figcaption{padding:11px 16px;font-size:13.5px;color:var(--muted);border-top:1px solid var(--panel-border);text-align:left}
+  figure.shot figcaption strong{color:var(--text)}
+  /* trust strip */
+  .strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin:30px 0 4px}
+  .stat{background:var(--panel);border:1px solid var(--panel-border);border-radius:14px;padding:18px;text-align:center}
+  .stat .big{font-size:21px;font-weight:900;color:#fff}
+  .stat .small{color:var(--muted);font-size:13.5px;margin-top:2px}
+  section{margin-top:52px}
+  .card{background:var(--panel);border:1px solid var(--panel-border);border-radius:18px;padding:32px}
+  h2{font-size:29px;font-weight:900;margin-bottom:8px;text-align:center}
+  .lead{color:var(--muted);text-align:center;max-width:680px;margin:0 auto 8px}
+  h3{font-size:19px;font-weight:800;margin:24px 0 8px}
+  p{color:#c6cede;margin-bottom:10px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(235px,1fr));gap:14px;margin-top:18px}
+  .svc{background:rgba(255,255,255,.025);border:1px solid var(--panel-border);border-radius:14px;padding:20px;transition:border-color .2s,transform .2s;text-align:left}
+  .svc:hover{border-color:rgba(59,130,246,.6);transform:translateY(-2px)}
+  .svc .ic{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:21px;background:rgba(37,99,235,.14);border:1px solid rgba(37,99,235,.35);margin-bottom:12px}
+  .svc h4{font-size:16.5px;margin-bottom:5px}
+  .svc p{font-size:14px;color:var(--muted);margin:0 0 10px}
+  .svc a{font-size:14px;font-weight:800}
+  .hot{display:inline-block;background:rgba(232,183,76,.15);color:#f3cd72;border:1px solid rgba(232,183,76,.45);font-size:11px;font-weight:800;letter-spacing:.5px;padding:2px 9px;border-radius:999px;vertical-align:middle;margin-left:8px;text-transform:uppercase}
+  ol.steps{counter-reset:step;list-style:none;margin:16px auto 6px;max-width:760px;text-align:left}
+  ol.steps>li{counter-increment:step;position:relative;padding-left:46px;margin-bottom:14px;color:#c6cede}
+  ol.steps>li:before{content:counter(step);position:absolute;left:0;top:0;width:30px;height:30px;border-radius:50%;background:rgba(37,99,235,.16);border:1px solid rgba(37,99,235,.55);color:#9ec2ff;font-weight:900;font-size:15px;display:flex;align-items:center;justify-content:center}
+  ol.steps li strong{color:var(--text)}
+  ul.plain{margin:10px 0 6px 22px;color:#c6cede;text-align:left}
+  ul.plain li{margin-bottom:8px}
+  ul.plain li strong{color:var(--text)}
+  .note{border-left:4px solid var(--gold);background:rgba(232,183,76,.08);padding:14px 18px;border-radius:0 12px 12px 0;margin:18px 0;color:#efe7cf;text-align:left}
+  .band{background:linear-gradient(120deg,rgba(37,99,235,.22),rgba(45,196,175,.16));border:1px solid rgba(59,130,246,.4);border-radius:18px;padding:36px 30px;text-align:center}
+  .band h2{margin-bottom:6px}
+  .band p{color:#d5def2;max-width:640px;margin:0 auto 10px}
+  .faq{text-align:left}
+  .faq h2{text-align:center}
+  .faq p strong{color:var(--text)}
+  footer{margin-top:60px;border-top:1px solid var(--panel-border);padding-top:22px;color:var(--muted);font-size:14px;text-align:center}
+  @media(max-width:640px){h1{font-size:33px}.card{padding:22px}.hero p.sub{font-size:16.5px}.herologo img{height:46px;padding:6px 12px}.logoimg{height:31px;padding:3px 7px}.topbar .btn{padding:8px 15px;font-size:13.5px}}
+</style>
+</head>
+<body>
+
+<div class="topbar"><div class="in">
+  <a href="https://fuwa.ng" aria-label="Fuwa.NG home"><img class="logoimg" src="/help-img/fuwa-logo.png" alt="Fuwa.NG"></a>
+  <a class="btn" href="https://fuwa.ng/services/vtu">Open VTU Hub</a>
+</div></div>
+
+<div class="glowwrap"><div class="glow b"></div><div class="glow t"></div></div>
+
+<div class="wrap">
+  <header class="hero">
+    <div class="herologo"><img src="/help-img/fuwa-logo.png" alt="Fuwa.NG"></div>
+    <span class="badge">VTU Hub — Fund Once, Buy Everything</span>
+    <h1>Cheap data, airtime &amp; bills — <span class="grad">sorted in seconds.</span></h1>
+    <p class="sub">Sharp-rate SME data, instant airtime on every network, bulk SMS with your own sender ID, cable TV, electricity tokens and exam PINs — all paid from one wallet, all delivered automatically. Stop overpaying your bank app.</p>
+    <div class="cta-row">
+      <a class="btn" href="https://fuwa.ng/services/vtu">Enter the VTU Hub →</a>
+      <a class="btn ghost" href="https://fuwa.ng/register">Create free account</a>
+    </div>
+    <p class="micro">Free to join · Fund by card, USSD, transfer or your own virtual account · Delivery in seconds</p>
+    <div class="nets">
+      <span class="net mtn">MTN</span><span class="net glo">GLO</span><span class="net airtel">AIRTEL</span><span class="net nine">9MOBILE</span><span class="net">DStv</span><span class="net">GOtv</span><span class="net">StarTimes</span><span class="net">WAEC · NECO · JAMB</span>
+    </div>
+    <figure class="shot"><img src="/help-img/vtu-hub.jpg" alt="Fuwa.NG VTU Hub — airtime, data, electricity, cable TV and education services"><figcaption><strong>The VTU Hub.</strong> Every service on one screen — pick one and you are done in under a minute.</figcaption></figure>
+    <div class="strip">
+      <div class="stat"><div class="big">Seconds</div><div class="small">Automated delivery on airtime, data &amp; PINs</div></div>
+      <div class="stat"><div class="big">One wallet</div><div class="small">Fund once — every service draws from it</div></div>
+      <div class="stat"><div class="big">Name check first</div><div class="small">Cable &amp; meter numbers validated before you pay</div></div>
+      <div class="stat"><div class="big">Nothing lost</div><div class="small">Tokens &amp; PINs saved in your history forever</div></div>
+    </div>
+  </header>
+
+  <!-- ============ SERVICES ============ -->
+  <section id="services">
+    <div class="card">
+      <h2>What will you buy today?</h2>
+      <p class="lead">Tap any service to jump straight in. Not signed in yet? You will log in once and land right on the service.</p>
+      <div class="grid">
+        <div class="svc"><div class="ic">📶</div><h4>Cheap Data Bundles <span class="hot">Best rates</span></h4><p>SME, corporate and gifting plans for MTN, Glo, Airtel and 9mobile — the rates resellers build their business on.</p><a href="https://fuwa.ng/services/vtu/data">Buy data →</a></div>
+        <div class="svc"><div class="ic">📱</div><h4>Airtime Top-up</h4><p>Any network, any amount, credited before you can switch apps. VTU and share-and-sell options in one place.</p><a href="https://fuwa.ng/services/vtu/airtime">Buy airtime →</a></div>
+        <div class="svc"><div class="ic">✉️</div><h4>Bulk SMS <span class="hot">Sender ID</span></h4><p>Reach customers, members and students in one send — with your business name as the sender ID, not a random number.</p><a href="https://fuwa.ng/services/vtu">Send bulk SMS →</a></div>
+        <div class="svc"><div class="ic">📺</div><h4>Cable TV</h4><p>DStv, GOtv and StarTimes renewed in seconds. We fetch and show the customer name first — no wrong-account mistakes.</p><a href="https://fuwa.ng/services/vtu/cable">Pay cable TV →</a></div>
+        <div class="svc"><div class="ic">💡</div><h4>Electricity</h4><p>Prepaid tokens and postpaid bills for every disco. Your token is displayed instantly and saved in your history.</p><a href="https://fuwa.ng/services/vtu/electricity">Buy electricity →</a></div>
+        <div class="svc"><div class="ic">🎓</div><h4>Exam PINs</h4><p>WAEC, NECO, NABTEB and JAMB PINs delivered on screen the moment you pay — no waiting for a vendor to wake up.</p><a href="https://fuwa.ng/services/vtu">Get exam PINs →</a></div>
+        <div class="svc"><div class="ic">🖨️</div><h4>Card Printing</h4><p>Generate airtime and data PINs in bulk and print for physical sale in your shop or campus spot.</p><a href="https://fuwa.ng/services/vtu">Print cards →</a></div>
+        <div class="svc"><div class="ic">🔁</div><h4>Airtime to Cash</h4><p>Mistakenly recharged too much? Convert excess airtime back to wallet balance and use it for anything else.</p><a href="https://fuwa.ng/services/vtu">Convert airtime →</a></div>
+        <div class="svc"><div class="ic">⚽</div><h4>Betting Funding</h4><p>Fund your bookmaker wallet instantly from the same balance — no card details, no failed-bank-transfer wahala.</p><a href="https://fuwa.ng/services/vtu">Fund betting →</a></div>
+        <div class="svc"><div class="ic">🌐</div><h4>Internet</h4><p>Renew internet subscriptions and keep your home or office online without leaving the hub.</p><a href="https://fuwa.ng/services/vtu">Renew internet →</a></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ HOW IT WORKS ============ -->
+  <section id="how">
+    <div class="card">
+      <h2>From zero to topped-up in 3 steps</h2>
+      <ol class="steps">
+        <li><strong>Create your free account.</strong> Two minutes to register, plus a one-time identity verification that unlocks purchases and keeps your wallet safe.</li>
+        <li><strong>Fund your wallet once.</strong> Card, USSD or transfer — or simply send money to your dedicated virtual account and watch it credit instantly.</li>
+        <li><strong>Buy anything, any time.</strong> Data at 2pm, electricity at 2am — the hub never sleeps, and every delivery lands in seconds with the receipt saved.</li>
+      </ol>
+      <div class="cta-row"><a class="btn" href="https://fuwa.ng/services/vtu">Start buying →</a></div>
+      <figure class="shot"><img src="/help-img/vtu-data.jpg" alt="Buying a data bundle on Fuwa.NG" loading="lazy"><figcaption><strong>Buying data.</strong> Pick the network, enter the number, choose the plan — total shown before you pay. No surprises.</figcaption></figure>
+      <figure class="shot"><img src="/help-img/vtu-electricity.jpg" alt="Buying an electricity token on Fuwa.NG" loading="lazy"><figcaption><strong>Buying electricity.</strong> The meter's customer name is confirmed before payment, and the token stays in your history.</figcaption></figure>
+    </div>
+  </section>
+
+  <!-- ============ RESELLER BAND ============ -->
+  <section id="resellers">
+    <div class="band">
+      <h2>Selling data or running a POS spot?</h2>
+      <p>This is the engine room resellers use: one funded wallet, sharp SME rates, bulk SMS for your customers, printable PINs for your shop, and a full transaction history for your records. Fund in bulk in the morning — serve customers all day.</p>
+      <div class="cta-row">
+        <a class="btn" href="https://fuwa.ng/register">Open a free account</a>
+        <a class="btn wa" href="https://wa.me/2348133576852">Talk to us on WhatsApp</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ WHY ============ -->
+  <section id="why">
+    <div class="card">
+      <h2>Why buyers switch to Fuwa</h2>
+      <ul class="plain">
+        <li><strong>Rates that respect your pocket</strong> — SME and gifting data priced for real life and real margins, not bank-app markups.</li>
+        <li><strong>No wrong-recipient stories</strong> — cable and electricity numbers are validated and the owner's name shown before a single naira leaves your wallet.</li>
+        <li><strong>Proof for every purchase</strong> — tokens, PINs and references live in your history, retrievable any time, any day.</li>
+        <li><strong>One account, much more</strong> — the same login unlocks Fuwa's NIN and BVN suites when identity services come up.</li>
+        <li><strong>Humans on WhatsApp</strong> — customer care on <a href="https://wa.me/2348133576852">0813 357 6852</a> when you need a person, not a bot.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============ FAQ ============ -->
+  <section id="faq">
+    <div class="card faq">
+      <h2>Before you ask</h2>
+      <h3>How fast is delivery, really?</h3>
+      <p>Automated and usually <strong>within seconds</strong>. Your confirmation and receipt appear immediately, with the token or PIN saved on the transaction.</p>
+      <h3>How do I pay?</h3>
+      <p>Everything is paid from your <strong>Fuwa wallet</strong>. Fund it by card, USSD or transfer — or instantly via your dedicated virtual account.</p>
+      <h3>Can I resell?</h3>
+      <p>Yes. Many users fund one wallet and serve customers all day — data, airtime, cable, electricity and printed PINs, all from the same balance.</p>
+      <h3>I can't find my token</h3>
+      <p>Open your <strong>transaction history</strong> — it is saved on the transaction itself. Still stuck? WhatsApp customer care on <a href="https://wa.me/2348133576852"><strong>0813 357 6852</strong></a> with your transaction reference.</p>
+      <div class="cta-row">
+        <a class="btn" href="https://fuwa.ng/services/vtu">Open the VTU Hub</a>
+        <a class="btn ghost" href="https://fuwa.ng/register">Create free account</a>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p>Fuwa.NG VTU Hub — cheap data, airtime, bulk SMS, cable TV, electricity and exam PINs. Prices are shown live on each service page before you confirm. New here? Read the <a href="https://fuwa.ng/help.html">Help Centre guides</a>.</p>
+  </footer>
+</div>
+
+</body>
+</html>

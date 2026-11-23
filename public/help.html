@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Help Centre — How to Use Fuwa.NG | NIN Suite, BVN Suite &amp; VTU Hub</title>
+<meta name="description" content="Step-by-step guides for Fuwa.NG: verify NIN and print slips, verify or retrieve a BVN, and buy airtime, data, cable TV, electricity and exam PINs on the VTU Hub.">
+<style>
+  :root{
+    --bg:#0a0e1a; --panel:rgba(255,255,255,.03); --panel-border:rgba(255,255,255,.08);
+    --text:#e8ecf4; --muted:#9aa5bd; --blue:#2563eb; --blue-soft:rgba(37,99,235,.15);
+    --green:#22c55e; --gold:#e8b74c; --teal:#2dc4af; --radius:16px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth;overflow-x:clip}
+  .logoimg{height:46px;width:auto;display:block;background:#0D1B34;border-radius:10px;padding:5px 11px;margin-bottom:22px}
+  .tablewrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;line-height:1.65;font-size:16px}
+  a{color:#7db4ff;text-decoration:none}
+  a:hover{text-decoration:underline}
+  .wrap{max-width:1020px;margin:0 auto;padding:0 20px 80px}
+  header.hero{padding:56px 0 30px;text-align:left;position:relative}
+  header.hero:before{content:"";position:absolute;top:0;left:0;width:120px;height:5px;border-radius:3px;background:linear-gradient(90deg,var(--blue),var(--teal),var(--gold))}
+  figure.shot{margin:18px 0;border:1px solid var(--panel-border);border-radius:14px;overflow:hidden;background:rgba(255,255,255,.02)}
+  figure.shot img{display:block;width:100%;height:auto}
+  figure.shot figcaption{padding:10px 16px;font-size:13.5px;color:var(--muted);border-top:1px solid var(--panel-border)}
+  figure.shot figcaption strong{color:var(--text)}
+  ol.steps{counter-reset:step;list-style:none;margin-left:2px}
+  ol.steps>li{counter-increment:step;position:relative;padding-left:42px;margin-bottom:10px}
+  ol.steps>li:before{content:counter(step);position:absolute;left:0;top:1px;width:28px;height:28px;border-radius:50%;background:var(--blue-soft);border:1px solid rgba(37,99,235,.5);color:#9ec2ff;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center}
+  ol.steps ul.plain{margin-top:6px}
+  .svc{transition:border-color .2s}
+  .svc:hover{border-color:rgba(37,99,235,.55)}
+  .badge{display:inline-block;background:var(--blue-soft);color:#9ec2ff;border:1px solid rgba(37,99,235,.4);padding:4px 14px;border-radius:999px;font-size:13px;font-weight:600;letter-spacing:.4px;text-transform:uppercase}
+  h1{font-size:38px;line-height:1.2;margin:16px 0 10px;font-weight:800}
+  h1 .accent{color:#7db4ff}
+  .hero p{color:var(--muted);font-size:17px;max-width:720px}
+  nav.toc{position:sticky;top:0;background:rgba(10,14,26,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--panel-border);padding:12px 0;z-index:10}
+  nav.toc .wrap{padding-bottom:0;display:flex;gap:10px;flex-wrap:wrap}
+  nav.toc a{background:var(--panel);border:1px solid var(--panel-border);color:var(--text);padding:7px 16px;border-radius:999px;font-size:14px;font-weight:600}
+  nav.toc a:hover{border-color:var(--blue);text-decoration:none}
+  section{margin-top:44px}
+  .card{background:var(--panel);border:1px solid var(--panel-border);border-radius:var(--radius);padding:28px}
+  h2{font-size:27px;font-weight:800;margin-bottom:6px}
+  h2 .tag{font-size:12px;vertical-align:middle;background:rgba(34,197,94,.15);color:#7ce3a1;border:1px solid rgba(34,197,94,.35);padding:3px 10px;border-radius:999px;margin-left:10px;text-transform:uppercase;letter-spacing:.5px}
+  h3{font-size:19px;font-weight:700;margin:26px 0 8px}
+  h3:first-of-type{margin-top:14px}
+  p{color:#c6cede;margin-bottom:10px}
+  .lead{color:var(--muted);margin-bottom:8px}
+  ol.steps{margin:8px 0 6px 22px;color:#c6cede}
+  ol.steps li{margin-bottom:7px}
+  ol.steps li strong, p strong, li strong{color:var(--text)}
+  ul.plain{margin:6px 0 6px 22px;color:#c6cede}
+  ul.plain li{margin-bottom:6px}
+  .btn{display:inline-block;background:var(--blue);color:#fff !important;font-weight:700;padding:10px 22px;border-radius:999px;margin:8px 10px 4px 0;font-size:15px}
+  .btn.ghost{background:transparent;border:1px solid var(--panel-border);color:var(--text) !important}
+  .btn:hover{text-decoration:none;opacity:.92}
+  .note{border-left:4px solid var(--gold);background:rgba(232,183,76,.08);padding:12px 16px;border-radius:0 10px 10px 0;margin:14px 0;color:#e9e2cd}
+  .tip{border-left:4px solid var(--teal);background:rgba(45,196,175,.08);padding:12px 16px;border-radius:0 10px 10px 0;margin:14px 0;color:#d3efe9}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;margin-top:14px}
+  .svc{background:rgba(255,255,255,.02);border:1px solid var(--panel-border);border-radius:12px;padding:16px}
+  .svc h4{font-size:16px;margin-bottom:4px}
+  .svc p{font-size:14px;color:var(--muted);margin:0}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:15px}
+  th,td{border:1px solid var(--panel-border);padding:10px 12px;text-align:left;vertical-align:top}
+  th{background:rgba(255,255,255,.04);color:var(--text)}
+  td{color:#c6cede}
+  footer{margin-top:60px;border-top:1px solid var(--panel-border);padding-top:22px;color:var(--muted);font-size:14px}
+  @media(max-width:640px){h1{font-size:29px}.card{padding:20px}}
+</style>
+</head>
+<body>
+
+<nav class="toc">
+  <div class="wrap">
+    <a href="#start">Getting Started</a>
+    <a href="#nin">NIN Suite</a>
+    <a href="#bvn">BVN Suite</a>
+    <a href="#vtu">VTU Hub</a>
+    <a href="#trouble">Troubleshooting</a>
+  </div>
+</nav>
+
+<div class="wrap">
+  <header class="hero">
+    <a href="https://fuwa.ng"><img class="logoimg" src="/help-img/fuwa-logo.png" alt="Fuwa.NG"></a>
+    <span class="badge">Fuwa.NG Help Centre</span>
+    <h1>How to use <span class="accent">Fuwa.NG</span></h1>
+    <p>Simple, step-by-step guides to the three services our users ask about most: the <strong>NIN Suite</strong>, the <strong>BVN Suite</strong>, and the <strong>VTU Hub</strong>. Every service on Fuwa.NG is paid from your wallet, so start with the three steps below.</p>
+  </header>
+
+  <!-- ============ GETTING STARTED ============ -->
+  <section id="start">
+    <div class="card">
+      <h2>Getting Started</h2>
+      <p class="lead">Do these three things once, and every service below will work for you.</p>
+
+      <h3>1. Create your account and log in</h3>
+      <ol class="steps">
+        <li>Register with your full name, a valid email address and your phone number.</li>
+        <li>Log in to your dashboard. Your wallet balance is shown on the dashboard and inside each service.</li>
+      </ol>
+      <figure class="shot"><img src="/help-img/dashboard.jpg" alt="Fuwa.NG user dashboard showing wallet balance and quick actions" loading="lazy"><figcaption><strong>Your dashboard.</strong> Wallet balance, quick actions for NIN, BVN and VTU services, and your recent activity — all in one place.</figcaption></figure>
+
+      <h3>2. Fund your wallet</h3>
+      <ol class="steps">
+        <li>From your dashboard, open <strong>Fund Wallet</strong>.</li>
+        <li>Pay with your card, or transfer to the dedicated virtual account number shown for you.</li>
+        <li>Your wallet is credited automatically once the payment is confirmed. Every service fee is deducted from this wallet — the exact fee is always displayed <strong>before</strong> you confirm a transaction.</li>
+      </ol>
+      <figure class="shot"><img src="/help-img/fund-wallet.jpg" alt="Fund Wallet window listing banks for transfer" loading="lazy"><figcaption><strong>Funding your wallet.</strong> Enter the amount and pay with card, USSD or transfer — or transfer to your dedicated virtual account shown on the dashboard for instant crediting.</figcaption></figure>
+
+      <h3>3. Complete your own KYC verification</h3>
+      <p>For your protection, purchases are only enabled after you have verified your own identity on your account (your NIN or BVN, under the account verification section). This one-time step unlocks the NIN Suite, BVN Suite and VTU Hub checkouts.</p>
+      <a class="btn" href="https://fuwa.ng/dashboard">Go to My Dashboard</a>
+    </div>
+  </section>
+
+  <!-- ============ NIN SUITE ============ -->
+  <section id="nin">
+    <div class="card">
+      <h2>NIN Suite <span class="tag">NIMC Services</span></h2>
+      <p class="lead">Official NIMC identity services: verify a National Identification Number, print slips, fix record errors and more. Open it here: <a href="https://fuwa.ng/services/nin-suite">fuwa.ng/services/nin-suite</a></p>
+
+      <div class="grid">
+        <div class="svc"><h4>NIN Verification</h4><p>Instantly verify an 11-digit NIN and see the full NIMC record.</p></div>
+        <div class="svc"><h4>Print NIN Slip</h4><p>Standard, Premium, Regular and vNIN slips, ready to download and print.</p></div>
+        <div class="svc"><h4>NIN Validation</h4><p>Resolve “Record Not Found” errors at banks and SIM registration points.</p></div>
+        <div class="svc"><h4>Personalization</h4><p>Personalize a tracking ID and generate an active NIN slip from it.</p></div>
+        <div class="svc"><h4>IPE Clearance</h4><p>Clear Internal Processing Errors (IPE) — even without the NIN itself.</p></div>
+        <div class="svc"><h4>Face Verification</h4><p>Biometric selfie matching against the NIMC record.</p></div>
+        <div class="svc"><h4>Phone Lookup</h4><p>Find the NIN linked to a registered phone number.</p></div>
+        <div class="svc"><h4>Tracking ID Search</h4><p>Retrieve the full NIN record using the enrolment tracking ID.</p></div>
+      </div>
+
+      <figure class="shot"><img src="/help-img/nin-suite.jpg" alt="NIN Suite page showing NIMC service cards and fees" loading="lazy"><figcaption><strong>The NIN Suite.</strong> Every NIMC service on one page, with the fee for each shown upfront.</figcaption></figure>
+
+      <h3>How to verify a NIN</h3>
+      <ol class="steps">
+        <li>Open the <a href="https://fuwa.ng/services/nin-suite">NIN Suite</a> and choose <strong>NIN Verification</strong> (or go straight to <a href="https://fuwa.ng/services/nin">fuwa.ng/services/nin</a>).</li>
+        <li>Enter the <strong>11-digit NIN</strong> exactly as issued by NIMC.</li>
+        <li>Confirm the fee shown on the page and submit. The fee is deducted from your wallet only for the service you selected.</li>
+        <li>The verified record — names, date of birth, phone number and photo where available — is displayed immediately and saved to your history, so you can reopen it any time without paying again.</li>
+      </ol>
+      <figure class="shot"><img src="/help-img/nin-verify.jpg" alt="NIN Verification form with NIN number field" loading="lazy"><figcaption><strong>The NIN Verification form.</strong> Enter the 11-digit NIN, confirm the fee, and the record comes back immediately.</figcaption></figure>
+
+      <h3>How to print a NIN slip</h3>
+      <ol class="steps">
+        <li>Verify the NIN first (steps above), or open a previous verification from your history.</li>
+        <li>Choose the slip type: <strong>Standard, Premium, Regular or vNIN</strong>.</li>
+        <li>Download the generated slip as a PDF and print it. Slips from your history can be re-downloaded from the same record.</li>
+      </ol>
+
+      <h3>“Record Not Found”? Use NIN Validation</h3>
+      <p>If a bank or SIM point says your NIN record cannot be found, the record usually needs validation on the NIMC side. Open <a href="https://fuwa.ng/services/validation">NIN Validation</a>, submit the NIN, and allow the processing time shown on the page. You can check the status of a validation request from the same page — do not submit the same NIN twice while one request is still processing.</p>
+
+      <h3>Other NIN services, in brief</h3>
+      <ul class="plain">
+        <li><strong>Personalization:</strong> if all you have is the enrolment <em>tracking ID</em>, use <a href="https://fuwa.ng/services/personalization">Personalization</a> to generate the active NIN and slip from it.</li>
+        <li><strong>IPE Clearance:</strong> for records stuck with an Internal Processing Error, submit the clearance request and track it to completion.</li>
+        <li><strong>Face Verification:</strong> open <a href="https://fuwa.ng/services/nin-face">Face Verification</a>, enter the NIN and take a clear selfie in good light when prompted — the system matches your face against the NIMC photo.</li>
+        <li><strong>NIN Modification:</strong> to correct details on a record, use the <a href="https://fuwa.ng/services/nin/modification">NIN Modification</a> page, accept the consent notice, and submit the correct details. Modification requests are processed and their status can be tracked.</li>
+      </ul>
+
+      <div class="tip"><strong>Agents:</strong> verified enrolment agents get wholesale rates on the NIN Suite — an automatic 15% discount on verification and slip fees — with the same wallet shared across the agent and user dashboards.</div>
+      <a class="btn" href="https://fuwa.ng/services/nin-suite">Open the NIN Suite</a>
+    </div>
+  </section>
+
+  <!-- ============ BVN SUITE ============ -->
+  <section id="bvn">
+    <div class="card">
+      <h2>BVN Suite <span class="tag">Bank Verification</span></h2>
+      <p class="lead">Verify a Bank Verification Number against the banking record, or retrieve a BVN the owner has lost or forgotten. Open it here: <a href="https://fuwa.ng/services/bvn">fuwa.ng/services/bvn</a></p>
+      <figure class="shot"><img src="/help-img/bvn-suite.jpg" alt="BVN Suite page showing verification, slip, validation and retrieval services" loading="lazy"><figcaption><strong>The BVN Suite.</strong> Lookup, slip printing, validation and retrieval — pick the service you need.</figcaption></figure>
+
+      <h3>How to verify a BVN</h3>
+      <ol class="steps">
+        <li>Open the <a href="https://fuwa.ng/services/bvn">BVN Suite</a> and stay on the <strong>BVN Lookup</strong> tab.</li>
+        <li>Enter the <strong>11-digit BVN</strong>, the account owner’s <strong>first name</strong> and <strong>last name</strong>, and the <strong>date of birth</strong> — exactly as they appear on the bank account. The details must match the bank record for the check to succeed.</li>
+        <li>Choose your verification level:
+          <ul class="plain">
+            <li><strong>Essential Data</strong> — the core identity details on the BVN record.</li>
+            <li><strong>Premium + Image</strong> — the full record including the enrolment photo.</li>
+          </ul>
+        </li>
+        <li>Confirm the fee shown and click <strong>Run BVN Check</strong>. The result appears immediately and is saved under <strong>BVN Verification History</strong> on the same page, where you can also download it as a PDF.</li>
+      </ol>
+
+      <h3>Lost or forgotten BVN? Use BVN Retrieval</h3>
+      <p>If the account owner no longer knows their BVN, you can request a retrieval instead of a lookup:</p>
+      <ol class="steps">
+        <li>On the BVN page, go to the <strong>BVN Retrieval</strong> section.</li>
+        <li>Enter the <strong>phone number linked to the BVN</strong> and the <strong>account owner’s full name</strong>. Adding the date of birth (optional) speeds up matching.</li>
+        <li>Confirm the fee and submit the request.</li>
+        <li>Most requests resolve <strong>within 24 hours</strong>, every day including weekends. Track yours under <strong>My Retrieval Requests</strong> and use <strong>Check Status</strong> to refresh it.</li>
+        <li>When completed, the retrieved BVN is shown on the request and saved to your vault.</li>
+      </ol>
+      <div class="note"><strong>Refund guarantee:</strong> if a retrieval request ends with the BVN not found, the fee is refunded to your wallet automatically — the request will show as <strong>Refunded</strong>.</div>
+      <a class="btn" href="https://fuwa.ng/services/bvn">Open the BVN Suite</a>
+    </div>
+  </section>
+
+  <!-- ============ VTU HUB ============ -->
+  <section id="vtu">
+    <div class="card">
+      <h2>VTU Hub <span class="tag">Airtime, Data &amp; Bills</span></h2>
+      <p class="lead">Everyday top-ups and bill payments, delivered instantly and paid from your Fuwa wallet. Open it here: <a href="https://fuwa.ng/services/vtu">fuwa.ng/services/vtu</a></p>
+
+      <div class="grid">
+        <div class="svc"><h4>Airtime Top-up</h4><p>MTN, Glo, Airtel and 9mobile, any amount.</p></div>
+        <div class="svc"><h4>Data Bundles</h4><p>SME, corporate and gifting plans for all networks.</p></div>
+        <div class="svc"><h4>Cable TV</h4><p>DStv, GOtv and StarTimes subscriptions.</p></div>
+        <div class="svc"><h4>Electricity Bills</h4><p>Prepaid tokens and postpaid bills for all discos.</p></div>
+        <div class="svc"><h4>Education PINs</h4><p>WAEC, NECO, NABTEB and JAMB PINs and tokens.</p></div>
+        <div class="svc"><h4>Bulk SMS</h4><p>Send SMS to many numbers with your own sender ID.</p></div>
+        <div class="svc"><h4>Card Printing</h4><p>Generate airtime and data PINs for physical sale.</p></div>
+        <div class="svc"><h4>Airtime to Cash</h4><p>Convert excess airtime back to wallet balance.</p></div>
+        <div class="svc"><h4>Betting Funding</h4><p>Top up bookmaker accounts instantly.</p></div>
+        <div class="svc"><h4>Internet</h4><p>Internet service subscriptions and renewals.</p></div>
+      </div>
+
+      <figure class="shot"><img src="/help-img/vtu-hub.jpg" alt="VTU Hub page showing airtime, data, electricity, cable and education services" loading="lazy"><figcaption><strong>The VTU Hub.</strong> Airtime, data, cable TV, electricity and exam PINs — all paid from the same wallet.</figcaption></figure>
+
+      <h3>The general way every VTU purchase works</h3>
+      <ol class="steps">
+        <li>Make sure your <strong>wallet is funded</strong> — the VTU Hub shows your available balance at the top.</li>
+        <li>Pick the service (for example <strong>Data Bundles</strong>).</li>
+        <li>Enter the beneficiary details (phone number, smartcard/IUC number, or meter number) and choose the plan or amount. For cable and electricity, the system <strong>validates the number first</strong> and shows the customer name — confirm it is the right person before paying.</li>
+        <li>Confirm the total and submit. Delivery is automated, usually within seconds.</li>
+        <li>Your receipt — including tokens and transaction references — appears immediately in <strong>Recent Transactions</strong> on the hub and in your full transaction history.</li>
+      </ol>
+
+      <h3>Airtime</h3>
+      <ol class="steps">
+        <li>Open <a href="https://fuwa.ng/services/vtu/airtime">Airtime Top-up</a>, choose the network, enter the phone number and the amount, and confirm.</li>
+      </ol>
+
+      <h3>Data bundles</h3>
+      <ol class="steps">
+        <li>Open <a href="https://fuwa.ng/services/vtu/data">Data Bundles</a>, choose the network and the beneficiary phone number.</li>
+        <li>Select the plan type (SME, corporate or gifting) and the exact bundle — size, validity and price are shown on each plan — then confirm.</li>
+      </ol>
+      <figure class="shot"><img src="/help-img/vtu-data.jpg" alt="Data Bundles purchase form with network and plan selection" loading="lazy"><figcaption><strong>Buying data.</strong> Choose the network, enter the phone number, and pick the plan — the summary shows the total before you pay.</figcaption></figure>
+
+      <h3>Cable TV (DStv, GOtv, StarTimes)</h3>
+      <ol class="steps">
+        <li>Open <a href="https://fuwa.ng/services/vtu/cable">Cable TV</a>, choose the provider and enter the smartcard / IUC number.</li>
+        <li>Wait for validation to display the customer name and current bouquet, choose the package, and confirm payment.</li>
+      </ol>
+
+      <h3>Electricity (prepaid &amp; postpaid)</h3>
+      <ol class="steps">
+        <li>Open <a href="https://fuwa.ng/services/vtu/electricity">Electricity Bills</a>, choose your disco and meter type, and enter the meter number.</li>
+        <li>Confirm the customer name and address shown after validation, enter the amount, and pay.</li>
+        <li>For prepaid meters, your <strong>token is displayed on the confirmation and saved in your transaction history</strong> — copy it before leaving the page, and retrieve it from history any time.</li>
+      </ol>
+      <figure class="shot"><img src="/help-img/vtu-electricity.jpg" alt="Electricity Bills form with meter type and meter number fields" loading="lazy"><figcaption><strong>Paying for electricity.</strong> Choose your disco and meter type, enter the meter number — the customer name is shown for confirmation before you pay.</figcaption></figure>
+
+      <h3>Education PINs (WAEC, NECO, NABTEB, JAMB)</h3>
+      <ol class="steps">
+        <li>From the VTU Hub, open the exam you need: <a href="https://fuwa.ng/services/vtu/education/waec">WAEC</a> (result checker or registration PIN), <a href="https://fuwa.ng/services/vtu/education/neco">NECO</a>, <a href="https://fuwa.ng/services/vtu/education/nabteb">NABTEB</a> or <a href="https://fuwa.ng/services/vtu/education/jamb">JAMB ePIN</a> (UTME / Direct Entry).</li>
+        <li>Choose the quantity, confirm the total, and pay from your wallet. PINs are delivered instantly on screen and kept in your transaction history.</li>
+      </ol>
+
+      <div class="tip"><strong>Keep your reference:</strong> every VTU order has an order reference in your history. If a token or PIN ever seems delayed, quote that reference when you contact support — it lets the team re-query the exact transaction in seconds.</div>
+      <a class="btn" href="https://fuwa.ng/services/vtu">Open the VTU Hub</a>
+      <a class="btn ghost" href="https://fuwa.ng/services/vtu/airtime">Buy Airtime</a>
+      <a class="btn ghost" href="https://fuwa.ng/services/vtu/data">Buy Data</a>
+    </div>
+  </section>
+
+  <!-- ============ TROUBLESHOOTING ============ -->
+  <section id="trouble">
+    <div class="card">
+      <h2>Troubleshooting</h2>
+      <div class="tablewrap">
+      <table>
+        <tr><th style="width:38%">Problem</th><th>What to do</th></tr>
+        <tr><td>A service says my KYC must be completed first</td><td>Complete the one-time identity verification on your own account (NIN or BVN under account verification), then return to the service and try again.</td></tr>
+        <tr><td>My wallet was debited but the service shows as processing</td><td>Wait a few minutes and refresh your transaction history — automated deliveries can queue briefly. If it is still unresolved, contact support with the transaction reference.</td></tr>
+        <tr><td>NIN verification says “Record Not Found”</td><td>The record needs validation. Use <a href="https://fuwa.ng/services/validation">NIN Validation</a> instead of repeating the verification, and check its status from the validation page.</td></tr>
+        <tr><td>BVN check failed even though the BVN is correct</td><td>The name and date of birth you entered must match the bank record exactly. Correct them and run the check again — or use BVN Retrieval if the owner’s details are uncertain.</td></tr>
+        <tr><td>I paid for electricity but cannot find my token</td><td>Open your transaction history — the token is saved on the transaction. It is also shown on the purchase confirmation screen.</td></tr>
+        <tr><td>My wallet funding has not reflected</td><td>Confirm the payment completed with your bank or card provider and keep the payment reference. Funding is credited automatically once payment is confirmed; if it remains uncredited, contact support with the reference.</td></tr>
+      </table>
+      </div>
+      <p>Still stuck? Chat with customer care on WhatsApp: <a href="https://wa.me/2348133576852"><strong>0813 357 6852</strong></a> — or open a support ticket from your dashboard. Either way, include the service name and your transaction reference so the team can trace it quickly.</p>
+      <a class="btn" style="background:#25d366;color:#08240f !important" href="https://wa.me/2348133576852">Chat on WhatsApp — 0813 357 6852</a>
+    </div>
+  </section>
+
+  <footer>
+    <p>Fuwa.NG Help Centre — NIN Suite · BVN Suite · VTU Hub. Fees for every service are displayed on the service page before you confirm; prices may change as provider costs change. This page covers the three main suites; guides for other Fuwa.NG services will be added over time.</p>
+  </footer>
+</div>
+
+</body>
+</html>
