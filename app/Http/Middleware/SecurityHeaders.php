@@ -30,6 +30,8 @@ class SecurityHeaders
                 "object-src 'none'",
                 "img-src 'self' data: https:",
                 "script-src 'self' 'unsafe-inline' 'nonce-{$nonce}' https://js.paystack.co https://checkout.flutterwave.com https://cdn.jsdelivr.net https://code.jquery.com https://sdk.monnify.com https://checkout.paystack.com https://online.monnify.com",
+                "script-src-elem 'self' 'unsafe-inline' https://js.paystack.co https://checkout.flutterwave.com https://cdn.jsdelivr.net https://code.jquery.com https://sdk.monnify.com https://checkout.paystack.com https://online.monnify.com",
+                "script-src-attr 'unsafe-inline'",
                 "frame-src 'self' https://checkout.paystack.com https://checkout.flutterwave.com https://js.paystack.co https://sdk.monnify.com https://online.monnify.com",
                 "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://paystack.com",
                 "font-src 'self' data: https://fonts.gstatic.com",
