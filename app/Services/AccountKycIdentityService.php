@@ -327,6 +327,24 @@ class AccountKycIdentityService
                 ];
             }
 
+            // Paystack returns a pre-existing customer record unchanged when
+            // the email is already registered â€” including an empty phone left
+            // over from an earlier transaction. A dedicated account cannot be
+            // issued to a customer without a phone ("Customer phone number is
+            // required"), so push the profile phone onto the customer first.
+            $customerPhone = is_array($customerJson) ? (string) ($customerJson['data']['phone'] ?? '') : '';
+            if ($customerPhone === '' && ! empty($user->number)) {
+                $updateRes = Http::timeout(45)
+                    ->acceptJson()
+                    ->asJson()
+                    ->withToken($secret)
+                    ->put('https://api.paystack.co/customer/'.$customerCode, [
+                        'phone' => (string) $user->number,
+                    ]);
+                if (! $updateRes->successful()) {
+                    Log::warning('Tier KYC Paystack customer phone update failed', ['user_id' => $user->id]);
+                }
+            }
             $dedicatedRes = Http::timeout(60)
                 ->acceptJson()
                 ->asJson()
