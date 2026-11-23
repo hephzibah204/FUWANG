@@ -14,6 +14,8 @@ Schedule::command('auction:process-status')->everyMinute();
 Schedule::command('bvn:poll-retrievals')->everyFifteenMinutes();
 Schedule::command('vtu:reconcile')->everyFiveMinutes()->withoutOverlapping();
 Schedule::command('payments:reprocess-webhooks --recent-only')->everyFiveMinutes()->withoutOverlapping();
+Schedule::command('payments:reconcile-intents --credit')->hourly()->withoutOverlapping();
+Schedule::command('system:health-check')->daily();
 
 Artisan::command('payments:reprocess-webhooks {--limit=50} {--all : Reprocess all pending and failed webhook events} {--dry-run : Simulate without changing wallet balances or database} {--recent-only : Only process webhooks received in the last 6 hours}', function () {
     $limit = (int) $this->option('limit');
