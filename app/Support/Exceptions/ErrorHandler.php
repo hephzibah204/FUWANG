@@ -53,13 +53,18 @@ class ErrorHandler
             }
         }
 
-        $correlationId = request()->attributes->get('correlation_id', 'unknown');
-        
+        // The request is not bound when an exception is reported from the
+        // console (artisan commands, queue workers, scheduler) — calling
+        // request() there throws and takes the whole command down with it.
+        $request = (!app()->runningInConsole() && app()->bound('request')) ? request() : null;
+
+        $correlationId = $request?->attributes->get('correlation_id', 'unknown') ?? 'unknown';
+
         $logData = [
             'correlation_id' => $correlationId,
-            'url' => request()->fullUrl(),
-            'method' => request()->method(),
-            'ip' => request()->ip(),
+            'url' => $request?->fullUrl() ?? 'console',
+            'method' => $request?->method() ?? 'CLI',
+            'ip' => $request?->ip() ?? 'console',
             'exception' => get_class($e),
             'message' => $e->getMessage(),
             'file' => $e->getFile(),
@@ -67,7 +72,7 @@ class ErrorHandler
         ];
 
         // Add sanitized request payload
-        $payload = request()->except(['password', 'password_confirmation', 'token', 'api_token', 'secret', 'credit_card', 'cvv']);
+        $payload = $request ? $request->except(['password', 'password_confirmation', 'token', 'api_token', 'secret', 'credit_card', 'cvv']) : [];
         if (!empty($payload)) {
             $logData['request_payload'] = $payload;
         }
