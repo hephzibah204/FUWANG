@@ -6,6 +6,7 @@ use App\Models\ApiCenter;
 use App\Models\PaymentIntent;
 use App\Models\PaymentWebhookEvent;
 use App\Models\User;
+use App\Services\Payments\ManualCreditDetector;
 use App\Services\WalletService;
 use App\Support\PaymentProviderCredentials;
 use Illuminate\Console\Command;
@@ -99,6 +100,26 @@ class VerifyPaystackPayment extends Command
         if (!$user) {
             $this->error("Could not resolve Fuwa user for this payment. Please provide the user email using --email=<user_email>.");
             return self::FAILURE;
+        }
+
+        // Manual-credit safeguard: never double-credit a user an admin has
+        // already funded manually (manual credits carry different references,
+        // so the exact-reference check above cannot catch them).
+        $paidAt = null;
+        if (!empty($data['paid_at'])) {
+            try {
+                $paidAt = \Illuminate\Support\Carbon::parse((string) $data['paid_at']);
+            } catch (\Throwable $e) {
+                $paidAt = null;
+            }
+        }
+        $manualCredit = app(ManualCreditDetector::class)
+            ->findExistingManualCredit($user, $amount, $paidAt ?? ($intent->created_at ?? now()), $gatewayRef);
+        if ($manualCredit) {
+            $this->warn("Skipping credit: user {$user->email} was already credited manually "
+                . "(manual reference: {$manualCredit->reference}, amount: NGN " . number_format((float) $manualCredit->amount, 2) . "). "
+                . "Crediting again would pay this user twice.");
+            return self::SUCCESS;
         }
 
         // Credit wallet
