@@ -21,18 +21,36 @@ class EmailVerificationController extends Controller
         return view('auth.verify-email');
     }
 
-    public function verify(EmailVerificationRequest $request): RedirectResponse
+    public function verify(Request $request, $id, $hash): RedirectResponse
     {
-        if ($request->user()->hasVerifiedEmail()) {
+        // The signed URL itself is the proof of ownership - do not require a
+        // matching login session. The old FormRequest authorize() demanded one,
+        // so the first click from the email (usually logged out) died with 403
+        // and nothing was verified.
+        $user = \App\Models\User::findOrFail($id);
+
+        if (!hash_equals(sha1($user->getEmailForVerification()), (string) $hash)) {
+            abort(403);
+        }
+
+        $sameUser = $request->user() && (int) $request->user()->id === (int) $user->id;
+
+        if ($user->hasVerifiedEmail()) {
+            return $sameUser
+                ? redirect()->intended(route('dashboard', absolute: false).'?verified=1')
+                : redirect()->route('login')->with('status', __('Your email address is already verified. Please log in.'));
+        }
+
+        if ($user->markEmailAsVerified()) {
+            event(new Verified($user));
+            app(KycService::class)->refreshUserTier($user);
+        }
+
+        if ($sameUser) {
             return redirect()->intended(route('dashboard', absolute: false).'?verified=1');
         }
 
-        if ($request->user()->markEmailAsVerified()) {
-            event(new Verified($request->user()));
-            app(KycService::class)->refreshUserTier($request->user());
-        }
-
-        return redirect()->intended(route('dashboard', absolute: false).'?verified=1');
+        return redirect()->route('login')->with('status', __('Your email address has been verified. Please log in.'));
     }
 
     public function send(Request $request): RedirectResponse
