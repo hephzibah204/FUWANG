@@ -16,7 +16,6 @@ class VtuPurchaseController extends VTUController
     public function electricityIndex() { return $this->purchasePage('vtu_electricity', 'services.vtu.electricity.buy'); }
     public function internetIndex() { return $this->purchasePage('vtu_internet', 'services.vtu.internet.buy'); }
     public function bettingIndex() { return $this->purchasePage('vtu_betting', 'services.vtu.betting.fund'); }
-    public function epinIndex() { return $this->purchasePage('vtu_epin', 'services.vtu.epin.buy'); }
     public function airtimeToCashIndex() { return $this->purchasePage('vtu_airtime_to_cash', 'services.vtu.airtime_to_cash.submit'); }
     public function bulkSmsIndex() { return $this->purchasePage('vtu_bulksms', 'services.vtu.bulksms.send'); }
     public function rechargePrintingIndex()
@@ -29,7 +28,6 @@ class VtuPurchaseController extends VTUController
     public function buyElectricity(Request $request) { return $this->purchase($request, 'vtu_electricity'); }
     public function buyInternet(Request $request) { return $this->purchase($request, 'vtu_internet'); }
     public function fundBetting(Request $request) { return $this->purchase($request, 'vtu_betting'); }
-    public function buyEpin(Request $request) { return $this->purchase($request, 'vtu_epin'); }
     public function submitAirtimeToCash(Request $request) { return $this->purchase($request, 'vtu_airtime_to_cash'); }
     public function sendBulkSms(Request $request) { return $this->purchase($request, 'vtu_bulksms'); }
     public function generateRechargePins(Request $request)

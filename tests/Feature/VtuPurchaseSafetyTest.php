@@ -336,7 +336,7 @@ class VtuPurchaseSafetyTest extends VtuEndpointsTest
         $pages = [
             'vtu_data' => 'services.vtu.data.buy', 'vtu_airtime' => 'services.vtu.airtime.buy',
             'vtu_cable_tv' => 'services.vtu.cable.buy', 'vtu_electricity' => 'services.vtu.electricity.buy',
-            'vtu_epin' => 'services.vtu.epin.buy', 'vtu_internet' => 'services.vtu.internet.buy',
+            'vtu_internet' => 'services.vtu.internet.buy',
             'vtu_betting' => 'services.vtu.betting.fund', 'vtu_airtime_to_cash' => 'services.vtu.airtime_to_cash.submit',
             'vtu_bulksms' => 'services.vtu.bulksms.send', 'vtu_data_card' => 'services.vtu.recharge_printing.generate',
             'vtu_recharge_card' => 'services.vtu.recharge_printing.generate',

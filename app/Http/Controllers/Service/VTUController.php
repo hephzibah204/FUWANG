@@ -327,53 +327,6 @@ class VTUController extends Controller
         return $this->respondWithVtuResult($request, $result);
     }
 
-    public function epinIndex()
-    {
-        return view('services.vtu.epin');
-    }
-
-    public function buyEpin(Request $request)
-    {
-        app(EducationEpinConsolidationService::class)->ensureConsolidated();
-
-        $request->validate([
-            'provider_id' => ['nullable', 'integer', 'exists:custom_apis,id'],
-            'serviceID' => ['required', 'string'],
-            'variation_code' => ['required', 'string'],
-            'quantity' => ['required', 'integer', 'min:1', 'max:50'],
-            'amount' => ['required', 'numeric', 'min:100'],
-            'phone' => ['required', 'string', 'digits:11'],
-        ]);
-
-        $serviceID = $request->string('serviceID')->toString();
-        $variation = $request->string('variation_code')->toString();
-        $product = app(EpinCatalogService::class)->findByService($serviceID, $variation);
-
-        $amount = $product ? (float) ($product['amount'] ?? $request->amount) : (float) $request->amount;
-        $quantity = (int) $request->quantity;
-        $orderType = $product ? (string) ($product['order_type'] ?? 'ePIN Purchase') : 'ePIN Purchase';
-        $txPrefix = $product ? (string) ($product['tx_prefix'] ?? 'EPIN') : 'EPIN';
-        $providerServiceTypes = $product && is_array($product['provider_service_types'] ?? null) ? $product['provider_service_types'] : ['vtu_epin'];
-
-        $result = $this->vtuHub->processRequest([
-            'service_type' => 'vtu_epin',
-            'amount' => $amount,
-            'order_type' => $orderType,
-            'tx_prefix' => $txPrefix,
-            'provider_id' => $request->input('provider_id'),
-            'provider_service_types' => $providerServiceTypes,
-            'payload' => [
-                'serviceID' => $serviceID,
-                'variation_code' => $variation,
-                'quantity' => $quantity,
-                'amount' => $amount,
-                'phone' => $request->phone,
-            ],
-        ]);
-
-        return $this->respondWithVtuResult($request, $result);
-    }
-
     public function rechargePrintingIndex()
     {
         return view('services.vtu.recharge_printing');

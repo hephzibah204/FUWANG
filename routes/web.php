@@ -393,9 +393,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/services/vtu/betting', [App\Http\Controllers\Service\VTUController::class, 'bettingIndex'])->name('services.vtu.betting');
         Route::post('/services/vtu/betting/fund', [App\Http\Controllers\Service\VTUController::class, 'fundBetting'])->middleware('kyc.enforce')->name('services.vtu.betting.fund');
 
-        Route::get('/services/vtu/epins', [App\Http\Controllers\Service\VtuPurchaseController::class, 'epinIndex'])->name('services.vtu.epin');
-        Route::post('/services/vtu/epins/buy', [App\Http\Controllers\Service\VtuPurchaseController::class, 'buyEpin'])->middleware('kyc.enforce')->name('services.vtu.epin.buy');
-
         Route::get('/services/vtu/recharge-printing', [App\Http\Controllers\Service\VtuPurchaseController::class, 'rechargePrintingIndex'])->name('services.vtu.recharge_printing');
         Route::post('/services/vtu/recharge-printing/generate', [App\Http\Controllers\Service\VtuPurchaseController::class, 'generateRechargePins'])->middleware('kyc.enforce')->name('services.vtu.recharge_printing.generate');
         Route::get('/services/vtu/recharge-printing/query', [App\Http\Controllers\Service\VtuPurchaseController::class, 'queryRechargeOrder'])->name('services.vtu.recharge_printing.query');
