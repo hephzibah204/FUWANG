@@ -26,12 +26,23 @@ return new class extends Migration
                     && (int) ($p['provider_id'] ?? 0) === (int) $providerId);
                 if (!$exists) $products[] = $plan + ['provider_id' => $providerId];
             }
-            DB::table('system_settings')->updateOrInsert(['key' => 'vtu_product_catalog'], [
+            // system_settings.id has no AUTO_INCREMENT on production (one of the
+            // tables excluded from the 2026-11-24 repair pass pending data
+            // reconciliation), so inserts must supply an explicit unique id.
+            $nextSettingId = fn () => (int) (DB::table('system_settings')->max('id') ?? 0) + 1;
+            $catalogueValues = [
                 'value' => json_encode($products, JSON_THROW_ON_ERROR), 'group' => 'vtu_pricing', 'updated_at' => now(),
-            ]);
+            ];
+            if ($stored) {
+                DB::table('system_settings')->where('key', 'vtu_product_catalog')->update($catalogueValues);
+            } else {
+                DB::table('system_settings')->insert($catalogueValues + [
+                    'id' => $nextSettingId(), 'key' => 'vtu_product_catalog', 'created_at' => now(),
+                ]);
+            }
             foreach (['vtu_waec_price' => 4000, 'vtu_neco_price' => 1450, 'vtu_nabteb_price' => 1100] as $key => $price) {
                 if (!DB::table('system_settings')->where('key', $key)->exists()) {
-                    DB::table('system_settings')->insert(['key' => $key, 'value' => (string) $price, 'group' => 'vtu_pricing', 'created_at' => now(), 'updated_at' => now()]);
+                    DB::table('system_settings')->insert(['id' => $nextSettingId(), 'key' => $key, 'value' => (string) $price, 'group' => 'vtu_pricing', 'created_at' => now(), 'updated_at' => now()]);
                 }
             }
         });
