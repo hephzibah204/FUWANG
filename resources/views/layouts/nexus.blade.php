@@ -728,7 +728,6 @@
                         <a href="{{ route('services.nin.suite') }}" class="{{ Request::routeIs('services.nin.suite') || Request::routeIs('services.nin') || Request::routeIs('services.validation') || Request::routeIs('services.clearance') || Request::routeIs('services.personalization') ? 'active' : '' }}">NIN Suite</a>
                         <a href="{{ route('services.nin_face') }}" class="{{ Request::routeIs('services.nin_face') ? 'active' : '' }}">NIN Face</a>
                     @endif
-                    <a href="{{ route('services.nin.modification') }}" class="{{ Request::routeIs('services.nin.modification') ? 'active' : '' }}">NIN Modification</a>
                 </div>
             </div>
 

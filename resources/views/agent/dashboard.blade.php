@@ -336,15 +336,6 @@
                         </a>
                     </div>
                     <div class="col-md-3">
-                        <a href="{{ route('services.nin.modification') }}" class="btn btn-outline-success rounded-3 w-100 p-3 text-start d-flex align-items-center justify-content-between h-100">
-                            <div>
-                                <h6 class="text-white fw-bold mb-1">NIN Modification</h6>
-                                <span class="text-white-50 small">Name, DOB, and phone updates</span>
-                            </div>
-                            <i class="fa-solid fa-arrow-right"></i>
-                        </a>
-                    </div>
-                    <div class="col-md-3">
                         <a href="{{ route('agent.issues.index') }}" class="btn btn-outline-danger rounded-3 w-100 p-3 text-start d-flex align-items-center justify-content-between h-100">
                             <div>
                                 <h6 class="text-white fw-bold mb-1">Issue Helpdesk</h6>

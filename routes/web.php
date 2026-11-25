@@ -291,10 +291,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/services/nin-verify/verify', [App\Http\Controllers\Service\NINController::class, 'verify'])->middleware('kyc.enforce')->name('services.nin_verify.verify');
         Route::post('/services/nin/validation/status', [App\Http\Controllers\Service\NINController::class, 'validationStatus'])->middleware('kyc.enforce')->name('services.nin.validation.status');
         
-        // NIN Modification
-        Route::get('/services/nin/modification', [App\Http\Controllers\Service\NINModificationController::class, 'index'])->name('services.nin.modification');
-        Route::post('/services/nin/modification/consent', [App\Http\Controllers\Service\NINModificationController::class, 'acceptConsent'])->name('services.nin.modification.consent');
-        Route::post('/services/nin/modification/submit', [App\Http\Controllers\Service\NINModificationController::class, 'submit'])->middleware('kyc.enforce')->name('services.nin.modification.submit');
+        // NIN Modification — HIDDEN 2026-11-25 on the owner's order. The user-facing
+        // routes are unregistered so the service is unreachable; the controller, page
+        // and the admin management routes/views are kept intact so existing requests
+        // remain processable. Restore by re-adding the three routes named
+        // services.nin.modification / .consent / .submit (see git history).
     });
 
     // â”€â”€ Identity & Verification Hub â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
