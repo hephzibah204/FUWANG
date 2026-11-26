@@ -290,7 +290,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/services/nin/verify', [App\Http\Controllers\Service\NINController::class, 'verify'])->middleware('kyc.enforce')->name('services.nin.verify');
         Route::post('/services/nin-verify/verify', [App\Http\Controllers\Service\NINController::class, 'verify'])->middleware('kyc.enforce')->name('services.nin_verify.verify');
         Route::post('/services/nin/validation/status', [App\Http\Controllers\Service\NINController::class, 'validationStatus'])->middleware('kyc.enforce')->name('services.nin.validation.status');
-        
+
+        // NIN Suite sub-services (linked from the suite page): gated by the suite's
+        // own nin_verification toggle, NOT identity_verification — moved here
+        // 2026-11-26 on the owner's ruling so the suite works as one unit.
+        Route::get('/services/validation', [App\Http\Controllers\Service\VerificationController::class, 'validationIndex'])->name('services.validation');
+        Route::post('/services/validation/verify', [App\Http\Controllers\Service\VerificationController::class, 'verifyValidation'])->middleware('kyc.enforce')->name('services.validation.verify');
+
+        Route::get('/services/clearance', [App\Http\Controllers\Service\VerificationController::class, 'clearanceIndex'])->name('services.clearance');
+        Route::post('/services/clearance/verify', [App\Http\Controllers\Service\VerificationController::class, 'verifyClearance'])->middleware('kyc.enforce')->name('services.clearance.verify');
+
+        Route::get('/services/personalization', [App\Http\Controllers\Service\VerificationController::class, 'personalizationIndex'])->name('services.personalization');
+        Route::post('/services/personalization/verify', [App\Http\Controllers\Service\VerificationController::class, 'verifyPersonalization'])->middleware('kyc.enforce')->name('services.personalization.verify');
+
         // NIN Modification — HIDDEN 2026-11-25 on the owner's order. The user-facing
         // routes are unregistered so the service is unreachable; the controller, page
         // and the admin management routes/views are kept intact so existing requests
@@ -327,14 +339,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/services/passport', [App\Http\Controllers\Service\PassportController::class, 'index'])->name('services.passport');
         Route::post('/services/passport/verify', [App\Http\Controllers\Service\PassportController::class, 'verify'])->middleware('kyc.enforce')->name('services.passport.verify');
 
-        Route::get('/services/validation', [App\Http\Controllers\Service\VerificationController::class, 'validationIndex'])->name('services.validation');
-        Route::post('/services/validation/verify', [App\Http\Controllers\Service\VerificationController::class, 'verifyValidation'])->middleware('kyc.enforce')->name('services.validation.verify');
-
-        Route::get('/services/clearance', [App\Http\Controllers\Service\VerificationController::class, 'clearanceIndex'])->name('services.clearance');
-        Route::post('/services/clearance/verify', [App\Http\Controllers\Service\VerificationController::class, 'verifyClearance'])->middleware('kyc.enforce')->name('services.clearance.verify');
-
-        Route::get('/services/personalization', [App\Http\Controllers\Service\VerificationController::class, 'personalizationIndex'])->name('services.personalization');
-        Route::post('/services/personalization/verify', [App\Http\Controllers\Service\VerificationController::class, 'verifyPersonalization'])->middleware('kyc.enforce')->name('services.personalization.verify');
+        // services.validation / services.clearance / services.personalization moved
+        // to the nin_verification group above (they are NIN Suite services).
 
         Route::get('/services/voters-card', [App\Http\Controllers\Service\VerificationController::class, 'votersCardIndex'])->name('services.voters_card');
         Route::post('/services/voters-card/verify', [App\Http\Controllers\Service\VerificationController::class, 'verifyVotersCard'])->middleware('kyc.enforce')->name('services.voters_card.verify');

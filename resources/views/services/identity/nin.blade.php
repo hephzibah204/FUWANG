@@ -510,6 +510,10 @@
         display: inline-flex;
         align-items: center;
         min-height: 40px;
+        /* Never let the strip squeeze a tab below its label width: tabs keep
+           their natural pill size and the row scrolls horizontally instead
+           (fixes the overlapping-circles layout seen on mobile, 2026-11-26). */
+        flex: 0 0 auto;
     }
     .nin-tab:hover {
         background: rgba(255,255,255,0.06);

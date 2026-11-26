@@ -46,6 +46,34 @@ class NinSuiteTest extends TestCase
     }
 
     /**
+     * The suite's sub-services (Validation, Clearance, Personalization) are
+     * gated by the NIN Suite toggle (nin_verification), not by
+     * identity_verification. Regression test for the owner's 2026-11-26
+     * report: with the suite ON and identity_verification OFF, Validation
+     * wrongly said the feature was unavailable.
+     */
+    public function test_suite_sub_services_follow_the_nin_suite_toggle_not_identity_verification()
+    {
+        $user = User::factory()->create(['email_verified_at' => now()]);
+
+        \App\Models\FeatureToggle::create(['feature_name' => 'identity_verification', 'is_active' => false]);
+        \App\Models\FeatureToggle::create(['feature_name' => 'nin_verification', 'is_active' => true]);
+        \Illuminate\Support\Facades\Cache::flush();
+
+        foreach (['services.validation', 'services.clearance', 'services.personalization'] as $routeName) {
+            $response = $this->actingAs($user)->get(route($routeName));
+            $response->assertStatus(200);
+        }
+
+        // With the suite itself OFF, the sub-services go down with it.
+        \App\Models\FeatureToggle::where('feature_name', 'nin_verification')->update(['is_active' => false]);
+        \Illuminate\Support\Facades\Cache::flush();
+
+        $response = $this->actingAs($user)->get(route('services.validation'));
+        $response->assertRedirect(route('dashboard'));
+    }
+
+    /**
      * Test that the dashboard displays the NIN Suite link.
      */
     public function test_dashboard_displays_nin_suite_link()
