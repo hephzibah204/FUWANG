@@ -432,8 +432,10 @@ class EnrollmentAgentSystemTest extends TestCase
         ]);
     }
 
-    public function test_registration_fails_if_agent_does_not_have_device(): void
+    public function test_registration_succeeds_if_agent_does_not_have_device(): void
     {
+        // Owner's ruling (2026-11-27): agents may register without a machine
+        // and add the IMEI later. Replaces the old device-mandatory policy test.
         $response = $this->post(route('agent.register.submit'), [
             'agent_type' => 'new',
             'full_name' => 'No Device Agent',
@@ -450,7 +452,34 @@ class EnrollmentAgentSystemTest extends TestCase
             'machine_imei' => '',
         ]);
 
-        $response->assertSessionHasErrors(['has_machine', 'machine_imei']);
+        $response->assertRedirect(route('agent.dashboard'));
+        $this->assertDatabaseHas('enrollment_agents', [
+            'full_name' => 'No Device Agent',
+            'has_machine' => false,
+            'machine_imei' => null,
+            'status' => 'pending',
+        ]);
+    }
+
+    public function test_new_agent_with_machine_still_requires_imei(): void
+    {
+        $response = $this->post(route('agent.register.submit'), [
+            'agent_type' => 'new',
+            'full_name' => 'Device But No Imei Agent',
+            'email' => 'noimei@example.com',
+            'password' => 'SecretPass123!',
+            'password_confirmation' => 'SecretPass123!',
+            'phone_number' => '08099112299',
+            'state' => 'Lagos',
+            'residential_address' => 'Home Address',
+            'office_address' => 'Office Address',
+            'bvn' => '12345678901',
+            'nin' => '10987654321',
+            'has_machine' => '1',
+            'machine_imei' => '',
+        ]);
+
+        $response->assertSessionHasErrors(['machine_imei']);
     }
 
     public function test_existing_profile_claim_masks_credentials_and_hydrates_on_submit(): void

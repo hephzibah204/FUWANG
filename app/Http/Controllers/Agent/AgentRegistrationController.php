@@ -344,13 +344,18 @@ class AgentRegistrationController extends Controller
             'state' => ['required', 'string', 'max:100'],
             'residential_address' => ['required', 'string', 'max:1000'],
             'office_address' => ['required', 'string', 'max:1000'],
-            'has_machine' => ['required', 'in:1,true'],
-            'machine_imei' => ['required', 'string', 'max:100'],
+            'has_machine' => ['required', 'boolean'],
+            // Agents may register without a machine (owner's ruling, 2026-11-27):
+            // the IMEI is only required when the agent says they have a device,
+            // or when claiming an existing pre-approved profile.
+            'machine_imei' => ['nullable', 'string', 'max:100', \Illuminate\Validation\Rule::requiredIf(
+                fn () => $request->input('agent_type') === 'existing'
+                    || filter_var($request->input('has_machine'), FILTER_VALIDATE_BOOLEAN)
+            )],
         ];
 
         $messages = [
-            'has_machine.in' => 'An operational enrollment device is mandatory to proceed. Agents cannot register without physical hardware.',
-            'machine_imei.required' => 'Machine IMEI / Device Terminal ID is required to register as an enrollment agent.',
+            'machine_imei.required' => 'Machine IMEI / Device Terminal ID is required when you have an enrollment device. If you do not have one yet, choose "No" above — you can register now and add the IMEI later.',
         ];
 
         $validated = $request->validate($rules, $messages);

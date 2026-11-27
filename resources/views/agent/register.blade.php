@@ -381,28 +381,28 @@
                             <i class="fa-solid fa-barcode input-icon"></i>
                             <input type="text" id="machineImeiInput" name="machine_imei" class="form-input @error('machine_imei') is-invalid @enderror" value="{{ old('machine_imei') }}" required placeholder="Enter machine IMEI (e.g. 864201041234567)">
                         </div>
-                        <small class="text-muted" style="font-size: 0.75rem;">Accredited agents must enter their enrollment terminal IMEI / Serial.</small>
+                        <small class="text-muted" style="font-size: 0.75rem;">Enter your enrollment terminal IMEI / Serial. <span class="text-white">Dial <strong>*#06#</strong> on the device to see its IMEI</span> — it will show on the screen.</small>
                         @error('machine_imei') <div class="text-danger small mt-1">{{ $message }}</div> @enderror
                     </div>
 
-                    <!-- Enrolment Device Required Error Notice -->
+                    <!-- No-Device Info Notice (registration is allowed without a machine) -->
                     <div class="col-12 mt-2 {{ old('has_machine') === '0' ? '' : 'd-none' }}" id="noDeviceErrorNotice">
-                        <div class="alert alert-danger border-0 rounded-3 p-3 text-white mb-0" style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.35) !important;">
+                        <div class="alert border-0 rounded-3 p-3 text-white mb-0" style="background: rgba(59, 130, 246, 0.12); border: 1px solid rgba(59, 130, 246, 0.35) !important;">
                             <div class="d-flex align-items-start gap-3">
-                                <div class="rounded-circle p-2 d-flex align-items-center justify-content-center bg-danger text-white flex-shrink-0" style="width: 38px; height: 38px;">
-                                    <i class="fa-solid fa-circle-exclamation fs-6"></i>
+                                <div class="rounded-circle p-2 d-flex align-items-center justify-content-center bg-primary text-white flex-shrink-0" style="width: 38px; height: 38px;">
+                                    <i class="fa-solid fa-circle-info fs-6"></i>
                                 </div>
                                 <div>
-                                    <strong class="d-block text-danger mb-1" style="font-size: 0.95rem;">Enrolment Device Mandatory to Proceed</strong>
+                                    <strong class="d-block text-primary mb-1" style="font-size: 0.95rem;">No Device Yet? You Can Still Register</strong>
                                     <p class="text-white-50 small mb-2">
-                                        An accredited NIMC-compliant biometric scanner / device terminal is required to register as an agent. You cannot proceed with registration without an active enrollment device.
+                                        You do not need an enrollment device to register as an agent. Complete your registration now and add your machine IMEI later, once you get an approved terminal.
                                     </p>
                                     <div class="d-flex flex-wrap gap-2 align-items-center">
-                                        <span class="badge bg-dark text-danger border border-danger border-opacity-25 rounded-pill px-3 py-1 text-2xs">
-                                            <i class="fa-solid fa-triangle-exclamation me-1"></i>Action Required
+                                        <span class="badge bg-dark text-info border border-info border-opacity-25 rounded-pill px-3 py-1 text-2xs">
+                                            <i class="fa-solid fa-circle-info me-1"></i>Good to know
                                         </span>
                                         <span class="small text-white-50">
-                                            If you do not have an enrollment device yet, please acquire an approved terminal or contact <a href="mailto:support@fuwa.ng" class="text-warning text-decoration-underline fw-bold">support@fuwa.ng</a> before proceeding.
+                                            If you already have a device, select "Yes" above and dial <strong class="text-white">*#06#</strong> on it to see the IMEI. Questions? Contact <a href="mailto:support@fuwa.ng" class="text-warning text-decoration-underline fw-bold">support@fuwa.ng</a>.
                                         </span>
                                     </div>
                                 </div>
@@ -782,9 +782,10 @@ function toggleMachineIMEI(val) {
         }
         if (notice) notice.classList.remove('d-none');
         if (submitBtn) {
-            submitBtn.classList.remove('btn-primary');
-            submitBtn.classList.add('btn-secondary');
-            submitBtn.innerHTML = '<i class="fa-solid fa-ban me-2 text-danger"></i><span>Device Required to Proceed</span>';
+            // No machine is fine: registration stays open (owner's ruling, 2026-11-27).
+            submitBtn.classList.remove('btn-secondary');
+            submitBtn.classList.add('btn-primary');
+            submitBtn.innerHTML = '<span>Continue to Agency KYC Portal</span><i class="fa-solid fa-arrow-right ms-2"></i>';
         }
     }
 }
@@ -1179,24 +1180,9 @@ document.addEventListener('DOMContentLoaded', function () {
         toggleMachineIMEI(hasMachineSelect.value);
     }
 
-    // Form submission validation & spinner
+    // Form submission spinner (agents without a machine may submit too)
     if (form && submitBtn) {
         form.addEventListener('submit', function(e) {
-            const hasMachineEl = document.getElementById('hasMachineSelect');
-            if (hasMachineEl && hasMachineEl.value === '0') {
-                e.preventDefault();
-                const notice = document.getElementById('noDeviceErrorNotice');
-                if (notice) {
-                    notice.classList.remove('d-none');
-                    notice.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-                submitBtn.disabled = false;
-                submitBtn.classList.remove('btn-primary');
-                submitBtn.classList.add('btn-secondary');
-                submitBtn.innerHTML = '<i class="fa-solid fa-ban me-2 text-danger"></i><span>Device Required to Proceed</span>';
-                return false;
-            }
-
             submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Submitting Application...';
             submitBtn.disabled = true;
         });
