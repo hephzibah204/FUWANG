@@ -437,6 +437,18 @@
                             <span class="text-white ms-1">{{ $agent->license_paid_at->format('d M Y, h:i A') }}</span>
                         </div>
                     @endif
+                    @if(data_get($agent->meta, 'vpn_requested_at'))
+                        <div>
+                            <span class="text-white-50">VPN:</span>
+                            <span class="text-warning ms-1">Requested {{ \Carbon\Carbon::parse(data_get($agent->meta, 'vpn_requested_at'))->format('d M Y, h:i A') }} — send the agent their VPN details</span>
+                        </div>
+                    @endif
+                    @if(data_get($agent->meta, 'onboarding_read_at'))
+                        <div>
+                            <span class="text-white-50">Onboarding:</span>
+                            <span class="text-white ms-1">Instructions read {{ \Carbon\Carbon::parse(data_get($agent->meta, 'onboarding_read_at'))->format('d M Y') }}</span>
+                        </div>
+                    @endif
                     @if($agent->licenseVerifiedBy)
                         <div>
                             <span class="text-white-50">Verified By:</span>

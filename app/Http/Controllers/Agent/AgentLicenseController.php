@@ -249,6 +249,8 @@ class AgentLicenseController extends Controller
             return response()->json(['status' => true, 'message' => 'This license payment was already confirmed.', 'redirect' => route('agent.dashboard')]);
         }
 
+        $ownedBeforeVerify = $agent->licensesOwned();
+
         $apiCenter = ApiCenter::first();
         $paystack = PaymentProviderCredentials::paystack($apiCenter);
         $secretKey = $paystack['secret_key'];
@@ -320,7 +322,8 @@ class AgentLicenseController extends Controller
         return response()->json([
             'status' => true,
             'message' => 'Payment verified! Your NIN Enrollment Station License has been successfully accredited.',
-            'redirect' => route('agent.dashboard'),
+            // First license goes straight to onboarding (owner spec 2026-11-27).
+            'redirect' => $ownedBeforeVerify === 0 ? route('agent.license.onboarding') : route('agent.dashboard'),
         ]);
     }
 
@@ -352,6 +355,7 @@ class AgentLicenseController extends Controller
             return back()->with('error', $dq['error']);
         }
         $payable = $dq['payable'];
+        $ownedBefore = $agent->licensesOwned();
         $reference = 'LIC-WLT-' . $agent->id . '-' . date('YmdHis') . '-' . strtoupper(Str::random(4));
 
         $debitResult = $walletService->debit(
@@ -406,11 +410,17 @@ class AgentLicenseController extends Controller
 
         $msg = 'Success! License fee of ₦' . number_format($payable, 2) . ' deducted from your wallet. Your station license is now officially accredited.';
 
+        // First license: the next thing after payment is onboarding
+        // (owner spec 2026-11-27). Additional licenses stay on the dashboard.
+        $nextRoute = $ownedBefore === 0 ? route('agent.license.onboarding') : route('agent.dashboard');
+
         if ($request->expectsJson() || $request->ajax()) {
-            return response()->json(['status' => true, 'message' => $msg, 'redirect' => route('agent.dashboard')]);
+            return response()->json(['status' => true, 'message' => $msg, 'redirect' => $nextRoute]);
         }
 
-        return back()->with('success', $msg);
+        return $ownedBefore === 0
+            ? redirect()->to($nextRoute)->with('success', $msg)
+            : back()->with('success', $msg);
     }
 
     /**

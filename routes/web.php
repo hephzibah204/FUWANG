@@ -176,6 +176,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/paystack/init', [App\Http\Controllers\Agent\AgentLicenseController::class, 'initPaystack'])->name('paystack_init');
             Route::post('/paystack/verify', [App\Http\Controllers\Agent\AgentLicenseController::class, 'verifyPaystack'])->name('paystack_verify');
             Route::post('/wallet/pay', [App\Http\Controllers\Agent\AgentLicenseController::class, 'payWithWallet'])->name('pay_wallet');
+            Route::get('/onboarding', [App\Http\Controllers\Agent\AgentOnboardingInstructionsController::class, 'show'])->name('onboarding');
+            Route::post('/onboarding/request-vpn', [App\Http\Controllers\Agent\AgentOnboardingInstructionsController::class, 'requestVpn'])->name('onboarding_vpn');
+            Route::post('/onboarding/mark-read', [App\Http\Controllers\Agent\AgentOnboardingInstructionsController::class, 'markRead'])->name('onboarding_read');
             Route::post('/upload-proof', [App\Http\Controllers\Agent\AgentLicenseController::class, 'uploadOfflineProof'])->name('upload_proof');
             Route::post('/claim-legacy', [App\Http\Controllers\Agent\AgentLicenseController::class, 'claimLegacy'])->name('claim_legacy');
         });

@@ -107,7 +107,10 @@
                     <p class="text-white-50 mb-0">Need a license for another station or terminal? You can purchase an additional license at ₦{{ number_format($effectiveFee, 2) }}.</p>
                 </div>
             </div>
-            <div>
+            <div class="d-flex gap-2 flex-wrap">
+                <a href="{{ route('agent.license.onboarding') }}" class="btn btn-outline-light rounded-pill px-4 py-2 fw-bold">
+                    <i class="fa-solid fa-list-check me-2"></i>Onboarding Instructions
+                </a>
                 @if(!empty($missingDocuments ?? []))
                     <a href="{{ route('agent.onboarding.index') }}" class="btn btn-warning text-dark rounded-pill px-4 py-2 fw-bold">
                         <i class="fa-solid fa-upload me-2"></i>Upload Required Documents
