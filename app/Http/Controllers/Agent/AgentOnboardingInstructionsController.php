@@ -9,11 +9,13 @@ use Illuminate\Support\Facades\Auth;
 
 /**
  * Post-payment onboarding instructions (owner spec 2026-11-27): after an
- * agent pays for their license, the next thing is onboarding. The agent
- * must read the instructions: (1) get their device ready, (2) request
- * their VPN, (3) get the Admin Onboarding details. The full process
- * document is still to come from the owner; this page carries the three
- * steps with the platform's real contact data.
+ * agent pays for their license, the next thing is onboarding. The page
+ * carries the NIMC activation process the owner posted: activation
+ * request, Fuwa approval, workflow number to NIMC, NIMC approval,
+ * biometrics onboarding, three test enrolments, then the switch to
+ * production via a second request. Agents reach the onboarding desk on
+ * WhatsApp at 0703 253 2424 (buttons prefilled with name, code, IMEI).
+ * The owner notes the process will still improve later.
  */
 class AgentOnboardingInstructionsController extends Controller
 {
@@ -38,12 +40,24 @@ class AgentOnboardingInstructionsController extends Controller
         $prefilledText = "Hello Fuwa Agency Desk, my name is {$agent->full_name} (Code: " . ($agent->company_agent_code ?: 'AG-' . $agent->id) . "). I have paid for my station license and I am completing my onboarding.";
         $whatsappUrl = 'https://wa.me/' . preg_replace('/[^0-9]/', '', $supportPhone) . '?text=' . urlencode($prefilledText);
 
+        // Onboarding desk (owner instruction 2026-11-27): agents message
+        // 0703 253 2424 on WhatsApp for their onboarding process.
+        $onboardingPhoneDisplay = '0703 253 2424';
+        $imeiNote = $agent->machine_imei ? " My device IMEI is {$agent->machine_imei}." : '';
+        $activationText = "Hello, my name is {$agent->full_name} (Agent Code: " . ($agent->company_agent_code ?: 'AG-' . $agent->id) . "). I have paid for my station license and I am sending my activation request for onboarding.{$imeiNote}";
+        $activationWhatsappUrl = 'https://wa.me/2347032532424?text=' . urlencode($activationText);
+        $productionText = "Hello, my name is {$agent->full_name} (Agent Code: " . ($agent->company_agent_code ?: 'AG-' . $agent->id) . "). I have completed my three test enrolments and toggled the switch to production. I am sending my switch to production request.{$imeiNote}";
+        $productionWhatsappUrl = 'https://wa.me/2347032532424?text=' . urlencode($productionText);
+
         return view('agent.license-onboarding', [
             'agent' => $agent,
             'supportPhone' => $supportPhone,
             'supportEmail' => $supportEmail,
             'coordinatorName' => $coordinatorName,
             'whatsappUrl' => $whatsappUrl,
+            'onboardingPhoneDisplay' => $onboardingPhoneDisplay,
+            'activationWhatsappUrl' => $activationWhatsappUrl,
+            'productionWhatsappUrl' => $productionWhatsappUrl,
             'vpnRequestedAt' => data_get($agent->meta, 'vpn_requested_at'),
             'readAt' => data_get($agent->meta, 'onboarding_read_at'),
         ]);

@@ -87,21 +87,27 @@ class AgentOnboardingInstructionsTest extends TestCase
             ->assertRedirect(route('agent.dashboard'));
     }
 
-    public function test_paid_agent_sees_all_three_onboarding_steps(): void
+    public function test_paid_agent_sees_the_onboarding_process_and_whatsapp_desk(): void
     {
         $this->makePaid();
 
         $this->actingAs($this->user)
             ->get(route('agent.license.onboarding'))
             ->assertOk()
-            ->assertSee('Station Onboarding Instructions')
+            ->assertSee('Station Onboarding')
             ->assertSee('Get Your Device Ready')
             ->assertSee('*#06#')
             ->assertSee('353095051716654')
-            ->assertSee('Request Your VPN')
-            ->assertSee('Get Your Admin Onboarding Details')
-            ->assertSee('Lagos State Desk Coordinator')
-            ->assertSee('support@fuwa.ng')
+            ->assertSee('Send your activation request')
+            ->assertSee('Send Activation Request')
+            ->assertSee('We send your workflow number to NIMC')
+            ->assertSee('NIMC approves the workflow')
+            ->assertSee('biometrics onboarding')
+            ->assertSee('three test enrolments')
+            ->assertSee('switch to production')
+            ->assertSee('NIMC switches you to production')
+            ->assertSee('0703 253 2424')
+            ->assertSee('wa.me/2347032532424')
             ->assertSee('I Have Read These Instructions');
     }
 
@@ -116,11 +122,6 @@ class AgentOnboardingInstructionsTest extends TestCase
         $meta = $this->agent->fresh()->meta;
         $this->assertNotEmpty(data_get($meta, 'vpn_requested_at'));
         $this->assertSame('requested', data_get($meta, 'vpn_status'));
-
-        $this->actingAs($this->user)
-            ->get(route('agent.license.onboarding'))
-            ->assertOk()
-            ->assertSee('VPN requested');
     }
 
     public function test_agent_can_confirm_reading_the_instructions(): void
