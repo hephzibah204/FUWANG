@@ -121,6 +121,12 @@ class RevenueBreakdownTest extends TestCase
 
         $response = $this->actingAs($admin, 'admin')->get(route('admin.dashboard', ['refresh' => 1]));
         $response->assertOk();
+        $response->assertSee('Revenue by Source');
+        $response->assertSee('Agent License Sales');
+        $response->assertSee('VTU Sales');
+        $response->assertSee('Verification & Identity Services');
+        $response->assertSee('3 licenses sold');
+        $response->assertDontSee('<span class="bi-status-dot">', false);
 
         $data = $response->viewData('dashboardData');
         // 6,500 of wallet service revenue + 550,000 of license revenue, counted once

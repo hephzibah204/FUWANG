@@ -71,13 +71,8 @@
 <div class="bi-panel mb-4">
     <div class="bi-panel-header d-flex justify-content-between align-items-center flex-wrap gap-2 p-3 border-bottom border-white-10">
         <div class="d-flex align-items-center gap-2">
-            <div class="bi-icon-box text-primary">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                </svg>
-            </div>
             <div>
-                <h5 class="mb-0 fw-bold text-white">API Provider Balance Monitor</h5>
+                <h5 class="bi-panel-title mb-0">API Provider Balance Monitor</h5>
                 <small class="text-muted">Live external API balances for continuous identity & NIN services</small>
             </div>
         </div>
@@ -116,10 +111,9 @@
                         <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
                             <div>
                                 <div class="bi-provider-name">DataVerify API</div>
-                                <div class="bi-provider-service">NIN &bull; BVN Retrieval</div>
+                                <div class="bi-provider-service">NIN and BVN retrieval</div>
                             </div>
                             <span id="dataverify-badge" class="bi-status-badge {{ $providerBalances['dataverify']['badge_class'] ?? 'bg-secondary' }}">
-                                <span class="bi-status-dot"></span>
                                 <span class="bi-status-text">{{ $providerBalances['dataverify']['status_label'] ?? 'Unknown' }}</span>
                             </span>
                         </div>
@@ -135,7 +129,7 @@
                             @if(empty($providerBalances['dataverify']['configured']) || ($providerBalances['dataverify']['status'] ?? '') === 'error')
                                 <button type="button" class="btn btn-xs btn-outline-primary py-0 px-2" style="font-size: 11px;" data-bs-toggle="modal" data-bs-target="#editApiKeysModal" data-toggle="modal" data-target="#editApiKeysModal">Edit Key</button>
                             @endif
-                            <a href="https://dataverify.org" target="_blank" rel="noopener" class="bi-link">Top Up &nearr;</a>
+                            <a href="https://dataverify.org" target="_blank" rel="noopener" class="bi-link">Top Up</a>
                         </div>
                     </div>
                 </div>
@@ -148,10 +142,9 @@
                         <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
                             <div>
                                 <div class="bi-provider-name">RobostTech API</div>
-                                <div class="bi-provider-service">NIN &bull; Validation &bull; Clearance</div>
+                                <div class="bi-provider-service">NIN validation and clearance</div>
                             </div>
                             <span id="robost-badge" class="bi-status-badge {{ $providerBalances['robosttech']['badge_class'] ?? 'bg-secondary' }}">
-                                <span class="bi-status-dot"></span>
                                 <span class="bi-status-text">{{ $providerBalances['robosttech']['status_label'] ?? 'Unknown' }}</span>
                             </span>
                         </div>
@@ -167,7 +160,7 @@
                             @if(empty($providerBalances['robosttech']['configured']) || ($providerBalances['robosttech']['status'] ?? '') === 'error')
                                 <button type="button" class="btn btn-xs btn-outline-primary py-0 px-2" style="font-size: 11px;" data-bs-toggle="modal" data-bs-target="#editApiKeysModal" data-toggle="modal" data-target="#editApiKeysModal">Configure Key</button>
                             @endif
-                            <a href="https://robosttech.com" target="_blank" rel="noopener" class="bi-link">Top Up &nearr;</a>
+                            <a href="https://robosttech.com" target="_blank" rel="noopener" class="bi-link">Top Up</a>
                         </div>
                     </div>
                 </div>
@@ -180,10 +173,9 @@
                         <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
                             <div>
                                 <div class="bi-provider-name">VUVAA API</div>
-                                <div class="bi-provider-service">In-Person &bull; Selfie Verification</div>
+                                <div class="bi-provider-service">In-person and selfie verification</div>
                             </div>
                             <span id="vuvaa-badge" class="bi-status-badge {{ $providerBalances['vuvaa']['badge_class'] ?? 'bg-secondary' }}">
-                                <span class="bi-status-dot"></span>
                                 <span class="bi-status-text">{{ $providerBalances['vuvaa']['status_label'] ?? 'Unknown' }}</span>
                             </span>
                         </div>
@@ -199,7 +191,7 @@
                             @if(empty($providerBalances['vuvaa']['configured']) || ($providerBalances['vuvaa']['status'] ?? '') === 'error')
                                 <button type="button" class="btn btn-xs btn-outline-primary py-0 px-2" style="font-size: 11px;" data-bs-toggle="modal" data-bs-target="#editApiKeysModal" data-toggle="modal" data-target="#editApiKeysModal">Configure</button>
                             @endif
-                            <a href="https://premiere.vuvaa.com" target="_blank" rel="noopener" class="bi-link">Portal &nearr;</a>
+                            <a href="https://premiere.vuvaa.com" target="_blank" rel="noopener" class="bi-link">Portal</a>
                         </div>
                     </div>
                 </div>
@@ -212,10 +204,9 @@
                         <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
                             <div>
                                 <div class="bi-provider-name">Datasub247 API</div>
-                                <div class="bi-provider-service">VTU &bull; Bill Payments</div>
+                                <div class="bi-provider-service">VTU and bill payments</div>
                             </div>
                             <span id="datasub-badge" class="bi-status-badge {{ $providerBalances['datasub247']['badge_class'] ?? 'bg-secondary' }}">
-                                <span class="bi-status-dot"></span>
                                 <span class="bi-status-text">{{ $providerBalances['datasub247']['status_label'] ?? 'Unknown' }}</span>
                             </span>
                         </div>
@@ -231,7 +222,7 @@
                             @if(empty($providerBalances['datasub247']['configured']) || ($providerBalances['datasub247']['status'] ?? '') === 'error')
                                 <button type="button" class="btn btn-xs btn-outline-primary py-0 px-2" style="font-size: 11px;" data-bs-toggle="modal" data-bs-target="#editApiKeysModal" data-toggle="modal" data-target="#editApiKeysModal">Configure</button>
                             @endif
-                            <a href="https://datasub247.com" target="_blank" rel="noopener" class="bi-link">Top Up &nearr;</a>
+                            <a href="https://datasub247.com" target="_blank" rel="noopener" class="bi-link">Top Up</a>
                         </div>
                     </div>
                 </div>
@@ -244,13 +235,8 @@
 <div class="bi-panel mb-4">
     <div class="bi-panel-header d-flex justify-content-between align-items-center flex-wrap gap-2 p-3 border-bottom border-white-10">
         <div class="d-flex align-items-center gap-2">
-            <div class="bi-icon-box text-success">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-            </div>
             <div>
-                <h5 class="mb-0 fw-bold text-white">Investment vs. Revenue Analysis</h5>
+                <h5 class="bi-panel-title mb-0">Investment vs. Revenue Analysis</h5>
                 <small class="text-muted">Compare capital & provider API investments against gross sales to calculate net profit & ROI</small>
             </div>
         </div>
@@ -281,7 +267,7 @@
                         @elseif(($investmentStats['auto_fulfillment_cost'] ?? 0) > 0)
                             Est. API fulfillment costs
                         @else
-                            <a href="#" data-bs-toggle="modal" data-bs-target="#editInvestmentModal" data-toggle="modal" data-target="#editInvestmentModal" class="bi-link">Set capital investment &rarr;</a>
+                            <a href="#" data-bs-toggle="modal" data-bs-target="#editInvestmentModal" data-toggle="modal" data-target="#editInvestmentModal" class="bi-link">Set capital investment</a>
                         @endif
                     </div>
                 </div>
@@ -536,14 +522,14 @@
                 <span class="bi-pill bi-pill-success">Live</span>
             </div>
             <div class="bi-value text-white">NGN {{ number_format($stats['total_revenue'] ?? 0, 2) }}</div>
-            <div class="text-muted small mt-1">Service debits & accreditations</div>
+            <div class="text-muted small mt-1">Of which license sales: NGN {{ number_format($revenueBreakdown['categories']['licenses']['total'] ?? 0, 2) }}</div>
         </div>
     </div>
     <div class="col-lg-3 col-sm-6">
         <div class="bi-subcard h-100">
             <div class="d-flex align-items-center justify-content-between mb-2">
                 <span class="bi-label">Total Transactions</span>
-                <a href="{{ route('admin.transactions.index') }}" class="bi-link">View &rarr;</a>
+                <a href="{{ route('admin.transactions.index') }}" class="bi-link">View</a>
             </div>
             <div class="bi-value text-white">{{ number_format($stats['total_transactions'] ?? 0) }}</div>
             <div class="text-muted small mt-1">All platform transactions</div>
@@ -553,17 +539,17 @@
         <div class="bi-subcard h-100">
             <div class="d-flex align-items-center justify-content-between mb-2">
                 <span class="bi-label">Total Users</span>
-                <a href="{{ route('admin.users.index') }}" class="bi-link">Manage &rarr;</a>
+                <a href="{{ route('admin.users.index') }}" class="bi-link">Manage</a>
             </div>
             <div class="bi-value text-white">{{ number_format($stats['total_users'] ?? 0) }}</div>
-            <div class="text-muted small mt-1">{{ number_format($stats['verified_users'] ?? 0) }} verified &middot; {{ number_format($stats['new_users_today'] ?? 0) }} joined today</div>
+            <div class="text-muted small mt-1">{{ number_format($stats['verified_users'] ?? 0) }} verified, {{ number_format($stats['new_users_today'] ?? 0) }} joined today</div>
         </div>
     </div>
     <div class="col-lg-3 col-sm-6">
         <div class="bi-subcard h-100">
             <div class="d-flex align-items-center justify-content-between mb-2">
                 <span class="bi-label">Total Verifications</span>
-                <a href="{{ route('admin.verifications.index') }}" class="bi-link">Records &rarr;</a>
+                <a href="{{ route('admin.verifications.index') }}" class="bi-link">Records</a>
             </div>
             <div class="bi-value text-white">{{ number_format($stats['total_verifications'] ?? 0) }}</div>
             <div class="text-muted small mt-1">All-time identity checks</div>
@@ -602,12 +588,55 @@
     </div>
 </div>
 
+{{-- SECTION: REVENUE BY SOURCE (license sales kept separate from VTU, verification and other sales) --}}
+<div class="bi-panel mb-4">
+    <div class="bi-panel-header d-flex justify-content-between align-items-center flex-wrap gap-2 p-3 border-bottom border-white-10">
+        <div>
+            <h5 class="bi-panel-title mb-0">Revenue by Source</h5>
+            <p class="bi-panel-subtitle mb-0 mt-1">Where the money came from. License sales are counted from license records only, so they never mix with VTU or service sales.</p>
+        </div>
+    </div>
+    <div class="p-3 p-md-4">
+        <div class="bi-source-head">
+            <span>Source</span>
+            <span>Today</span>
+            <span>This month</span>
+            <span>All time</span>
+            <span>Share of revenue</span>
+        </div>
+        @foreach(($revenueBreakdown['categories'] ?? []) as $sourceKey => $source)
+            <div class="bi-source-row">
+                <div class="bi-source-name">
+                    {{ $source['label'] }}
+                    @if($sourceKey === 'licenses')
+                        <span class="bi-source-note">{{ number_format($source['count'] ?? 0) }} licenses sold. Wallet NGN {{ number_format($source['methods']['wallet'] ?? 0, 2) }}, Paystack NGN {{ number_format($source['methods']['paystack'] ?? 0, 2) }}, offline NGN {{ number_format($source['methods']['offline'] ?? 0, 2) }}.</span>
+                    @endif
+                </div>
+                <div class="bi-source-num">NGN {{ number_format($source['today'] ?? 0, 2) }}</div>
+                <div class="bi-source-num">NGN {{ number_format($source['month'] ?? 0, 2) }}</div>
+                <div class="bi-source-num">NGN {{ number_format($source['total'] ?? 0, 2) }}</div>
+                <div class="bi-source-share">
+                    <div class="bi-share-track"><div class="bi-share-fill" style="width: {{ min(100, (float) ($source['share'] ?? 0)) }}%;"></div></div>
+                    <span class="bi-share-pct">{{ number_format((float) ($source['share'] ?? 0), 1) }}%</span>
+                </div>
+            </div>
+        @endforeach
+        <div class="bi-source-row bi-source-total">
+            <div class="bi-source-name">Total revenue</div>
+            <div class="bi-source-num">NGN {{ number_format($revenueBreakdown['totals']['today'] ?? 0, 2) }}</div>
+            <div class="bi-source-num">NGN {{ number_format($revenueBreakdown['totals']['month'] ?? 0, 2) }}</div>
+            <div class="bi-source-num">NGN {{ number_format($revenueBreakdown['totals']['total'] ?? 0, 2) }}</div>
+            <div class="bi-source-share"><span class="bi-share-pct">100%</span></div>
+        </div>
+    </div>
+</div>
+
 {{-- SECTION 3: REVENUE & USER GROWTH CHARTS --}}
 <div class="row g-3 mb-4">
     <div class="col-lg-6">
         <div class="bi-panel h-100">
             <div class="bi-panel-header d-flex justify-content-between align-items-center p-3 border-bottom border-white-10">
-                <h5 class="mb-0 fw-bold text-white">Revenue by Service</h5>
+                <h5 class="bi-panel-title mb-0">Revenue by Service</h5>
                 <span class="text-muted small">Debits & Products</span>
             </div>
             <div class="bi-panel-body p-3">
@@ -620,7 +649,7 @@
                         <div class="small">No service revenue recorded yet</div>
                     </div>
                 @else
-                    <div style="position: relative; height: 280px; width: 100%;">
+                    <div class="bi-chart-box" style="--h: 280px;">
                         <canvas id="revenue-by-service-chart"></canvas>
                     </div>
                 @endif
@@ -630,11 +659,11 @@
     <div class="col-lg-6">
         <div class="bi-panel h-100">
             <div class="bi-panel-header d-flex justify-content-between align-items-center p-3 border-bottom border-white-10">
-                <h5 class="mb-0 fw-bold text-white">User Growth (Last 30 Days)</h5>
+                <h5 class="bi-panel-title mb-0">User Growth (Last 30 Days)</h5>
                 <span class="text-muted small">Daily Signups</span>
             </div>
             <div class="bi-panel-body p-3">
-                <div style="position: relative; height: 280px; width: 100%;">
+                <div class="bi-chart-box" style="--h: 280px;">
                     <canvas id="user-growth-chart"></canvas>
                 </div>
             </div>
@@ -647,11 +676,11 @@
     <div class="col-12">
         <div class="bi-panel">
             <div class="bi-panel-header d-flex justify-content-between align-items-center p-3 border-bottom border-white-10">
-                <h5 class="mb-0 fw-bold text-white">Verification History (Last 30 Days)</h5>
+                <h5 class="bi-panel-title mb-0">Verification History (Last 30 Days)</h5>
                 <span class="text-muted small">Success vs. Failed checks</span>
             </div>
             <div class="bi-panel-body p-3">
-                <div style="position: relative; height: 300px; width: 100%;">
+                <div class="bi-chart-box" style="--h: 300px;">
                     <canvas id="verification-history-chart"></canvas>
                 </div>
             </div>
@@ -663,7 +692,7 @@
 <div class="bi-panel mb-4">
     <div class="bi-panel-header d-flex justify-content-between align-items-center flex-wrap gap-2 p-3 border-bottom border-white-10">
         <div>
-            <h5 class="mb-0 fw-bold text-white">Website Traffic & Traffic Originations</h5>
+            <h5 class="bi-panel-title mb-0">Website Traffic & Traffic Originations</h5>
             <div class="text-muted small">Visitors, referral channels, and landing page discovery</div>
         </div>
         <div class="d-flex gap-2 flex-wrap">
@@ -692,7 +721,7 @@
                             <div class="small">Collecting incoming traffic channels...</div>
                         </div>
                     @else
-                        <div style="position: relative; height: 240px; width: 100%;">
+                        <div class="bi-chart-box" style="--h: 240px;">
                             <canvas id="traffic-origination-chart"></canvas>
                         </div>
                     @endif
@@ -706,7 +735,7 @@
                         <span class="bi-label">Daily Page Views & Unique Visitors</span>
                         <span class="small text-muted">Trends</span>
                     </div>
-                    <div style="position: relative; height: 240px; width: 100%;">
+                    <div class="bi-chart-box" style="--h: 240px;">
                         <canvas id="traffic-timeline-chart"></canvas>
                     </div>
                 </div>
@@ -792,7 +821,7 @@
 <div class="bi-panel mb-4">
     <div class="bi-panel-header d-flex justify-content-between align-items-center flex-wrap gap-2 p-3 border-bottom border-white-10">
         <div>
-            <h5 class="mb-0 fw-bold text-white">Search Keywords & User Intent Analytics</h5>
+            <h5 class="bi-panel-title mb-0">Search Keywords & User Intent Analytics</h5>
             <div class="text-muted small">Search terms entered across Search Hub, portal search bars, and search engine referrals</div>
         </div>
         <div class="d-flex gap-2 flex-wrap">
@@ -876,278 +905,320 @@
 
 @push('styles')
 <style>
-    /* ========================================================
-       Fuwa.NG Un-slopped Business Intelligence Theme Styles
-       ======================================================== */
-    .border-white-10 {
-        border-color: rgba(255, 255, 255, 0.08) !important;
+    /* Hallmark · redesign: full · scope: app screen (admin dashboard) · theme: fuwa-ledger
+       Read: an operator checking money and provider health on a phone, often
+       on a poor connection. The generated look (glass panels, tracked
+       all-caps labels, pill tags, status dots, arrow-glued links) is replaced
+       with flat ledger surfaces, hairline rules, sentence-case labels and the
+       Fuwa brand teal as the single accent. All data, routes, ids and chart
+       wiring are unchanged. */
+    :root {
+        --bi-panel: #0a0f1c;
+        --bi-panel-2: #0d1424;
+        --bi-line: rgba(148, 163, 184, 0.16);
+        --bi-line-strong: rgba(148, 163, 184, 0.32);
+        --bi-ink: #e8eef7;
+        --bi-body: #c3cede;
+        --bi-muted: #8b98ad;
+        --bi-accent: #2dc4af;
+        --bi-good: #34d399;
+        --bi-warn: #fbbf24;
+        --bi-bad: #f87171;
+        --bi-info: #7cc4ff;
+        --bi-radius: 10px;
     }
 
     .bi-panel {
-        background: rgba(15, 23, 42, 0.55);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 16px;
+        background: var(--bi-panel);
+        border: 1px solid var(--bi-line);
+        border-radius: var(--bi-radius);
         overflow: hidden;
-        backdrop-filter: blur(8px);
     }
-
     .bi-panel-header {
-        background: rgba(255, 255, 255, 0.02);
+        background: transparent;
     }
-
-    .bi-icon-box {
-        width: 36px;
-        height: 36px;
-        border-radius: 10px;
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
+    .bi-panel-title {
+        color: var(--bi-ink);
+        font-weight: 650;
+        font-size: 1rem;
+        letter-spacing: 0;
     }
-
-    .bi-provider-card {
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.07);
-        border-radius: 14px;
-        padding: 16px;
-        transition: border-color 0.2s ease, transform 0.2s ease;
-        position: relative;
-        overflow: hidden;
-        min-width: 0;
-    }
-
-    .bi-provider-card:hover {
-        border-color: rgba(255, 255, 255, 0.15);
-    }
-
-    .bi-provider-name {
-        font-weight: 700;
-        font-size: 0.95rem;
-        color: #f8fafc;
-        line-height: 1.25;
-    }
-
-    .bi-provider-service {
-        font-size: 0.72rem;
-        color: #94a3b8;
-        font-weight: 500;
-        margin-top: 2px;
-        letter-spacing: 0.02em;
-    }
-
-    .bi-balance-val {
-        font-size: 1.35rem;
-        font-weight: 800;
-        color: #ffffff;
-        letter-spacing: -0.02em;
-        line-height: 1.2;
+    .bi-panel-subtitle {
+        color: var(--bi-muted);
+        font-size: 0.85rem;
     }
 
     .bi-subcard {
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.07);
-        border-radius: 14px;
-        padding: 16px;
+        background: var(--bi-panel);
+        border: 1px solid var(--bi-line);
+        border-radius: var(--bi-radius);
+        padding: 1rem 1.1rem;
+        height: 100%;
+        transition: border-color 0.15s ease;
     }
-
+    .bi-subcard:hover {
+        border-color: var(--bi-line-strong);
+    }
     .bi-label {
-        font-size: 0.72rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        color: #94a3b8;
-    }
-
-    .bi-value {
-        font-size: 1.35rem;
-        font-weight: 800;
-        letter-spacing: -0.02em;
-        line-height: 1.2;
-    }
-
-    .bi-ratio-panel {
-        background: rgba(255, 255, 255, 0.02);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        border-radius: 12px;
-    }
-
-    .bi-progress-track {
-        height: 10px;
-        background: rgba(255, 255, 255, 0.08);
-        border-radius: 9999px;
-        overflow: hidden;
-    }
-
-    .bi-indicator-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 9999px;
-        display: inline-block;
-    }
-
-    /* Refined Status Pill */
-    .bi-status-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        font-size: 0.70rem;
-        font-weight: 600;
-        padding: 3px 8px;
-        border-radius: 9999px;
-        line-height: 1.25;
-        white-space: nowrap;
-        flex-shrink: 0;
-        border: 1px solid transparent;
-        margin: 0;
-        max-width: 100%;
-        text-overflow: ellipsis;
-        overflow: hidden;
-    }
-
-    .bi-status-dot {
-        width: 6px;
-        height: 6px;
-        border-radius: 9999px;
-        background: currentColor;
-        flex-shrink: 0;
-    }
-
-    .bi-status-badge.bg-success {
-        background: rgba(16, 185, 129, 0.15) !important;
-        border-color: rgba(16, 185, 129, 0.3) !important;
-        color: #34d399 !important;
-    }
-
-    .bi-status-badge.bg-warning,
-    .bi-status-badge.text-dark {
-        background: rgba(245, 158, 11, 0.15) !important;
-        border-color: rgba(245, 158, 11, 0.3) !important;
-        color: #fbbf24 !important;
-    }
-
-    .bi-status-badge.bg-danger {
-        background: rgba(239, 68, 68, 0.15) !important;
-        border-color: rgba(239, 68, 68, 0.3) !important;
-        color: #f87171 !important;
-    }
-
-    .bi-status-badge.bg-secondary {
-        background: rgba(148, 163, 184, 0.12) !important;
-        border-color: rgba(148, 163, 184, 0.25) !important;
-        color: #94a3b8 !important;
-    }
-
-    /* Refined Contextual Pills */
-    .bi-pill {
-        display: inline-flex;
-        align-items: center;
-        font-size: 0.72rem;
-        font-weight: 600;
-        padding: 2px 8px;
-        border-radius: 9999px;
-        line-height: 1.4;
-        margin: 0;
-    }
-
-    .bi-pill-primary {
-        background: rgba(59, 130, 246, 0.15);
-        color: #60a5fa;
-        border: 1px solid rgba(59, 130, 246, 0.25);
-    }
-
-    .bi-pill-success {
-        background: rgba(16, 185, 129, 0.15);
-        color: #34d399;
-        border: 1px solid rgba(16, 185, 129, 0.25);
-    }
-
-    .bi-pill-warning {
-        background: rgba(245, 158, 11, 0.15);
-        color: #fbbf24;
-        border: 1px solid rgba(245, 158, 11, 0.25);
-    }
-
-    .bi-pill-danger {
-        background: rgba(239, 68, 68, 0.15);
-        color: #f87171;
-        border: 1px solid rgba(239, 68, 68, 0.25);
-    }
-
-    .bi-pill-secondary {
-        background: rgba(148, 163, 184, 0.12);
-        color: #94a3b8;
-        border: 1px solid rgba(148, 163, 184, 0.2);
-    }
-
-    /* Keyword Pill */
-    .bi-kw-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 9999px;
-        padding: 4px 12px;
+        color: var(--bi-muted);
         font-size: 0.8rem;
-    }
-
-    .bi-kw-count {
-        background: rgba(59, 130, 246, 0.25);
-        color: #93c5fd;
-        border-radius: 9999px;
-        padding: 1px 6px;
-        font-size: 0.72rem;
-        font-weight: 700;
-    }
-
-    /* Table styles */
-    .bi-table {
-        color: #e2e8f0 !important;
-    }
-
-    .bi-table thead th {
-        font-size: 0.72rem;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        color: #94a3b8;
-        background: rgba(255, 255, 255, 0.02);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-        padding: 10px 12px;
-    }
-
-    .bi-table tbody td {
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-        padding: 10px 12px;
-    }
-
-    .bi-table tbody tr:hover {
-        background: rgba(255, 255, 255, 0.02);
-    }
-
-    .bi-link {
-        color: #60a5fa;
-        text-decoration: none;
-        font-size: 0.75rem;
         font-weight: 500;
-        transition: color 0.15s ease;
+        margin-bottom: 0.3rem;
     }
-
+    .bi-value {
+        color: var(--bi-ink);
+        font-size: 1.3rem;
+        font-weight: 700;
+        line-height: 1.2;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: -0.01em;
+    }
+    .bi-subtext {
+        color: var(--bi-muted);
+        font-size: 0.8rem;
+        margin-top: 0.3rem;
+    }
+    .bi-link {
+        color: var(--bi-accent);
+        font-weight: 600;
+        font-size: 0.82rem;
+        text-decoration: none;
+        white-space: nowrap;
+    }
     .bi-link:hover {
-        color: #93c5fd;
+        color: var(--bi-accent);
         text-decoration: underline;
     }
 
-    /* Dark Modals */
+    /* Pills become plain status words: colour carries the meaning, no chrome. */
+    .bi-pill {
+        background: none;
+        border: none;
+        padding: 0;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--bi-muted);
+        white-space: nowrap;
+    }
+    .bi-pill-blue { color: var(--bi-info); }
+    .bi-pill-green { color: var(--bi-good); }
+    .bi-pill-yellow { color: var(--bi-warn); }
+    .bi-pill-red { color: var(--bi-bad); }
+    .bi-pill-slate { color: var(--bi-muted); }
+    .bi-pill-primary { color: var(--bi-info); }
+    .bi-pill-success { color: var(--bi-good); }
+    .bi-pill-danger { color: var(--bi-bad); }
+    .bi-pill-warning { color: var(--bi-warn); }
+    .bi-pill-secondary { color: var(--bi-muted); }
+
+    .bi-provider-card {
+        background: var(--bi-panel-2);
+        border: 1px solid var(--bi-line);
+        border-radius: var(--bi-radius);
+        padding: 1rem 1.1rem;
+        transition: border-color 0.15s ease;
+    }
+    .bi-provider-card:hover {
+        border-color: var(--bi-line-strong);
+    }
+    .bi-provider-name {
+        color: var(--bi-ink);
+        font-weight: 650;
+        font-size: 0.98rem;
+    }
+    .bi-provider-service {
+        color: var(--bi-muted);
+        font-size: 0.8rem;
+    }
+    .bi-balance-val {
+        color: var(--bi-ink);
+        font-size: 1.45rem;
+        font-weight: 750;
+        line-height: 1.15;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: -0.01em;
+    }
+    .bi-status-badge {
+        background: none !important;
+        border: none;
+        padding: 0;
+        font-size: 0.8rem;
+        font-weight: 650;
+        color: var(--bi-muted);
+        white-space: nowrap;
+    }
+    .bi-status-badge.bg-success { color: var(--bi-good); }
+    .bi-status-badge.bg-warning { color: var(--bi-warn); }
+    .bi-status-badge.bg-danger { color: var(--bi-bad); }
+    .bi-status-badge.bg-info { color: var(--bi-info); }
+    .bi-status-badge.bg-secondary { color: var(--bi-muted); }
+    .bi-status-dot { display: none; }
+
+    .bi-table {
+        color: var(--bi-body);
+        margin-bottom: 0;
+    }
+    .bi-table thead th {
+        color: var(--bi-muted);
+        font-weight: 600;
+        font-size: 0.8rem;
+        border-bottom: 1px solid var(--bi-line);
+        padding: 0.6rem 0.75rem;
+        white-space: nowrap;
+    }
+    .bi-table tbody td {
+        border-color: var(--bi-line);
+        padding: 0.6rem 0.75rem;
+        vertical-align: middle;
+    }
+    .bi-table code {
+        color: var(--bi-accent);
+    }
+
+    .bi-kw-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        background: var(--bi-panel-2);
+        border: 1px solid var(--bi-line);
+        color: var(--bi-body);
+        padding: 0.3rem 0.6rem;
+        border-radius: 8px;
+        font-size: 0.82rem;
+        margin: 0 0.35rem 0.35rem 0;
+    }
+    .bi-kw-count {
+        color: var(--bi-accent);
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+    }
+
     .bi-modal {
-        background: #0f172a !important;
-        border: 1px solid rgba(255, 255, 255, 0.12) !important;
-        border-radius: 16px;
+        background: var(--bi-panel);
+        border: 1px solid var(--bi-line);
+        border-radius: 12px;
+        color: var(--bi-body);
+    }
+    .bi-input {
+        background: var(--bi-panel-2) !important;
+        border: 1px solid var(--bi-line) !important;
+        color: var(--bi-ink) !important;
+        border-radius: 8px !important;
+    }
+    .bi-input:focus {
+        border-color: var(--bi-accent) !important;
+        box-shadow: none !important;
+        outline: 2px solid var(--bi-accent);
+        outline-offset: 1px;
+    }
+
+    .bi-ratio-panel {
+        background: var(--bi-panel-2);
+        border: 1px solid var(--bi-line);
+        border-radius: var(--bi-radius);
+    }
+    .bi-indicator-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 2px;
+        display: inline-block;
+    }
+    .bi-ratio-panel .progress {
+        height: 10px;
+        background: rgba(148, 163, 184, 0.15);
+        border-radius: 5px;
+    }
+    .bi-ratio-panel .progress-bar.bg-primary { background: var(--bi-accent) !important; }
+    .bi-ratio-panel .progress-bar.bg-success { background: var(--bi-good) !important; }
+
+    /* Revenue by Source ledger */
+    .bi-source-head, .bi-source-row {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr 1fr 1.1fr;
+        gap: 0.75rem;
+        align-items: baseline;
+        padding: 0.65rem 0;
+    }
+    .bi-source-head {
+        color: var(--bi-muted);
+        font-size: 0.8rem;
+        font-weight: 600;
+        padding-top: 0;
+    }
+    .bi-source-row {
+        border-top: 1px solid var(--bi-line);
+    }
+    .bi-source-row.bi-source-total {
+        border-top: 1px solid var(--bi-line-strong);
+        font-weight: 700;
+        color: var(--bi-ink);
+    }
+    .bi-source-name {
+        color: var(--bi-ink);
+        font-weight: 650;
+    }
+    .bi-source-note {
+        display: block;
+        color: var(--bi-muted);
+        font-size: 0.8rem;
+        font-weight: 400;
+        margin-top: 0.15rem;
+    }
+    .bi-source-num {
+        color: var(--bi-body);
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+    }
+    .bi-share-track {
+        height: 6px;
+        background: rgba(148, 163, 184, 0.15);
+        border-radius: 3px;
+        overflow: hidden;
+        margin-bottom: 0.25rem;
+    }
+    .bi-share-fill {
+        height: 100%;
+        background: var(--bi-accent);
+        border-radius: 3px;
+    }
+    .bi-share-pct {
+        color: var(--bi-muted);
+        font-size: 0.8rem;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .bi-chart-box {
+        height: var(--h, 280px);
+        position: relative;
+    }
+
+    .bi-panel :focus-visible, .bi-subcard :focus-visible, .bi-provider-card :focus-visible {
+        outline: 2px solid var(--bi-accent);
+        outline-offset: 2px;
     }
 
     @keyframes spin-kf {
         from { transform: rotate(0deg); }
         to { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 767.98px) {
+        .bi-panel-header {
+            flex-direction: column;
+            align-items: flex-start !important;
+        }
+        .bi-value { font-size: 1.15rem; }
+        .bi-balance-val { font-size: 1.3rem; }
+        .bi-chart-box { height: calc(var(--h, 280px) * 0.78); }
+        .bi-source-head { display: none; }
+        .bi-source-row { grid-template-columns: 1fr 1fr 1fr; }
+        .bi-source-name { grid-column: 1 / -1; }
+        .bi-source-share { grid-column: 1 / -1; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        #refresh-spinner-icon { animation: none !important; }
+        .bi-subcard, .bi-provider-card { transition: none; }
     }
 </style>
 @endpush
@@ -1164,12 +1235,12 @@
             // Universal palettes
             var serviceColors = [
                 '#3b82f6', '#10b981', '#06b6d4', '#f59e0b', '#ef4444', 
-                '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#6366f1'
+                '#84cc16', '#ec4899', '#14b8a6', '#f97316', '#2dd4bf'
             ];
 
             var originationColors = [
-                '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', 
-                '#06b6d4', '#ec4899', '#14b8a6', '#6366f1', '#f97316'
+                '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#84cc16', 
+                '#06b6d4', '#ec4899', '#14b8a6', '#2dd4bf', '#f97316'
             ];
 
             // 1. Revenue by Service Chart
@@ -1187,7 +1258,7 @@
                             data: revenueValues,
                             backgroundColor: serviceColors.slice(0, Math.max(revenueValues.length, 1)),
                             borderWidth: 2,
-                            borderColor: '#0f172a'
+                            borderColor: '#0a0f1c'
                         }]
                     },
                     options: {
@@ -1322,7 +1393,7 @@
                             data: trafficOriginValues,
                             backgroundColor: originationColors.slice(0, Math.max(trafficOriginValues.length, 1)),
                             borderWidth: 2,
-                            borderColor: '#0f172a'
+                            borderColor: '#0a0f1c'
                         }]
                     },
                     options: {
@@ -1351,7 +1422,7 @@
                                 label: 'Total Page Views',
                                 data: {!! json_encode($trafficViewsValues) !!},
                                 backgroundColor: 'rgba(99, 102, 241, 0.12)',
-                                borderColor: '#6366f1',
+                                borderColor: '#2dd4bf',
                                 borderWidth: 2,
                                 fill: true,
                                 tension: 0.35,
@@ -1417,7 +1488,7 @@
                         const badgeEl = document.getElementById(badgeId);
                         if (badgeEl) {
                             badgeEl.className = 'bi-status-badge ' + (p.badge_class || 'bg-secondary');
-                            badgeEl.innerHTML = '<span class="bi-status-dot"></span><span class="bi-status-text">' + (p.status_label || 'Unknown') + '</span>';
+                            badgeEl.innerHTML = '<span class="bi-status-text">' + (p.status_label || 'Unknown') + '</span>';
                         }
                         const msgEl = document.getElementById(msgId);
                         if (msgEl) msgEl.innerText = p.message || '';
