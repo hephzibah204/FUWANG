@@ -5,6 +5,7 @@
 @section('content')
 @php
     $stats = $dashboardData['stats'] ?? [];
+    $revenueBreakdown = $dashboardData['revenue_breakdown'] ?? ['categories' => [], 'totals' => []];
     $revenue_by_service = $dashboardData['revenue_by_service'] ?? collect();
     $revenueLabels = $dashboardData['revenueLabels'] ?? [];
     $revenueValues = $dashboardData['revenueValues'] ?? [];

@@ -44,7 +44,11 @@ class DashboardController extends Controller
                 ELSE 0 
             END";
 
+            // License order types are excluded from wallet service revenue:
+            // license money is counted once, from agent_license_transactions
+            // (a wallet license payment leaves BOTH rows and used to double-count).
             $serviceRevenue = (float) Transaction::whereIn(DB::raw('LOWER(status)'), $successfulStatuses)
+                ->where('order_type', 'not like', '%License%')
                 ->where(function ($q) {
                     $q->where('balance_before', '>', DB::raw('balance_after'))
                         ->orWhere(function ($q2) {
@@ -61,7 +65,7 @@ class DashboardController extends Controller
             $agentLicenseRevenue = 0.0;
             try {
                 if (Schema::hasTable('agent_license_transactions')) {
-                    $agentLicenseRevenue = (float) AgentLicenseTransaction::whereIn(DB::raw('LOWER(status)'), ['paid', 'approved', 'success', 'successful'])->sum('amount');
+                    $agentLicenseRevenue = (float) AgentLicenseTransaction::whereIn(DB::raw('LOWER(status)'), ['paid', 'approved', 'success', 'successful', 'completed'])->sum('amount');
                 }
                 if ($agentLicenseRevenue == 0 && Schema::hasTable('enrollment_agents')) {
                     $agentLicenseRevenue = (float) DB::table('enrollment_agents')->where('license_status', 'paid')->sum('license_fee_paid');
@@ -124,8 +128,10 @@ class DashboardController extends Controller
                     ->count(),
             ];
 
-            // Revenue by service
+            // Revenue by service (license rows excluded; the license total
+            // is pushed once below as "Agent Accreditation")
             $revenueByService = Transaction::whereIn(DB::raw('LOWER(status)'), $successfulStatuses)
+                ->where('order_type', 'not like', '%License%')
                 ->where(function ($q) {
                     $q->where('balance_before', '>', DB::raw('balance_after'))
                         ->orWhere(function ($q2) {
@@ -291,8 +297,13 @@ class DashboardController extends Controller
             $totalSearches30d = SearchKeywordLog::where('created_at', '>=', Carbon::now()->subDays(29)->startOfDay())->count();
             $totalSearchesToday = SearchKeywordLog::where('created_at', '>=', $today)->count();
 
+            // Revenue split by source: license sales vs VTU vs verification
+            // vs other platform sales (owner request 2026-11-27)
+            $revenueBreakdown = app(\App\Services\Admin\RevenueBreakdownService::class)->summary();
+
             return [
                 'stats' => $stats,
+                'revenue_breakdown' => $revenueBreakdown,
                 'revenue_by_service' => $revenueByService,
                 'revenueLabels' => $revenueByService->pluck('service')->values()->all(),
                 'revenueValues' => $revenueByService->pluck('total')->map(fn($v) => round((float)$v, 2))->values()->all(),
