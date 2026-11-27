@@ -78,7 +78,7 @@
             <div>
                 @if(!$agent->isLicensePendingReview())
                     <button type="button" class="btn btn-warning text-dark rounded-pill px-4 py-2 fw-bold" data-toggle="modal" data-bs-toggle="modal" data-target="#accreditLicenseModal" data-bs-target="#accreditLicenseModal">
-                        <i class="fa-solid fa-shield-check me-2"></i>Accredit License Now
+                        <i class="fa-solid fa-shield-check me-2"></i>Pay for License Now
                     </button>
                 @else
                     <button type="button" class="btn btn-outline-warning rounded-pill px-4 py-2" data-toggle="modal" data-bs-toggle="modal" data-target="#accreditLicenseModal" data-bs-target="#accreditLicenseModal">
