@@ -63,8 +63,12 @@
                         <p class="text-white-50 mb-0">Your offline transfer / pre-launch payment claim is being verified by the operations desk within 24 hours.</p>
                     @else
                         <div class="d-flex align-items-center gap-2 mb-1">
-                            <span class="badge bg-warning text-dark font-monospace fw-bold">PROMO FEE: ₦{{ number_format($effectiveFee, 2) }}</span>
-                            <span class="badge bg-danger rounded-pill">Promo Ends Oct 10, 2026</span>
+                            @if($isPromo ?? false)
+                                <span class="badge bg-warning text-dark font-monospace fw-bold">PROMO FEE: ₦{{ number_format($effectiveFee, 2) }}</span>
+                                <span class="badge bg-danger rounded-pill">Promo Ends Oct 10, 2026</span>
+                            @else
+                                <span class="badge bg-warning text-dark font-monospace fw-bold">LICENSE FEE: ₦{{ number_format($effectiveFee, 2) }}</span>
+                            @endif
                         </div>
                         <h5 class="text-white fw-bold mb-1">Accredit Your Station License</h5>
                         <p class="text-white-50 mb-0">Pay your station accreditation fee online via Paystack, wallet balance, or submit offline transfer receipt / pre-launch payment proof.</p>
@@ -487,10 +491,25 @@
                 <!-- Promo rate header -->
                 <div class="alert border-0 rounded-3 p-3 mb-4 d-flex align-items-center justify-content-between flex-wrap gap-2" style="background: linear-gradient(135deg, rgba(234, 179, 8, 0.15), rgba(180, 83, 9, 0.25)); border: 1px solid rgba(234, 179, 8, 0.4) !important;">
                     <div>
-                        <span class="badge bg-warning text-dark font-monospace fw-bold mb-1">PROMO RATE: ₦{{ number_format($effectiveFee ?? 100000, 2) }}</span>
-                        <strong class="text-white d-block">Special Enrollment License Promo Ending October 10th, 2026</strong>
+                        @if($isPromo ?? false)
+                            <span class="badge bg-warning text-dark font-monospace fw-bold mb-1">PROMO RATE: ₦{{ number_format($effectiveFee ?? 100000, 2) }}</span>
+                            <strong class="text-white d-block">Special Enrollment License Promo Ending October 10th, 2026</strong>
+                        @else
+                            <span class="badge bg-warning text-dark font-monospace fw-bold mb-1">LICENSE FEE: ₦{{ number_format($effectiveFee ?? 100000, 2) }}</span>
+                            <strong class="text-white d-block">NIN Enrollment Station License</strong>
+                        @endif
                         <small class="text-white-50">Select your preferred payment channel to complete accreditation.</small>
                     </div>
+                </div>
+
+                <!-- Discount code -->
+                <div class="mb-3 p-3 rounded-3" style="background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.18);">
+                    <label for="licenseDiscountCode" class="form-label text-white-50 small fw-bold mb-2"><i class="fa-solid fa-ticket text-warning me-1"></i>Have a discount code?</label>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <input type="text" id="licenseDiscountCode" class="form-control bg-transparent text-white border-secondary text-uppercase" style="max-width: 260px;" placeholder="Enter code e.g. WELCOME10" autocomplete="off">
+                        <button type="button" id="applyDiscountBtn" class="btn btn-outline-warning rounded-pill px-4 fw-bold">Apply</button>
+                    </div>
+                    <div id="discountFeedback" class="small mt-2" style="display: none;"></div>
                 </div>
 
                 <!-- 4 Tabs -->
@@ -539,15 +558,14 @@
                             <div>
                                 <h6 class="text-white fw-bold mb-1"><i class="fa-solid fa-wallet text-info me-2"></i>Pay from Fuwa Wallet</h6>
                                 <p class="text-white-50 small mb-1">Current Wallet Balance: <strong class="text-warning">₦{{ number_format($walletBalance ?? 0, 2) }}</strong>.</p>
-                                @if(($walletBalance ?? 0) < ($effectiveFee ?? 100000))
-                                    <small class="text-danger"><i class="fa-solid fa-circle-exclamation me-1"></i>Insufficient balance. Fund your wallet or pay via Paystack.</small>
-                                @endif
+                                <small class="text-danger" id="walletInsufficientNote" style="{{ ($walletBalance ?? 0) < ($effectiveFee ?? 100000) ? '' : 'display: none;' }}"><i class="fa-solid fa-circle-exclamation me-1"></i>Insufficient balance. Fund your wallet or pay via Paystack.</small>
                             </div>
                             <div>
-                                <form action="{{ route('agent.license.pay_wallet') }}" method="POST" onsubmit="return confirm('Confirm payment of ₦{{ number_format($effectiveFee ?? 100000, 2) }} from your wallet balance?');">
+                                <form action="{{ route('agent.license.pay_wallet') }}" method="POST" id="walletPayForm">
                                     @csrf
-                                    <button type="submit" class="btn btn-info text-dark rounded-pill px-4 py-2 fw-bold" {{ ($walletBalance ?? 0) < ($effectiveFee ?? 100000) ? 'disabled' : '' }}>
-                                        <i class="fa-solid fa-check me-2"></i>Pay ₦{{ number_format($effectiveFee ?? 100000, 2) }}
+                                    <input type="hidden" name="discount_code" id="walletDiscountCode">
+                                    <button type="submit" id="walletPayBtn" class="btn btn-info text-dark rounded-pill px-4 py-2 fw-bold" {{ ($walletBalance ?? 0) < ($effectiveFee ?? 100000) ? 'disabled' : '' }}>
+                                        <i class="fa-solid fa-check me-2"></i>Pay <span id="walletPayAmount">₦{{ number_format($effectiveFee ?? 100000, 2) }}</span>
                                     </button>
                                 </form>
                             </div>
@@ -567,14 +585,27 @@
 
                         <form action="{{ route('agent.license.upload_proof') }}" method="POST" enctype="multipart/form-data">
                             @csrf
+                            <input type="hidden" name="discount_code" id="offlineDiscountCode">
                             <div class="row g-3">
                                 <div class="col-md-6">
                                     <label class="form-label text-white-50 small">Amount Paid (₦)</label>
-                                    <input type="number" step="0.01" name="amount_paid" class="form-control bg-transparent text-white border-secondary" value="{{ $effectiveFee ?? 100000 }}" required>
+                                    <input type="number" step="0.01" name="amount_paid" id="offlineAmountPaid" class="form-control bg-transparent text-white border-secondary" value="{{ $effectiveFee ?? 100000 }}" required>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label text-white-50 small">Bank Reference / Session ID</label>
-                                    <input type="text" name="payment_reference" class="form-control bg-transparent text-white border-secondary" placeholder="e.g. 000013241007..." required>
+                                    <input type="text" name="transaction_reference" class="form-control bg-transparent text-white border-secondary" placeholder="e.g. 000013241007..." required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-white-50 small">Bank You Paid To</label>
+                                    <input type="text" name="bank_name" class="form-control bg-transparent text-white border-secondary" value="{{ $manualFunding->bank_name ?? '' }}" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-white-50 small">Payment Date</label>
+                                    <input type="date" name="payment_date" class="form-control bg-transparent text-white border-secondary" value="{{ date('Y-m-d') }}" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-white-50 small">Depositor Name (optional)</label>
+                                    <input type="text" name="depositor_name" class="form-control bg-transparent text-white border-secondary" placeholder="Name on the transfer">
                                 </div>
                                 <div class="col-12">
                                     <label class="form-label text-white-50 small">Upload Payment Receipt / Proof (PDF, JPG, PNG)</label>
@@ -633,6 +664,142 @@
     </div>
 </div>
 
+<style>
+    /* License modal wiring: the nexus layout ships no Bootstrap JS/CSS, so the
+       modal and its pills are driven by the vanilla script below. */
+    #accreditLicenseModal { display: none; position: fixed; inset: 0; z-index: 1080; overflow-y: auto; padding: 1rem 0.5rem; }
+    #accreditLicenseModal.show { display: block; }
+    #accreditLicenseModal .modal-dialog { max-width: 760px; margin: 1.5rem auto; }
+    #accreditLicenseModal .tab-pane { display: none; }
+    #accreditLicenseModal .tab-pane.active { display: block; }
+    .license-modal-backdrop { position: fixed; inset: 0; background: rgba(2, 6, 17, 0.75); z-index: 1079; }
+    #dashLicensePaymentTabs .nav-link { color: #cbd5e1; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.14); }
+    #dashLicensePaymentTabs .nav-link.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+</style>
+<script>
+window.licenseFee = {{ (float)($effectiveFee ?? 0) }};
+window.licenseWalletBalance = {{ (float)($walletBalance ?? 0) }};
+window.licenseDiscount = null;
+window.fmtLicense = function (n) { return '₦' + Number(n).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+window.currentLicensePayable = function () { return window.licenseDiscount ? window.licenseDiscount.payable : window.licenseFee; };
+window.currentLicenseDiscountCode = function () { return window.licenseDiscount ? window.licenseDiscount.code : ''; };
+
+document.addEventListener('DOMContentLoaded', function () {
+    const modal = document.getElementById('accreditLicenseModal');
+    if (modal) {
+        let backdrop = null;
+        function openModal() {
+            modal.classList.add('show');
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden';
+            backdrop = document.createElement('div');
+            backdrop.className = 'license-modal-backdrop';
+            backdrop.addEventListener('click', closeModal);
+            document.body.appendChild(backdrop);
+        }
+        function closeModal() {
+            modal.classList.remove('show');
+            modal.style.display = 'none';
+            document.body.style.overflow = '';
+            if (backdrop) { backdrop.remove(); backdrop = null; }
+        }
+        document.querySelectorAll('[data-bs-target="#accreditLicenseModal"], [data-target="#accreditLicenseModal"]').forEach(function (btn) {
+            btn.addEventListener('click', function (e) { e.preventDefault(); openModal(); });
+        });
+        modal.querySelectorAll('[data-bs-dismiss="modal"], [data-dismiss="modal"]').forEach(function (btn) {
+            btn.addEventListener('click', closeModal);
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && modal.classList.contains('show')) closeModal();
+        });
+        modal.querySelectorAll('[data-bs-toggle="pill"], [data-toggle="pill"]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                const target = btn.getAttribute('data-bs-target') || btn.getAttribute('data-target');
+                modal.querySelectorAll('[data-bs-toggle="pill"], [data-toggle="pill"]').forEach(function (b) { b.classList.remove('active'); });
+                btn.classList.add('active');
+                modal.querySelectorAll('.tab-pane').forEach(function (p) { p.classList.remove('show', 'active'); });
+                const pane = target ? modal.querySelector(target) : null;
+                if (pane) pane.classList.add('show', 'active');
+            });
+        });
+    }
+
+    const walletForm = document.getElementById('walletPayForm');
+    if (walletForm) {
+        walletForm.addEventListener('submit', function (e) {
+            if (!confirm('Confirm payment of ' + window.fmtLicense(window.currentLicensePayable()) + ' from your wallet balance?')) {
+                e.preventDefault();
+            }
+        });
+    }
+
+    const applyBtn = document.getElementById('applyDiscountBtn');
+    const codeInput = document.getElementById('licenseDiscountCode');
+    const feedback = document.getElementById('discountFeedback');
+
+    function showFeedback(msg, ok) {
+        if (!feedback) return;
+        feedback.style.display = '';
+        feedback.style.color = ok ? '#4ade80' : '#f87171';
+        feedback.textContent = msg;
+    }
+
+    function refreshAmounts() {
+        const payable = window.currentLicensePayable();
+        const payBtn = document.getElementById('dashPaystackPayBtn');
+        if (payBtn && !payBtn.disabled) {
+            payBtn.innerHTML = '<i class="fa-solid fa-lock me-2"></i>Pay ' + window.fmtLicense(payable);
+        }
+        const wAmt = document.getElementById('walletPayAmount');
+        if (wAmt) wAmt.textContent = window.fmtLicense(payable);
+        const enough = window.licenseWalletBalance >= payable;
+        const wBtn = document.getElementById('walletPayBtn');
+        if (wBtn) wBtn.disabled = !enough;
+        const wNote = document.getElementById('walletInsufficientNote');
+        if (wNote) wNote.style.display = enough ? 'none' : '';
+        const wCode = document.getElementById('walletDiscountCode');
+        if (wCode) wCode.value = window.currentLicenseDiscountCode();
+        const oCode = document.getElementById('offlineDiscountCode');
+        if (oCode) oCode.value = window.currentLicenseDiscountCode();
+        const oAmt = document.getElementById('offlineAmountPaid');
+        if (oAmt) oAmt.value = payable;
+    }
+
+    if (applyBtn && codeInput) {
+        applyBtn.addEventListener('click', async function () {
+            const code = codeInput.value.trim();
+            if (!code) { showFeedback('Enter a discount code first.', false); return; }
+            applyBtn.disabled = true;
+            applyBtn.textContent = 'Checking...';
+            try {
+                const res = await fetch("{{ route('agent.license.discount_validate') }}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ discount_code: code })
+                });
+                const data = await res.json();
+                if (data.status) {
+                    window.licenseDiscount = { code: data.code, percent: data.percent, payable: parseFloat(data.payable), discount_amount: parseFloat(data.discount_amount) };
+                    showFeedback(data.message + ' New fee: ' + window.fmtLicense(data.payable), true);
+                } else {
+                    window.licenseDiscount = null;
+                    showFeedback(data.message || 'That code could not be applied.', false);
+                }
+            } catch (err) {
+                window.licenseDiscount = null;
+                showFeedback('Network error while checking the code. Try again.', false);
+            }
+            applyBtn.disabled = false;
+            applyBtn.textContent = 'Apply';
+            refreshAmounts();
+        });
+    }
+});
+</script>
 <script src="https://js.paystack.co/v1/inline.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -651,14 +818,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': '{{ csrf_token() }}',
                     'Accept': 'application/json'
-                }
+                },
+                body: JSON.stringify({ discount_code: window.currentLicenseDiscountCode() })
             });
 
             const data = await initRes.json();
             if (!data.status) {
                 alert(data.message || 'Unable to initialize Paystack checkout.');
                 dashPayBtn.disabled = false;
-                dashPayBtn.innerHTML = '<i class="fa-solid fa-lock me-2"></i>Pay ₦{{ number_format($effectiveFee ?? 100000, 2) }}';
+                dashPayBtn.innerHTML = '<i class="fa-solid fa-lock me-2"></i>Pay ' + window.fmtLicense(window.currentLicensePayable());
                 return;
             }
 
@@ -688,18 +856,18 @@ document.addEventListener('DOMContentLoaded', function() {
                         } else {
                             alert(res.message || 'Payment verification failed.');
                             dashPayBtn.disabled = false;
-                            dashPayBtn.innerHTML = '<i class="fa-solid fa-lock me-2"></i>Pay ₦{{ number_format($effectiveFee ?? 100000, 2) }}';
+                            dashPayBtn.innerHTML = '<i class="fa-solid fa-lock me-2"></i>Pay ' + window.fmtLicense(window.currentLicensePayable());
                         }
                     })
                     .catch(err => {
                         alert('Network error while verifying payment.');
                         dashPayBtn.disabled = false;
-                        dashPayBtn.innerHTML = '<i class="fa-solid fa-lock me-2"></i>Pay ₦{{ number_format($effectiveFee ?? 100000, 2) }}';
+                        dashPayBtn.innerHTML = '<i class="fa-solid fa-lock me-2"></i>Pay ' + window.fmtLicense(window.currentLicensePayable());
                     });
                 },
                 onClose: function() {
                     dashPayBtn.disabled = false;
-                    dashPayBtn.innerHTML = '<i class="fa-solid fa-lock me-2"></i>Pay ₦{{ number_format($effectiveFee ?? 100000, 2) }}';
+                    dashPayBtn.innerHTML = '<i class="fa-solid fa-lock me-2"></i>Pay ' + window.fmtLicense(window.currentLicensePayable());
                 }
             });
 
@@ -707,7 +875,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (err) {
             alert('Error connecting to payment gateway: ' + err.message);
             dashPayBtn.disabled = false;
-            dashPayBtn.innerHTML = '<i class="fa-solid fa-lock me-2"></i>Pay ₦{{ number_format($effectiveFee ?? 100000, 2) }}';
+            dashPayBtn.innerHTML = '<i class="fa-solid fa-lock me-2"></i>Pay ' + window.fmtLicense(window.currentLicensePayable());
         }
     });
 });

@@ -50,10 +50,18 @@
                 </div>
                 <div>
                     <div class="d-flex align-items-center gap-2">
-                        <span class="badge bg-warning text-dark font-monospace fw-bold">ACTIVE PROMO PRICE</span>
+                        @if($isPromo)
+                            <span class="badge bg-warning text-dark font-monospace fw-bold">ACTIVE PROMO PRICE</span>
+                        @else
+                            <span class="badge bg-primary font-monospace fw-bold">CURRENT LICENSE FEE</span>
+                        @endif
                         <span class="text-white fw-bold fs-5">₦{{ number_format($effectiveFee, 2) }}</span>
                     </div>
-                    <small class="text-white-50">Current promo price is active until <strong>October 10th, 2026</strong>. Agents can pay online via Paystack, wallet balance, or offline bank transfer.</small>
+                    @if($isPromo)
+                        <small class="text-white-50">Current promo price is active until <strong>October 10th, 2026</strong>. Agents can pay online via Paystack, wallet balance, or offline bank transfer.</small>
+                    @else
+                        <small class="text-white-50">Agents pay this fee online via Paystack, wallet balance, or offline bank transfer. Change it any time in Pricing Config.</small>
+                    @endif
                 </div>
             </div>
             <div>
@@ -106,6 +114,88 @@
                 <small class="text-white-50 mt-2 d-block">Total registered stations</small>
             </div>
         </div>
+    </div>
+
+    <!-- Discount Codes -->
+    <div class="card border-0 rounded-4 p-4 mb-4" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08) !important;">
+        <div class="d-flex align-items-center justify-content-between mb-1 flex-wrap gap-2">
+            <h5 class="text-white fw-bold mb-0"><i class="fa-solid fa-ticket text-warning me-2"></i>License Discount Codes</h5>
+            <span class="text-white-50 small">Percentage codes agents can apply at license checkout. Each code works <strong class="text-white">once per agent</strong>.</span>
+        </div>
+
+        <form action="{{ route('admin.agents.licenses.discount_codes.store') }}" method="POST" class="row g-2 align-items-end mt-2 mb-3">
+            @csrf
+            <div class="col-md-3">
+                <label class="form-label text-white-50 small mb-1">Code (blank = auto-generate)</label>
+                <input type="text" name="code" class="form-control bg-dark text-white border-secondary text-uppercase" placeholder="e.g. WELCOME10" maxlength="50">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label text-white-50 small mb-1">Discount %</label>
+                <input type="number" name="percent" class="form-control bg-dark text-white border-secondary" min="1" max="90" required placeholder="10">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label text-white-50 small mb-1">Max uses (optional)</label>
+                <input type="number" name="max_uses" class="form-control bg-dark text-white border-secondary" min="1" placeholder="Unlimited">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label text-white-50 small mb-1">Expires (optional)</label>
+                <input type="datetime-local" name="expires_at" class="form-control bg-dark text-white border-secondary">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-warning text-dark fw-bold w-100"><i class="fa-solid fa-plus me-1"></i>Create Code</button>
+            </div>
+        </form>
+        @error('code') <div class="text-danger small mb-2">{{ $message }}</div> @enderror
+        @error('percent') <div class="text-danger small mb-2">{{ $message }}</div> @enderror
+
+        @if(($discountCodes ?? collect())->isNotEmpty())
+            <div class="table-responsive">
+                <table class="table table-dark table-hover align-middle mb-0" style="background: transparent;">
+                    <thead>
+                        <tr class="text-white-50 small">
+                            <th>Code</th>
+                            <th>Discount</th>
+                            <th>Used</th>
+                            <th>Expires</th>
+                            <th>Status</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($discountCodes as $discount)
+                            <tr>
+                                <td><code class="text-warning fw-bold">{{ $discount->code }}</code></td>
+                                <td>{{ $discount->percent }}% off</td>
+                                <td>{{ $discount->redemptions_count }}{{ $discount->max_uses ? ' / ' . $discount->max_uses : '' }}</td>
+                                <td>{{ $discount->expires_at ? $discount->expires_at->format('d M Y, h:i A') : 'Never' }}</td>
+                                <td>
+                                    @if(!$discount->is_active)
+                                        <span class="badge bg-secondary">Inactive</span>
+                                    @elseif($discount->isExpired())
+                                        <span class="badge bg-danger">Expired</span>
+                                    @else
+                                        <span class="badge bg-success">Active</span>
+                                    @endif
+                                </td>
+                                <td class="text-end">
+                                    <form action="{{ route('admin.agents.licenses.discount_codes.toggle', $discount->id) }}" method="POST" class="d-inline">
+                                        @csrf
+                                        <button type="submit" class="btn btn-sm btn-outline-light rounded-pill px-3">{{ $discount->is_active ? 'Deactivate' : 'Activate' }}</button>
+                                    </form>
+                                    <form action="{{ route('admin.agents.licenses.discount_codes.destroy', $discount->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete discount code {{ $discount->code }}? Agents who already redeemed it keep their discount.');">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3"><i class="fa-solid fa-trash"></i></button>
+                                    </form>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @else
+            <p class="text-white-50 small mb-0">No discount codes yet. Create one above and share it with agents.</p>
+        @endif
     </div>
 
     <!-- PENDING REVIEWS QUEUE (If any) -->

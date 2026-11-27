@@ -68,9 +68,10 @@ class AdminAgentLicenseController extends Controller
 
         $effectiveFee = EnrollmentAgent::getEffectiveLicenseFee();
         $isPromo = EnrollmentAgent::isPromoActive();
+        $discountCodes = \App\Models\LicenseDiscountCode::withCount('redemptions')->latest()->get();
 
         return view('admin.agents.licenses.index', compact(
-            'agents', 'counts', 'status', 'search', 'pendingReviews', 'effectiveFee', 'isPromo'
+            'agents', 'counts', 'status', 'search', 'pendingReviews', 'effectiveFee', 'isPromo', 'discountCodes'
         ));
     }
 
@@ -392,6 +393,8 @@ class AdminAgentLicenseController extends Controller
                 ]
             );
 
+            app(\App\Services\LicenseDiscountService::class)->completeForAgent($agent);
+
             if ($agent->company_agent_code) {
                 try {
                     $updateData = [];
@@ -442,6 +445,8 @@ class AdminAgentLicenseController extends Controller
                     'admin_id' => $admin?->id,
                     'notes' => 'Proof rejected: ' . $request->rejection_reason,
                 ]);
+
+            app(\App\Services\LicenseDiscountService::class)->releaseForAgent($agent);
         });
 
         return back()->with('success', "Offline payment proof for {$agent->full_name} rejected. The agent can re-upload fresh proof.");

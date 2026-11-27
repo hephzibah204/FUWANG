@@ -35,7 +35,7 @@ class AgentLicensePaymentTest extends TestCase
         // Default Promo pricing: 100,000 promo price ending October 10th, 2026
         SystemSetting::set('agent_license_promo_price', 100000);
         SystemSetting::set('agent_license_regular_price', 250000);
-        SystemSetting::set('agent_license_promo_ends_at', '2026-10-10 23:59:59');
+        SystemSetting::set('agent_license_promo_ends_at', '2027-10-10 23:59:59');
 
         // Configure Paystack test keys
         config(['services.paystack.public' => 'pk_test_123456789']);

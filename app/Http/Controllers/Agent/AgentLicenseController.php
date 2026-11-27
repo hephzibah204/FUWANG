@@ -7,6 +7,7 @@ use App\Models\AgentLicenseTransaction;
 use App\Models\ApiCenter;
 use App\Models\EnrollmentAgent;
 use App\Models\SystemSetting;
+use App\Services\LicenseDiscountService;
 use App\Services\WalletService;
 use App\Support\PaymentProviderCredentials;
 use Illuminate\Http\Request;
@@ -68,6 +69,67 @@ class AgentLicenseController extends Controller
     }
 
     /**
+     * Resolve an optional discount_code on the request against a fee.
+     *
+     * @return array{discount: ?\App\Models\LicenseDiscountCode, discount_amount: float, payable: float, error: ?string}
+     */
+    private function discountQuoteFor(Request $request, $user, float $fee): array
+    {
+        $code = trim((string) $request->input('discount_code', ''));
+        if ($code === '') {
+            return ['discount' => null, 'discount_amount' => 0.0, 'payable' => $fee, 'error' => null];
+        }
+
+        $service = app(LicenseDiscountService::class);
+        $result = $service->findUsable($code, $user);
+        if (!$result['ok']) {
+            return ['discount' => null, 'discount_amount' => 0.0, 'payable' => $fee, 'error' => $result['message']];
+        }
+
+        $quote = $service->quote($result['discount'], $fee);
+
+        return ['discount' => $result['discount'], 'discount_amount' => $quote['discount_amount'], 'payable' => $quote['payable'], 'error' => null];
+    }
+
+    /**
+     * Validate a discount code for the checkout UI (no reservation is made).
+     */
+    public function validateDiscount(Request $request)
+    {
+        $request->validate([
+            'discount_code' => ['required', 'string', 'max:50'],
+        ]);
+
+        $user = Auth::user();
+        $agent = $user?->enrollmentAgent;
+
+        if (!$agent) {
+            return response()->json(['status' => false, 'message' => 'Agent profile not found.'], 404);
+        }
+
+        if ($agent->isLicensePaid()) {
+            return response()->json(['status' => false, 'message' => 'Agent license is already paid and accredited.'], 422);
+        }
+
+        $fee = EnrollmentAgent::getEffectiveLicenseFee();
+        $dq = $this->discountQuoteFor($request, $user, $fee);
+
+        if ($dq['error']) {
+            return response()->json(['status' => false, 'message' => $dq['error']], 422);
+        }
+
+        return response()->json([
+            'status' => true,
+            'message' => $dq['discount']->percent . '% discount applied: you save ₦' . number_format($dq['discount_amount'], 2) . '.',
+            'code' => $dq['discount']->code,
+            'percent' => $dq['discount']->percent,
+            'fee' => $fee,
+            'discount_amount' => $dq['discount_amount'],
+            'payable' => $dq['payable'],
+        ]);
+    }
+
+    /**
      * Initialize Paystack transaction for Agent License Fee
      */
     public function initPaystack(Request $request)
@@ -84,7 +146,12 @@ class AgentLicenseController extends Controller
         }
 
         $fee = EnrollmentAgent::getEffectiveLicenseFee();
-        $amountKobo = (int) round($fee * 100);
+        $dq = $this->discountQuoteFor($request, $user, $fee);
+        if ($dq['error']) {
+            return response()->json(['status' => false, 'message' => $dq['error']], 422);
+        }
+        $payable = $dq['payable'];
+        $amountKobo = (int) round($payable * 100);
 
         $apiCenter = ApiCenter::first();
         $paystack = PaymentProviderCredentials::paystack($apiCenter);
@@ -99,21 +166,29 @@ class AgentLicenseController extends Controller
         AgentLicenseTransaction::createSafe([
             'agent_id' => $agent->id,
             'user_id' => $user->id,
-            'amount' => $fee,
+            'amount' => $payable,
             'payment_method' => 'paystack',
             'reference' => $reference,
             'status' => 'pending',
             'meta' => [
                 'type' => 'agent_license_fee',
                 'is_promo' => EnrollmentAgent::isPromoActive(),
+                'full_fee' => $fee,
+                'discount_code' => $dq['discount']?->code,
+                'discount_percent' => $dq['discount']?->percent,
+                'discount_amount' => $dq['discount_amount'],
             ],
         ]);
+
+        if ($dq['discount']) {
+            app(LicenseDiscountService::class)->reserve($dq['discount'], $user, $agent, $reference, $dq['discount_amount']);
+        }
 
         return response()->json([
             'status' => true,
             'public_key' => $publicKey,
             'email' => $user->email,
-            'amount' => $fee,
+            'amount' => $payable,
             'amount_kobo' => $amountKobo,
             'reference' => $reference,
             'metadata' => [
@@ -190,8 +265,11 @@ class AgentLicenseController extends Controller
         $amountKobo = (int) ($data['amount'] ?? 0);
         $amount = round($amountKobo / 100, 2);
 
-        $effectiveFee = EnrollmentAgent::getEffectiveLicenseFee();
-        if ($amount < ($effectiveFee - 1)) {
+        // The amount due is the one locked in at checkout init (which already
+        // reflects any discount code), not the fee as it stands now.
+        $initTxn = AgentLicenseTransaction::where('reference', $reference)->first();
+        $expectedFee = $initTxn ? (float) $initTxn->amount : EnrollmentAgent::getEffectiveLicenseFee();
+        if ($amount < ($expectedFee - 1)) {
             return response()->json(['status' => false, 'message' => 'Paid amount does not match required license fee.'], 422);
         }
 
@@ -218,6 +296,8 @@ class AgentLicenseController extends Controller
                     'meta' => $data,
                 ]
             );
+
+            app(LicenseDiscountService::class)->completeByReference($reference);
         });
 
         return response()->json([
@@ -244,11 +324,19 @@ class AgentLicenseController extends Controller
         }
 
         $fee = EnrollmentAgent::getEffectiveLicenseFee();
+        $dq = $this->discountQuoteFor($request, $user, $fee);
+        if ($dq['error']) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['status' => false, 'message' => $dq['error']], 422);
+            }
+            return back()->with('error', $dq['error']);
+        }
+        $payable = $dq['payable'];
         $reference = 'LIC-WLT-' . $agent->id . '-' . date('YmdHis') . '-' . strtoupper(Str::random(4));
 
         $debitResult = $walletService->debit(
             $user,
-            $fee,
+            $payable,
             'Enrollment Station License Fee',
             'LIC',
             $reference
@@ -262,11 +350,11 @@ class AgentLicenseController extends Controller
             return back()->with('error', $msg);
         }
 
-        DB::transaction(function () use ($agent, $user, $fee, $reference) {
+        DB::transaction(function () use ($agent, $user, $fee, $payable, $dq, $reference) {
             $agent->update([
                 'license_status' => 'paid',
-                'license_fee_amount' => $fee,
-                'license_fee_paid' => $fee,
+                'license_fee_amount' => $payable,
+                'license_fee_paid' => $payable,
                 'license_payment_method' => 'wallet',
                 'license_payment_reference' => $reference,
                 'license_paid_at' => now(),
@@ -276,18 +364,26 @@ class AgentLicenseController extends Controller
             AgentLicenseTransaction::createSafe([
                 'agent_id' => $agent->id,
                 'user_id' => $user->id,
-                'amount' => $fee,
+                'amount' => $payable,
                 'payment_method' => 'wallet',
                 'reference' => $reference,
                 'status' => 'completed',
                 'meta' => [
                     'source' => 'wallet_balance',
                     'is_promo' => EnrollmentAgent::isPromoActive(),
+                    'full_fee' => $fee,
+                    'discount_code' => $dq['discount']?->code,
+                    'discount_percent' => $dq['discount']?->percent,
+                    'discount_amount' => $dq['discount_amount'],
                 ],
             ]);
+
+            if ($dq['discount']) {
+                app(LicenseDiscountService::class)->reserve($dq['discount'], $user, $agent, $reference, $dq['discount_amount'], 'completed');
+            }
         });
 
-        $msg = 'Success! License fee of ₦' . number_format($fee, 2) . ' deducted from your wallet. Your station license is now officially accredited.';
+        $msg = 'Success! License fee of ₦' . number_format($payable, 2) . ' deducted from your wallet. Your station license is now officially accredited.';
 
         if ($request->expectsJson() || $request->ajax()) {
             return response()->json(['status' => true, 'message' => $msg, 'redirect' => route('agent.dashboard')]);
@@ -316,6 +412,7 @@ class AgentLicenseController extends Controller
             'transaction_reference' => ['required', 'string', 'max:100'],
             'depositor_name' => ['nullable', 'string', 'max:100'],
             'notes' => ['nullable', 'string', 'max:500'],
+            'discount_code' => ['nullable', 'string', 'max:50'],
         ]);
 
         if ($agent->license_proof_path) {
@@ -326,6 +423,12 @@ class AgentLicenseController extends Controller
         \App\Http\Controllers\Agent\AgentMediaController::mirrorToPublicStorage($proofPath);
         $effectiveFee = EnrollmentAgent::getEffectiveLicenseFee();
 
+        $dq = $this->discountQuoteFor($request, $user, $effectiveFee);
+        if ($dq['error']) {
+            return back()->with('error', $dq['error']);
+        }
+        $offlineRef = 'OFFLINE-' . date('Ymd') . '-' . $agent->id . '-' . strtoupper(Str::random(4));
+
         $meta = [
             'amount_paid' => (float) $request->amount_paid,
             'bank_name' => $request->bank_name,
@@ -334,13 +437,18 @@ class AgentLicenseController extends Controller
             'depositor_name' => $request->depositor_name,
             'notes' => $request->notes,
             'submitted_at' => now()->toIso8601String(),
+            'full_fee' => $effectiveFee,
+            'expected_fee' => $dq['payable'],
+            'discount_code' => $dq['discount']?->code,
+            'discount_percent' => $dq['discount']?->percent,
+            'discount_amount' => $dq['discount_amount'],
         ];
 
-        DB::transaction(function () use ($agent, $user, $request, $proofPath, $meta, $effectiveFee) {
+        DB::transaction(function () use ($agent, $user, $request, $proofPath, $meta, $dq, $offlineRef) {
             $agent->update([
                 'license_status' => 'pending_review',
                 'license_payment_method' => 'offline_proof',
-                'license_fee_amount' => $effectiveFee,
+                'license_fee_amount' => $dq['payable'],
                 'license_proof_path' => $proofPath,
                 'license_payment_reference' => $request->transaction_reference,
                 'license_proof_meta' => $meta,
@@ -352,13 +460,17 @@ class AgentLicenseController extends Controller
                 'user_id' => $user->id,
                 'amount' => (float) $request->amount_paid,
                 'payment_method' => 'offline_proof',
-                'reference' => 'OFFLINE-' . date('Ymd') . '-' . $agent->id . '-' . strtoupper(Str::random(4)),
+                'reference' => $offlineRef,
                 'gateway_reference' => $request->transaction_reference,
                 'proof_path' => $proofPath,
                 'status' => 'pending',
                 'meta' => $meta,
                 'notes' => $request->notes,
             ]);
+
+            if ($dq['discount']) {
+                app(LicenseDiscountService::class)->reserve($dq['discount'], $user, $agent, $offlineRef, $dq['discount_amount']);
+            }
         });
 
         return back()->with('success', 'Offline payment proof of ₦' . number_format((float)$request->amount_paid, 2) . ' submitted successfully! Admin will verify and accredit your station license within 24 hours.');

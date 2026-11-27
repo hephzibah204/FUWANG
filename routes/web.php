@@ -172,6 +172,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Station License Accreditation Routes
         Route::prefix('license')->name('license.')->group(function () {
             Route::get('/info', [App\Http\Controllers\Agent\AgentLicenseController::class, 'getLicenseInfo'])->name('info');
+            Route::post('/discount/validate', [App\Http\Controllers\Agent\AgentLicenseController::class, 'validateDiscount'])->name('discount_validate');
             Route::post('/paystack/init', [App\Http\Controllers\Agent\AgentLicenseController::class, 'initPaystack'])->name('paystack_init');
             Route::post('/paystack/verify', [App\Http\Controllers\Agent\AgentLicenseController::class, 'verifyPaystack'])->name('paystack_verify');
             Route::post('/wallet/pay', [App\Http\Controllers\Agent\AgentLicenseController::class, 'payWithWallet'])->name('pay_wallet');
@@ -830,6 +831,9 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
                     Route::post('/{id}/approve-proof', [App\Http\Controllers\Admin\AdminAgentLicenseController::class, 'approveProof'])->name('approve_proof');
                     Route::post('/{id}/reject-proof', [App\Http\Controllers\Admin\AdminAgentLicenseController::class, 'rejectProof'])->name('reject_proof');
                     Route::post('/{id}/revoke', [App\Http\Controllers\Admin\AdminAgentLicenseController::class, 'revoke'])->name('revoke');
+                    Route::post('/discount-codes', [App\Http\Controllers\Admin\AdminLicenseDiscountController::class, 'store'])->name('discount_codes.store');
+                    Route::post('/discount-codes/{codeId}/toggle', [App\Http\Controllers\Admin\AdminLicenseDiscountController::class, 'toggle'])->name('discount_codes.toggle');
+                    Route::delete('/discount-codes/{codeId}', [App\Http\Controllers\Admin\AdminLicenseDiscountController::class, 'destroy'])->name('discount_codes.destroy');
                 });
 
                 // Agent Issues Management
