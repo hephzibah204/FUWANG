@@ -826,6 +826,7 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
                 // Station Licenses Desk & Management
                 Route::prefix('licenses')->name('licenses.')->group(function () {
                     Route::get('/', [App\Http\Controllers\Admin\AdminAgentLicenseController::class, 'index'])->name('index');
+                    Route::get('/transaction-lookup', [App\Http\Controllers\Admin\AdminAgentLicenseController::class, 'transactionLookup'])->name('txn_lookup');
                     Route::post('/{id}/mark-paid', [App\Http\Controllers\Admin\AdminAgentLicenseController::class, 'markPaid'])->name('mark_paid');
                     Route::post('/{id}/update', [App\Http\Controllers\Admin\AdminAgentLicenseController::class, 'update'])->name('update');
                     Route::post('/{id}/approve-proof', [App\Http\Controllers\Admin\AdminAgentLicenseController::class, 'approveProof'])->name('approve_proof');

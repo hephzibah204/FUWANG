@@ -4,12 +4,15 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AgentLicenseTransaction;
+use App\Models\ApiCenter;
 use App\Models\EnrollmentAgent;
 use App\Models\PreApprovedAgent;
+use App\Support\PaymentProviderCredentials;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
@@ -70,8 +73,110 @@ class AdminAgentLicenseController extends Controller
         $isPromo = EnrollmentAgent::isPromoActive();
         $discountCodes = \App\Models\LicenseDiscountCode::withCount('redemptions')->latest()->get();
 
+        // Paystack transaction IDs for the agents on this page, so an admin can
+        // match a payment on the Paystack dashboard during a dispute.
+        $paystackTxnIds = AgentLicenseTransaction::whereIn('agent_id', $agents->pluck('id'))
+            ->where('payment_method', 'paystack')
+            ->whereNotNull('gateway_reference')
+            ->latest()
+            ->get()
+            ->unique('agent_id')
+            ->mapWithKeys(fn ($txn) => [$txn->agent_id => $txn->gateway_reference]);
+
+        // Completed license purchases per agent on this page (agents may hold
+        // more than one license).
+        $licenseCounts = AgentLicenseTransaction::whereIn('agent_id', $agents->pluck('id'))
+            ->where('status', 'completed')
+            ->selectRaw('agent_id, COUNT(*) as total')
+            ->groupBy('agent_id')
+            ->pluck('total', 'agent_id');
+
         return view('admin.agents.licenses.index', compact(
-            'agents', 'counts', 'status', 'search', 'pendingReviews', 'effectiveFee', 'isPromo', 'discountCodes'
+            'agents', 'counts', 'status', 'search', 'pendingReviews', 'effectiveFee', 'isPromo', 'discountCodes', 'paystackTxnIds', 'licenseCounts'
+        ));
+    }
+
+    /**
+     * Dispute lookup (owner request 2026-11-27): the admin pastes a Paystack
+     * transaction number, session ID or reference and sees Fuwa's license
+     * record side by side with Paystack's own record for the same payment.
+     */
+    public function transactionLookup(Request $request)
+    {
+        $query = trim((string) $request->query('q', ''));
+        $local = null;
+        $agent = null;
+        $paystack = null;
+        $paystackError = null;
+        $verdict = null;
+        $verdictNotes = [];
+
+        if ($query !== '') {
+            $local = AgentLicenseTransaction::with(['agent', 'user'])
+                ->where('reference', $query)
+                ->orWhere('gateway_reference', $query)
+                ->latest()
+                ->first();
+            if ($local) {
+                $agent = $local->agent;
+            }
+            if (!$agent) {
+                $agent = EnrollmentAgent::with('user')->where('license_payment_reference', $query)->first();
+            }
+
+            $creds = PaymentProviderCredentials::paystack(ApiCenter::first());
+            $secret = $creds['secret_key'] ?? null;
+
+            if (!$secret) {
+                $paystackError = 'Paystack secret key is not configured, so the live Paystack record cannot be loaded.';
+            } else {
+                try {
+                    if ($local && $local->payment_method === 'paystack' && $local->reference) {
+                        $url = 'https://api.paystack.co/transaction/verify/' . urlencode($local->reference);
+                    } elseif (ctype_digit($query)) {
+                        $url = 'https://api.paystack.co/transaction/' . $query;
+                    } else {
+                        $url = 'https://api.paystack.co/transaction/verify/' . urlencode($query);
+                    }
+
+                    $res = Http::timeout(30)
+                        ->withHeaders(['Authorization' => 'Bearer ' . $secret])
+                        ->get($url);
+                    $json = $res->json();
+
+                    if ($res->successful() && ($json['status'] ?? false) && !empty($json['data'])) {
+                        $paystack = $json['data'];
+                    } else {
+                        $paystackError = $json['message'] ?? 'Paystack has no transaction with that identifier.';
+                    }
+                } catch (\Throwable $e) {
+                    $paystackError = 'Could not reach Paystack just now. Try again shortly.';
+                }
+            }
+
+            if ($local && $paystack) {
+                $paystackAmount = round(((int) ($paystack['amount'] ?? 0)) / 100, 2);
+                if (abs($paystackAmount - (float) $local->amount) >= 1) {
+                    $verdictNotes[] = 'Amount differs: Fuwa recorded ₦' . number_format((float) $local->amount, 2) . ' but Paystack shows ₦' . number_format($paystackAmount, 2) . '.';
+                }
+                if (strtolower((string) ($paystack['status'] ?? '')) !== 'success') {
+                    $verdictNotes[] = 'Paystack status is "' . ($paystack['status'] ?? 'unknown') . '", not success.';
+                }
+                if ($local->status !== 'completed') {
+                    $verdictNotes[] = 'Fuwa transaction status is "' . $local->status . '", not completed.';
+                }
+                $verdict = $verdictNotes ? 'mismatch' : 'match';
+            } elseif ($paystack) {
+                $verdict = 'paystack_only';
+            } elseif ($local || $agent) {
+                $verdict = 'fuwa_only';
+            } else {
+                $verdict = 'not_found';
+            }
+        }
+
+        return view('admin.agents.licenses.lookup', compact(
+            'query', 'local', 'agent', 'paystack', 'paystackError', 'verdict', 'verdictNotes'
         ));
     }
 
@@ -114,7 +219,7 @@ class AdminAgentLicenseController extends Controller
             $agent->update([
                 'license_status' => $method === 'waived' ? 'waived' : 'paid',
                 'license_fee_amount' => $feeAmount,
-                'license_fee_paid' => $feeAmount,
+                'license_fee_paid' => (float) ($agent->license_fee_paid ?? 0) + $feeAmount,
                 'license_payment_method' => $method,
                 'license_payment_reference' => $ref,
                 'license_paid_at' => $paymentDate,
@@ -368,10 +473,20 @@ class AdminAgentLicenseController extends Controller
         AgentLicenseTransaction::ensureSchemaIntegrity();
         PreApprovedAgent::ensureSchemaIntegrity();
 
-        DB::transaction(function () use ($agent, $admin, $amount, $reference, $request) {
+        // Approving a proof for an additional license adds to the total paid;
+        // re-approving the same proof must not count it twice.
+        $alreadyCounted = AgentLicenseTransaction::where('agent_id', $agent->id)
+            ->where('gateway_reference', $agent->license_payment_reference)
+            ->where('status', 'completed')
+            ->exists();
+        $newTotalPaid = $alreadyCounted
+            ? (float) ($agent->license_fee_paid ?? 0)
+            : (float) ($agent->license_fee_paid ?? 0) + $amount;
+
+        DB::transaction(function () use ($agent, $admin, $amount, $reference, $request, $newTotalPaid) {
             $agent->update([
                 'license_status' => 'paid',
-                'license_fee_paid' => $amount,
+                'license_fee_paid' => $newTotalPaid,
                 'license_verified_by' => $admin?->id,
                 'license_verified_at' => now(),
                 'license_paid_at' => now(),
@@ -428,9 +543,15 @@ class AdminAgentLicenseController extends Controller
         $agent = EnrollmentAgent::findOrFail($id);
         $admin = Auth::guard('admin')->user();
 
-        DB::transaction(function () use ($agent, $admin, $request) {
+        // Rejecting a proof for an ADDITIONAL license must not strip an
+        // agent who already holds a paid license back to unpaid.
+        $restoredStatus = AgentLicenseTransaction::where('agent_id', $agent->id)
+            ->where('status', 'completed')
+            ->exists() ? 'paid' : 'unpaid';
+
+        DB::transaction(function () use ($agent, $admin, $request, $restoredStatus) {
             $agent->update([
-                'license_status' => 'unpaid',
+                'license_status' => $restoredStatus,
                 'license_rejection_reason' => $request->rejection_reason,
                 'license_verified_by' => $admin?->id,
                 'license_verified_at' => now(),

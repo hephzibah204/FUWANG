@@ -69,6 +69,22 @@ class AgentLicenseController extends Controller
     }
 
     /**
+     * License payment requires all required documents first (owner request
+     * 2026-11-27): Utility Bill + Passport Picture from onboarding.
+     */
+    private function documentGateMessage(EnrollmentAgent $agent): ?string
+    {
+        $missing = $agent->missingRequiredDocuments();
+        if ($missing === []) {
+            return null;
+        }
+
+        return 'You must upload all required documents before paying for your license. Missing: '
+            . implode(', ', $missing)
+            . '. Upload them on your agent onboarding page, then try again.';
+    }
+
+    /**
      * Resolve an optional discount_code on the request against a fee.
      *
      * @return array{discount: ?\App\Models\LicenseDiscountCode, discount_amount: float, payable: float, error: ?string}
@@ -107,8 +123,8 @@ class AgentLicenseController extends Controller
             return response()->json(['status' => false, 'message' => 'Agent profile not found.'], 404);
         }
 
-        if ($agent->isLicensePaid()) {
-            return response()->json(['status' => false, 'message' => 'Agent license is already paid and accredited.'], 422);
+        if ($gate = $this->documentGateMessage($agent)) {
+            return response()->json(['status' => false, 'message' => $gate], 422);
         }
 
         $fee = EnrollmentAgent::getEffectiveLicenseFee();
@@ -141,8 +157,8 @@ class AgentLicenseController extends Controller
             return response()->json(['status' => false, 'message' => 'Enrollment Agent profile not found.'], 404);
         }
 
-        if ($agent->isLicensePaid()) {
-            return response()->json(['status' => false, 'message' => 'Agent license is already paid and accredited.'], 422);
+        if ($gate = $this->documentGateMessage($agent)) {
+            return response()->json(['status' => false, 'message' => $gate], 422);
         }
 
         $fee = EnrollmentAgent::getEffectiveLicenseFee();
@@ -229,8 +245,8 @@ class AgentLicenseController extends Controller
 
         $reference = trim((string) $request->reference);
 
-        if ($agent->isLicensePaid()) {
-            return response()->json(['status' => true, 'message' => 'License already accredited.', 'redirect' => route('agent.dashboard')]);
+        if (AgentLicenseTransaction::where('reference', $reference)->where('status', 'completed')->exists()) {
+            return response()->json(['status' => true, 'message' => 'This license payment was already confirmed.', 'redirect' => route('agent.dashboard')]);
         }
 
         $apiCenter = ApiCenter::first();
@@ -273,11 +289,12 @@ class AgentLicenseController extends Controller
             return response()->json(['status' => false, 'message' => 'Paid amount does not match required license fee.'], 422);
         }
 
-        DB::transaction(function () use ($agent, $user, $amount, $reference, $data) {
+        $previousPaid = (float) ($agent->license_fee_paid ?? 0);
+        DB::transaction(function () use ($agent, $user, $amount, $reference, $data, $previousPaid) {
             $agent->update([
                 'license_status' => 'paid',
                 'license_fee_amount' => $amount,
-                'license_fee_paid' => $amount,
+                'license_fee_paid' => $previousPaid + $amount,
                 'license_payment_method' => 'paystack',
                 'license_payment_reference' => $reference,
                 'license_paid_at' => now(),
@@ -319,8 +336,11 @@ class AgentLicenseController extends Controller
             return response()->json(['status' => false, 'message' => 'Agent profile not found.'], 404);
         }
 
-        if ($agent->isLicensePaid()) {
-            return response()->json(['status' => false, 'message' => 'Agent license is already accredited.'], 422);
+        if ($gate = $this->documentGateMessage($agent)) {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['status' => false, 'message' => $gate], 422);
+            }
+            return back()->with('error', $gate);
         }
 
         $fee = EnrollmentAgent::getEffectiveLicenseFee();
@@ -350,11 +370,12 @@ class AgentLicenseController extends Controller
             return back()->with('error', $msg);
         }
 
-        DB::transaction(function () use ($agent, $user, $fee, $payable, $dq, $reference) {
+        $previousPaid = (float) ($agent->license_fee_paid ?? 0);
+        DB::transaction(function () use ($agent, $user, $fee, $payable, $dq, $reference, $previousPaid) {
             $agent->update([
                 'license_status' => 'paid',
                 'license_fee_amount' => $payable,
-                'license_fee_paid' => $payable,
+                'license_fee_paid' => $previousPaid + $payable,
                 'license_payment_method' => 'wallet',
                 'license_payment_reference' => $reference,
                 'license_paid_at' => now(),
@@ -414,6 +435,10 @@ class AgentLicenseController extends Controller
             'notes' => ['nullable', 'string', 'max:500'],
             'discount_code' => ['nullable', 'string', 'max:50'],
         ]);
+
+        if ($gate = $this->documentGateMessage($agent)) {
+            return back()->with('error', $gate);
+        }
 
         if ($agent->license_proof_path) {
             Storage::disk('public')->delete($agent->license_proof_path);

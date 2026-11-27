@@ -62,12 +62,14 @@ class AgentDashboardController extends Controller
         $manualFunding = \Illuminate\Support\Facades\DB::table('manual_funding')->first();
         $walletBalance = $user->wallet_balance;
         $paystackKey = \App\Support\PaymentProviderCredentials::paystack()['public_key'];
+        $missingDocuments = $agent->missingRequiredDocuments();
 
         return view('agent.dashboard', compact(
             'agent', 'leaderboard', 'mvaAgent', 'broadcasts',
             'monthlyTarget', 'targetProgress', 'tierInfo', 'healthScore',
             'supportPhone', 'supportEmail', 'coordinatorName', 'whatsappUrl',
-            'effectiveFee', 'isPromo', 'promoEndsAt', 'manualFunding', 'walletBalance', 'paystackKey'
+            'effectiveFee', 'isPromo', 'promoEndsAt', 'manualFunding', 'walletBalance', 'paystackKey',
+            'missingDocuments'
         ));
     }
 

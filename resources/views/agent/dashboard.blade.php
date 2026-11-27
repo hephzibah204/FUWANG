@@ -72,17 +72,49 @@
                         </div>
                         <h5 class="text-white fw-bold mb-1">Accredit Your Station License</h5>
                         <p class="text-white-50 mb-0">Pay your station accreditation fee online via Paystack, wallet balance, or submit offline transfer receipt / pre-launch payment proof.</p>
+                        @if(!empty($missingDocuments ?? []))
+                            <p class="text-warning mb-0 mt-2"><i class="fa-solid fa-triangle-exclamation me-1"></i><strong>Documents required first:</strong> upload your {{ implode(' and ', $missingDocuments) }} before you can pay for your license.</p>
+                        @endif
                     @endif
                 </div>
             </div>
             <div>
-                @if(!$agent->isLicensePendingReview())
+                @if(!empty($missingDocuments ?? []))
+                    <a href="{{ route('agent.onboarding.index') }}" class="btn btn-warning text-dark rounded-pill px-4 py-2 fw-bold">
+                        <i class="fa-solid fa-upload me-2"></i>Upload Required Documents
+                    </a>
+                @elseif(!$agent->isLicensePendingReview())
                     <button type="button" class="btn btn-warning text-dark rounded-pill px-4 py-2 fw-bold" data-toggle="modal" data-bs-toggle="modal" data-target="#accreditLicenseModal" data-bs-target="#accreditLicenseModal">
                         <i class="fa-solid fa-shield-check me-2"></i>Pay for License Now
                     </button>
                 @else
                     <button type="button" class="btn btn-outline-warning rounded-pill px-4 py-2" data-toggle="modal" data-bs-toggle="modal" data-target="#accreditLicenseModal" data-bs-target="#accreditLicenseModal">
                         <i class="fa-solid fa-eye me-2"></i>View / Update Claim
+                    </button>
+                @endif
+            </div>
+        </div>
+    @else
+        <!-- Already licensed: show holdings and allow buying additional licenses -->
+        <div class="alert border-0 rounded-4 p-4 mb-4 d-flex align-items-center justify-content-between flex-wrap gap-3" style="background: linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(21, 128, 61, 0.25)); border: 1px solid rgba(34, 197, 94, 0.4) !important;">
+            <div class="d-flex align-items-center gap-3">
+                <div class="rounded-circle p-3 text-center" style="background: rgba(34, 197, 94, 0.3); width: 54px; height: 54px;">
+                    <i class="fa-solid fa-certificate text-success fa-xl"></i>
+                </div>
+                <div>
+                    <span class="badge bg-success font-monospace fw-bold mb-1">STATION LICENSE ACTIVE</span>
+                    <h5 class="text-white fw-bold mb-1">You Hold {{ $agent->licensesOwned() }} Station {{ $agent->licensesOwned() === 1 ? 'License' : 'Licenses' }}</h5>
+                    <p class="text-white-50 mb-0">Need a license for another station or terminal? You can purchase an additional license at ₦{{ number_format($effectiveFee, 2) }}.</p>
+                </div>
+            </div>
+            <div>
+                @if(!empty($missingDocuments ?? []))
+                    <a href="{{ route('agent.onboarding.index') }}" class="btn btn-warning text-dark rounded-pill px-4 py-2 fw-bold">
+                        <i class="fa-solid fa-upload me-2"></i>Upload Required Documents
+                    </a>
+                @else
+                    <button type="button" class="btn btn-success rounded-pill px-4 py-2 fw-bold" data-toggle="modal" data-bs-toggle="modal" data-target="#accreditLicenseModal" data-bs-target="#accreditLicenseModal">
+                        <i class="fa-solid fa-plus me-2"></i>Pay for Another License
                     </button>
                 @endif
             </div>
@@ -502,6 +534,12 @@
                     </div>
                 </div>
 
+                @if(!empty($missingDocuments ?? []))
+                    <div class="alert border-0 rounded-3 p-3 mb-3" style="background: rgba(234,179,8,0.15); color: #fde68a;">
+                        <i class="fa-solid fa-triangle-exclamation me-1"></i><strong>Documents required first:</strong> you must upload your {{ implode(' and ', $missingDocuments) }} before paying for a license.
+                        <a href="{{ route('agent.onboarding.index') }}" class="text-warning fw-bold text-decoration-underline">Upload them now</a>
+                    </div>
+                @endif
                 <!-- Discount code -->
                 <div class="mb-3 p-3 rounded-3" style="background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.18);">
                     <label for="licenseDiscountCode" class="form-label text-white-50 small fw-bold mb-2"><i class="fa-solid fa-ticket text-warning me-1"></i>Have a discount code?</label>

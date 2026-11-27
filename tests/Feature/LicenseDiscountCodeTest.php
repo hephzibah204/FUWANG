@@ -49,6 +49,8 @@ class LicenseDiscountCodeTest extends TestCase
         $this->agent = EnrollmentAgent::create([
             'user_id' => $this->agentUser->id,
             'full_name' => 'Discount Testing Agent',
+            'utility_bill_path' => 'agent_kyc/test-utility-bill.pdf',
+            'picture_path' => 'agent_kyc/test-passport.jpg',
             'phone_number' => '08099887766',
             'residential_address' => 'Sample Residential 1',
             'office_address' => 'Sample Office 1',
@@ -80,6 +82,8 @@ class LicenseDiscountCodeTest extends TestCase
         $agent = EnrollmentAgent::create([
             'user_id' => $user->id,
             'full_name' => 'Second Agent',
+            'utility_bill_path' => 'agent_kyc/test-utility-bill.pdf',
+            'picture_path' => 'agent_kyc/test-passport.jpg',
             'phone_number' => '08011112222',
             'residential_address' => 'Sample Residential 2',
             'office_address' => 'Sample Office 2',

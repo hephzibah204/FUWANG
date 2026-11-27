@@ -55,6 +55,8 @@ class AgentLicensePaymentTest extends TestCase
         $this->agent = EnrollmentAgent::create([
             'user_id' => $this->agentUser->id,
             'full_name' => 'License Testing Agent',
+            'utility_bill_path' => 'agent_kyc/test-utility-bill.pdf',
+            'picture_path' => 'agent_kyc/test-passport.jpg',
             'phone_number' => '08099887766',
             'residential_address' => 'Sample Residential 1',
             'office_address' => 'Sample Office 1',
@@ -183,6 +185,8 @@ class AgentLicensePaymentTest extends TestCase
         $poorAgent = EnrollmentAgent::create([
             'user_id' => $poorUser->id,
             'full_name' => 'Poor Agent',
+            'utility_bill_path' => 'agent_kyc/test-utility-bill.pdf',
+            'picture_path' => 'agent_kyc/test-passport.jpg',
             'phone_number' => '08011223344',
             'residential_address' => 'Sample Residential 2',
             'office_address' => 'Sample Office 2',

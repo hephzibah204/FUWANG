@@ -97,6 +97,46 @@ class EnrollmentAgent extends Model
         return in_array($this->license_status, ['paid', 'waived'], true);
     }
 
+    /**
+     * How many station licenses this agent holds: one per completed license
+     * transaction (agents may buy more than one license, owner request
+     * 2026-11-27). Falls back to 1 for legacy paid agents with no
+     * transaction rows.
+     */
+    public function licensesOwned(): int
+    {
+        $completed = AgentLicenseTransaction::where('agent_id', $this->id)
+            ->where('status', 'completed')
+            ->count();
+
+        return max($completed, $this->isLicensePaid() ? 1 : 0);
+    }
+
+    /**
+     * The documents an agent must upload before paying for a license
+     * (owner request 2026-11-27): the same pair the onboarding portal
+     * marks "* Required" and compliance acceptance already demands.
+     *
+     * @return string[] labels of the documents still missing
+     */
+    public function missingRequiredDocuments(): array
+    {
+        $missing = [];
+        if (empty($this->utility_bill_path)) {
+            $missing[] = 'Utility Bill';
+        }
+        if (empty($this->picture_path)) {
+            $missing[] = 'Passport Picture';
+        }
+
+        return $missing;
+    }
+
+    public function hasAllRequiredDocuments(): bool
+    {
+        return $this->missingRequiredDocuments() === [];
+    }
+
     public function isLicensePendingReview(): bool
     {
         return $this->license_status === 'pending_review';

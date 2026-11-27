@@ -23,6 +23,9 @@
             <a href="{{ route('admin.agents.index') }}" class="btn btn-outline-light rounded-pill fw-bold">
                 <i class="fa-solid fa-users me-1"></i>All Agents
             </a>
+            <a href="{{ route('admin.agents.licenses.txn_lookup') }}" class="btn btn-outline-info rounded-pill fw-bold">
+                <i class="fa-solid fa-magnifying-glass-dollar me-1"></i>Match a Transaction
+            </a>
             <a href="{{ route('admin.settings.index') }}#tab-pricing" class="btn btn-outline-warning rounded-pill fw-bold">
                 <i class="fa-solid fa-gear me-1"></i>Pricing Config
             </a>
@@ -417,6 +420,12 @@
                                 @if($agent->license_fee_paid !== null)
                                     <strong class="text-white">₦{{ number_format((float)$agent->license_fee_paid, 2) }}</strong>
                                     <br><small class="text-white-50 font-monospace">{{ $agent->license_payment_reference ?: '-' }}</small>
+                                    @if(isset($paystackTxnIds[$agent->id]))
+                                        <br><small class="text-warning font-monospace">Paystack ID: {{ $paystackTxnIds[$agent->id] }}</small>
+                                    @endif
+                                    @if(($licenseCounts[$agent->id] ?? 0) > 1)
+                                        <br><small class="text-success fw-bold">{{ $licenseCounts[$agent->id] }} licenses held</small>
+                                    @endif
                                 @else
                                     <span class="text-white-50 small">-</span>
                                 @endif
