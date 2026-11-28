@@ -30,14 +30,14 @@ class AgentOnboardingInstructionsController extends Controller
 
         if (!$agent->isLicensePaid()) {
             return redirect()->route('agent.dashboard')
-                ->with('info', 'Pay for your station license first; your onboarding instructions unlock immediately after payment.');
+                ->with('info', 'Pay for your NIN license first; your onboarding instructions unlock immediately after payment.');
         }
 
         $supportPhone = (string) (SystemSetting::get('agent_support_phone') ?: SystemSetting::get('whatsapp_number') ?: '2348000000000');
         $supportEmail = (string) SystemSetting::get('agent_support_email', 'support@fuwa.ng');
         $coordinatorName = data_get($agent->meta, 'coordinator_name')
             ?: ($agent->state ? $agent->state . ' State Desk Coordinator' : 'National Operations Desk');
-        $prefilledText = "Hello Fuwa Agency Desk, my name is {$agent->full_name} (Code: " . ($agent->company_agent_code ?: 'AG-' . $agent->id) . "). I have paid for my station license and I am completing my onboarding.";
+        $prefilledText = "Hello Fuwa Agency Desk, my name is {$agent->full_name} (Code: " . ($agent->company_agent_code ?: 'AG-' . $agent->id) . "). I have paid for my NIN license and I am completing my onboarding.";
         $whatsappUrl = 'https://wa.me/' . preg_replace('/[^0-9]/', '', $supportPhone) . '?text=' . urlencode($prefilledText);
 
         // Onboarding desk (owner instruction 2026-11-27): agents message
@@ -54,7 +54,7 @@ class AgentOnboardingInstructionsController extends Controller
             . ($agent->state ? "\nState: {$agent->state}" : '')
             . "\nDevice IMEI: " . ($agent->machine_imei ?: 'Not yet added');
         $activationCode = $agent->ensureActivationCode();
-        $activationText = "Hello, I am {$agent->full_name}. I just made payment for my station license and I am ready for onboarding." . $detailsBlock . "\nActivation Code: {$activationCode}";
+        $activationText = "Hello, I am {$agent->full_name}. I just made payment for my NIN license and I am ready for onboarding." . $detailsBlock . "\nActivation Code: {$activationCode}";
         $activationWhatsappUrl = 'https://wa.me/2347032532424?text=' . urlencode($activationText);
         $productionText = "Hello, I am {$agent->full_name}. I have completed my three test enrolments and toggled the switch to production. I am sending my switch to production request." . $detailsBlock;
         $productionWhatsappUrl = 'https://wa.me/2347032532424?text=' . urlencode($productionText);
@@ -88,7 +88,7 @@ class AgentOnboardingInstructionsController extends Controller
         $agent = Auth::user()?->enrollmentAgent;
 
         if (!$agent || !$agent->isLicensePaid()) {
-            return back()->with('error', 'Pay for your station license before sending an activation request.');
+            return back()->with('error', 'Pay for your NIN license before sending an activation request.');
         }
 
         $agent->ensureActivationCode();
@@ -107,7 +107,7 @@ class AgentOnboardingInstructionsController extends Controller
         $agent = Auth::user()?->enrollmentAgent;
 
         if (!$agent || !$agent->isLicensePaid()) {
-            return back()->with('error', 'Pay for your station license before requesting a VPN.');
+            return back()->with('error', 'Pay for your NIN license before requesting a VPN.');
         }
 
         $meta = (array) ($agent->meta ?? []);
@@ -125,7 +125,7 @@ class AgentOnboardingInstructionsController extends Controller
         $agent = Auth::user()?->enrollmentAgent;
 
         if (!$agent || !$agent->isLicensePaid()) {
-            return back()->with('error', 'Pay for your station license first.');
+            return back()->with('error', 'Pay for your NIN license first.');
         }
 
         $meta = (array) ($agent->meta ?? []);

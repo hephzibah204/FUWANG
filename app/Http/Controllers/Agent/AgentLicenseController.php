@@ -215,7 +215,7 @@ class AgentLicenseController extends Controller
                     [
                         'display_name' => 'Payment For',
                         'variable_name' => 'payment_for',
-                        'value' => 'NIN Enrollment Agent Station License',
+                        'value' => 'NIN License',
                     ],
                     [
                         'display_name' => 'Agent Name',
@@ -321,7 +321,7 @@ class AgentLicenseController extends Controller
 
         return response()->json([
             'status' => true,
-            'message' => 'Payment verified! Your NIN Enrollment Station License has been successfully accredited.',
+            'message' => 'Payment verified! Your NIN License has been successfully accredited.',
             // First license goes straight to onboarding (owner spec 2026-11-27).
             'redirect' => $ownedBeforeVerify === 0 ? route('agent.license.onboarding') : route('agent.dashboard'),
         ]);
@@ -361,7 +361,7 @@ class AgentLicenseController extends Controller
         $debitResult = $walletService->debit(
             $user,
             $payable,
-            'Enrollment Station License Fee',
+            'NIN License Fee',
             'LIC',
             $reference
         );
@@ -408,7 +408,7 @@ class AgentLicenseController extends Controller
             }
         });
 
-        $msg = 'Success! License fee of ₦' . number_format($payable, 2) . ' deducted from your wallet. Your station license is now officially accredited.';
+        $msg = 'Success! License fee of ₦' . number_format($payable, 2) . ' deducted from your wallet. Your NIN license is now officially accredited.';
 
         // First license: the next thing after payment is onboarding
         // (owner spec 2026-11-27). Additional licenses stay on the dashboard.
@@ -508,7 +508,7 @@ class AgentLicenseController extends Controller
             }
         });
 
-        return back()->with('success', 'Offline payment proof of ₦' . number_format((float)$request->amount_paid, 2) . ' submitted successfully! Admin will verify and accredit your station license within 24 hours.');
+        return back()->with('success', 'Offline payment proof of ₦' . number_format((float)$request->amount_paid, 2) . ' submitted successfully! Admin will verify and accredit your NIN license within 24 hours.');
     }
 
     /**

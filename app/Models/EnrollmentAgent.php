@@ -99,7 +99,7 @@ class EnrollmentAgent extends Model
     }
 
     /**
-     * How many station licenses this agent holds: one per completed license
+     * How many NIN licenses this agent holds: one per completed license
      * transaction (agents may buy more than one license, owner request
      * 2026-11-27). Falls back to 1 for legacy paid agents with no
      * transaction rows.

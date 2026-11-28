@@ -2,7 +2,7 @@ AGENT PROFILE CLAIM VERIFICATION — FUWA.NG
 
 Hello {{ $agent->full_name }},
 
-A request was made to claim pre-approved station license {{ $agent->agent_code }} on the Fuwa.NG Enrollment Platform.
+A request was made to claim pre-approved NIN license {{ $agent->agent_code }} on the Fuwa.NG Enrollment Platform.
 
 YOUR 6-DIGIT CLAIM VERIFICATION CODE:
 {{ $otp }}

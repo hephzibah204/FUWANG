@@ -27,7 +27,7 @@
                     <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
                         <span class="badge bg-primary px-3 py-1 rounded-pill text-uppercase font-monospace">Agency Mode Active</span>
                         @if($agent->isLicensePaid())
-                            <span class="badge bg-success px-3 py-1 rounded-pill"><i class="fa-solid fa-certificate me-1"></i>Licensed Station</span>
+                            <span class="badge bg-success px-3 py-1 rounded-pill"><i class="fa-solid fa-certificate me-1"></i>NIN Licensed</span>
                         @elseif($agent->isLicensePendingReview())
                             <span class="badge bg-warning text-dark px-3 py-1 rounded-pill"><i class="fa-solid fa-clock me-1"></i>License Under Review</span>
                         @else
@@ -49,7 +49,7 @@
         </div>
     </div>
 
-    <!-- Station License Status Banner -->
+    <!-- NIN License Status Banner -->
     @if(!$agent->isLicensePaid())
         <div class="alert border-0 rounded-4 p-4 mb-4 d-flex align-items-center justify-content-between flex-wrap gap-3" style="background: linear-gradient(135deg, rgba(234, 179, 8, 0.2), rgba(180, 83, 9, 0.3)); border: 1px solid rgba(234, 179, 8, 0.4) !important;">
             <div class="d-flex align-items-center gap-3">
@@ -70,8 +70,8 @@
                                 <span class="badge bg-warning text-dark font-monospace fw-bold">LICENSE FEE: ₦{{ number_format($effectiveFee, 2) }}</span>
                             @endif
                         </div>
-                        <h5 class="text-white fw-bold mb-1">Accredit Your Station License</h5>
-                        <p class="text-white-50 mb-0">Pay your station accreditation fee online via Paystack, wallet balance, or submit offline transfer receipt / pre-launch payment proof.</p>
+                        <h5 class="text-white fw-bold mb-1">Accredit Your NIN License</h5>
+                        <p class="text-white-50 mb-0">Pay your NIN License fee online via Paystack, wallet balance, or submit offline transfer receipt / pre-launch payment proof.</p>
                         @if(!empty($missingDocuments ?? []))
                             <p class="text-warning mb-0 mt-2"><i class="fa-solid fa-triangle-exclamation me-1"></i><strong>Documents required first:</strong> upload your {{ implode(' and ', $missingDocuments) }} before you can pay for your license.</p>
                         @endif
@@ -102,8 +102,8 @@
                     <i class="fa-solid fa-certificate text-success fa-xl"></i>
                 </div>
                 <div>
-                    <span class="badge bg-success font-monospace fw-bold mb-1">STATION LICENSE ACTIVE</span>
-                    <h5 class="text-white fw-bold mb-1">You Hold {{ $agent->licensesOwned() }} Station {{ $agent->licensesOwned() === 1 ? 'License' : 'Licenses' }}</h5>
+                    <span class="badge bg-success font-monospace fw-bold mb-1">NIN LICENSE ACTIVE</span>
+                    <h5 class="text-white fw-bold mb-1">You Hold {{ $agent->licensesOwned() }} NIN {{ $agent->licensesOwned() === 1 ? 'License' : 'Licenses' }}</h5>
                     <p class="text-white-50 mb-0">Need a license for another station or terminal? You can purchase an additional license at ₦{{ number_format($effectiveFee, 2) }}.</p>
                 </div>
             </div>
@@ -512,13 +512,13 @@
     </div>
 </div>
 
-<!-- Modal: Accredit Station License -->
+<!-- Modal: Accredit NIN License -->
 <div class="modal fade" id="accreditLicenseModal" tabindex="-1" aria-labelledby="accreditLicenseModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 rounded-4" style="background: #111827; border: 1px solid rgba(255,255,255,0.15) !important;">
             <div class="modal-header border-bottom border-secondary">
                 <h5 class="modal-title text-white fw-bold" id="accreditLicenseModalLabel">
-                    <i class="fa-solid fa-certificate text-warning me-2"></i>Accredit NIN Station License
+                    <i class="fa-solid fa-certificate text-warning me-2"></i>Accredit NIN License
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -531,7 +531,7 @@
                             <strong class="text-white d-block">Special Enrollment License Promo Ending October 10th, 2026</strong>
                         @else
                             <span class="badge bg-warning text-dark font-monospace fw-bold mb-1">LICENSE FEE: ₦{{ number_format($effectiveFee ?? 100000, 2) }}</span>
-                            <strong class="text-white d-block">NIN Enrollment Station License</strong>
+                            <strong class="text-white d-block">NIN License</strong>
                         @endif
                         <small class="text-white-50">Select your preferred payment channel to complete accreditation.</small>
                     </div>

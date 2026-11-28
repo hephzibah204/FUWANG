@@ -160,8 +160,8 @@ class LicensePurchaseRulesTest extends TestCase
             ->get(route('agent.dashboard'))
             ->assertOk()
             ->assertSee('Pay for Another License')
-            ->assertSee('STATION LICENSE ACTIVE')
-            ->assertSee('You Hold 1 Station License');
+            ->assertSee('NIN LICENSE ACTIVE')
+            ->assertSee('You Hold 1 NIN License');
     }
 
     // ---------- document gate ----------

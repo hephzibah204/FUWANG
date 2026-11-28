@@ -8,7 +8,7 @@ use App\Models\LicenseDiscountRedemption;
 use App\Models\User;
 
 /**
- * Percentage discount codes for the agent station license fee.
+ * Percentage discount codes for the agent NIN license fee.
  *
  * Rules (owner request 2026-11-27): codes are created by admins, applied
  * by agents at checkout, and each code can be redeemed at most once per

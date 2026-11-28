@@ -1,6 +1,6 @@
 @extends('layouts.nexus')
 
-@section('title', 'NIN Enrollment Agent Station Licenses | Admin')
+@section('title', 'NIN Licenses | Admin')
 
 @section('content')
 <div class="container-fluid py-4">
@@ -14,9 +14,9 @@
                 <span class="text-white-50 text-xs">/</span>
                 <a href="{{ route('admin.agents.index') }}" class="text-white-50 text-xs text-decoration-none">Agents Directory</a>
                 <span class="text-white-50 text-xs">/</span>
-                <span class="text-warning text-xs fw-semibold">Station Licenses</span>
+                <span class="text-warning text-xs fw-semibold">NIN Licenses</span>
             </div>
-            <h3 class="text-white fw-bold mb-1"><i class="fa-solid fa-certificate text-warning me-2"></i>NIN Enrollment Station Licenses Desk</h3>
+            <h3 class="text-white fw-bold mb-1"><i class="fa-solid fa-certificate text-warning me-2"></i>NIN Licenses Desk</h3>
             <p class="text-white-50 mb-0">Manage agent license accreditation, review offline payment proofs, and manually accredit legacy pre-website stations.</p>
         </div>
         <div class="d-flex gap-2 flex-wrap">
@@ -470,13 +470,13 @@
                                     <div class="modal-dialog modal-dialog-centered">
                                         <div class="modal-content bg-dark text-white rounded-4 border border-success">
                                             <div class="modal-header border-secondary">
-                                                <h5 class="modal-title fw-bold text-success"><i class="fa-solid fa-certificate me-2"></i>Accredit Station License</h5>
+                                                <h5 class="modal-title fw-bold text-success"><i class="fa-solid fa-certificate me-2"></i>Accredit NIN License</h5>
                                                 <button type="button" class="close text-white" data-dismiss="modal" data-bs-dismiss="modal" style="background:transparent; border:0; font-size:1.5rem;">&times;</button>
                                             </div>
                                             <form action="{{ route('admin.agents.licenses.mark_paid', $agent->id) }}" method="POST">
                                                 @csrf
                                                 <div class="modal-body p-4">
-                                                    <p class="text-white-50 small mb-3">Accredit station license for <strong>{{ $agent->full_name }}</strong> ({{ $agent->company_agent_code ?: 'AG-' . $agent->id }}).</p>
+                                                    <p class="text-white-50 small mb-3">Accredit NIN license for <strong>{{ $agent->full_name }}</strong> ({{ $agent->company_agent_code ?: 'AG-' . $agent->id }}).</p>
 
                                                     <div class="mb-3">
                                                         <label class="form-label text-white small fw-bold">Payment Method / Origin</label>
@@ -591,7 +591,7 @@
                                         <div class="modal-dialog modal-dialog-centered">
                                             <div class="modal-content bg-dark text-white rounded-4 border border-danger">
                                                 <div class="modal-header border-secondary">
-                                                    <h5 class="modal-title fw-bold text-danger"><i class="fa-solid fa-ban me-2"></i>Revoke Station License</h5>
+                                                    <h5 class="modal-title fw-bold text-danger"><i class="fa-solid fa-ban me-2"></i>Revoke NIN License</h5>
                                                     <button type="button" class="close text-white" data-dismiss="modal" data-bs-dismiss="modal" style="background:transparent; border:0; font-size:1.5rem;">&times;</button>
                                                 </div>
                                                 <form action="{{ route('admin.agents.licenses.revoke', $agent->id) }}" method="POST">

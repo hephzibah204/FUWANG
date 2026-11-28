@@ -169,7 +169,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::match(['GET', 'POST'], '/switch-mode', [App\Http\Controllers\Agent\AgentDashboardController::class, 'switchMode'])->name('switch_mode');
 
-        // Station License Accreditation Routes
+        // NIN License Accreditation Routes
         Route::prefix('license')->name('license.')->group(function () {
             Route::get('/info', [App\Http\Controllers\Agent\AgentLicenseController::class, 'getLicenseInfo'])->name('info');
             Route::post('/discount/validate', [App\Http\Controllers\Agent\AgentLicenseController::class, 'validateDiscount'])->name('discount_validate');
@@ -827,7 +827,7 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
                     Route::delete('/{id}', [App\Http\Controllers\Admin\AdminAgentRosterController::class, 'destroy'])->name('destroy');
                 });
 
-                // Station Licenses Desk & Management
+                // NIN Licenses Desk & Management
                 Route::prefix('licenses')->name('licenses.')->group(function () {
                     Route::get('/', [App\Http\Controllers\Admin\AdminAgentLicenseController::class, 'index'])->name('index');
                     Route::get('/transaction-lookup', [App\Http\Controllers\Admin\AdminAgentLicenseController::class, 'transactionLookup'])->name('txn_lookup');

@@ -94,7 +94,7 @@ class AgentOnboardingInstructionsTest extends TestCase
         $this->actingAs($this->user)
             ->get(route('agent.license.onboarding'))
             ->assertOk()
-            ->assertSee('Station Onboarding')
+            ->assertSee('NIN License Onboarding')
             ->assertSee('Get Your Device Ready')
             ->assertSee('*#06#')
             ->assertSee('353095051716654')

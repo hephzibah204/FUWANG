@@ -8,7 +8,7 @@
         <div>
             <div class="d-flex align-items-center gap-2 mb-1">
                 <a href="{{ route('admin.agents.licenses.index') }}" class="text-white-50 text-xs text-decoration-none">
-                    <i class="fa-solid fa-arrow-left me-1"></i> Station Licenses
+                    <i class="fa-solid fa-arrow-left me-1"></i> NIN Licenses
                 </a>
                 <span class="text-white-50 text-xs">/</span>
                 <span class="text-warning text-xs fw-semibold">Match a Transaction</span>
@@ -42,7 +42,7 @@
             </div>
         @elseif($verdict === 'paystack_only')
             <div class="alert border-0 rounded-3 p-3 mb-4" style="background: rgba(234,179,8,0.15); color: #fde68a;">
-                <i class="fa-solid fa-triangle-exclamation me-2"></i><strong>Found on Paystack, but no Fuwa license record matches it.</strong> The customer email on the Paystack record below may identify the agent. If it is a genuine license payment, accredit the agent manually from the Station Licenses Desk.
+                <i class="fa-solid fa-triangle-exclamation me-2"></i><strong>Found on Paystack, but no Fuwa license record matches it.</strong> The customer email on the Paystack record below may identify the agent. If it is a genuine license payment, accredit the agent manually from the NIN Licenses Desk.
             </div>
         @elseif($verdict === 'fuwa_only')
             <div class="alert border-0 rounded-3 p-3 mb-4" style="background: rgba(234,179,8,0.15); color: #fde68a;">

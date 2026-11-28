@@ -11,7 +11,7 @@ use Illuminate\Validation\Rule;
 class AdminLicenseDiscountController extends Controller
 {
     /**
-     * Create a percentage discount code for the station license fee.
+     * Create a percentage discount code for the NIN license fee.
      * Codes are stored uppercase; each code can be redeemed once per user.
      */
     public function store(Request $request)

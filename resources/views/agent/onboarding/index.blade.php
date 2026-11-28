@@ -57,7 +57,7 @@
                 <div class="col-md-3">
                     <div class="card border-0 rounded-3 p-3 text-center" style="{{ $agent->isLicensePaid() ? 'background: rgba(34, 197, 94, 0.12); border: 1px solid rgba(34, 197, 94, 0.3) !important;' : ($agent->isLicensePendingReview() ? 'background: rgba(234, 179, 8, 0.12); border: 1px solid rgba(234, 179, 8, 0.3) !important;' : 'background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08) !important;') }}">
                         <small class="{{ $agent->isLicensePaid() ? 'text-success' : ($agent->isLicensePendingReview() ? 'text-warning' : 'text-white-50') }} fw-bold text-uppercase d-block mb-1">Step 4</small>
-                        <strong class="text-white">Station License</strong>
+                        <strong class="text-white">NIN License</strong>
                     </div>
                 </div>
             </div>
@@ -138,17 +138,17 @@
                 </form>
             </div>
 
-            <!-- Station License Accreditation Card -->
+            <!-- NIN License Accreditation Card -->
             <div class="card border-0 rounded-4 p-4 mb-4" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08) !important;">
                 <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
                     <div>
-                        <span class="badge mb-2 font-monospace" style="background: rgba(234, 179, 8, 0.15); color: #fbbf24; border: 1px solid rgba(234, 179, 8, 0.3);">Phase 3: Station License Accreditation</span>
-                        <h5 class="text-white fw-bold mb-1"><i class="fa-solid fa-certificate text-warning me-2"></i>NIN Enrollment Station License Fee</h5>
+                        <span class="badge mb-2 font-monospace" style="background: rgba(234, 179, 8, 0.15); color: #fbbf24; border: 1px solid rgba(234, 179, 8, 0.3);">Phase 3: NIN License Accreditation</span>
+                        <h5 class="text-white fw-bold mb-1"><i class="fa-solid fa-certificate text-warning me-2"></i>NIN License Fee</h5>
                         <p class="text-white-50 small mb-0">Accredit your station hardware and operational enrollment license.</p>
                     </div>
                     <div>
                         @if($agent->isLicensePaid())
-                            <span class="badge bg-success px-3 py-2 rounded-pill fs-6"><i class="fa-solid fa-check-circle me-1"></i>Station License Paid & Verified</span>
+                            <span class="badge bg-success px-3 py-2 rounded-pill fs-6"><i class="fa-solid fa-check-circle me-1"></i>NIN License Paid & Verified</span>
                         @elseif($agent->isLicensePendingReview())
                             <span class="badge bg-warning text-dark px-3 py-2 rounded-pill fs-6"><i class="fa-solid fa-clock me-1"></i>Payment Proof Under Review</span>
                         @else
@@ -168,7 +168,7 @@
 
                 @if($agent->isLicensePaid())
                     <div class="alert alert-success border-0 rounded-3 p-4 mb-0" style="background: rgba(34, 197, 94, 0.15); color: #bbf7d0;">
-                        <h6 class="fw-bold mb-2"><i class="fa-solid fa-circle-check me-2"></i>Official Accredited Station License Active</h6>
+                        <h6 class="fw-bold mb-2"><i class="fa-solid fa-circle-check me-2"></i>Official Accredited NIN License Active</h6>
                         <p class="mb-2 small">Your station has been officially accredited. License fee of <strong>₦{{ number_format((float)$agent->license_fee_paid, 2) }}</strong> was verified via <strong>{{ strtoupper(str_replace('_', ' ', $agent->license_payment_method ?? 'VERIFIED')) }}</strong>.</p>
                         @if($agent->license_payment_reference)
                             <div class="small">Reference ID: <code class="text-white font-monospace">{{ $agent->license_payment_reference }}</code></div>
@@ -216,7 +216,7 @@
                             <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
                                 <div>
                                     <h6 class="text-white fw-bold mb-1"><i class="fa-solid fa-bolt text-warning me-2"></i>Instant Online Activation via Paystack</h6>
-                                    <p class="text-white-50 small mb-0">Pay using ATM Debit Card, Bank Transfer, USSD, or Apple Pay. Your station license is accredited automatically immediately upon payment confirmation.</p>
+                                    <p class="text-white-50 small mb-0">Pay using ATM Debit Card, Bank Transfer, USSD, or Apple Pay. Your NIN license is accredited automatically immediately upon payment confirmation.</p>
                                 </div>
                                 <div>
                                     <button type="button" id="paystackPayBtn" class="btn btn-primary rounded-pill px-4 py-2 fw-bold">

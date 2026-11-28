@@ -194,7 +194,7 @@
                 </div>
             </div>
 
-            <h6 class="text-white fw-bold mb-3"><i class="fa-solid fa-id-badge text-warning me-2"></i>NIN Enrollment Agent Station License Pricing</h6>
+            <h6 class="text-white fw-bold mb-3"><i class="fa-solid fa-id-badge text-warning me-2"></i>NIN License Pricing</h6>
             <div class="row">
                 <div class="col-md-4 mb-4">
                     <label class="text-white-50 small mb-2">Agent License Promo Price (₦) <span class="badge bg-warning text-dark font-monospace">Active Promo</span></label>

@@ -55,7 +55,7 @@ class AgentDashboardController extends Controller
         $prefilledText = "Hello Fuwa Agency Desk, my name is {$agent->full_name} (Code: " . ($agent->company_agent_code ?: 'AG-' . $agent->id) . ", IMEI: {$agent->machine_imei}). I need operational assistance with: ";
         $whatsappUrl = 'https://wa.me/' . preg_replace('/[^0-9]/', '', $supportPhone) . '?text=' . urlencode($prefilledText);
 
-        // 4. Station License Accreditation Info
+        // 4. NIN License Accreditation Info
         $effectiveFee = EnrollmentAgent::getEffectiveLicenseFee();
         $isPromo = EnrollmentAgent::isPromoActive();
         $promoEndsAt = \App\Models\SystemSetting::get('agent_license_promo_ends_at', '2026-10-10 23:59:59');

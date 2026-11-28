@@ -563,7 +563,7 @@
                         @endif
                     </a>
                     <a href="{{ route('admin.agents.licenses.index') }}" class="{{ Request::routeIs('admin.agents.licenses.*') ? 'active' : '' }}">
-                        <i class="fa-solid fa-certificate me-2 text-xs text-warning opacity-75"></i> Station Licenses
+                        <i class="fa-solid fa-certificate me-2 text-xs text-warning opacity-75"></i> NIN Licenses
                         @if($sidebarPendingLicenses > 0)
                             <span class="badge bg-warning text-dark rounded-pill text-2xs ms-auto">{{ $sidebarPendingLicenses }}</span>
                         @endif

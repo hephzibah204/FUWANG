@@ -320,7 +320,7 @@ class AdminAgentManagementTest extends TestCase
             ->get(route('admin.agents.licenses.index'));
 
         $response->assertOk();
-        $response->assertSee('Station Licenses Desk');
+        $response->assertSee('NIN Licenses Desk');
     }
 
     public function test_admin_can_access_agent_nin_pricing_page_under_agency_network(): void

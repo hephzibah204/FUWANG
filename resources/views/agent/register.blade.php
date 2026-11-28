@@ -121,7 +121,7 @@
                                         <strong class="category-title text-white">Existing Agent Profile</strong>
                                         <span class="badge-gold">Fast-Track</span>
                                     </div>
-                                    <p class="category-desc text-muted mb-0">Already enrolled in company roster. Link your station license.</p>
+                                    <p class="category-desc text-muted mb-0">Already enrolled in company roster. Link your NIN license.</p>
                                 </div>
                             </label>
                         </div>
@@ -206,7 +206,7 @@
                             <div class="row g-3">
                                 <div class="col-md-6">
                                     <div class="d-flex align-items-center justify-content-between mb-1">
-                                        <label for="companyAgentCodeInput" class="text-white-50 small fw-bold mb-0">Company Agent Code / Station License ID</label>
+                                        <label for="companyAgentCodeInput" class="text-white-50 small fw-bold mb-0">Company Agent Code / NIN License ID</label>
                                         <span class="text-muted small" style="font-size: 0.75rem;">(Auto-filled)</span>
                                     </div>
                                     <div class="input-wrap">

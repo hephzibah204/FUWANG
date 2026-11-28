@@ -387,10 +387,10 @@
                 @endif
             </div>
 
-            <!-- Station License Accreditation Card -->
+            <!-- NIN License Accreditation Card -->
             <div class="card border-0 rounded-4 p-4 mb-4" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08) !important;">
                 <div class="d-flex align-items-center justify-content-between mb-3">
-                    <h5 class="text-white fw-bold mb-0"><i class="fa-solid fa-certificate text-warning me-2"></i>Station License</h5>
+                    <h5 class="text-white fw-bold mb-0"><i class="fa-solid fa-certificate text-warning me-2"></i>NIN License</h5>
                     @if($agent->isLicensePaid())
                         <span class="badge bg-success px-2 py-1 rounded-pill"><i class="fa-solid fa-check me-1"></i>Paid</span>
                     @elseif($agent->isLicensePendingReview())
@@ -700,7 +700,7 @@
                 <form action="{{ route('admin.agents.licenses.update', $agent->id) }}" method="POST">
                     @csrf
                     <div class="modal-body p-4">
-                        <p class="text-white-50 small mb-3">Accredit or modify station license details for <strong>{{ $agent->full_name }}</strong>.</p>
+                        <p class="text-white-50 small mb-3">Accredit or modify NIN license details for <strong>{{ $agent->full_name }}</strong>.</p>
 
                         <div class="mb-3">
                             <label class="form-label text-white small fw-bold">License Status</label>
@@ -761,7 +761,7 @@
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content bg-dark text-white rounded-4 border border-danger">
                     <div class="modal-header border-secondary">
-                        <h5 class="modal-title fw-bold text-danger"><i class="fa-solid fa-ban me-2"></i>Revoke Station License</h5>
+                        <h5 class="modal-title fw-bold text-danger"><i class="fa-solid fa-ban me-2"></i>Revoke NIN License</h5>
                         <button type="button" class="close text-white" data-dismiss="modal" data-bs-dismiss="modal" style="background:transparent; border:0; font-size:1.5rem;">&times;</button>
                     </div>
                     <form action="{{ route('admin.agents.licenses.revoke', $agent->id) }}" method="POST">

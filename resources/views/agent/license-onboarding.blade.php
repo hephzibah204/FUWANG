@@ -1,12 +1,12 @@
 @extends('layouts.nexus')
 
-@section('title', 'Station Onboarding | Fuwa.NG')
+@section('title', 'NIN License Onboarding | Fuwa.NG')
 
 @section('content')
 <div class="container py-4" style="max-width: 860px;">
     <div class="mb-4">
         <span class="badge bg-success font-monospace fw-bold mb-2">LICENSE PAYMENT CONFIRMED</span>
-        <h3 class="text-white fw-bold mb-1">Station Onboarding</h3>
+        <h3 class="text-white fw-bold mb-1">NIN License Onboarding</h3>
         <p class="text-white-50 mb-3">Your payment is confirmed. Follow the onboarding process below, step by step. For anything about your onboarding, message the onboarding desk on WhatsApp.</p>
         <a href="{{ $activationWhatsappUrl }}" target="_blank" rel="noopener" class="btn btn-success btn-lg rounded-pill px-4 fw-bold">
             <i class="fa-brands fa-whatsapp me-2"></i>Message {{ $onboardingPhoneDisplay }} on WhatsApp

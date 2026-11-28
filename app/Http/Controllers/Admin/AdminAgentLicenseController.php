@@ -528,7 +528,7 @@ class AdminAgentLicenseController extends Controller
             }
         });
 
-        return back()->with('success', "Payment proof for {$agent->full_name} approved! Station license has been accredited.");
+        return back()->with('success', "Payment proof for {$agent->full_name} approved! NIN license has been accredited.");
     }
 
     /**
@@ -590,6 +590,6 @@ class AdminAgentLicenseController extends Controller
             'license_admin_notes' => 'Revoked on ' . now()->toFormattedDateString() . ': ' . $request->reason,
         ]);
 
-        return back()->with('success', "Station license for {$agent->full_name} has been revoked.");
+        return back()->with('success', "NIN license for {$agent->full_name} has been revoked.");
     }
 }

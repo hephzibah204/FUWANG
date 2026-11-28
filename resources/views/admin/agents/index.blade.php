@@ -21,7 +21,7 @@
         </div>
         <div class="d-flex gap-2 flex-wrap agents-header-actions">
             <a href="{{ route('admin.agents.licenses.index') }}" class="btn btn-warning text-dark rounded-12 font-weight-bold px-3">
-                <i class="fa-solid fa-certificate me-1.5"></i> Station Licenses
+                <i class="fa-solid fa-certificate me-1.5"></i> NIN Licenses
             </a>
             <a href="{{ route('admin.agents.notifications.index') }}" class="btn btn-primary rounded-12 font-weight-bold px-3">
                 <i class="fa-solid fa-bullhorn me-1.5"></i> Broadcast

@@ -7,7 +7,7 @@
     <div style="color: #f8fafc;">
         <div style="border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 15px; margin-bottom: 20px;">
             <span style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: inline-block;">
-                Station License Verification
+                NIN License Verification
             </span>
             <h2 style="color: #ffffff; margin: 12px 0 6px; font-size: 22px; font-weight: 700;">
                 Verify Your Pre-Approved Profile
@@ -19,7 +19,7 @@
         </p>
 
         <p style="color: #94a3b8; font-size: 14px; line-height: 1.6; margin: 0 0 20px;">
-            A request was made to claim pre-approved station license <strong style="color: #fbbf24;">{{ $agent->agent_code }}</strong> on the Fuwa.NG Identity & Enrollment Platform. Use the one-time verification code below to authorize this claim:
+            A request was made to claim pre-approved NIN license <strong style="color: #fbbf24;">{{ $agent->agent_code }}</strong> on the Fuwa.NG Identity & Enrollment Platform. Use the one-time verification code below to authorize this claim:
         </p>
 
         <!-- OTP Highlight Card -->
