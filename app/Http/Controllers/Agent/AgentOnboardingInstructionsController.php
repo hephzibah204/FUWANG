@@ -53,7 +53,8 @@ class AgentOnboardingInstructionsController extends Controller
             . "\nEmail: {$user->email}"
             . ($agent->state ? "\nState: {$agent->state}" : '')
             . "\nDevice IMEI: " . ($agent->machine_imei ?: 'Not yet added');
-        $activationText = "Hello, I am {$agent->full_name}. I just made payment for my station license and I am ready for onboarding." . $detailsBlock;
+        $activationCode = $agent->ensureActivationCode();
+        $activationText = "Hello, I am {$agent->full_name}. I just made payment for my station license and I am ready for onboarding." . $detailsBlock . "\nActivation Code: {$activationCode}";
         $activationWhatsappUrl = 'https://wa.me/2347032532424?text=' . urlencode($activationText);
         $productionText = "Hello, I am {$agent->full_name}. I have completed my three test enrolments and toggled the switch to production. I am sending my switch to production request." . $detailsBlock;
         $productionWhatsappUrl = 'https://wa.me/2347032532424?text=' . urlencode($productionText);
@@ -69,7 +70,34 @@ class AgentOnboardingInstructionsController extends Controller
             'productionWhatsappUrl' => $productionWhatsappUrl,
             'vpnRequestedAt' => data_get($agent->meta, 'vpn_requested_at'),
             'readAt' => data_get($agent->meta, 'onboarding_read_at'),
+            'activationCode' => $activationCode,
+            'activationRequestedAt' => data_get($agent->meta, 'activation_requested_at'),
+            'activationStatus' => $agent->activationStatus(),
         ]);
+    }
+
+    /**
+     * The in-app half of the activation request: recorded against the
+     * logged-in, paid account, so the admin desk works from a request
+     * that cannot be forged by copying a WhatsApp message.
+     */
+    public function requestActivation(Request $request)
+    {
+        $agent = Auth::user()?->enrollmentAgent;
+
+        if (!$agent || !$agent->isLicensePaid()) {
+            return back()->with('error', 'Pay for your station license before sending an activation request.');
+        }
+
+        $agent->ensureActivationCode();
+        $meta = (array) ($agent->meta ?? []);
+        if (empty($meta['activation_requested_at'])) {
+            $meta['activation_requested_at'] = now()->toDateTimeString();
+            $meta['activation_status'] = 'requested';
+            $agent->update(['meta' => $meta]);
+        }
+
+        return back()->with('success', 'Your activation request is recorded. Now message the onboarding desk on WhatsApp from the phone number you registered with, so they can match and approve it.');
     }
 
     public function requestVpn(Request $request)

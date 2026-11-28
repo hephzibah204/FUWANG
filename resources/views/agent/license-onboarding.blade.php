@@ -24,6 +24,30 @@
         </div>
     @endif
 
+    <!-- ACTIVATION REQUEST (recorded in-app, then WhatsApp) -->
+    <div class="card border-0 rounded-4 p-4 mb-4" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08) !important;">
+        <h5 class="text-white fw-bold mb-2"><i class="fa-solid fa-paper-plane text-warning me-2"></i>Send Your Activation Request</h5>
+        @if(($activationStatus ?? null) === 'approved')
+            <div class="alert border-0 rounded-3 p-3 mb-0" style="background: rgba(34,197,94,0.15); color: #bbf7d0;">
+                <i class="fa-solid fa-circle-check me-1"></i><strong>Your activation has been approved.</strong> Continue with the steps below.
+            </div>
+        @elseif(!empty($activationRequestedAt))
+            <div class="alert border-0 rounded-3 p-3 mb-2" style="background: rgba(34,197,94,0.15); color: #bbf7d0;">
+                <i class="fa-solid fa-circle-check me-1"></i><strong>Activation request recorded</strong> on {{ \Carbon\Carbon::parse($activationRequestedAt)->format('d M Y, h:i A') }}. Your activation code is <strong class="font-monospace">{{ $activationCode }}</strong>. If you have not messaged the desk yet, do so now so they can match and approve it.
+            </div>
+            <p class="text-white-50 mb-0"><i class="fa-solid fa-triangle-exclamation text-warning me-1"></i>Message us from the <strong class="text-white">phone number you registered with</strong>. Requests from a different number will not be processed.</p>
+        @else
+            <p class="text-white-50 mb-3">First record your request here, then message the desk on WhatsApp. Your request carries a personal activation code (<strong class="text-white font-monospace">{{ $activationCode }}</strong>) that only you can see in this account. The desk approves your activation only when the code, your registered phone number and your IMEI all match our records, so keep the code to yourself.</p>
+            <form action="{{ route('agent.license.onboarding_activation') }}" method="POST">
+                @csrf
+                <button type="submit" class="btn btn-warning text-dark fw-bold rounded-pill px-4">
+                    <i class="fa-solid fa-paper-plane me-2"></i>Send Activation Request
+                </button>
+            </form>
+            <p class="text-white-50 mt-3 mb-0"><i class="fa-solid fa-triangle-exclamation text-warning me-1"></i>Message us from the <strong class="text-white">phone number you registered with</strong>. Requests from a different number will not be processed.</p>
+        @endif
+    </div>
+
     <!-- DEVICE / IMEI -->
     <div class="card border-0 rounded-4 p-4 mb-4" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08) !important;">
         <h5 class="text-white fw-bold mb-2"><i class="fa-solid fa-mobile-screen-button text-warning me-2"></i>Get Your Device Ready</h5>
@@ -97,7 +121,7 @@
     <!-- WHATSAPP CTA -->
     <div class="card border-0 rounded-4 p-4 mt-4 mb-3 text-center" style="background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.25) !important;">
         <h5 class="text-white fw-bold mb-2">Onboarding Desk</h5>
-        <p class="text-white-50 mb-3">Message this number for your onboarding process: <strong class="text-white">{{ $onboardingPhoneDisplay }}</strong></p>
+        <p class="text-white-50 mb-3">Message this number for your onboarding process: <strong class="text-white">{{ $onboardingPhoneDisplay }}</strong><br>Use the phone number you registered with. Requests from a different number will not be processed.</p>
         <div>
             <a href="{{ $activationWhatsappUrl }}" target="_blank" rel="noopener" class="btn btn-success btn-lg rounded-pill px-4 fw-bold">
                 <i class="fa-brands fa-whatsapp me-2"></i>Chat on WhatsApp

@@ -449,6 +449,27 @@
                             <span class="text-white ms-1">Instructions read {{ \Carbon\Carbon::parse(data_get($agent->meta, 'onboarding_read_at'))->format('d M Y') }}</span>
                         </div>
                     @endif
+                    <div class="mt-3 pt-3" style="border-top: 1px solid rgba(255,255,255,0.08);">
+                        <div class="text-white fw-bold mb-1">Onboarding Activation</div>
+                        @if($agent->activationStatus() === 'approved')
+                            <div class="text-success"><i class="fa-solid fa-circle-check me-1"></i>Activation approved {{ data_get($agent->meta, 'activation_approved_at') ? \Carbon\Carbon::parse(data_get($agent->meta, 'activation_approved_at'))->format('d M Y, h:i A') : '' }}</div>
+                        @elseif(data_get($agent->meta, 'activation_requested_at'))
+                            <div class="text-warning mb-2"><i class="fa-solid fa-clock me-1"></i>Activation requested {{ \Carbon\Carbon::parse(data_get($agent->meta, 'activation_requested_at'))->format('d M Y, h:i A') }}. Paste the code from the agent's WhatsApp message to verify it is really them:</div>
+                            <form action="{{ route('admin.agents.activation_verify', $agent->id) }}" method="POST" class="d-flex gap-2 flex-wrap">
+                                @csrf
+                                <input type="text" name="activation_code" class="form-control form-control-sm bg-dark text-white border-secondary font-monospace" placeholder="ACT-XXXXXXXX" style="max-width: 220px;" required>
+                                <button type="submit" class="btn btn-sm btn-success fw-bold">Verify &amp; Approve</button>
+                            </form>
+                        @else
+                            <div class="text-white-50">No activation request recorded yet.</div>
+                        @endif
+                        @if($agent->activationCode())
+                            <div class="text-white-50 small mt-2">
+                                Code on record: <span class="font-monospace text-white">{{ $agent->activationCode() }}</span> (the agent sees it only inside their account).
+                                Before approving, confirm all three match the WhatsApp message: the code, the sender's number against the registered phone <span class="text-white">{{ $agent->phone_number }}</span>, and the IMEI <span class="text-white">{{ $agent->machine_imei ?: 'not set' }}</span>.
+                            </div>
+                        @endif
+                    </div>
                     @if($agent->licenseVerifiedBy)
                         <div>
                             <span class="text-white-50">Verified By:</span>

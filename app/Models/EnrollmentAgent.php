@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 class EnrollmentAgent extends Model
 {
@@ -110,6 +111,44 @@ class EnrollmentAgent extends Model
             ->count();
 
         return max($completed, $this->isLicensePaid() ? 1 : 0);
+    }
+
+    /**
+     * Anti-scam activation verification (owner question 2026-11-28): a
+     * per-agent activation code that exists ONLY inside the agent's
+     * logged-in account. It rides inside the WhatsApp onboarding message,
+     * and the admin approves activation only when the code sent matches
+     * this record, so a copied or forwarded message from a stranger's
+     * number proves nothing on its own.
+     */
+    public function activationCode(): ?string
+    {
+        $code = data_get($this->meta, 'activation_code');
+
+        return $code ? (string) $code : null;
+    }
+
+    public function ensureActivationCode(): string
+    {
+        $code = $this->activationCode();
+        if ($code) {
+            return $code;
+        }
+
+        $code = 'ACT-' . strtoupper(Str::random(8));
+        $meta = (array) ($this->meta ?? []);
+        $meta['activation_code'] = $code;
+        $this->update(['meta' => $meta]);
+        $this->meta = $meta;
+
+        return $code;
+    }
+
+    public function activationStatus(): ?string
+    {
+        $status = data_get($this->meta, 'activation_status');
+
+        return $status ? (string) $status : null;
     }
 
     /**

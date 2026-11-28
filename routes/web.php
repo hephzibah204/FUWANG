@@ -178,6 +178,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/wallet/pay', [App\Http\Controllers\Agent\AgentLicenseController::class, 'payWithWallet'])->name('pay_wallet');
             Route::get('/onboarding', [App\Http\Controllers\Agent\AgentOnboardingInstructionsController::class, 'show'])->name('onboarding');
             Route::post('/onboarding/request-vpn', [App\Http\Controllers\Agent\AgentOnboardingInstructionsController::class, 'requestVpn'])->name('onboarding_vpn');
+            Route::post('/onboarding/request-activation', [App\Http\Controllers\Agent\AgentOnboardingInstructionsController::class, 'requestActivation'])->name('onboarding_activation');
             Route::post('/onboarding/mark-read', [App\Http\Controllers\Agent\AgentOnboardingInstructionsController::class, 'markRead'])->name('onboarding_read');
             Route::post('/upload-proof', [App\Http\Controllers\Agent\AgentLicenseController::class, 'uploadOfflineProof'])->name('upload_proof');
             Route::post('/claim-legacy', [App\Http\Controllers\Agent\AgentLicenseController::class, 'claimLegacy'])->name('claim_legacy');
@@ -851,6 +852,7 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
                 // Specific Agent operations
                 Route::post('/bulk-action', [App\Http\Controllers\Admin\AdminAgentController::class, 'bulkAction'])->name('bulk_action');
                 Route::get('/{id}', [App\Http\Controllers\Admin\AdminAgentController::class, 'show'])->whereNumber('id')->name('show');
+                Route::post('/{id}/activation/verify', [App\Http\Controllers\Admin\AdminAgentController::class, 'verifyActivation'])->whereNumber('id')->name('activation_verify');
                 Route::get('/{id}/edit', [App\Http\Controllers\Admin\AdminAgentController::class, 'edit'])->whereNumber('id')->name('edit');
                 Route::put('/{id}', [App\Http\Controllers\Admin\AdminAgentController::class, 'update'])->whereNumber('id')->name('update');
                 Route::post('/{id}/enrollments', [App\Http\Controllers\Admin\AdminAgentController::class, 'updateEnrollments'])->whereNumber('id')->name('update_enrollments');

@@ -159,6 +159,42 @@ class AdminAgentController extends Controller
         return view('admin.agents.show', compact('agent'));
     }
 
+    /**
+     * Anti-scam activation check (owner question 2026-11-28): the admin
+     * pastes the activation code from the agent's WhatsApp message. It
+     * must match the code stored on this agent's record (the code exists
+     * only inside the agent's logged-in account) before the activation
+     * is approved. A copied message from a different number still has to
+     * match this record's code, registered phone and IMEI.
+     */
+    public function verifyActivation(Request $request, $id)
+    {
+        $agent = EnrollmentAgent::findOrFail($id);
+
+        $request->validate([
+            'activation_code' => ['required', 'string', 'max:32'],
+        ]);
+
+        $expected = $agent->activationCode();
+        $given = strtoupper(trim((string) $request->input('activation_code')));
+
+        if (!$expected || !hash_equals(strtoupper($expected), $given)) {
+            return back()->with('error', 'That activation code does NOT match this agent\'s record. Do not process the request; it may not be from the real agent.');
+        }
+
+        if ($agent->activationStatus() === 'approved') {
+            return back()->with('info', 'This agent\'s activation was already approved.');
+        }
+
+        $meta = (array) ($agent->meta ?? []);
+        $meta['activation_status'] = 'approved';
+        $meta['activation_approved_at'] = now()->toDateTimeString();
+        $meta['activation_approved_by'] = auth('admin')->id();
+        $agent->update(['meta' => $meta]);
+
+        return back()->with('success', "Activation verified and approved for {$agent->full_name}. You can now send the workflow number to NIMC.");
+    }
+
     public function approve($id)
     {
         $agent = EnrollmentAgent::findOrFail($id);
