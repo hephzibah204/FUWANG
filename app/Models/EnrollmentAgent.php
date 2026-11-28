@@ -152,6 +152,30 @@ class EnrollmentAgent extends Model
     }
 
     /**
+     * Admin-managed onboarding status (owner request 2026-11-28): staff
+     * move an agent through Pending Review -> Onboarding Ongoing ->
+     * Onboarded as the NIMC process progresses. Defaults to Pending
+     * Review until staff set otherwise.
+     */
+    public const ONBOARDING_STATUSES = [
+        'pending_review' => 'Pending Review',
+        'ongoing' => 'Onboarding Ongoing',
+        'onboarded' => 'Onboarded',
+    ];
+
+    public function onboardingStatus(): string
+    {
+        $status = (string) (data_get($this->meta, 'onboarding_status') ?: 'pending_review');
+
+        return array_key_exists($status, self::ONBOARDING_STATUSES) ? $status : 'pending_review';
+    }
+
+    public function onboardingStatusLabel(): string
+    {
+        return self::ONBOARDING_STATUSES[$this->onboardingStatus()];
+    }
+
+    /**
      * The documents an agent must upload before paying for a license
      * (owner request 2026-11-27): the same pair the onboarding portal
      * marks "* Required" and compliance acceptance already demands.

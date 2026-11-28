@@ -195,6 +195,29 @@ class AdminAgentController extends Controller
         return back()->with('success', "Activation verified and approved for {$agent->full_name}. You can now send the workflow number to NIMC.");
     }
 
+    /**
+     * Onboarding status tracking (owner request 2026-11-28): staff set
+     * the agent to Onboarded, Onboarding Ongoing or Pending Review as
+     * the NIMC onboarding process progresses. The agent sees the same
+     * status on their onboarding page.
+     */
+    public function updateOnboardingStatus(Request $request, $id)
+    {
+        $agent = EnrollmentAgent::findOrFail($id);
+
+        $validated = $request->validate([
+            'onboarding_status' => ['required', 'string', 'in:' . implode(',', array_keys(EnrollmentAgent::ONBOARDING_STATUSES))],
+        ]);
+
+        $meta = (array) ($agent->meta ?? []);
+        $meta['onboarding_status'] = $validated['onboarding_status'];
+        $meta['onboarding_status_at'] = now()->toDateTimeString();
+        $meta['onboarding_status_by'] = auth('admin')->id();
+        $agent->update(['meta' => $meta]);
+
+        return back()->with('success', "Onboarding status for {$agent->full_name} set to " . EnrollmentAgent::ONBOARDING_STATUSES[$validated['onboarding_status']] . '.');
+    }
+
     public function approve($id)
     {
         $agent = EnrollmentAgent::findOrFail($id);

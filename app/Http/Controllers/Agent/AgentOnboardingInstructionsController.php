@@ -73,6 +73,8 @@ class AgentOnboardingInstructionsController extends Controller
             'activationCode' => $activationCode,
             'activationRequestedAt' => data_get($agent->meta, 'activation_requested_at'),
             'activationStatus' => $agent->activationStatus(),
+            'onboardingStatus' => $agent->onboardingStatus(),
+            'onboardingStatusLabel' => $agent->onboardingStatusLabel(),
         ]);
     }
 

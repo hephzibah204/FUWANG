@@ -27,6 +27,7 @@
     <!-- ACTIVATION REQUEST (recorded in-app, then WhatsApp) -->
     <div class="card border-0 rounded-4 p-4 mb-4" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08) !important;">
         <h5 class="text-white fw-bold mb-2"><i class="fa-solid fa-paper-plane text-warning me-2"></i>Send Your Activation Request</h5>
+        <p class="mb-3">Your onboarding status: <span class="badge {{ ($onboardingStatus ?? 'pending_review') === 'onboarded' ? 'bg-success' : (($onboardingStatus ?? 'pending_review') === 'ongoing' ? 'bg-info text-dark' : 'bg-warning text-dark') }} fw-bold">{{ $onboardingStatusLabel ?? 'Pending Review' }}</span></p>
         @if(($activationStatus ?? null) === 'approved')
             <div class="alert border-0 rounded-3 p-3 mb-0" style="background: rgba(34,197,94,0.15); color: #bbf7d0;">
                 <i class="fa-solid fa-circle-check me-1"></i><strong>Your activation has been approved.</strong> Continue with the steps below.

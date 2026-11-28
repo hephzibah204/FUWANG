@@ -853,6 +853,7 @@ Route::prefix(config('app.admin_path', 'admin'))->name('admin.')->group(function
                 Route::post('/bulk-action', [App\Http\Controllers\Admin\AdminAgentController::class, 'bulkAction'])->name('bulk_action');
                 Route::get('/{id}', [App\Http\Controllers\Admin\AdminAgentController::class, 'show'])->whereNumber('id')->name('show');
                 Route::post('/{id}/activation/verify', [App\Http\Controllers\Admin\AdminAgentController::class, 'verifyActivation'])->whereNumber('id')->name('activation_verify');
+                Route::post('/{id}/onboarding-status', [App\Http\Controllers\Admin\AdminAgentController::class, 'updateOnboardingStatus'])->whereNumber('id')->name('onboarding_status');
                 Route::get('/{id}/edit', [App\Http\Controllers\Admin\AdminAgentController::class, 'edit'])->whereNumber('id')->name('edit');
                 Route::put('/{id}', [App\Http\Controllers\Admin\AdminAgentController::class, 'update'])->whereNumber('id')->name('update');
                 Route::post('/{id}/enrollments', [App\Http\Controllers\Admin\AdminAgentController::class, 'updateEnrollments'])->whereNumber('id')->name('update_enrollments');

@@ -469,6 +469,15 @@
                                 Before approving, confirm all three match the WhatsApp message: the code, the sender's number against the registered phone <span class="text-white">{{ $agent->phone_number }}</span>, and the IMEI <span class="text-white">{{ $agent->machine_imei ?: 'not set' }}</span>.
                             </div>
                         @endif
+                        <div class="mt-3">
+                            <div class="text-white-50">Onboarding status: <span class="text-white fw-bold">{{ $agent->onboardingStatusLabel() }}</span>@if(data_get($agent->meta, 'onboarding_status_at')) <span class="small">(updated {{ \Carbon\Carbon::parse(data_get($agent->meta, 'onboarding_status_at'))->format('d M Y, h:i A') }})</span>@endif</div>
+                            <form action="{{ route('admin.agents.onboarding_status', $agent->id) }}" method="POST" class="d-flex gap-2 flex-wrap mt-2">
+                                @csrf
+                                <button type="submit" name="onboarding_status" value="pending_review" class="btn btn-sm btn-outline-warning">Pending Review</button>
+                                <button type="submit" name="onboarding_status" value="ongoing" class="btn btn-sm btn-outline-info">Onboarding Ongoing</button>
+                                <button type="submit" name="onboarding_status" value="onboarded" class="btn btn-sm btn-success fw-bold">Onboarded</button>
+                            </form>
+                        </div>
                     </div>
                     @if($agent->licenseVerifiedBy)
                         <div>
