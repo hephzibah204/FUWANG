@@ -108,6 +108,11 @@ class AgentOnboardingInstructionsTest extends TestCase
             ->assertSee('NIMC switches you to production')
             ->assertSee('0703 253 2424')
             ->assertSee('wa.me/2347032532424')
+            // The WhatsApp message is prefilled: the agent says they paid
+            // and are ready, and the applicant details + IMEI ride along.
+            ->assertSee('I+just+made+payment', false)
+            ->assertSee('ready+for+onboarding', false)
+            ->assertSee('Device+IMEI', false)
             ->assertSee('I Have Read These Instructions');
     }
 

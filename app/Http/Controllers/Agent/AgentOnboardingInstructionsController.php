@@ -41,12 +41,21 @@ class AgentOnboardingInstructionsController extends Controller
         $whatsappUrl = 'https://wa.me/' . preg_replace('/[^0-9]/', '', $supportPhone) . '?text=' . urlencode($prefilledText);
 
         // Onboarding desk (owner instruction 2026-11-27): agents message
-        // 0703 253 2424 on WhatsApp for their onboarding process.
+        // 0703 253 2424 on WhatsApp for their onboarding process. The
+        // prefilled message carries the applicant details and the device
+        // IMEI collected at registration (owner instruction 2026-11-28);
+        // the agent only says they have paid and are ready for onboarding.
         $onboardingPhoneDisplay = '0703 253 2424';
-        $imeiNote = $agent->machine_imei ? " My device IMEI is {$agent->machine_imei}." : '';
-        $activationText = "Hello, my name is {$agent->full_name} (Agent Code: " . ($agent->company_agent_code ?: 'AG-' . $agent->id) . "). I have paid for my station license and I am sending my activation request for onboarding.{$imeiNote}";
+        $detailsBlock = "\n\nMy details:"
+            . "\nName: {$agent->full_name}"
+            . "\nAgent Code: " . ($agent->company_agent_code ?: 'AG-' . $agent->id)
+            . "\nPhone: {$agent->phone_number}"
+            . "\nEmail: {$user->email}"
+            . ($agent->state ? "\nState: {$agent->state}" : '')
+            . "\nDevice IMEI: " . ($agent->machine_imei ?: 'Not yet added');
+        $activationText = "Hello, I am {$agent->full_name}. I just made payment for my station license and I am ready for onboarding." . $detailsBlock;
         $activationWhatsappUrl = 'https://wa.me/2347032532424?text=' . urlencode($activationText);
-        $productionText = "Hello, my name is {$agent->full_name} (Agent Code: " . ($agent->company_agent_code ?: 'AG-' . $agent->id) . "). I have completed my three test enrolments and toggled the switch to production. I am sending my switch to production request.{$imeiNote}";
+        $productionText = "Hello, I am {$agent->full_name}. I have completed my three test enrolments and toggled the switch to production. I am sending my switch to production request." . $detailsBlock;
         $productionWhatsappUrl = 'https://wa.me/2347032532424?text=' . urlencode($productionText);
 
         return view('agent.license-onboarding', [
