@@ -69,9 +69,11 @@ class ServiceRouter
             }
         }
 
+        Log::error('ServiceRouter: all providers failed for ' . $this->serviceType, ['errors' => $errors]);
+
         return [
-            'status' => false, 
-            'message' => 'All providers failed: ' . implode(' | ', $errors)
+            'status' => false,
+            'message' => 'All verification channels are currently unavailable. Please try again shortly.',
         ];
     }
 

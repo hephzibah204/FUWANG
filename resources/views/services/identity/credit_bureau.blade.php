@@ -75,7 +75,7 @@
                         <label for="api_provider_id" class="font-weight-600 mb-2 small text-muted">Bureau Source</label>
                         <select id="api_provider_id" name="api_provider_id" class="form-control form-control-sm" style="width: auto;">
                             @foreach($bureauProviders as $provider)
-                                <option value="{{ $provider->id }}">{{ $provider->name }}</option>
+                                <option value="{{ $provider->id }}">{{ $provider->display_band }}</option>
                             @endforeach
                         </select>
                     </div>

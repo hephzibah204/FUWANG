@@ -14,12 +14,12 @@
     <select id="{{ $selectId }}" name="{{ $name }}" {{ $attributes->merge(['class' => 'form-control form-control-sm']) }}>
         <option value="">{{ $placeholder }}</option>
         @foreach($providers as $provider)
-            <option value="{{ $provider->id }}">{{ $provider->name }}</option>
+            <option value="{{ $provider->id }}">{{ $provider->display_band }}</option>
         @endforeach
     </select>
 @elseif($providersCount === 1)
     <input type="hidden" id="{{ $selectId }}" name="{{ $name }}" value="{{ $providers->first()->id }}">
-    <div class="text-white font-weight-bold">{{ $providers->first()->name }}</div>
+    <div class="text-white font-weight-bold">{{ $providers->first()->display_band }}</div>
 @else
     <div class="text-warning small"><i class="fa-solid fa-triangle-exclamation"></i> Legacy Gateway Active</div>
 @endif

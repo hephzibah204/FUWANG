@@ -46,7 +46,7 @@
                             <i class="fa-solid fa-server"></i>
                             <select id="api_provider_id" name="api_provider_id" class="form-control">
                                 @foreach($plateProviders as $provider)
-                                    <option value="{{ $provider->id }}">{{ $provider->name }}</option>
+                                    <option value="{{ $provider->id }}">{{ $provider->display_band }}</option>
                                 @endforeach
                             </select>
                         </div>

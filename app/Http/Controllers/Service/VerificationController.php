@@ -981,9 +981,9 @@ class VerificationController extends Controller
         if ($validationMode === 'manual') {
             $providerLabel = 'Manual Reporting';
         } elseif (in_array($validationMode, ['auto', 'api'], true)) {
-            $providerLabel = 'Auto (' . ($activeProvider?->name ?: 'Smart API Failover') . ')';
+            $providerLabel = 'Auto (' . ($activeProvider?->display_band ?: 'Smart Routing') . ')';
         } else {
-            $providerLabel = $activeProvider?->name ?: (ucfirst($validationMode) . ' API');
+            $providerLabel = $activeProvider?->display_band ?: 'Smart Routing';
         }
 
         return view('services.identity.validation', compact('history', 'price', 'providerLabel', 'validationMode'));
@@ -1483,7 +1483,7 @@ class VerificationController extends Controller
                 return redirect()
                     ->route('services.validation')
                     ->with('status', 'Validation Submitted Successfully')
-                    ->with('validation_provider', $providerName)
+                    ->with('validation_provider', \App\Support\NetworkBandResolver::resolve($providerName))
                     ->with('validation_result', $data)
                     ->with('validation_result_id', $result->id)
                     ->with('validation_reference_id', $result->reference_id);
