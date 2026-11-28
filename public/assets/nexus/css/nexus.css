@@ -3194,6 +3194,70 @@ body.theme-light .panel-card {
     color: #0f172a !important;
 }
 
+/* Light Theme Service Headers & Panel Headings (2026-11-28 contrast fix):
+   the base rules hardcode white text for the dark theme; on light surfaces
+   (white cards, pale inline tints) that text was invisible. */
+[data-theme="light"] .sh-text h1,
+body.theme-light .sh-text h1 {
+    color: #0f172a !important;
+}
+
+[data-theme="light"] .sh-text p,
+body.theme-light .sh-text p {
+    color: #475569 !important;
+}
+
+[data-theme="light"] .sh-text p .text-success,
+body.theme-light .sh-text p .text-success {
+    color: #047857 !important;
+}
+
+[data-theme="light"] .sh-icon,
+body.theme-light .sh-icon {
+    background: #f1f5f9;
+    border-color: #e2e8f0;
+    color: #0f172a;
+}
+
+[data-theme="light"] .sh-badges .badge-accent,
+body.theme-light .sh-badges .badge-accent {
+    background: #f1f5f9;
+    border-color: #e2e8f0;
+    color: #334155;
+}
+
+[data-theme="light"] .panel-card h1,
+[data-theme="light"] .panel-card h2,
+[data-theme="light"] .panel-card h3,
+[data-theme="light"] .panel-card h4,
+[data-theme="light"] .panel-card h5,
+[data-theme="light"] .panel-card h6,
+[data-theme="light"] .panel-card .h1,
+[data-theme="light"] .panel-card .h2,
+[data-theme="light"] .panel-card .h3,
+[data-theme="light"] .panel-card .h4,
+[data-theme="light"] .panel-card .h5,
+[data-theme="light"] .panel-card .h6,
+body.theme-light .panel-card h1,
+body.theme-light .panel-card h2,
+body.theme-light .panel-card h3,
+body.theme-light .panel-card h4,
+body.theme-light .panel-card h5,
+body.theme-light .panel-card h6,
+body.theme-light .panel-card .h1,
+body.theme-light .panel-card .h2,
+body.theme-light .panel-card .h3,
+body.theme-light .panel-card .h4,
+body.theme-light .panel-card .h5,
+body.theme-light .panel-card .h6 {
+    color: #0f172a !important;
+}
+
+[data-theme="light"] .ai-close,
+body.theme-light .ai-close {
+    color: #0f172a !important;
+}
+
 [data-theme="light"] .stat-card,
 body.theme-light .stat-card {
     background: #ffffff !important;
