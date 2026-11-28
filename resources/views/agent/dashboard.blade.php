@@ -502,7 +502,7 @@
                             <strong class="text-white">{{ $broadcast->subject }}</strong>
                             <small class="text-white-50">{{ $broadcast->created_at->diffForHumans() }}</small>
                         </div>
-                        <p class="text-white-50 small mb-0">{{ \Illuminate\Support\Str::limit($broadcast->message, 120) }}</p>
+                        <p class="text-white-50 small mb-0">{{ \Illuminate\Support\Str::limit(\App\Support\RichText::toPlainText($broadcast->message), 120) }}</p>
                     </div>
                 @empty
                     <p class="text-white-50 small mb-0">No active announcements from administration at this time.</p>

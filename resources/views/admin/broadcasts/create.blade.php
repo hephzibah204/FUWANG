@@ -25,8 +25,7 @@
 
                         <div class="form-group mb-4">
                             <label class="text-white-50 mb-2">Message Content</label>
-                            <textarea name="message" rows="6" class="form-control bg-dark text-white border-secondary" required placeholder="Type your message here..."></textarea>
-                            <small class="text-muted">HTML tags are allowed for formatting.</small>
+                            @include('admin.partials.rich-text-editor', ['name' => 'message', 'value' => old('message'), 'placeholder' => 'Type your message here...'])
                         </div>
 
                         <div class="row">
@@ -37,7 +36,7 @@
                                         <option value="all">All Users</option>
                                         <option value="active">Active Users (Last 30 days)</option>
                                         <option value="inactive">Inactive Users</option>
-                                        <option value="vip">VIP / High Value</option>
+                                        <option value="vip">VIP / High Value (paid license holders or ₦{{ number_format($vipThreshold ?? 50000) }}+ funded)</option>
                                     </select>
                                 </div>
                             </div>

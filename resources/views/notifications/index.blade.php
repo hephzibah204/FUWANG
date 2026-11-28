@@ -39,7 +39,11 @@
                                     <span class="small text-white-50">{{ $n->created_at->diffForHumans() }}</span>
                                 </div>
                                 <p class="text-white-50 mb-3" style="font-size: 0.92rem; line-height: 1.5;">
-                                    {!! Str::words($data['message'] ?? '...', 25, '...') !!}
+                                    @if(($data['format'] ?? null) === 'html')
+                                        {{ Str::words(\App\Support\RichText::toPlainText($data['message'] ?? ''), 25, '...') }}
+                                    @else
+                                        {!! Str::words($data['message'] ?? '...', 25, '...') !!}
+                                    @endif
                                 </p>
                                 <div class="d-flex align-items-center gap-2" style="gap:12px;">
                                     <a href="{{ route('notifications.show', $n->id) }}" class="btn btn-sm btn-glass px-4 py-2" style="font-size: 0.75rem; border: 1px solid rgba(255,255,255,0.08);">

@@ -673,7 +673,7 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label text-white small fw-bold">Message Content</label>
-                            <textarea name="message" rows="4" class="form-control text-white bg-dark border-secondary rounded-3" required placeholder="Write your urgent message or notice to this agent..."></textarea>
+                            @include('admin.partials.rich-text-editor', ['name' => 'message', 'value' => old('message'), 'placeholder' => 'Write your urgent message or notice to this agent...'])
                         </div>
                         <div class="form-check form-switch">
                             <input type="checkbox" name="send_email" value="1" class="form-check-input" id="sendDirectEmail" checked>

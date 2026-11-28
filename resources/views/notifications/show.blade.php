@@ -25,7 +25,11 @@
                 <hr style="border-top-color: rgba(255,255,255,0.05); margin: 2rem 0;">
 
                 <div class="notification-body text-white" style="font-size: 1.1rem; line-height: 1.7; color: rgba(255,255,255,0.85);">
-                    {!! nl2br(e($notification->data['message'] ?? '')) !!}
+                    @if(($notification->data['format'] ?? null) === 'html')
+                        {!! \App\Support\RichText::sanitize($notification->data['message'] ?? '') !!}
+                    @else
+                        {!! nl2br(e($notification->data['message'] ?? '')) !!}
+                    @endif
                 </div>
 
                 <div class="mt-5 p-4 rounded-3 text-center" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05);">

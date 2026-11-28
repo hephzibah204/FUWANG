@@ -32,6 +32,12 @@ class AgentBroadcastMail extends Mailable
 
     public function content(): Content
     {
+        // Rich-text messages (Word-style formatting) render as HTML;
+        // legacy plain-text messages keep their line breaks.
+        $bodyStyle = str_contains($this->bodyText, '<')
+            ? 'background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 18px; border-radius: 8px; margin: 20px 0; color: #e2e8f0; font-size: 14px; line-height: 1.6;'
+            : 'background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 18px; border-radius: 8px; margin: 20px 0; color: #e2e8f0; font-size: 14px; line-height: 1.6; white-space: pre-line;';
+
         return new Content(
             htmlString: "
                 <div style='font-family: Arial, sans-serif; background: #0f172a; color: #f8fafc; padding: 30px; border-radius: 12px; max-width: 600px; margin: 0 auto;'>
@@ -42,7 +48,7 @@ class AgentBroadcastMail extends Mailable
                     
                     <p style='color: #cbd5e1; font-size: 14px;'>Hello <strong>{$this->agentName}</strong>,</p>
                     
-                    <div style='background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 18px; border-radius: 8px; margin: 20px 0; color: #e2e8f0; font-size: 14px; line-height: 1.6; white-space: pre-line;'>
+                    <div style='{$bodyStyle}'>
                         {$this->bodyText}
                     </div>
 

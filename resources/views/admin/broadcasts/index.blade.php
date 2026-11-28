@@ -32,7 +32,7 @@
                         <tr>
                             <td class="border-0 p-3 align-middle">
                                 <div class="font-weight-bold">{{ $broadcast->subject }}</div>
-                                <div class="small text-muted text-truncate" style="max-width: 300px;">{{ Str::limit($broadcast->message, 50) }}</div>
+                                <div class="small text-muted text-truncate" style="max-width: 300px;">{{ Str::limit(\App\Support\RichText::toPlainText($broadcast->message), 50) }}</div>
                             </td>
                             <td class="border-0 p-3 align-middle">
                                 <span class="badge badge-pill badge-secondary">{{ ucfirst($broadcast->target_audience) }}</span>

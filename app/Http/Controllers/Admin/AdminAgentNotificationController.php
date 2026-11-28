@@ -38,11 +38,15 @@ class AdminAgentNotificationController extends Controller
     {
         $validated = $request->validate([
             'subject' => ['required', 'string', 'max:255'],
-            'message' => ['required', 'string', 'max:5000'],
+            // Rich text from the Word-style editor: tags inflate length,
+            // so the cap is generous; content is sanitised before use.
+            'message' => ['required', 'string', 'max:20000'],
             'target_status' => ['required', 'string', 'in:all,approved,pending,suspended'],
             'target_state' => ['nullable', 'string', 'max:100'],
             'send_email' => ['nullable', 'boolean'],
         ]);
+
+        $validated['message'] = \App\Support\RichText::sanitize($validated['message']);
 
         $admin = Auth::guard('admin')->user();
         $targetStatus = $validated['target_status'];
@@ -90,7 +94,8 @@ class AdminAgentNotificationController extends Controller
             'target_audience' => 'enrollment_agents',
             'status' => 'sent',
             'sent_at' => now(),
-            'created_by' => $admin?->id,
+            // broadcasts.created_by references USERS; the author is an admin, so leave it null (writing the admin id pointed at an unrelated user and could fail the FK).
+            'created_by' => null,
             'meta' => [
                 'target_status' => $targetStatus,
                 'target_state' => $targetState,
@@ -114,9 +119,10 @@ class AdminAgentNotificationController extends Controller
 
         $validated = $request->validate([
             'subject' => ['required', 'string', 'max:255'],
-            'message' => ['required', 'string', 'max:5000'],
+            'message' => ['required', 'string', 'max:20000'],
             'send_email' => ['nullable', 'boolean'],
         ]);
+        $validated['message'] = \App\Support\RichText::sanitize($validated['message']);
 
         $admin = Auth::guard('admin')->user();
         $sendEmail = !empty($validated['send_email']);
@@ -142,7 +148,8 @@ class AdminAgentNotificationController extends Controller
             'target_audience' => 'enrollment_agents',
             'status' => 'sent',
             'sent_at' => now(),
-            'created_by' => $admin?->id,
+            // broadcasts.created_by references USERS; the author is an admin, so leave it null (writing the admin id pointed at an unrelated user and could fail the FK).
+            'created_by' => null,
             'meta' => [
                 'direct_agent_id' => $agent->id,
                 'agent_name' => $agent->full_name,

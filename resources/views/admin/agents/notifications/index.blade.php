@@ -82,7 +82,7 @@
 
                     <div class="mb-3">
                         <label class="form-label text-white text-xs fw-semibold">Notice Message Body <span class="text-danger">*</span></label>
-                        <textarea name="message" rows="6" class="form-control bg-dark border-secondary text-white rounded-3 py-2 text-sm" placeholder="Type instructions, operational updates, terminal configuration tips, or compliance directives here..." required>{{ old('message') }}</textarea>
+                        @include('admin.partials.rich-text-editor', ['name' => 'message', 'value' => old('message'), 'placeholder' => 'Type instructions, operational updates, terminal configuration tips, or compliance directives here...'])
                     </div>
 
                     <div class="p-3 rounded-3 mb-4" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);">
@@ -146,7 +146,7 @@
                                 </form>
                             </div>
 
-                            <p class="text-white-50 text-xs mb-0 line-clamp-3" style="white-space: pre-line;">{{ Str::limit($item->message, 300) }}</p>
+                            <p class="text-white-50 text-xs mb-0 line-clamp-3">{{ Str::limit(\App\Support\RichText::toPlainText($item->message), 300) }}</p>
                         </div>
                     @empty
                         <div class="text-center py-5 text-white-50">
